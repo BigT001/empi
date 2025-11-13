@@ -1,0 +1,35 @@
+name: Prisma Migrate Deploy
+
+on:
+  workflow_dispatch: {}
+
+jobs:
+  migrate:
+    name: Run Prisma Migrate Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run Prisma Migrations (deploy)
+        env:
+          # Set DATABASE_URL to your Direct Supabase connection string stored in GitHub Secrets
+          DATABASE_URL: ${{ secrets.DIRECT_URL }}
+        run: npx prisma migrate deploy --schema=prisma/schema.prisma
+
+      - name: Confirm schema
+        env:
+          DATABASE_URL: ${{ secrets.DIRECT_URL }}
+        run: npx prisma db pull --schema=prisma/schema.prisma && npx prisma migrate status --schema=prisma/schema.prisma

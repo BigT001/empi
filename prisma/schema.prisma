@@ -1,0 +1,141 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id            String     @id @default(cuid())
+  name          String?
+  email         String?    @unique
+  emailVerified DateTime?
+  password      String?
+  image         String?
+  role          Role       @default(CUSTOMER)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  orders    Order[]
+  products  Product[]    @relation("SellerProducts")
+
+  @@map("users")
+}
+
+model Account {
+  id                 String  @id @default(cuid())
+  userId             String  @map("user_id")
+  type               String
+  provider           String
+  providerAccountId  String  @map("provider_account_id")
+  refresh_token      String?  @db.Text
+  access_token       String?  @db.Text
+  expires_at         Int?
+  token_type         String?
+  scope              String?
+  id_token           String?  @db.Text
+  session_state      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String   @db.Text
+  price       Float
+  quantity    Int      @default(0)
+  image       String   // URL from Cloudinary
+  category    String   @default("costume")
+  sellerId    String   @map("seller_id")
+  seller      User     @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  orderItems  OrderItem[]
+
+  @@map("products")
+}
+
+model Order {
+  id            String   @id @default(cuid())
+  orderNumber   String   @unique @default(cuid())
+  
+  customerId    String   @map("customer_id")
+  customer      User     @relation(fields: [customerId], references: [id])
+  
+  items         OrderItem[]
+  
+  subtotal      Float
+  tax           Float
+  shippingCost  Float
+  total         Float
+  
+  status        OrderStatus @default(PENDING)
+  paymentStatus PaymentStatus @default(UNPAID)
+  
+  shippingAddress String  @db.Text
+  email          String
+  phone          String?
+  
+  invoicePath    String?  // Path to stored invoice PDF
+  
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("orders")
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String  @map("order_id")
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id])
+  
+  quantity  Int
+  price     Float   // Price at time of purchase
+  
+  @@map("order_items")
+}
+
+enum Role {
+  ADMIN
+  SELLER
+  CUSTOMER
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PAID
+  FAILED
+  REFUNDED
+}
