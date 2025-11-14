@@ -98,7 +98,7 @@ const SidebarProvider = React.forwardRef<
         <div
           style={
             {
-              "--sidebar-width": "16rem",
+              "--sidebar-width": isMobile ? "20rem" : "16rem",
               ...style,
             } as React.CSSProperties
           }

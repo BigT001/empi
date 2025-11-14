@@ -15,7 +15,7 @@ export default function Home() {
     <div className="min-h-screen bg-white text-gray-900 flex flex-col">
       {/* Header with Logo and Navigation */}
       <header className="border-b border-gray-100 sticky top-0 z-40 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto max-w-7xl px-3 md:px-6 py-4 flex items-center justify-between gap-3 md:gap-8">
+        <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-center gap-2 md:justify-between md:gap-8">
           {/* Logo - from Header */}
           <Header />
           

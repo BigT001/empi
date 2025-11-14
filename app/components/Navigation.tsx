@@ -162,11 +162,11 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
       </div>
 
       {/* Mobile Navigation Header */}
-      <div className="md:hidden flex items-center justify-between gap-2 w-full">
+      <div className="md:hidden flex items-center justify-between gap-1 w-full flex-shrink-0">
         {/* Category Toggle for Mobile */}
-        <div className="flex items-center gap-2 flex-1">
-          {/* Modern Animated Category Toggle Switch - Larger Version */}
-          <div className="relative inline-flex items-center bg-gradient-to-r from-gray-100 to-gray-50 rounded-full p-1 shadow-sm border border-gray-200">
+        <div className="flex items-center flex-1 justify-center min-w-0">
+          {/* Modern Animated Category Toggle Switch - Optimized for Mobile */}
+          <div className="relative inline-flex items-center bg-gradient-to-r from-gray-100 to-gray-50 rounded-full p-1 shadow-sm border border-gray-200 flex-shrink-0">
             <div
               className={`absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-lime-500 to-lime-600 shadow-lg transition-all duration-300 ease-out ${
                 category === "adults" ? "left-1 right-1/2" : "left-1/2 right-1"
@@ -174,7 +174,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
             />
             <button
               onClick={() => onCategoryChange("adults")}
-              className={`relative px-3 py-2 rounded-full font-bold text-sm transition-all duration-300 z-10 whitespace-nowrap ${
+              className={`relative px-2.5 py-1.5 rounded-full font-bold text-xs md:text-sm transition-all duration-300 z-10 whitespace-nowrap ${
                 category === "adults"
                   ? "text-white drop-shadow-md"
                   : "text-gray-600 hover:text-gray-900"
@@ -184,7 +184,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
             </button>
             <button
               onClick={() => onCategoryChange("kids")}
-              className={`relative px-3 py-2 rounded-full font-bold text-sm transition-all duration-300 z-10 whitespace-nowrap ${
+              className={`relative px-2.5 py-1.5 rounded-full font-bold text-xs md:text-sm transition-all duration-300 z-10 whitespace-nowrap ${
                 category === "kids"
                   ? "text-white drop-shadow-md"
                   : "text-gray-600 hover:text-gray-900"
@@ -196,13 +196,13 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         </div>
 
         {/* Cart Icon */}
-        <button className="flex items-center justify-center p-2 bg-lime-600 hover:bg-lime-700 text-white rounded-lg transition flex-shrink-0">
-          <ShoppingCart className="h-5 w-5" />
+        <button className="flex items-center justify-center p-1.5 bg-lime-600 hover:bg-lime-700 text-white rounded-lg transition flex-shrink-0">
+          <ShoppingCart className="h-4 w-4" />
         </button>
 
         {/* Mobile Menu Toggle */}
-        <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition flex-shrink-0">
-          <Menu className="h-5 w-5" />
+        <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition flex-shrink-0">
+          <Menu className="h-4 w-4" />
         </button>
       </div>
 

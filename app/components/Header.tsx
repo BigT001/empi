@@ -11,7 +11,7 @@ export function Header() {
         alt="EMPI Logo"
         width={60}
         height={60}
-        className="w-32 md:w-20 h-auto rounded-lg"
+        className="w-16 md:w-20 h-auto rounded-lg"
       />
     </Link>
   );
