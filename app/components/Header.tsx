@@ -9,9 +9,9 @@ export function Header() {
       <Image
         src="/logo/EMPI-2k24-LOGO-1.PNG"
         alt="EMPI Logo"
-        width={80}
-        height={80}
-        className="rounded-lg"
+        width={60}
+        height={60}
+        className="w-12 md:w-20 h-auto rounded-lg"
       />
     </Link>
   );

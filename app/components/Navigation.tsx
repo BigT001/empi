@@ -165,16 +165,16 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
       <div className="md:hidden flex items-center justify-between gap-2 w-full">
         {/* Category Toggle for Mobile */}
         <div className="flex items-center gap-2 flex-1">
-          {/* Modern Animated Category Toggle Switch - Small Version */}
-          <div className="relative inline-flex items-center bg-gradient-to-r from-gray-100 to-gray-50 rounded-full p-0.5 shadow-sm border border-gray-200">
+          {/* Modern Animated Category Toggle Switch - Larger Version */}
+          <div className="relative inline-flex items-center bg-gradient-to-r from-gray-100 to-gray-50 rounded-full p-1 shadow-sm border border-gray-200">
             <div
-              className={`absolute top-0.5 bottom-0.5 rounded-full bg-gradient-to-r from-lime-500 to-lime-600 shadow-lg transition-all duration-300 ease-out ${
-                category === "adults" ? "left-0.5 right-1/2" : "left-1/2 right-0.5"
+              className={`absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-lime-500 to-lime-600 shadow-lg transition-all duration-300 ease-out ${
+                category === "adults" ? "left-1 right-1/2" : "left-1/2 right-1"
               }`}
             />
             <button
               onClick={() => onCategoryChange("adults")}
-              className={`relative px-2.5 py-1 rounded-full font-bold text-xs transition-all duration-300 z-10 whitespace-nowrap ${
+              className={`relative px-3 py-2 rounded-full font-bold text-sm transition-all duration-300 z-10 whitespace-nowrap ${
                 category === "adults"
                   ? "text-white drop-shadow-md"
                   : "text-gray-600 hover:text-gray-900"
@@ -184,7 +184,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
             </button>
             <button
               onClick={() => onCategoryChange("kids")}
-              className={`relative px-2.5 py-1 rounded-full font-bold text-xs transition-all duration-300 z-10 whitespace-nowrap ${
+              className={`relative px-3 py-2 rounded-full font-bold text-sm transition-all duration-300 z-10 whitespace-nowrap ${
                 category === "kids"
                   ? "text-white drop-shadow-md"
                   : "text-gray-600 hover:text-gray-900"
