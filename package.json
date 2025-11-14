@@ -28,7 +28,6 @@
   },
   "devDependencies": {
     "@auth/core": "^0.34.3",
-    "@auth/nextjs": "^0.0.0-380f8d56",
     "@prisma/client": "^6.19.0",
     "@tailwindcss/postcss": "^4",
     "@tanstack/react-query": "^5.90.8",
