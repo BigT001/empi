@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Upload, X, Plus } from "lucide-react";
+import { Upload, X, Plus, Trash2 } from "lucide-react";
 
 interface ProductForm {
   name: string;
@@ -12,8 +12,7 @@ interface ProductForm {
   rentPrice: string;
   category: "adults" | "kids";
   badge: string;
-  imageFile: File | null;
-  imagePreview: string | null;
+  images: Array<{ file: File | null; preview: string }>;
 }
 
 export default function AdminDashboard() {
@@ -24,22 +23,24 @@ export default function AdminDashboard() {
     rentPrice: "",
     category: "adults",
     badge: "",
-    imageFile: null,
-    imagePreview: null,
+    images: Array(5).fill(null).map(() => ({ file: null, preview: "" })),
   });
 
   const [recentProducts, setRecentProducts] = useState<ProductForm[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setForm((prev) => ({
-        ...prev,
-        imageFile: file,
-        imagePreview: URL.createObjectURL(file),
-      }));
+      setForm((prev) => {
+        const newImages = [...prev.images];
+        newImages[index] = {
+          file,
+          preview: URL.createObjectURL(file),
+        };
+        return { ...prev, images: newImages };
+      });
     }
   };
 
@@ -61,9 +62,9 @@ export default function AdminDashboard() {
       !form.description ||
       !form.sellPrice ||
       !form.rentPrice ||
-      !form.imageFile
+      form.images.every((img) => !img.file)
     ) {
-      setSubmitMessage("Please fill in all fields and upload an image");
+      setSubmitMessage("Please fill in all fields and upload at least one image");
       return;
     }
 
@@ -85,8 +86,7 @@ export default function AdminDashboard() {
         rentPrice: "",
         category: "adults",
         badge: "",
-        imageFile: null,
-        imagePreview: null,
+        images: Array(5).fill(null).map(() => ({ file: null, preview: "" })),
       });
 
       setSubmitMessage("Product posted successfully! ✓");
@@ -98,13 +98,15 @@ export default function AdminDashboard() {
     }
   };
 
-  const clearImage = () => {
-    setForm((prev) => ({
-      ...prev,
-      imageFile: null,
-      imagePreview: null,
-    }));
+  const clearImage = (index: number) => {
+    setForm((prev) => {
+      const newImages = [...prev.images];
+      newImages[index] = { file: null, preview: "" };
+      return { ...prev, images: newImages };
+    });
   };
+
+  const uploadedImageCount = form.images.filter((img) => img.file).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 w-full">
@@ -114,55 +116,70 @@ export default function AdminDashboard() {
           {/* Product Creation Form */}
           <div className="lg:col-span-2 w-full">
             <div className="bg-white rounded-lg md:rounded-2xl shadow-sm border border-gray-200 p-4 md:p-8 w-full">
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4 md:mb-6">Post New Product</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Post New Product</h2>
+              <p className="text-sm text-gray-600 mb-6">Upload up to 5 images for your product</p>
 
               <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
-                {/* Image Upload Section */}
+                {/* Product Images Section */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-900 mb-2 md:mb-3">
-                    Product Image
-                  </label>
-                  {form.imagePreview ? (
-                    <div className="relative">
-                      <div className="relative w-full aspect-[4/5] bg-gray-100 rounded-lg md:rounded-xl overflow-hidden">
-                        <Image
-                          src={form.imagePreview}
-                          alt="Preview"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={clearImage}
-                        className="absolute top-2 right-2 bg-red-500 hover:bg-red-600 text-white p-1.5 md:p-2 rounded-full transition"
-                      >
-                        <X className="h-4 w-4 md:h-5 md:w-5" />
-                      </button>
-                    </div>
-                  ) : (
-                    <label className="flex flex-col items-center justify-center w-full aspect-[4/5] border-2 border-dashed border-gray-300 rounded-lg md:rounded-xl hover:border-lime-600 cursor-pointer transition bg-gray-50 hover:bg-lime-50">
-                      <div className="flex flex-col items-center justify-center pt-5 pb-6 px-4">
-                        <Upload className="h-10 md:h-12 w-10 md:w-12 text-gray-400 mb-2" />
-                        <p className="text-xs md:text-sm font-semibold text-gray-700 text-center">
-                          Click to upload or drag and drop
-                        </p>
-                        <p className="text-xs text-gray-500">PNG, JPG, GIF up to 10MB</p>
-                      </div>
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleImageChange}
-                      />
+                  <div className="flex items-center justify-between mb-3 md:mb-4">
+                    <label className="block text-sm font-semibold text-gray-900">
+                      Product Images ({uploadedImageCount}/5)
                     </label>
-                  )}
+                    <div className="text-xs font-medium px-3 py-1 bg-lime-100 text-lime-700 rounded-full">
+                      {uploadedImageCount} uploaded
+                    </div>
+                  </div>
+                  
+                  {/* Images Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
+                    {form.images.map((image, index) => (
+                      <div key={index} className="relative">
+                        {image.preview ? (
+                          <div className="relative w-full aspect-square bg-gray-100 rounded-lg md:rounded-xl overflow-hidden border-2 border-gray-200">
+                            <Image
+                              src={image.preview}
+                              alt={`Product ${index + 1}`}
+                              fill
+                              className="object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => clearImage(index)}
+                              className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-full transition shadow-lg"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                            <div className="absolute bottom-1 left-1 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                              #{index + 1}
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="flex flex-col items-center justify-center w-full aspect-square border-2 border-dashed border-gray-300 rounded-lg md:rounded-xl hover:border-lime-600 cursor-pointer transition bg-gray-50 hover:bg-lime-50">
+                            <div className="flex flex-col items-center justify-center p-3">
+                              <Upload className="h-6 md:h-7 w-6 md:w-7 text-gray-400 mb-1" />
+                              <p className="text-xs font-semibold text-gray-700 text-center">
+                                #{index + 1}
+                              </p>
+                            </div>
+                            <input
+                              type="file"
+                              className="hidden"
+                              accept="image/*"
+                              onChange={(e) => handleImageChange(index, e)}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2">PNG, JPG, GIF up to 10MB each</p>
                 </div>
 
                 {/* Product Name */}
                 <div>
-                  <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-1 md:mb-2">
-                    Product Name
+                  <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                    Product Name *
                   </label>
                   <input
                     type="text"
@@ -176,8 +193,8 @@ export default function AdminDashboard() {
 
                 {/* Description */}
                 <div>
-                  <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-1 md:mb-2">
-                    Description
+                  <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                    Description *
                   </label>
                   <textarea
                     name="description"
@@ -192,8 +209,8 @@ export default function AdminDashboard() {
                 {/* Pricing */}
                 <div className="grid grid-cols-2 gap-3 md:gap-4">
                   <div>
-                    <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-1 md:mb-2">
-                      Sell Price (USD)
+                    <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                      Sell Price (USD) *
                     </label>
                     <input
                       type="number"
@@ -207,8 +224,8 @@ export default function AdminDashboard() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-1 md:mb-2">
-                      Rent Price/Day (USD)
+                    <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                      Rent Price/Day (USD) *
                     </label>
                     <input
                       type="number"
@@ -226,8 +243,8 @@ export default function AdminDashboard() {
                 {/* Category & Badge */}
                 <div className="grid grid-cols-2 gap-3 md:gap-4">
                   <div>
-                    <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-1 md:mb-2">
-                      Category
+                    <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                      Category *
                     </label>
                     <select
                       name="category"
@@ -240,7 +257,7 @@ export default function AdminDashboard() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-1 md:mb-2">
+                    <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
                       Badge (Optional)
                     </label>
                     <select
@@ -286,7 +303,7 @@ export default function AdminDashboard() {
           {/* Recent Products Sidebar */}
           <div className="lg:col-span-1 w-full">
             <div className="bg-white rounded-lg md:rounded-2xl shadow-sm border border-gray-200 p-4 md:p-6 sticky top-24">
-              <h3 className="text-base md:text-lg font-bold text-gray-900 mb-3 md:mb-4">Recently Posted</h3>
+              <h3 className="text-base md:text-lg font-bold text-gray-900 mb-4">Recently Posted</h3>
 
               {recentProducts.length === 0 ? (
                 <div className="text-center py-6 md:py-8 text-gray-500">
@@ -294,51 +311,57 @@ export default function AdminDashboard() {
                 </div>
               ) : (
                 <div className="space-y-3 md:space-y-4">
-                  {recentProducts.map((product, index) => (
-                    <div
-                      key={index}
-                      className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition"
-                    >
-                      {product.imagePreview && (
-                        <div className="relative w-full aspect-[4/5] bg-gray-100">
-                          <Image
-                            src={product.imagePreview}
-                            alt={product.name}
-                            fill
-                            className="object-cover"
-                          />
-                          {product.badge && (
-                            <div className="absolute top-1 right-1 md:top-2 md:right-2 bg-lime-600 text-white text-xs font-bold px-2 py-1 rounded">
-                              {product.badge}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                      <div className="p-2 md:p-3">
-                        <h4 className="font-semibold text-gray-900 text-xs md:text-sm line-clamp-2">
-                          {product.name}
-                        </h4>
-                        <div className="mt-1 md:mt-2 flex justify-between items-center text-xs text-gray-600">
-                          <span>${product.sellPrice}</span>
-                          <span className="text-lime-600 font-semibold">
-                            ${product.rentPrice}/day
-                          </span>
-                        </div>
-                        <div className="mt-1 md:mt-2 flex gap-1 md:gap-2">
-                          <span className="inline-block bg-gray-100 text-gray-700 text-xs px-2 py-0.5 md:py-1 rounded">
-                            {product.category === "kids" ? "👶 Kids" : "👔 Adults"}
-                          </span>
+                  {recentProducts.map((product, index) => {
+                    const firstImage = product.images.find((img) => img.file);
+                    return (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition"
+                      >
+                        {firstImage?.preview && (
+                          <div className="relative w-full aspect-[4/5] bg-gray-100">
+                            <Image
+                              src={firstImage.preview}
+                              alt={product.name}
+                              fill
+                              className="object-cover"
+                            />
+                            {product.badge && (
+                              <div className="absolute top-1 right-1 md:top-2 md:right-2 bg-lime-600 text-white text-xs font-bold px-2 py-1 rounded">
+                                {product.badge}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        <div className="p-2 md:p-3">
+                          <h4 className="font-semibold text-gray-900 text-xs md:text-sm line-clamp-2">
+                            {product.name}
+                          </h4>
+                          <div className="mt-1 md:mt-2 flex justify-between items-center text-xs text-gray-600">
+                            <span>${product.sellPrice}</span>
+                            <span className="text-lime-600 font-semibold">
+                              ${product.rentPrice}/day
+                            </span>
+                          </div>
+                          <div className="mt-2 flex gap-1 md:gap-2 text-xs">
+                            <span className="inline-block bg-blue-100 text-blue-700 px-2 py-0.5 md:py-1 rounded font-medium">
+                              {product.category === "kids" ? "👶 Kids" : "👔 Adults"}
+                            </span>
+                            <span className="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 md:py-1 rounded">
+                              {product.images.filter((img) => img.file).length} images
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
 
             {/* Stats */}
             <div className="mt-4 md:mt-6 bg-white rounded-lg md:rounded-2xl shadow-sm border border-gray-200 p-4 md:p-6">
-              <h3 className="text-base md:text-lg font-bold text-gray-900 mb-3 md:mb-4">Stats</h3>
+              <h3 className="text-base md:text-lg font-bold text-gray-900 mb-4">Stats</h3>
               <div className="space-y-2 md:space-y-3">
                 <div className="flex justify-between items-center pb-2 md:pb-3 border-b border-gray-200">
                   <span className="text-xs md:text-sm text-gray-600">Total Products</span>
@@ -350,7 +373,10 @@ export default function AdminDashboard() {
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-xs md:text-sm text-gray-600">Adults/Kids</span>
-                  <span className="text-xs md:text-sm font-semibold text-gray-900">12/12</span>
+                  <span className="text-xs md:text-sm font-semibold text-gray-900">
+                    {recentProducts.filter((p) => p.category === "adults").length}/
+                    {recentProducts.filter((p) => p.category === "kids").length}
+                  </span>
                 </div>
               </div>
             </div>
