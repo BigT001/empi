@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Plus, BarChart3, Settings, LogOut } from "lucide-react";
+import { Plus, BarChart3, Settings, LogOut, FileText } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -37,6 +37,11 @@ const sidebarItems: SidebarItem[] = [
     name: "Settings",
     href: "/admin/settings",
     icon: <Settings className="h-5 w-5" />,
+  },
+  {
+    name: "Invoices",
+    href: "/admin/invoices",
+    icon: <FileText className="h-5 w-5" />,
   },
 ];
 
