@@ -151,10 +151,10 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
           <Settings className="h-4 w-4" />
           <span className="text-sm">Admin</span>
         </Link>
-        <button className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2 rounded-lg font-medium transition">
+        <Link href="/cart" className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2 rounded-lg font-medium transition">
           <ShoppingCart className="h-4 w-4" />
           <span className="hidden sm:inline text-sm">Cart</span>
-        </button>
+        </Link>
         <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-700 md:hidden hover:bg-gray-100 rounded-lg transition">
           <Menu className="h-5 w-5" />
         </button>
@@ -196,9 +196,9 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         </div>
 
         {/* Cart Icon */}
-        <button className="flex items-center justify-center p-1.5 bg-lime-600 hover:bg-lime-700 text-white rounded-lg transition flex-shrink-0">
+        <Link href="/cart" className="flex items-center justify-center p-1.5 bg-lime-600 hover:bg-lime-700 text-white rounded-lg transition flex-shrink-0">
           <ShoppingCart className="h-4 w-4" />
-        </button>
+        </Link>
 
         {/* Mobile Menu Toggle */}
         <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition flex-shrink-0">
