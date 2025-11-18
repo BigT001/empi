@@ -12,7 +12,13 @@ interface ProductForm {
   rentPrice: string;
   category: "adults" | "kids";
   badge: string;
-  images: Array<{ file: File | null; preview: string }>;
+  sizes: string;
+  color: string;
+  material: string;
+  condition: string;
+  careInstructions: string;
+  imageFiles: File[];
+  imagePreviews: string[];
 }
 
 export default function AdminDashboard() {
@@ -23,24 +29,84 @@ export default function AdminDashboard() {
     rentPrice: "",
     category: "adults",
     badge: "",
-    images: Array(5).fill(null).map(() => ({ file: null, preview: "" })),
+    sizes: "",
+    color: "",
+    material: "",
+    condition: "new",
+    careInstructions: "",
+    imageFiles: [],
+    imagePreviews: [],
   });
 
   const [recentProducts, setRecentProducts] = useState<ProductForm[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
 
-  const handleImageChange = (index: number, e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
+  // Convert an array of File objects to base64 data URLs
+  const filesToBase64 = (files: File[]) => {
+    return Promise.all(
+      files.map(
+        (file) =>
+          new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onerror = () => reject(new Error("Failed to read file"));
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+          })
+      )
+    );
+  };
+
+  // Handle selecting one or more images at once. startIndex is the slot to begin filling.
+  const handleBulkImageChange = async (startIndex: number, e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length === 0) return;
+
+    // Determine how many slots left (max 5)
+    const existingCount = form.imageFiles.length;
+    const maxSlots = 5;
+    const available = Math.max(0, maxSlots - existingCount + (startIndex < existingCount ? 0 : 0));
+
+    // We will insert files starting at startIndex, but not exceeding 5 total slots
+    const insertFiles = files.slice(0, Math.min(files.length, maxSlots));
+
+    try {
+      const base64s = await filesToBase64(insertFiles);
+
       setForm((prev) => {
-        const newImages = [...prev.images];
-        newImages[index] = {
-          file,
-          preview: URL.createObjectURL(file),
+        const newFiles = [...prev.imageFiles];
+        const newPreviews = [...prev.imagePreviews];
+
+        // Fill slots starting at startIndex; if slot already exists, overwrite
+        let slot = startIndex;
+        for (let i = 0; i < base64s.length && slot < maxSlots; i++, slot++) {
+          const file = insertFiles[i];
+          if (slot < newFiles.length) {
+            newFiles[slot] = file;
+            newPreviews[slot] = base64s[i];
+          } else {
+            newFiles.push(file);
+            newPreviews.push(base64s[i]);
+          }
+        }
+
+        // If more than 5, trim
+        return {
+          ...prev,
+          imageFiles: newFiles.slice(0, maxSlots),
+          imagePreviews: newPreviews.slice(0, maxSlots),
         };
-        return { ...prev, images: newImages };
       });
+    } catch (err) {
+      console.error("Error reading images:", err);
+      setSubmitMessage("Error reading selected images");
+    } finally {
+      // Clear the input value so the same files can be selected again if needed
+      try {
+        e.currentTarget.value = "";
+      } catch (e) {
+        // ignore
+      }
     }
   };
 
@@ -62,7 +128,12 @@ export default function AdminDashboard() {
       !form.description ||
       !form.sellPrice ||
       !form.rentPrice ||
-      form.images.every((img) => !img.file)
+      !form.sizes ||
+      !form.color ||
+      !form.material ||
+      !form.condition ||
+      !form.careInstructions ||
+      form.imageFiles.length === 0
     ) {
       setSubmitMessage("Please fill in all fields and upload at least one image");
       return;
@@ -72,8 +143,56 @@ export default function AdminDashboard() {
     setSubmitMessage("");
 
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      // Convert first image to base64 as main image
+      const mainImage = form.imagePreviews[0];
+      
+      const payload = {
+        name: form.name,
+        description: form.description,
+        sellPrice: parseFloat(form.sellPrice),
+        rentPrice: parseFloat(form.rentPrice),
+        category: form.category,
+        badge: form.badge || null,
+        image: mainImage,
+        images: form.imagePreviews,
+        sizes: form.sizes,
+        color: form.color,
+        material: form.material,
+        condition: form.condition,
+        careInstructions: form.careInstructions,
+      };
+
+      console.log("📤 Submitting product:", { name: form.name, imageCount: form.imageFiles.length });
+
+      const response = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("❌ API Error:", error);
+        setSubmitMessage(`Error: ${error.message || "Failed to post product"}`);
+        return;
+      }
+
+      const data = await response.json();
+      console.log("✅ Product created successfully:", data);
+
+      // Notify other tabs/pages to refetch products (BroadcastChannel + localStorage fallback)
+      try {
+        const bc = new BroadcastChannel("empi-products");
+        bc.postMessage("products-updated");
+        bc.close();
+      } catch (e) {
+        // ignore if BroadcastChannel not supported
+      }
+      try {
+        localStorage.setItem("empi-products-updated", Date.now().toString());
+      } catch (e) {
+        // ignore
+      }
 
       // Add to recent products
       setRecentProducts((prev) => [form, ...prev.slice(0, 4)]);
@@ -86,12 +205,19 @@ export default function AdminDashboard() {
         rentPrice: "",
         category: "adults",
         badge: "",
-        images: Array(5).fill(null).map(() => ({ file: null, preview: "" })),
+        sizes: "",
+        color: "",
+        material: "",
+        condition: "new",
+        careInstructions: "",
+        imageFiles: [],
+        imagePreviews: [],
       });
 
       setSubmitMessage("Product posted successfully! ✓");
       setTimeout(() => setSubmitMessage(""), 3000);
     } catch (error) {
+      console.error("❌ Submission error:", error);
       setSubmitMessage("Error posting product. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -100,13 +226,15 @@ export default function AdminDashboard() {
 
   const clearImage = (index: number) => {
     setForm((prev) => {
-      const newImages = [...prev.images];
-      newImages[index] = { file: null, preview: "" };
-      return { ...prev, images: newImages };
+      const newFiles = [...prev.imageFiles];
+      const newPreviews = [...prev.imagePreviews];
+      newFiles.splice(index, 1);
+      newPreviews.splice(index, 1);
+      return { ...prev, imageFiles: newFiles, imagePreviews: newPreviews };
     });
   };
 
-  const uploadedImageCount = form.images.filter((img) => img.file).length;
+  const uploadedImageCount = form.imageFiles.length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 w-full">
@@ -133,12 +261,12 @@ export default function AdminDashboard() {
                   
                   {/* Images Grid */}
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3 md:gap-4">
-                    {form.images.map((image, index) => (
+                    {Array.from({ length: 5 }).map((_, index) => (
                       <div key={index} className="relative">
-                        {image.preview ? (
+                        {form.imagePreviews[index] ? (
                           <div className="relative w-full aspect-square bg-gray-100 rounded-lg md:rounded-xl overflow-hidden border-2 border-gray-200">
                             <Image
-                              src={image.preview}
+                              src={form.imagePreviews[index]}
                               alt={`Product ${index + 1}`}
                               fill
                               className="object-cover"
@@ -166,7 +294,8 @@ export default function AdminDashboard() {
                               type="file"
                               className="hidden"
                               accept="image/*"
-                              onChange={(e) => handleImageChange(index, e)}
+                              multiple
+                              onChange={(e) => handleBulkImageChange(index, e)}
                             />
                           </label>
                         )}
@@ -274,6 +403,89 @@ export default function AdminDashboard() {
                   </div>
                 </div>
 
+                {/* Product Details Section */}
+                <div className="border-t border-gray-200 pt-6">
+                  <h3 className="text-sm font-bold text-gray-900 mb-4">Product Details</h3>
+                  
+                  {/* Sizes & Color */}
+                  <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                        Sizes (comma-separated) *
+                      </label>
+                      <input
+                        type="text"
+                        name="sizes"
+                        value={form.sizes}
+                        onChange={handleInputChange}
+                        placeholder="e.g., XS, S, M, L, XL"
+                        className="w-full px-3 md:px-4 py-2 md:py-3 text-xs md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                        Color *
+                      </label>
+                      <input
+                        type="text"
+                        name="color"
+                        value={form.color}
+                        onChange={handleInputChange}
+                        placeholder="e.g., Red, Blue, Black"
+                        className="w-full px-3 md:px-4 py-2 md:py-3 text-xs md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Material & Condition */}
+                  <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4">
+                    <div>
+                      <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                        Material *
+                      </label>
+                      <input
+                        type="text"
+                        name="material"
+                        value={form.material}
+                        onChange={handleInputChange}
+                        placeholder="e.g., Polyester, Cotton"
+                        className="w-full px-3 md:px-4 py-2 md:py-3 text-xs md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                        Condition *
+                      </label>
+                      <select
+                        name="condition"
+                        value={form.condition}
+                        onChange={handleInputChange}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 text-xs md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
+                      >
+                        <option value="new">New</option>
+                        <option value="like-new">Like New</option>
+                        <option value="good">Good</option>
+                        <option value="fair">Fair</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* Care Instructions */}
+                  <div className="mb-4">
+                    <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
+                      Care Instructions *
+                    </label>
+                    <textarea
+                      name="careInstructions"
+                      value={form.careInstructions}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Dry clean only, Do not bleach..."
+                      rows={2}
+                      className="w-full px-3 md:px-4 py-2 md:py-3 text-xs md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent resize-none"
+                    />
+                  </div>
+                </div>
+
                 {/* Submit Message */}
                 {submitMessage && (
                   <div
@@ -312,16 +524,16 @@ export default function AdminDashboard() {
               ) : (
                 <div className="space-y-3 md:space-y-4">
                   {recentProducts.map((product, index) => {
-                    const firstImage = product.images.find((img) => img.file);
+                    const firstImage = product.imagePreviews?.[0];
                     return (
                       <div
                         key={index}
                         className="border border-gray-200 rounded-lg overflow-hidden hover:shadow-md transition"
                       >
-                        {firstImage?.preview && (
+                        {firstImage && (
                           <div className="relative w-full aspect-[4/5] bg-gray-100">
                             <Image
-                              src={firstImage.preview}
+                              src={firstImage}
                               alt={product.name}
                               fill
                               className="object-cover"
@@ -348,7 +560,7 @@ export default function AdminDashboard() {
                               {product.category === "kids" ? "👶 Kids" : "👔 Adults"}
                             </span>
                             <span className="inline-block bg-gray-100 text-gray-700 px-2 py-0.5 md:py-1 rounded">
-                              {product.images.filter((img) => img.file).length} images
+                              {product.imageFiles.length} images
                             </span>
                           </div>
                         </div>

@@ -8,134 +8,109 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id            String     @id @default(cuid())
-  name          String?
-  email         String?    @unique
-  emailVerified DateTime?
-  password      String?
-  image         String?
-  role          Role       @default(CUSTOMER)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
-
-  accounts  Account[]
-  sessions  Session[]
-  orders    Order[]
-  products  Product[]    @relation("SellerProducts")
-
-  @@map("users")
-}
-
-model Account {
-  id                 String  @id @default(cuid())
-  userId             String  @map("user_id")
-  type               String
-  provider           String
-  providerAccountId  String  @map("provider_account_id")
-  refresh_token      String?  @db.Text
-  access_token       String?  @db.Text
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?  @db.Text
-  session_state      String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([provider, providerAccountId])
-  @@map("accounts")
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique @map("session_token")
-  userId       String   @map("user_id")
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("sessions")
-}
-
 model Product {
-  id          String   @id @default(cuid())
-  name        String
-  description String   @db.Text
-  price       Float
-  quantity    Int      @default(0)
-  image       String   // URL from Cloudinary
-  category    String   @default("costume")
-  sellerId    String   @map("seller_id")
-  seller      User     @relation("SellerProducts", fields: [sellerId], references: [id], onDelete: Cascade)
+  id                String   @id @default(cuid())
+  name              String
+  description       String   @db.Text
+  sellPrice         Float
+  rentPrice         Float    @default(0)
+  category          String   // "adults" or "kids"
+  badge             String?
+  image             String   // Main image (base64 or URL)
+  images            String[]  // Array of images (base64 or URLs)
   
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  orderItems  OrderItem[]
+  // Product details
+  sizes             String?   // Comma-separated sizes
+  color             String?
+  material          String?
+  condition         String?
+  careInstructions  String?   @db.Text
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  orderItems        OrderItem[]
 
   @@map("products")
 }
 
 model Order {
-  id            String   @id @default(cuid())
-  orderNumber   String   @unique @default(cuid())
+  id                String   @id @default(cuid())
+  orderNumber       String   @unique @default(cuid())
   
-  customerId    String   @map("customer_id")
-  customer      User     @relation(fields: [customerId], references: [id])
+  // Customer info
+  firstName         String
+  lastName          String
+  email             String
+  phone             String?
+  address           String?
+  busStop           String?   // For EMPI delivery
+  city              String?
+  state             String?
+  zipCode           String?
+  country           String
   
-  items         OrderItem[]
+  // Shipping & Payment
+  shippingType      String    // "self" or "handled"
+  shippingCost      Float     @default(0)
+  subtotal          Float
+  total             Float
+  paymentMethod     String    // "card" or "bank"
+  status            String    @default("confirmed")
   
-  subtotal      Float
-  tax           Float
-  shippingCost  Float
-  total         Float
-  
-  status        OrderStatus @default(PENDING)
-  paymentStatus PaymentStatus @default(UNPAID)
-  
-  shippingAddress String  @db.Text
-  email          String
-  phone          String?
-  
-  invoicePath    String?  // Path to stored invoice PDF
-  
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  items             OrderItem[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@map("orders")
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String  @map("order_id")
-  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  id          String  @id @default(cuid())
+  orderId     String  @map("order_id")
+  order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   
-  productId String  @map("product_id")
-  product   Product @relation(fields: [productId], references: [id])
+  productId   String  @map("product_id")
+  product     Product @relation(fields: [productId], references: [id])
   
-  quantity  Int
-  price     Float   // Price at time of purchase
+  name        String
+  quantity    Int
+  price       Float
+  rentPrice   Float?
+  mode        String  // "buy" or "rent"
+  selectedSize String?
+  rentalDays  Int     @default(0)
   
   @@map("order_items")
 }
 
-enum Role {
-  ADMIN
-  SELLER
-  CUSTOMER
+model Cart {
+  id          String  @id @default(cuid())
+  sessionId   String  @unique @map("session_id")
+  
+  items       CartItem[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("carts")
 }
 
-enum OrderStatus {
-  PENDING
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
-}
+model CartItem {
+  id        String  @id @default(cuid())
+  cartId    String  @map("cart_id")
+  cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  
+  productId String
+  name      String
+  quantity  Int
+  price     Float
+  rentPrice Float?
+  mode      String  // "buy" or "rent"
+  selectedSize String?
+  rentalDays Int @default(0)
+  image     String  @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-enum PaymentStatus {
-  UNPAID
-  PAID
-  FAILED
-  REFUNDED
+  @@map("cart_items")
 }
