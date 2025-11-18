@@ -107,27 +107,4 @@ export default function CartPage() {
     </div>
   );
 }
-import Link from "next/link";
-import { Trash2 } from "lucide-react";
 
-export default function Cart() {
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-12 px-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-4xl font-bold text-gray-900 mb-8">Shopping Cart</h1>
-        <div className="bg-white rounded-lg shadow-lg p-8">
-          <p className="text-gray-600 text-center py-12">Your cart is empty</p>
-          <div className="text-center">
-            <Link
-              href="/"
-              className="inline-block bg-lime-600 hover:bg-lime-700 text-white font-semibold py-2 px-6 rounded-lg transition"
-            >
-              Continue Shopping
-            </Link>
-          </div>
-        </div>
-      </div>
->>>>>>> 05b1f7e (major update with backend)
-    </div>
-  );
-}
