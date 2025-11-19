@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings } from "lucide-react";
 import { CURRENCY_RATES } from "./constants";
+import { useCart } from "./CartContext";
 
 interface NavigationProps {
   category: string;
@@ -16,6 +17,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const { items } = useCart();
 
   return (
     <>
@@ -151,9 +153,14 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
           <Settings className="h-4 w-4" />
           <span className="text-sm">Admin</span>
         </Link>
-        <Link href="/cart" className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2 rounded-lg font-medium transition">
+        <Link href="/cart" className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2 rounded-lg font-medium transition relative">
           <ShoppingCart className="h-4 w-4" />
           <span className="hidden sm:inline text-sm">Cart</span>
+          {items.length > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              {items.length}
+            </span>
+          )}
         </Link>
         <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-700 md:hidden hover:bg-gray-100 rounded-lg transition">
           <Menu className="h-5 w-5" />
@@ -196,8 +203,13 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         </div>
 
         {/* Cart Icon */}
-        <Link href="/cart" className="flex items-center justify-center p-1.5 bg-lime-600 hover:bg-lime-700 text-white rounded-lg transition flex-shrink-0">
+        <Link href="/cart" className="flex items-center justify-center p-1.5 bg-lime-600 hover:bg-lime-700 text-white rounded-lg transition flex-shrink-0 relative">
           <ShoppingCart className="h-4 w-4" />
+          {items.length > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              {items.length}
+            </span>
+          )}
         </Link>
 
         {/* Mobile Menu Toggle */}
