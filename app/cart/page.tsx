@@ -6,7 +6,7 @@ import { Header } from "../components/Header";
 import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CURRENCY_RATES } from "../components/constants";
 import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Truck, MapPin } from "lucide-react";
 
@@ -86,6 +86,12 @@ export default function CartPage() {
   const [category, setCategory] = useState("adults");
   const [shippingPreference, setShippingPreference] = useState<"empi" | "self">("empi");
   const [selectedState, setSelectedState] = useState<string>("Lagos");
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Handle hydration
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
 
   const formatPrice = (price: number) => {
     const rate = CURRENCY_RATES[currency]?.rate || 1;
@@ -110,6 +116,8 @@ export default function CartPage() {
   const shippingCost = shippingPreference === "empi" ? SHIPPING_ZONES[currentZone].cost : 0;
   const taxEstimate = subtotal > 0 ? (subtotal * 0.075).toFixed(2) : "0.00"; // 7.5% estimate
   const totalEstimate = subtotal + shippingCost + parseFloat(taxEstimate);
+
+  if (!isHydrated) return null; // Prevent hydration mismatch
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
