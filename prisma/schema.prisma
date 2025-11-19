@@ -119,3 +119,19 @@ model CartItem {
 
   @@map("cart_items")
 }
+
+model ErrorLog {
+  id        String   @id @default(cuid())
+  type      String   // e.g., "mobile_upload", "image_compression", "api_error"
+  message   String   @db.Text
+  stack     String?  @db.Text
+  context   String?  @db.Text // JSON string with additional context
+  userAgent String?
+  url       String?
+  timestamp DateTime @default(now())
+  
+  @@index([type])
+  @@index([timestamp])
+  @@index([type, timestamp])
+  @@map("error_logs")
+}

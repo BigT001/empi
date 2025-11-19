@@ -4,6 +4,8 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Upload, X, Plus, Trash2 } from "lucide-react";
+import * as Sentry from "@sentry/nextjs";
+import { captureImageUploadError, captureUploadSuccess } from "@/lib/sentry-utils";
 
 interface ProductForm {
   name: string;
@@ -44,7 +46,7 @@ export default function AdminDashboard() {
   const [uploadProgress, setUploadProgress] = useState<string>("");
 
   // Compress image asynchronously (properly handles mobile uploads)
-  const compressImage = (base64: string, mimeType: string): Promise<string> => {
+  const compressImage = (base64: string, mimeType: string, fileName?: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -62,7 +64,13 @@ export default function AdminDashboard() {
           canvas.height = maxHeight;
           
           if (!ctx) {
-            reject(new Error("Cannot get canvas context"));
+            const error = new Error("Cannot get canvas context");
+            captureImageUploadError(error, {
+              fileName,
+              fileType: mimeType,
+              step: 'compressing',
+            });
+            reject(error);
             return;
           }
           
@@ -71,11 +79,26 @@ export default function AdminDashboard() {
           const compressed = canvas.toDataURL(finalMimeType, 0.7);
           resolve(compressed);
         } catch (err) {
-          reject(err);
+          const error = err instanceof Error ? err : new Error(String(err));
+          captureImageUploadError(error, {
+            fileName,
+            fileType: mimeType,
+            step: 'compressing',
+          });
+          reject(error);
         }
       };
       
-      img.onerror = () => reject(new Error("Failed to load image for compression"));
+      img.onerror = () => {
+        const error = new Error("Failed to load image for compression");
+        captureImageUploadError(error, {
+          fileName,
+          fileType: mimeType,
+          step: 'compressing',
+        });
+        reject(error);
+      };
+      
       img.src = base64;
     });
   };
@@ -83,33 +106,76 @@ export default function AdminDashboard() {
   // Convert an array of File objects to base64 data URLs with compression for mobile
   const filesToBase64 = async (files: File[]) => {
     const results: string[] = [];
+    let totalSize = 0;
     
     for (let i = 0; i < files.length; i++) {
       try {
         const file = files[i];
+        totalSize += file.size;
         
         // Validate file type
         if (!file.type.startsWith('image/')) {
-          throw new Error(`File ${i + 1} is not a valid image`);
+          const error = new Error(`File ${i + 1} is not a valid image`);
+          captureImageUploadError(error, {
+            fileName: file.name,
+            fileSize: file.size,
+            fileType: file.type,
+            step: 'validation',
+          });
+          throw error;
         }
         
         setUploadProgress(`Processing image ${i + 1}/${files.length}...`);
         
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
-          reader.onerror = () => reject(new Error("Failed to read file"));
+          reader.onerror = () => {
+            const error = new Error("Failed to read file");
+            captureImageUploadError(error, {
+              fileName: file.name,
+              fileSize: file.size,
+              fileType: file.type,
+              step: 'reading',
+            });
+            reject(error);
+          };
           reader.onload = () => {
-            const result = reader.result;
-            if (typeof result !== 'string') {
-              reject(new Error("Invalid file read result"));
-              return;
+            try {
+              const result = reader.result;
+              if (typeof result !== 'string') {
+                const error = new Error("Invalid file read result");
+                captureImageUploadError(error, {
+                  fileName: file.name,
+                  fileSize: file.size,
+                  fileType: file.type,
+                  step: 'reading',
+                });
+                reject(error);
+                return;
+              }
+              // Validate base64 starts with proper data URL prefix
+              if (!result.startsWith('data:')) {
+                const error = new Error("Invalid image data format");
+                captureImageUploadError(error, {
+                  fileName: file.name,
+                  fileSize: file.size,
+                  fileType: file.type,
+                  step: 'reading',
+                });
+                reject(error);
+                return;
+              }
+              resolve(result);
+            } catch (err) {
+              const error = err instanceof Error ? err : new Error(String(err));
+              captureImageUploadError(error, {
+                fileName: file.name,
+                fileSize: file.size,
+                fileType: file.type,
+                step: 'reading',
+              });
+              reject(error);
             }
-            // Validate base64 starts with proper data URL prefix
-            if (!result.startsWith('data:')) {
-              reject(new Error("Invalid image data format"));
-              return;
-            }
-            resolve(result);
           };
           reader.readAsDataURL(file);
         });
@@ -118,7 +184,7 @@ export default function AdminDashboard() {
         let finalBase64 = base64;
         if (file.size > 1.5 * 1024 * 1024) {
           setUploadProgress(`Compressing image ${i + 1}/${files.length}...`);
-          finalBase64 = await compressImage(base64, file.type);
+          finalBase64 = await compressImage(base64, file.type, file.name);
         }
         
         results.push(finalBase64);
@@ -129,6 +195,10 @@ export default function AdminDashboard() {
     }
     
     setUploadProgress("");
+    // Track successful processing
+    if (results.length > 0) {
+      captureUploadSuccess(results.length, totalSize);
+    }
     return results;
   };
 
@@ -182,6 +252,19 @@ export default function AdminDashboard() {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       setSubmitMessage(`❌ Error loading images: ${errorMsg}`);
       setUploadProgress("");
+      
+      // Capture in Sentry
+      Sentry.captureException(err, {
+        tags: {
+          component: "product-upload",
+          stage: "image-selection",
+        },
+        contexts: {
+          error_details: {
+            message: errorMsg,
+          },
+        },
+      });
     } finally {
       // Clear the input value so the same files can be selected again if needed
       try {
@@ -268,6 +351,15 @@ export default function AdminDashboard() {
         const errorMsg = error.message || error.error || "Failed to post product";
         setSubmitMessage(`❌ Error: ${errorMsg}`);
         setUploadProgress("");
+        
+        // Capture in Sentry
+        Sentry.captureException(new Error(errorMsg), {
+          tags: {
+            component: "product-upload",
+            stage: "submission",
+            http_status: response.status,
+          },
+        });
         return;
       }
 
@@ -330,9 +422,27 @@ export default function AdminDashboard() {
       // Handle timeout error
       if (error instanceof Error && error.name === "AbortError") {
         setSubmitMessage("❌ Upload timeout. Check your internet connection and try again.");
+        Sentry.captureException(error, {
+          tags: {
+            component: "product-upload",
+            stage: "submission",
+            error_type: "timeout",
+          },
+        });
       } else {
         const errorMsg = error instanceof Error ? error.message : "Unknown error";
         setSubmitMessage(`❌ Error: ${errorMsg}`);
+        Sentry.captureException(error, {
+          tags: {
+            component: "product-upload",
+            stage: "submission",
+          },
+          contexts: {
+            error_details: {
+              message: errorMsg,
+            },
+          },
+        });
       }
       setUploadProgress("");
     } finally {
