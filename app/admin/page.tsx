@@ -50,6 +50,9 @@ export default function AdminDashboard() {
       const ctx = canvas.getContext('2d');
       const img = new (window.Image)();
       
+      // Default to JPEG if mime type is empty (common on mobile)
+      const finalMimeType = mimeType || 'image/jpeg';
+      
       img.onload = () => {
         try {
           // Reduce dimensions to 75% for better mobile performance
@@ -65,7 +68,7 @@ export default function AdminDashboard() {
           
           ctx.drawImage(img, 0, 0, maxWidth, maxHeight);
           // Compress with 70% quality for mobile networks
-          const compressed = canvas.toDataURL(mimeType, 0.7);
+          const compressed = canvas.toDataURL(finalMimeType, 0.7);
           resolve(compressed);
         } catch (err) {
           reject(err);
@@ -84,13 +87,29 @@ export default function AdminDashboard() {
     for (let i = 0; i < files.length; i++) {
       try {
         const file = files[i];
+        
+        // Validate file type
+        if (!file.type.startsWith('image/')) {
+          throw new Error(`File ${i + 1} is not a valid image`);
+        }
+        
         setUploadProgress(`Processing image ${i + 1}/${files.length}...`);
         
         const base64 = await new Promise<string>((resolve, reject) => {
           const reader = new FileReader();
           reader.onerror = () => reject(new Error("Failed to read file"));
           reader.onload = () => {
-            resolve(reader.result as string);
+            const result = reader.result;
+            if (typeof result !== 'string') {
+              reject(new Error("Invalid file read result"));
+              return;
+            }
+            // Validate base64 starts with proper data URL prefix
+            if (!result.startsWith('data:')) {
+              reject(new Error("Invalid image data format"));
+              return;
+            }
+            resolve(result);
           };
           reader.readAsDataURL(file);
         });
