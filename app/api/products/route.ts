@@ -3,7 +3,12 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-// GET all products
+// Simple in-memory cache for products
+let cachedProducts: any[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 10 * 1000; // 10 seconds
+
+// GET all products with CDN caching headers
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
@@ -12,19 +17,37 @@ export async function GET(request: NextRequest) {
     console.log("📥 GET /api/products - Fetching products...");
     console.log("🔍 Category filter:", category || "none");
 
-    const products = await prisma.product.findMany({
-      where: category ? { category } : {},
-      orderBy: { createdAt: 'desc' },
-    });
+    const now = Date.now();
+    let products: any[];
+
+    // Use cache if available and not expired, and no category filter
+    if (!category && cachedProducts && now - cacheTimestamp < CACHE_TTL) {
+      console.log("⚡ Returning cached products");
+      products = cachedProducts;
+    } else {
+      products = await prisma.product.findMany({
+        where: category ? { category } : {},
+        orderBy: { createdAt: 'desc' },
+      });
+      if (!category) {
+        cachedProducts = products;
+        cacheTimestamp = now;
+      }
+    }
 
     console.log("✅ Products fetched successfully, count:", products.length);
-    return NextResponse.json(products);
+    
+    // Create response with Edge Cache headers
+    const response = NextResponse.json(products);
+    response.headers.set(
+      "Cache-Control",
+      "public, s-maxage=300, stale-while-revalidate=600"
+    );
+    return response;
   } catch (error) {
     console.error('❌ Error fetching products:', error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error('❌ Error details:', errorMessage);
-    
-    // Return error response instead of empty array
     return NextResponse.json(
       { error: "Failed to fetch products", details: errorMessage },
       { status: 500 }

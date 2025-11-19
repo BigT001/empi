@@ -11,7 +11,7 @@ interface Product {
   sellPrice: number;
   rentPrice: number;
   category: string;
-  badge?: string;
+  badge?: string | null;
   image: string;
   images: string[];
   sizes?: string;
@@ -26,16 +26,36 @@ interface Product {
 interface ProductGridProps {
   currency: string;
   category: string;
+  initialProducts?: Product[];
 }
 
-export function ProductGrid({ currency, category }: ProductGridProps) {
-  const [dbProducts, setDbProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
+export function ProductGrid({ currency, category, initialProducts }: ProductGridProps) {
+  const [dbProducts, setDbProducts] = useState<Product[]>(initialProducts ?? []);
+  const [loading, setLoading] = useState(!initialProducts);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Skip fetching if initialProducts were provided by server
+    if (initialProducts) {
+      setLoading(false);
+      return;
+    }
+
     const fetchProducts = async () => {
       try {
+        // Check localStorage cache first (5 minute TTL)
+        const cacheKey = `products_${category}`;
+        const cached = localStorage.getItem(cacheKey);
+        const cacheTime = localStorage.getItem(`${cacheKey}_time`);
+        const now = Date.now();
+        
+        if (cached && cacheTime && now - parseInt(cacheTime) < 5 * 60 * 1000) {
+          console.log("⚡ Returning products from localStorage cache");
+          setDbProducts(JSON.parse(cached));
+          setLoading(false);
+          return;
+        }
+
         console.log("📦 Fetching products from API...");
         const response = await fetch("/api/products");
 
@@ -45,7 +65,15 @@ export function ProductGrid({ currency, category }: ProductGridProps) {
 
         const data = await response.json();
         console.log("✅ Products fetched:", data.length, "products");
-        console.log("📋 Products:", data);
+        
+        // Cache in localStorage
+        try {
+          localStorage.setItem(cacheKey, JSON.stringify(data));
+          localStorage.setItem(`${cacheKey}_time`, now.toString());
+        } catch (e) {
+          console.warn("⚠️ localStorage cache failed (quota or disabled)");
+        }
+        
         setDbProducts(data);
         setError(null);
       } catch (err) {
@@ -88,7 +116,7 @@ export function ProductGrid({ currency, category }: ProductGridProps) {
       }
       window.removeEventListener("storage", storageHandler);
     };
-  }, [category]);
+  }, [initialProducts, category]);
 
   const formatPrice = (price: number) => {
     const converted = price * CURRENCY_RATES[currency].rate;
@@ -102,21 +130,27 @@ export function ProductGrid({ currency, category }: ProductGridProps) {
 
   // Use database products, fall back to hardcoded products if empty
   const displayProducts = dbProducts.length > 0 ? dbProducts : products;
-  const filteredProducts = displayProducts
-    .filter((product) => product.category === category)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  
+  // Filter by category only if not "all"
+  const filteredProducts = category === "all" 
+    ? displayProducts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    : displayProducts
+        .filter((product) => product.category === category)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <section className="flex-grow mx-auto w-full max-w-7xl px-6 py-12">
       {/* Products Grid Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">
-          {category === "kids" ? "Kids' Costumes" : "Adult Costumes"}
+          {category === "kids" ? "Kids' Costumes" : category === "adults" ? "Adult Costumes" : "All Costumes"}
         </h1>
         <p className="text-gray-600 mt-2">
           {category === "kids"
             ? "Fun and magical costumes perfect for children"
-            : "Discover our collection of handcrafted costumes"}
+            : category === "adults"
+            ? "Discover our collection of handcrafted costumes"
+            : "Browse our complete collection of beautiful costumes"}
         </p>
       </div>
 

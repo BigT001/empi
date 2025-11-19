@@ -339,30 +339,30 @@ export default function AdminDashboard() {
                 <div className="grid grid-cols-2 gap-3 md:gap-4">
                   <div>
                     <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
-                      Sell Price (USD) *
+                      Sell Price (NGN) *
                     </label>
                     <input
                       type="number"
                       name="sellPrice"
                       value={form.sellPrice}
                       onChange={handleInputChange}
-                      placeholder="49.00"
-                      step="0.01"
+                      placeholder="25000"
+                      step="100"
                       min="0"
                       className="w-full px-3 md:px-4 py-2 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
                     />
                   </div>
                   <div>
                     <label className="block text-xs md:text-sm font-semibold text-gray-900 mb-2">
-                      Rent Price/Day (USD) *
+                      Rent Price/Day (NGN) *
                     </label>
                     <input
                       type="number"
                       name="rentPrice"
                       value={form.rentPrice}
                       onChange={handleInputChange}
-                      placeholder="9.99"
-                      step="0.01"
+                      placeholder="5000"
+                      step="100"
                       min="0"
                       className="w-full px-3 md:px-4 py-2 md:py-3 text-sm md:text-base border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 focus:border-transparent"
                     />
@@ -513,8 +513,8 @@ export default function AdminDashboard() {
           </div>
 
           {/* Recent Products Sidebar */}
-          <div className="lg:col-span-1 w-full">
-            <div className="bg-white rounded-lg md:rounded-2xl shadow-sm border border-gray-200 p-4 md:p-6 sticky top-24">
+          <div className="lg:col-span-1 w-full h-max">
+            <div className="bg-white rounded-lg md:rounded-2xl shadow-sm border border-gray-200 p-4 md:p-6 sticky top-24 max-h-[calc(100vh-120px)] overflow-y-auto">
               <h3 className="text-base md:text-lg font-bold text-gray-900 mb-4">Recently Posted</h3>
 
               {recentProducts.length === 0 ? (
@@ -550,9 +550,9 @@ export default function AdminDashboard() {
                             {product.name}
                           </h4>
                           <div className="mt-1 md:mt-2 flex justify-between items-center text-xs text-gray-600">
-                            <span>${product.sellPrice}</span>
+                            <span>₦{Number(product.sellPrice).toLocaleString()}</span>
                             <span className="text-lime-600 font-semibold">
-                              ${product.rentPrice}/day
+                              ₦{Number(product.rentPrice).toLocaleString()}/day
                             </span>
                           </div>
                           <div className="mt-2 flex gap-1 md:gap-2 text-xs">

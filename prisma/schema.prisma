@@ -30,6 +30,11 @@ model Product {
   updatedAt         DateTime  @updatedAt
   orderItems        OrderItem[]
 
+  // ⚡ Database indexes for faster queries
+  @@index([category])
+  @@index([createdAt])
+  @@index([category, createdAt])
+
   @@map("products")
 }
 
