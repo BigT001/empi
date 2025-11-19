@@ -42,7 +42,7 @@ export default function AdminDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
 
-  // Convert an array of File objects to base64 data URLs
+  // Convert an array of File objects to base64 data URLs with compression for mobile
   const filesToBase64 = (files: File[]) => {
     return Promise.all(
       files.map(
@@ -50,11 +50,41 @@ export default function AdminDashboard() {
           new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onerror = () => reject(new Error("Failed to read file"));
-            reader.onload = () => resolve(reader.result as string);
+            reader.onload = () => {
+              let base64 = reader.result as string;
+              
+              // On mobile or if image is large, compress it
+              if (file.size > 2 * 1024 * 1024) { // If larger than 2MB
+                base64 = compressImage(base64, file.type);
+              }
+              
+              resolve(base64);
+            };
             reader.readAsDataURL(file);
           })
       )
     );
+  };
+
+  // Compress image by reducing quality
+  const compressImage = (base64: string, mimeType: string): string => {
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+    const img: HTMLImageElement = new (window as any).Image();
+    
+    img.onload = () => {
+      // Reduce size to 80% if over 2MB
+      const maxWidth = img.width * 0.8;
+      const maxHeight = img.height * 0.8;
+      canvas.width = maxWidth;
+      canvas.height = maxHeight;
+      ctx?.drawImage(img, 0, 0, maxWidth, maxHeight);
+    };
+    
+    img.src = base64;
+    
+    // Return compressed version (quality 0.75 = 75%)
+    return canvas.toDataURL(mimeType, 0.75);
   };
 
   // Handle selecting one or more images at once. startIndex is the slot to begin filling.
@@ -173,7 +203,9 @@ export default function AdminDashboard() {
       if (!response.ok) {
         const error = await response.json();
         console.error("❌ API Error:", error);
-        setSubmitMessage(`Error: ${error.message || "Failed to post product"}`);
+        console.error("❌ Response Status:", response.status);
+        const errorMsg = error.message || error.error || "Failed to post product";
+        setSubmitMessage(`Error: ${errorMsg}`);
         return;
       }
 
