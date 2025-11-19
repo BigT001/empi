@@ -48,58 +48,91 @@ export default function AdminDashboard() {
   // Compress image asynchronously (properly handles mobile uploads)
   const compressImage = (base64: string, mimeType: string, fileName?: string): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      const img = new (window.Image)();
-      
-      // Default to JPEG if mime type is empty (common on mobile)
-      const finalMimeType = mimeType || 'image/jpeg';
-      
-      img.onload = () => {
-        try {
-          // Reduce dimensions to 75% for better mobile performance
-          const maxWidth = img.width * 0.75;
-          const maxHeight = img.height * 0.75;
-          canvas.width = maxWidth;
-          canvas.height = maxHeight;
-          
-          if (!ctx) {
-            const error = new Error("Cannot get canvas context");
+      try {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new (window.Image)();
+        
+        // Default to JPEG if mime type is empty (common on mobile)
+        let finalMimeType = mimeType || 'image/jpeg';
+        
+        // Validate mime type - some mobile browsers return invalid types
+        const validMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/jpg'];
+        if (!validMimes.includes(finalMimeType.toLowerCase())) {
+          console.warn(`Invalid MIME type: "${finalMimeType}", defaulting to jpeg`);
+          finalMimeType = 'image/jpeg';
+        }
+        
+        img.onload = () => {
+          try {
+            // Reduce dimensions to 75% for better mobile performance
+            const maxWidth = Math.max(1, Math.floor(img.width * 0.75));
+            const maxHeight = Math.max(1, Math.floor(img.height * 0.75));
+            canvas.width = maxWidth;
+            canvas.height = maxHeight;
+            
+            if (!ctx) {
+              const error = new Error("Cannot get canvas context");
+              captureImageUploadError(error, {
+                fileName,
+                fileType: mimeType,
+                step: 'compressing',
+              });
+              reject(error);
+              return;
+            }
+            
+            ctx.drawImage(img, 0, 0, maxWidth, maxHeight);
+            
+            // Try to compress with quality
+            let compressed = '';
+            try {
+              compressed = canvas.toDataURL(finalMimeType, 0.7);
+            } catch (canvasErr) {
+              // If toDataURL fails, try without quality parameter
+              console.warn('toDataURL with quality failed, retrying without quality:', canvasErr);
+              try {
+                compressed = canvas.toDataURL(finalMimeType);
+              } catch (retryErr) {
+                // If still fails, use PNG as fallback
+                console.warn('toDataURL with fallback MIME failed, trying PNG:', retryErr);
+                compressed = canvas.toDataURL('image/png');
+              }
+            }
+            
+            resolve(compressed);
+          } catch (err) {
+            const error = err instanceof Error ? err : new Error(String(err));
             captureImageUploadError(error, {
               fileName,
               fileType: mimeType,
               step: 'compressing',
             });
             reject(error);
-            return;
           }
-          
-          ctx.drawImage(img, 0, 0, maxWidth, maxHeight);
-          // Compress with 70% quality for mobile networks
-          const compressed = canvas.toDataURL(finalMimeType, 0.7);
-          resolve(compressed);
-        } catch (err) {
-          const error = err instanceof Error ? err : new Error(String(err));
+        };
+        
+        img.onerror = () => {
+          const error = new Error("Failed to load image for compression");
           captureImageUploadError(error, {
             fileName,
             fileType: mimeType,
             step: 'compressing',
           });
           reject(error);
-        }
-      };
-      
-      img.onerror = () => {
-        const error = new Error("Failed to load image for compression");
+        };
+        
+        img.src = base64;
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error(String(err));
+        console.error('Unexpected error in compressImage:', error);
         captureImageUploadError(error, {
           fileName,
           fileType: mimeType,
           step: 'compressing',
         });
         reject(error);
-      };
-      
-      img.src = base64;
+      }
     });
   };
 
