@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { revalidatePath } from 'next/cache';
 
+// Retry helper for transient failures
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries = 3,
+  delayMs = 1000
+): Promise<T> {
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === maxRetries) throw error;
+      const delay = delayMs * Math.pow(2, attempt - 1); // exponential backoff
+      console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay}ms...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+  throw new Error("Max retries exceeded");
+}
+
 // GET all products with CDN caching headers
 // Note: In-memory cache removed for production (Vercel has multiple instances)
 // Relies on: ISR (5s), Edge caching (300s), localStorage client-side
@@ -13,12 +32,15 @@ export async function GET(request: NextRequest) {
     console.log("📥 GET /api/products - Fetching products...");
     console.log("🔍 Category filter:", category || "none");
 
-    // Always fetch fresh data from database
-    // Production caching is handled by: ISR (1s), Edge cache (1s for instant deletions), localStorage
-    const products = await prisma.product.findMany({
-      where: category ? { category } : {},
-      orderBy: { createdAt: 'desc' },
-    });
+    // Fetch with retry logic for transient connection issues
+    const products = await withRetry(
+      () => prisma.product.findMany({
+        where: category ? { category } : {},
+        orderBy: { createdAt: 'desc' },
+      }),
+      2, // retry 2 times (3 attempts total)
+      500  // start with 500ms delay
+    );
 
     console.log("✅ Products fetched successfully, count:", products.length);
     
