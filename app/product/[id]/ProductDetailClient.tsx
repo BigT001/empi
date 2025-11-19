@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { ShoppingCart, ArrowLeft, Heart, Trash2, ChevronLeft, ChevronRight, Check } from "lucide-react";
 import { CURRENCY_RATES } from "@/app/components/constants";
+import { deleteProduct } from "@/app/product/actions";
 
 // Lazy load heavy icons that aren't immediately visible
 const HeartIcon = dynamic(() => Promise.resolve(Heart), { ssr: true });
@@ -44,6 +45,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [addedToCart, setAddedToCart] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const formatPrice = (price: number) => {
     const converted = price * CURRENCY_RATES[currency].rate;
@@ -57,14 +59,29 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const displayPrice = mode === "rent" ? formatPrice(product.rentPrice) : formatPrice(product.sellPrice);
 
   const handleDeleteProduct = async () => {
-    if (!confirm("Are you sure you want to delete this product?")) return;
+    if (!confirm("Are you sure you want to delete this product? This action cannot be undone.")) return;
+    
+    setIsDeleting(true);
+    
     try {
-      const res = await fetch(`/api/products?id=${product.id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete product");
-      router.push("/");
+      console.log("🗑️ Deleting product:", product.id);
+      
+      // Use server action for instant deletion and cache revalidation
+      const result = await deleteProduct(product.id);
+      
+      if (!result.success) {
+        throw new Error(result.error || "Failed to delete product");
+      }
+      
+      console.log("✅ Product deleted successfully");
+      
+      // Redirect immediately to product listing page
+      router.push("/product");
     } catch (e) {
-      alert("Error deleting product. Check console.");
-      console.error(e);
+      const errorMsg = e instanceof Error ? e.message : "Unknown error";
+      console.error("❌ Error deleting product:", errorMsg);
+      alert(`Error deleting product: ${errorMsg}`);
+      setIsDeleting(false);
     }
   };
 
@@ -205,7 +222,13 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
               <button onClick={handleAddToCart} className="w-full px-4 py-3 rounded-lg bg-lime-600 text-white font-bold">{addedToCart ? (<><Check className="inline"/> Added</>) : 'Add to cart'}</button>
 
-              <button onClick={handleDeleteProduct} className="w-full bg-red-50 text-red-600 px-4 py-2 rounded-lg">Delete Product</button>
+              <button 
+                onClick={handleDeleteProduct} 
+                disabled={isDeleting}
+                className="w-full bg-red-50 text-red-600 px-4 py-2 rounded-lg hover:bg-red-100 disabled:opacity-50 transition"
+              >
+                {isDeleting ? "Deleting..." : "Delete Product"}
+              </button>
             </div>
           </div>
         </div>

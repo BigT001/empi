@@ -1,14 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
-
-// Simple in-memory cache for products
-let cachedProducts: any[] | null = null;
-let cacheTimestamp = 0;
-const CACHE_TTL = 10 * 1000; // 10 seconds
+import { prisma } from '@/lib/prisma';
+import { revalidatePath } from 'next/cache';
 
 // GET all products with CDN caching headers
+// Note: In-memory cache removed for production (Vercel has multiple instances)
+// Relies on: ISR (5s), Edge caching (300s), localStorage client-side
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
@@ -17,31 +13,21 @@ export async function GET(request: NextRequest) {
     console.log("📥 GET /api/products - Fetching products...");
     console.log("🔍 Category filter:", category || "none");
 
-    const now = Date.now();
-    let products: any[];
-
-    // Use cache if available and not expired, and no category filter
-    if (!category && cachedProducts && now - cacheTimestamp < CACHE_TTL) {
-      console.log("⚡ Returning cached products");
-      products = cachedProducts;
-    } else {
-      products = await prisma.product.findMany({
-        where: category ? { category } : {},
-        orderBy: { createdAt: 'desc' },
-      });
-      if (!category) {
-        cachedProducts = products;
-        cacheTimestamp = now;
-      }
-    }
+    // Always fetch fresh data from database
+    // Production caching is handled by: ISR (1s), Edge cache (1s for instant deletions), localStorage
+    const products = await prisma.product.findMany({
+      where: category ? { category } : {},
+      orderBy: { createdAt: 'desc' },
+    });
 
     console.log("✅ Products fetched successfully, count:", products.length);
     
     // Create response with Edge Cache headers
+    // 1 second cache for instant product deletion visibility
     const response = NextResponse.json(products);
     response.headers.set(
       "Cache-Control",
-      "public, s-maxage=300, stale-while-revalidate=600"
+      "public, s-maxage=1, stale-while-revalidate=3"
     );
     return response;
   } catch (error) {
@@ -125,7 +111,15 @@ export async function POST(request: NextRequest) {
     });
 
     console.log("✅ Product created successfully with ID:", product.id);
-    return NextResponse.json(product, { status: 201 });
+    
+    // Clear all cached data so new product appears immediately
+    revalidatePath("/");
+    revalidatePath("/admin");
+    
+    // Return product with headers to bypass any caching
+    const response = NextResponse.json(product, { status: 201 });
+    response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
+    return response;
   } catch (error) {
     console.error("❌ Error creating product:", error);
     
@@ -142,6 +136,52 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json(
       { error: `Failed to create product: ${errorMessage}` },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE product by ID
+export async function DELETE(request: NextRequest) {
+  try {
+    console.log("📥 Received DELETE request to /api/products");
+    
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      console.error("❌ Missing product ID");
+      return NextResponse.json(
+        { error: "Product ID is required" },
+        { status: 400 }
+      );
+    }
+
+    console.log("🗑️ Deleting product with ID:", id);
+
+    const product = await prisma.product.delete({
+      where: { id },
+    });
+
+    console.log("✅ Product deleted successfully:", product.id);
+    
+    return NextResponse.json({ message: "Product deleted successfully", id: product.id }, { status: 200 });
+  } catch (error) {
+    console.error("❌ Error deleting product:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("❌ Error details:", errorMessage);
+    
+    // Check if product not found
+    if (errorMessage.includes("not found")) {
+      return NextResponse.json(
+        { error: "Product not found" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(
+      { error: `Failed to delete product: ${errorMessage}` },
       { status: 500 }
     );
   }

@@ -43,13 +43,13 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
 
     const fetchProducts = async () => {
       try {
-        // Check localStorage cache first (5 minute TTL)
+        // Check localStorage cache first (10 second TTL for instant new product visibility)
         const cacheKey = `products_${category}`;
         const cached = localStorage.getItem(cacheKey);
         const cacheTime = localStorage.getItem(`${cacheKey}_time`);
         const now = Date.now();
         
-        if (cached && cacheTime && now - parseInt(cacheTime) < 5 * 60 * 1000) {
+        if (cached && cacheTime && now - parseInt(cacheTime) < 10 * 1000) {
           console.log("⚡ Returning products from localStorage cache");
           setDbProducts(JSON.parse(cached));
           setLoading(false);
@@ -93,7 +93,12 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
       bc = new BroadcastChannel("empi-products");
       bc.onmessage = (ev) => {
         if (ev?.data === "products-updated") {
-          console.log("🔔 Products update event received, refetching...");
+          console.log("🔔 Products update event received, clearing cache and refetching...");
+          // Clear localStorage cache for all categories
+          ['all', 'adults', 'kids'].forEach(cat => {
+            localStorage.removeItem(`products_${cat}`);
+            localStorage.removeItem(`products_${cat}_time`);
+          });
           fetchProducts();
         }
       };
@@ -103,7 +108,12 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
 
     const storageHandler = (e: StorageEvent) => {
       if (e.key === "empi-products-updated") {
-        console.log("🔔 Storage event for products update, refetching...");
+        console.log("🔔 Storage event for products update, clearing cache and refetching...");
+        // Clear localStorage cache for all categories
+        ['all', 'adults', 'kids'].forEach(cat => {
+          localStorage.removeItem(`products_${cat}`);
+          localStorage.removeItem(`products_${cat}_time`);
+        });
         fetchProducts();
       }
     };
@@ -184,6 +194,9 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
               product={product}
               formattedPrice={formatPrice(product.sellPrice)}
               currency={currency}
+              onDelete={(productId) => {
+                setDbProducts(dbProducts.filter(p => p.id !== productId));
+              }}
             />
           ))}
         </div>

@@ -1,13 +1,11 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./ProductDetailClient";
 
-export const revalidate = 60; // ISR: regenerate page every 60 seconds
+export const revalidate = 1; // ISR: regenerate page every 1 second for instant deletion
 
-const prisma = new PrismaClient();
-
-export default async function ProductPage({ params }: { params: { id: string } }) {
-  const id = params.id;
+export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
   const productRaw = await prisma.product.findUnique({
     where: { id },

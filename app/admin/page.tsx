@@ -41,50 +41,76 @@ export default function AdminDashboard() {
   const [recentProducts, setRecentProducts] = useState<ProductForm[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
+  const [uploadProgress, setUploadProgress] = useState<string>("");
 
-  // Convert an array of File objects to base64 data URLs with compression for mobile
-  const filesToBase64 = (files: File[]) => {
-    return Promise.all(
-      files.map(
-        (file) =>
-          new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onerror = () => reject(new Error("Failed to read file"));
-            reader.onload = () => {
-              let base64 = reader.result as string;
-              
-              // On mobile or if image is large, compress it
-              if (file.size > 2 * 1024 * 1024) { // If larger than 2MB
-                base64 = compressImage(base64, file.type);
-              }
-              
-              resolve(base64);
-            };
-            reader.readAsDataURL(file);
-          })
-      )
-    );
+  // Compress image asynchronously (properly handles mobile uploads)
+  const compressImage = (base64: string, mimeType: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      const img = new (window.Image)();
+      
+      img.onload = () => {
+        try {
+          // Reduce dimensions to 75% for better mobile performance
+          const maxWidth = img.width * 0.75;
+          const maxHeight = img.height * 0.75;
+          canvas.width = maxWidth;
+          canvas.height = maxHeight;
+          
+          if (!ctx) {
+            reject(new Error("Cannot get canvas context"));
+            return;
+          }
+          
+          ctx.drawImage(img, 0, 0, maxWidth, maxHeight);
+          // Compress with 70% quality for mobile networks
+          const compressed = canvas.toDataURL(mimeType, 0.7);
+          resolve(compressed);
+        } catch (err) {
+          reject(err);
+        }
+      };
+      
+      img.onerror = () => reject(new Error("Failed to load image for compression"));
+      img.src = base64;
+    });
   };
 
-  // Compress image by reducing quality
-  const compressImage = (base64: string, mimeType: string): string => {
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    const img: HTMLImageElement = new (window as any).Image();
+  // Convert an array of File objects to base64 data URLs with compression for mobile
+  const filesToBase64 = async (files: File[]) => {
+    const results: string[] = [];
     
-    img.onload = () => {
-      // Reduce size to 80% if over 2MB
-      const maxWidth = img.width * 0.8;
-      const maxHeight = img.height * 0.8;
-      canvas.width = maxWidth;
-      canvas.height = maxHeight;
-      ctx?.drawImage(img, 0, 0, maxWidth, maxHeight);
-    };
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const file = files[i];
+        setUploadProgress(`Processing image ${i + 1}/${files.length}...`);
+        
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error("Failed to read file"));
+          reader.onload = () => {
+            resolve(reader.result as string);
+          };
+          reader.readAsDataURL(file);
+        });
+        
+        // Compress if larger than 1.5MB (common for mobile photos)
+        let finalBase64 = base64;
+        if (file.size > 1.5 * 1024 * 1024) {
+          setUploadProgress(`Compressing image ${i + 1}/${files.length}...`);
+          finalBase64 = await compressImage(base64, file.type);
+        }
+        
+        results.push(finalBase64);
+      } catch (err) {
+        console.error(`Error processing image ${i + 1}:`, err);
+        throw err;
+      }
+    }
     
-    img.src = base64;
-    
-    // Return compressed version (quality 0.75 = 75%)
-    return canvas.toDataURL(mimeType, 0.75);
+    setUploadProgress("");
+    return results;
   };
 
   // Handle selecting one or more images at once. startIndex is the slot to begin filling.
@@ -92,15 +118,18 @@ export default function AdminDashboard() {
     const files = e.target.files ? Array.from(e.target.files) : [];
     if (files.length === 0) return;
 
-    // Determine how many slots left (max 5)
-    const existingCount = form.imageFiles.length;
-    const maxSlots = 5;
-    const available = Math.max(0, maxSlots - existingCount + (startIndex < existingCount ? 0 : 0));
+    // On mobile, warn if selecting too many high-resolution images
+    const isSlowNetwork = (navigator as any).connection?.effectiveType === '4g';
+    if (files.length > 3 && isSlowNetwork) {
+      console.warn("⚠️ Mobile: Selecting many high-resolution images may take time to process");
+    }
 
-    // We will insert files starting at startIndex, but not exceeding 5 total slots
+    // Max 5 slots total
+    const maxSlots = 5;
     const insertFiles = files.slice(0, Math.min(files.length, maxSlots));
 
     try {
+      setUploadProgress(`Loading ${insertFiles.length} image${insertFiles.length > 1 ? 's' : ''}...`);
       const base64s = await filesToBase64(insertFiles);
 
       setForm((prev) => {
@@ -127,9 +156,13 @@ export default function AdminDashboard() {
           imagePreviews: newPreviews.slice(0, maxSlots),
         };
       });
+      
+      setUploadProgress("");
     } catch (err) {
       console.error("Error reading images:", err);
-      setSubmitMessage("Error reading selected images");
+      const errorMsg = err instanceof Error ? err.message : "Unknown error";
+      setSubmitMessage(`❌ Error loading images: ${errorMsg}`);
+      setUploadProgress("");
     } finally {
       // Clear the input value so the same files can be selected again if needed
       try {
@@ -171,6 +204,7 @@ export default function AdminDashboard() {
 
     setIsSubmitting(true);
     setSubmitMessage("");
+    setUploadProgress("Preparing upload...");
 
     try {
       // Convert first image to base64 as main image
@@ -193,30 +227,52 @@ export default function AdminDashboard() {
       };
 
       console.log("📤 Submitting product:", { name: form.name, imageCount: form.imageFiles.length });
+      setUploadProgress("Uploading product (please wait)...");
+
+      // Add timeout for mobile networks (30 seconds should be enough)
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       const response = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        signal: controller.signal,
       });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         const error = await response.json();
         console.error("❌ API Error:", error);
         console.error("❌ Response Status:", response.status);
         const errorMsg = error.message || error.error || "Failed to post product";
-        setSubmitMessage(`Error: ${errorMsg}`);
+        setSubmitMessage(`❌ Error: ${errorMsg}`);
+        setUploadProgress("");
         return;
       }
 
       const data = await response.json();
       console.log("✅ Product created successfully:", data);
+      setUploadProgress("Cache clearing...");
+
+      // Immediately clear all cached products to show new one instantly
+      try {
+        ['all', 'adults', 'kids'].forEach(cat => {
+          localStorage.removeItem(`products_${cat}`);
+          localStorage.removeItem(`products_${cat}_time`);
+        });
+        console.log("✅ Cleared localStorage cache");
+      } catch (e) {
+        // ignore
+      }
 
       // Notify other tabs/pages to refetch products (BroadcastChannel + localStorage fallback)
       try {
         const bc = new BroadcastChannel("empi-products");
         bc.postMessage("products-updated");
         bc.close();
+        console.log("📢 Broadcast notification sent");
       } catch (e) {
         // ignore if BroadcastChannel not supported
       }
@@ -247,12 +303,22 @@ export default function AdminDashboard() {
       });
 
       setSubmitMessage("Product posted successfully! ✓");
+      setUploadProgress("");
       setTimeout(() => setSubmitMessage(""), 3000);
     } catch (error) {
       console.error("❌ Submission error:", error);
-      setSubmitMessage("Error posting product. Please try again.");
+      
+      // Handle timeout error
+      if (error instanceof Error && error.name === "AbortError") {
+        setSubmitMessage("❌ Upload timeout. Check your internet connection and try again.");
+      } else {
+        const errorMsg = error instanceof Error ? error.message : "Unknown error";
+        setSubmitMessage(`❌ Error: ${errorMsg}`);
+      }
+      setUploadProgress("");
     } finally {
       setIsSubmitting(false);
+      setUploadProgress("");
     }
   };
 
@@ -278,6 +344,16 @@ export default function AdminDashboard() {
             <div className="bg-white rounded-lg md:rounded-2xl shadow-sm border border-gray-200 p-4 md:p-8 w-full">
               <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-1">Post New Product</h2>
               <p className="text-sm text-gray-600 mb-6">Upload up to 5 images for your product</p>
+
+              {/* Upload Progress Indicator */}
+              {uploadProgress && (
+                <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-blue-800 font-medium">{uploadProgress}</p>
+                    <div className="animate-spin h-4 w-4 border-2 border-blue-400 border-t-blue-600 rounded-full" />
+                  </div>
+                </div>
+              )}
 
               <form onSubmit={handleSubmit} className="space-y-4 md:space-y-6">
                 {/* Product Images Section */}
@@ -534,11 +610,20 @@ export default function AdminDashboard() {
                 {/* Submit Button */}
                 <button
                   type="submit"
-                  disabled={isSubmitting}
-                  className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white font-bold py-2 md:py-3 rounded-lg transition flex items-center justify-center gap-2 text-sm md:text-base"
+                  disabled={isSubmitting || uploadProgress !== ""}
+                  className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-bold py-3 md:py-4 rounded-lg transition flex items-center justify-center gap-2 text-sm md:text-base"
                 >
-                  <Plus className="h-4 w-4 md:h-5 md:w-5" />
-                  {isSubmitting ? "Posting..." : "Post Product"}
+                  {isSubmitting || uploadProgress ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 md:h-5 md:w-5 border-2 border-white border-t-transparent rounded-full" />
+                      <span>{uploadProgress ? "Processing..." : "Posting..."}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 md:h-5 md:w-5" />
+                      Post Product
+                    </>
+                  )}
                 </button>
               </form>
             </div>
