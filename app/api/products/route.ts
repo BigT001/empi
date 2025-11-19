@@ -22,14 +22,13 @@ async function withRetry<T>(
 }
 
 // GET all products with CDN caching headers
-// Note: In-memory cache removed for production (Vercel has multiple instances)
-// Relies on: ISR (5s), Edge caching (300s), localStorage client-side
+// Returns ONLY real database products - NO demo data
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
 
   try {
-    console.log("📥 GET /api/products - Fetching products...");
+    console.log("📥 GET /api/products - Fetching products from database...");
     console.log("🔍 Category filter:", category || "none");
 
     // Fetch with retry logic for transient connection issues
@@ -45,19 +44,24 @@ export async function GET(request: NextRequest) {
     console.log("✅ Products fetched successfully, count:", products.length);
     
     // Create response with Edge Cache headers
-    // 1 second cache for instant product deletion visibility
     const response = NextResponse.json(products);
     response.headers.set(
       "Cache-Control",
-      "public, s-maxage=1, stale-while-revalidate=3"
+      "public, s-maxage=300, stale-while-revalidate=600"
     );
     return response;
   } catch (error) {
-    console.error('❌ Error fetching products:', error);
+    console.error('❌ Error fetching products from database:', error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error('❌ Error details:', errorMessage);
+    
+    // Return error - client will use cached data if available
     return NextResponse.json(
-      { error: "Failed to fetch products", details: errorMessage },
+      { 
+        error: "Failed to fetch products",
+        details: errorMessage,
+        message: "Database connection failed. If you have cached products, they will be shown."
+      },
       { status: 500 }
     );
   }
