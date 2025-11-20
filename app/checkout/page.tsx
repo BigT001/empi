@@ -7,7 +7,8 @@ import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
-import { ShoppingBag, Check, Lock, Download, Printer, LogIn, UserPlus } from "lucide-react";
+import { AuthForm } from "../components/AuthForm";
+import { ShoppingBag, Check, Lock, Download, Printer, ArrowLeft } from "lucide-react";
 import { createInvoiceData, saveInvoice } from "@/lib/invoiceGenerator";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { getBuyerInvoices } from "@/lib/invoiceStorage";
@@ -423,177 +424,13 @@ export default function CheckoutPage() {
 
         {/* Auth Modal Overlay */}
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
-            {/* Toggle Tabs */}
-            <div className="flex gap-4 mb-6 border-b-2 border-gray-200">
-              <button
-                onClick={() => setAuthMode("register")}
-                className={`pb-3 px-4 font-semibold text-sm transition flex items-center gap-2 ${
-                  authMode === "register"
-                    ? "text-lime-600 border-b-2 border-lime-600 -mb-[2px]"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                <UserPlus className="h-4 w-4" />
-                Register
-              </button>
-              <button
-                onClick={() => setAuthMode("login")}
-                className={`pb-3 px-4 font-semibold text-sm transition flex items-center gap-2 ${
-                  authMode === "login"
-                    ? "text-lime-600 border-b-2 border-lime-600 -mb-[2px]"
-                    : "text-gray-600 hover:text-gray-900"
-                }`}
-              >
-                <LogIn className="h-4 w-4" />
-                Login
-              </button>
-            </div>
-
-            {authMode === "register" ? (
-              <>
-                <h2 className="text-2xl font-bold mb-2">Create Account</h2>
-                <p className="text-gray-600 text-sm mb-6">
-                  Register to track your orders and view your invoice history.
-                </p>
-
-                {/* Form Fields */}
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Full Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={authData.fullName}
-                      onChange={(e) => setAuthData({ ...authData, fullName: e.target.value })}
-                      placeholder="John Doe"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      value={authData.email}
-                      onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
-                      placeholder="you@example.com"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      value={authData.phone}
-                      onChange={(e) => setAuthData({ ...authData, phone: e.target.value })}
-                      placeholder="+234 8012345678"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-3">
-                  <button
-                    onClick={handleRegisterAndCheckout}
-                    className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    <UserPlus className="h-5 w-5" />
-                    Register & Proceed to Payment
-                  </button>
-                  <button
-                    onClick={handleContinueAsGuest}
-                    className="w-full border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-3 rounded-lg transition"
-                  >
-                    Continue as Guest
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <h2 className="text-2xl font-bold mb-2">Login</h2>
-                <p className="text-gray-600 text-sm mb-6">
-                  Sign in to view your past orders and invoices.
-                </p>
-
-                {/* Form Fields */}
-                <div className="space-y-4 mb-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      value={authData.email}
-                      onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
-                      placeholder="you@example.com"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-2">
-                      Phone Number
-                    </label>
-                    <input
-                      type="tel"
-                      value={authData.phone}
-                      onChange={(e) => setAuthData({ ...authData, phone: e.target.value })}
-                      placeholder="+234 8012345678"
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
-                    />
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="space-y-3">
-                  <button
-                    onClick={async () => {
-                      if (!authData.email || !authData.phone) {
-                        alert("Please enter your email and phone");
-                        return;
-                      }
-                      
-                      // Try to login with existing account
-                      const loginResult = await loginByEmail(authData.email, authData.phone);
-                      
-                      if (loginResult) {
-                        setAuthDismissed(true);
-                        setShowAuthPrompt(false);
-                        processOrder(authData.email, loginResult.fullName, authData.phone);
-                      } else {
-                        alert("Account not found. Please register or continue as guest.");
-                      }
-                    }}
-                    className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
-                  >
-                    <LogIn className="h-5 w-5" />
-                    Login & Proceed
-                  </button>
-                  <button
-                    onClick={handleContinueAsGuest}
-                    className="w-full border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-3 rounded-lg transition"
-                  >
-                    Continue as Guest
-                  </button>
-                </div>
-              </>
-            )}
-
-            {/* Info Box */}
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-              <p className="text-xs text-blue-800">
-                <span className="font-semibold">💡 Tip:</span> Registering helps you track orders and access invoices anytime from your dashboard.
-              </p>
-            </div>
-          </div>
+          <AuthForm 
+            onSuccessfulAuth={(buyer) => {
+              setAuthDismissed(true);
+              setShowAuthPrompt(false);
+            }}
+            onCancel={handleContinueAsGuest}
+          />
         </div>
       </div>
     );

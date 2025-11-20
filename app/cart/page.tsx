@@ -2,13 +2,16 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Header } from "../components/Header";
 import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
+import { useBuyer } from "../context/BuyerContext";
+import { AuthForm } from "../components/AuthForm";
 import { useState, useEffect } from "react";
 import { CURRENCY_RATES } from "../components/constants";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Truck, MapPin } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
 
 // Shipping zones with detailed states and pricing
 const SHIPPING_ZONES = {
@@ -81,12 +84,13 @@ const STATE_MAPPING = {
 const ALL_STATES = Object.keys(STATE_MAPPING);
 
 export default function CartPage() {
+  const router = useRouter();
   const { items, removeItem, updateQuantity, clearCart, total } = useCart();
+  const { buyer } = useBuyer();
   const [currency, setCurrency] = useState("NGN");
   const [category, setCategory] = useState("adults");
-  const [shippingPreference, setShippingPreference] = useState<"empi" | "self">("empi");
-  const [selectedState, setSelectedState] = useState<string>("Lagos");
   const [isHydrated, setIsHydrated] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Handle hydration
   useEffect(() => {
@@ -100,22 +104,11 @@ export default function CartPage() {
     return `${symbol}${converted.toFixed(2)}`;
   };
 
-  // Determine zone based on selected state
-  const getZoneFromState = (state: string): "local" | "regional" | "national" => {
-    if (state === "Lagos") return "local";
-    return (STATE_MAPPING[state as keyof typeof STATE_MAPPING] || "national") as "local" | "regional" | "national";
-  };
-
-  const currentZone = getZoneFromState(selectedState);
-
   // Calculate stats
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = total;
-  
-  // Shipping cost based on preference
-  const shippingCost = shippingPreference === "empi" ? SHIPPING_ZONES[currentZone].cost : 0;
   const taxEstimate = subtotal > 0 ? (subtotal * 0.075).toFixed(2) : "0.00"; // 7.5% estimate
-  const totalEstimate = subtotal + shippingCost + parseFloat(taxEstimate);
+  const totalEstimate = subtotal + 2500 + parseFloat(taxEstimate); // 2500 is default shipping
 
   if (!isHydrated) return null; // Prevent hydration mismatch
 
@@ -262,80 +255,6 @@ export default function CartPage() {
 
             {/* Order Summary Sidebar */}
             <div className="lg:col-span-1 space-y-6">
-              {/* Shipping Options */}
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
-                <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                  <Truck className="h-5 w-5 text-lime-600" />
-                  Shipping Options
-                </h3>
-                
-                <div className="space-y-4 mb-6">
-                  {/* Option 1: EMPI Handles Shipping */}
-                  <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition" style={{
-                    borderColor: shippingPreference === "empi" ? "#84cc16" : "#e5e7eb",
-                    backgroundColor: shippingPreference === "empi" ? "#fafce8" : "white"
-                  }}>
-                    <input
-                      type="radio"
-                      name="shipping"
-                      value="empi"
-                      checked={shippingPreference === "empi"}
-                      onChange={(e) => setShippingPreference(e.target.value as "empi")}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">EMPI Handles Shipping</p>
-                      <p className="text-sm text-gray-600">We'll deliver to your location professionally</p>
-                    </div>
-                  </label>
-
-                  {/* Option 2: Self Shipping */}
-                  <label className="flex items-start gap-3 p-4 border-2 rounded-lg cursor-pointer transition" style={{
-                    borderColor: shippingPreference === "self" ? "#84cc16" : "#e5e7eb",
-                    backgroundColor: shippingPreference === "self" ? "#fafce8" : "white"
-                  }}>
-                    <input
-                      type="radio"
-                      name="shipping"
-                      value="self"
-                      checked={shippingPreference === "self"}
-                      onChange={(e) => setShippingPreference(e.target.value as "self")}
-                      className="mt-1"
-                    />
-                    <div className="flex-1">
-                      <p className="font-semibold text-gray-900">I'll Handle Shipping</p>
-                      <p className="text-sm text-gray-600">You arrange and pay for your own delivery. Pick up items from our Suru Lere or Ojo warehouse, or arrange your own courier.</p>
-                    </div>
-                  </label>
-                </div>
-
-                {/* Location Selector (for EMPI shipping) */}
-                {shippingPreference === "empi" && (
-                  <div className="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
-                      <MapPin className="inline h-4 w-4 mr-2" />
-                      Select Your State
-                    </label>
-                    <select
-                      value={selectedState}
-                      onChange={(e) => setSelectedState(e.target.value)}
-                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent mb-3 bg-white"
-                    >
-                      <option value="Lagos">Lagos (Local) - ₦{SHIPPING_ZONES.local.cost.toLocaleString()}</option>
-                      {["Ogun", "Oyo", "Osun", "Ekiti", "Ondo"].map(state => (
-                        <option key={state} value={state}>{state} (South West) - ₦{SHIPPING_ZONES.regional.cost.toLocaleString()}</option>
-                      ))}
-                      {["Rivers", "Bayelsa", "Cross River", "Akwa Ibom", "Delta", "Abia", "Ebonyi", "Enugu", "Imo", "Anambra", "Benue", "Kogi", "Kwara", "Nasarawa", "Niger", "Plateau", "FCT", "Kaduna", "Kano", "Katsina", "Kebbi", "Sokoto", "Zamfara", "Jigawa", "Adamawa", "Bauchi", "Borno", "Gombe", "Taraba", "Yobe"].map(state => (
-                        <option key={state} value={state}>{state} - ₦{SHIPPING_ZONES.national.cost.toLocaleString()}</option>
-                      ))}
-                    </select>
-                    <div className="bg-blue-50 border border-blue-200 rounded p-3 text-sm text-blue-700">
-                      <p><span className="font-semibold">Estimated delivery:</span> {SHIPPING_ZONES[currentZone].delivery}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
               {/* Order Summary */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 sticky top-32">
                 <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
@@ -343,24 +262,13 @@ export default function CartPage() {
                 {/* Price Breakdown */}
                 <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
                   <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Subtotal</span>
+                    <span className="text-gray-600">Subtotal ({itemCount} items)</span>
                     <span className="font-semibold">{formatPrice(subtotal)}</span>
                   </div>
-                  {shippingPreference === "empi" && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="flex items-center gap-1 text-gray-600">
-                        Shipping (EMPI)
-                        <span className="text-xs text-gray-500">({SHIPPING_ZONES[currentZone].delivery})</span>
-                      </span>
-                      <span className="font-semibold">{formatPrice(shippingCost)}</span>
-                    </div>
-                  )}
-                  {shippingPreference === "self" && (
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-gray-600">Shipping</span>
-                      <span className="font-semibold text-green-600">FREE</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between items-center text-sm">
+                    <span className="text-gray-600">Shipping</span>
+                    <span className="font-semibold text-gray-600">Calculated at checkout</span>
+                  </div>
                   <div className="flex justify-between items-center text-sm text-gray-600">
                     <span className="flex items-center gap-1">
                       Tax (Est.)
@@ -372,23 +280,31 @@ export default function CartPage() {
 
                 {/* Total */}
                 <div className="flex justify-between items-center mb-6 text-xl">
-                  <span className="font-semibold">Total</span>
-                  <span className="font-bold text-lime-600">{formatPrice(totalEstimate)}</span>
+                  <span className="font-semibold">Subtotal + Tax</span>
+                  <span className="font-bold text-lime-600">{formatPrice(subtotal + parseFloat(taxEstimate))}</span>
                 </div>
 
                 {/* Information */}
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-700">
                   <p className="font-semibold mb-1">ℹ️ Final pricing</p>
-                  <p>Exact shipping and taxes will be calculated at checkout. Confirm your address for accurate delivery cost.</p>
+                  <p>Shipping and final taxes will be calculated at checkout based on your address.</p>
                 </div>
 
                 {/* Checkout Button */}
-                <Link 
-                  href="/checkout" 
+                <button 
+                  onClick={() => {
+                    if (buyer) {
+                      // User is logged in - go to checkout page
+                      router.push("/checkout");
+                    } else {
+                      // User not logged in - show auth modal first
+                      setShowAuthModal(true);
+                    }
+                  }}
                   className="block w-full bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-4 rounded-lg text-center transition mb-3"
                 >
                   Proceed to Checkout
-                </Link>
+                </button>
 
                 {/* Continue Shopping */}
                 <Link 
@@ -412,6 +328,21 @@ export default function CartPage() {
           </div>
         )}
       </main>
+
+      {/* Auth Modal - Pops up when user clicks checkout without being logged in */}
+      {showAuthModal && (
+        <div 
+          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowAuthModal(false)}
+        >
+          <AuthForm 
+            redirectToCheckout={true}
+            onCancel={() => {
+              setShowAuthModal(false);
+            }}
+          />
+        </div>
+      )}
 
       <Footer />
     </div>

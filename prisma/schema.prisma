@@ -10,6 +10,7 @@ datasource db {
 model Buyer {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   email         String   @unique
+  password      String   // Hashed password using bcryptjs
   fullName      String
   phone         String
   address       String?
@@ -20,8 +21,10 @@ model Buyer {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   lastLogin     DateTime?
+  isActive      Boolean  @default(true)
   
   invoices      Invoice[]
+  orders        Order[]
   
   @@map("buyers")
 }
@@ -97,6 +100,9 @@ model Order {
   id                String   @id @default(auto()) @map("_id") @db.ObjectId
   orderNumber       String   @unique
   
+  buyerId           String?  @db.ObjectId
+  buyer             Buyer?   @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  
   firstName         String
   lastName          String
   email             String
@@ -119,6 +125,7 @@ model Order {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
+  @@index([buyerId])
   @@map("orders")
 }
 

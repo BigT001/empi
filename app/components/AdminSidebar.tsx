@@ -29,6 +29,11 @@ const sidebarItems: SidebarItem[] = [
     icon: <Plus className="h-5 w-5" />,
   },
   {
+    name: "Products",
+    href: "/admin/products",
+    icon: <ImageIcon className="h-5 w-5" />,
+  },
+  {
     name: "Finance",
     href: "/admin/finance",
     icon: <BarChart3 className="h-5 w-5" />,
@@ -37,16 +42,6 @@ const sidebarItems: SidebarItem[] = [
     name: "Invoices",
     href: "/admin/invoices",
     icon: <FileText className="h-5 w-5" />,
-  },
-  {
-    name: "Products",
-    href: "/admin/data-viewer",
-    icon: <Database className="h-5 w-5" />,
-  },
-  {
-    name: "Media",
-    href: "/admin/cloudinary-viewer",
-    icon: <ImageIcon className="h-5 w-5" />,
   },
   {
     name: "Settings",

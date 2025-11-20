@@ -13,6 +13,7 @@ export interface IOrderItem {
 }
 
 export interface IOrder extends Document {
+  buyerId?: string;
   orderNumber: string;
   firstName: string;
   lastName: string;
@@ -48,6 +49,7 @@ const orderItemSchema = new Schema<IOrderItem>({
 
 const orderSchema = new Schema<IOrder>(
   {
+    buyerId: { type: Schema.Types.ObjectId, ref: 'Buyer' },
     orderNumber: { type: String, required: true, unique: true },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
@@ -69,5 +71,7 @@ const orderSchema = new Schema<IOrder>(
   },
   { timestamps: true }
 );
+
+orderSchema.index({ buyerId: 1 });
 
 export default mongoose.models.Order || mongoose.model<IOrder>('Order', orderSchema);
