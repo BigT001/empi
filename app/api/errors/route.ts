@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-// In-memory error log - will show only recent errors in current session
-// For production, consider using a database or file storage
-let errorLogs: any[] = [];
-const MAX_LOGS = 100;
+import connectDB from '@/lib/mongodb';
+import ErrorLog from '@/lib/models/ErrorLog';
+import { serializeDoc } from '@/lib/serializer';
 
 // POST - Log client-side errors and events
 export async function POST(request: NextRequest) {
   try {
+    await connectDB();
     const body = await request.json();
     const { type, message, stack, context, userAgent, url, timestamp } = body;
 
@@ -21,39 +20,30 @@ export async function POST(request: NextRequest) {
     const isSuccess = type.includes('success') || type.includes('Success');
     const isError = stack || type.includes('error') || type.includes('Error');
 
-    const errorLog = {
-      id: Math.random().toString(36).substr(2, 9),
+    const errorLog = new ErrorLog({
       type,
       message,
       stack: stack || null,
-      context: context || {},
+      context: context ? JSON.stringify(context) : null,
       userAgent: userAgent || null,
       url: url || null,
-      timestamp: timestamp || new Date().toISOString(),
-      level: isSuccess ? 'info' : isError ? 'error' : 'warning',
-    };
+      timestamp: timestamp || new Date(),
+    });
 
-    // Log with appropriate prefix
     if (isSuccess) {
       console.log(`✅ Success [${type}]:`, message);
     } else if (isError) {
       console.error(`🔴 Error [${type}]:`, message);
       if (stack) console.error("Stack:", stack);
-      if (context) console.error("Context:", context);
     } else {
       console.warn(`⚠️ Warning [${type}]:`, message);
     }
 
-    // Keep in memory (latest 100 events)
-    errorLogs.push(errorLog);
-    if (errorLogs.length > MAX_LOGS) {
-      errorLogs = errorLogs.slice(-MAX_LOGS);
-    }
+    await errorLog.save();
 
-    console.log(`📊 Total logs in memory: ${errorLogs.length}`);
-
+    const serialized = serializeDoc(errorLog);
     return NextResponse.json(
-      { success: true, id: errorLog.id, logCount: errorLogs.length },
+      { success: true, id: serialized._id },
       { status: 201 }
     );
   } catch (error) {
@@ -68,29 +58,26 @@ export async function POST(request: NextRequest) {
 // GET - Retrieve recent errors
 export async function GET(request: NextRequest) {
   try {
+    await connectDB();
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type');
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
-    console.log(`📊 GET /api/errors - Total logs available: ${errorLogs.length}`);
-
-    let filtered = errorLogs;
+    let query: any = {};
     if (type) {
-      filtered = errorLogs.filter((err) => err.type === type);
-      console.log(`  Filtered by type "${type}": ${filtered.length} logs`);
+      query.type = type;
     }
 
-    // Return most recent errors
-    const recent = filtered.slice(-limit);
-    
+    const errorLogs = await ErrorLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(limit);
+
+    const total = await ErrorLog.countDocuments(query);
+
     return NextResponse.json({
-      total: filtered.length,
-      returned: recent.length,
-      errors: recent,
-      memoryStatus: {
-        totalInMemory: errorLogs.length,
-        maxCapacity: MAX_LOGS,
-      },
+      total,
+      returned: errorLogs.length,
+      errors: errorLogs,
     });
   } catch (error) {
     console.error("❌ Error fetching logs:", error);

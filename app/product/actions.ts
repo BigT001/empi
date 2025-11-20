@@ -1,31 +1,29 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
+import connectDB from "@/lib/mongodb";
+import Product from "@/lib/models/Product";
 import { revalidatePath } from "next/cache";
 
 export async function deleteProduct(productId: string) {
   try {
     console.log("🗑️ Server action: Deleting product:", productId);
     
-    const product = await prisma.product.delete({
-      where: { id: productId },
-    });
+    await connectDB();
+    const product = await Product.findByIdAndDelete(productId);
 
-    console.log("✅ Product deleted successfully:", product.id);
-    
-    // Immediately revalidate all affected paths
-    revalidatePath("/product", "layout");
-    revalidatePath("/", "layout");
-    
-    return { success: true, id: product.id };
-  } catch (error: any) {
-    console.error("❌ Error deleting product:", error);
-    
-    // Handle Prisma-specific errors
-    if (error.code === "P2025") {
+    if (!product) {
       console.error("❌ Product not found for deletion");
       return { success: false, error: "Product not found or already deleted" };
     }
+
+    console.log("✅ Product deleted successfully:", product._id);
+    
+    revalidatePath("/product", "layout");
+    revalidatePath("/", "layout");
+    
+    return { success: true, id: product._id };
+  } catch (error: any) {
+    console.error("❌ Error deleting product:", error);
     
     const errorMessage = error instanceof Error ? error.message : "Failed to delete product";
     return { success: false, error: errorMessage };

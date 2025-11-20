@@ -6,15 +6,16 @@ import { ProductCard } from "./ProductCard";
 import { useProducts } from "@/lib/useProducts";
 
 interface Product {
-  id: string;
+  id?: string;
+  _id?: string;
   name: string;
   description: string;
   sellPrice: number;
   rentPrice: number;
   category: string;
   badge: string | null;
-  image: string;
-  images: string[];
+  imageUrl: string;
+  imageUrls: string[];
   sizes?: string;
   color?: string;
   material?: string;
@@ -31,7 +32,7 @@ interface ProductGridProps {
 }
 
 export function ProductGrid({ currency, category, initialProducts }: ProductGridProps) {
-  const { products: cachedProducts, loading, error, isFromCache } = useProducts(category);
+  const { products: cachedProducts, loading, error } = useProducts(category);
   const [dbProducts, setDbProducts] = useState<Product[]>(initialProducts ?? (cachedProducts as Product[]));
   const [showError, setShowError] = useState(false);
 
@@ -59,8 +60,11 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
     return `${symbol}${converted.toFixed(2)}`;
   };
 
-  // Use database products
-  const displayProducts = dbProducts;
+  // Use database products and ensure they have proper IDs
+  const displayProducts = dbProducts.map(p => ({
+    ...p,
+    id: p.id || (p as any)._id || Math.random().toString(36).substr(2, 9)
+  }));
   
   // Filter by category only if not "all"
   const filteredProducts = category === "all" 
@@ -100,14 +104,6 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
         </div>
       )}
 
-      {/* Cached Data Notice */}
-      {isFromCache && dbProducts.length > 0 && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-sm text-blue-700">
-          📦 Showing cached products (loaded from local storage)
-          <span className="ml-2 text-xs text-blue-600">This will auto-update when fresh data is available</span>
-        </div>
-      )}
-
       {/* Empty State */}
       {!loading && filteredProducts.length === 0 && dbProducts.length > 0 && (
         <div className="text-center py-12">
@@ -118,15 +114,12 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
       {/* Products Grid */}
       {filteredProducts.length > 0 && (
         <div className="grid gap-6 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-          {filteredProducts.map((product) => (
+          {filteredProducts.map((product, idx) => (
             <ProductCard
-              key={product.id}
+              key={product.id || (product as any)._id || `product-${idx}`}
               product={product}
               formattedPrice={formatPrice(product.sellPrice)}
               currency={currency}
-              onDelete={(productId) => {
-                setDbProducts(dbProducts.filter(p => p.id !== productId));
-              }}
             />
           ))}
         </div>

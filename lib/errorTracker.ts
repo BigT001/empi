@@ -35,9 +35,18 @@ export class ErrorTracker {
         timestamp: new Date().toISOString(),
       };
 
-      // Log to console in development
+      // Log to console in development - use appropriate log level
       if (process.env.NODE_ENV === 'development') {
-        console.error(`[${type}]`, message, { error, context });
+        const isSuccess = type.includes('success') || type.includes('Success');
+        const isWarning = type.includes('warning') || type.includes('Warning');
+        
+        if (isSuccess) {
+          console.log(`[${type}]`, message, { context });
+        } else if (isWarning) {
+          console.warn(`[${type}]`, message, { error, context });
+        } else {
+          console.error(`[${type}]`, message, { error, context });
+        }
       }
 
       // Save to localStorage (for offline support)

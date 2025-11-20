@@ -3,13 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "mongodb"
+  url      = env("MONGODB_URI")
 }
 
 model Buyer {
-  id            String   @id @default(cuid())
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
   email         String   @unique
   fullName      String
   phone         String
@@ -24,17 +23,15 @@ model Buyer {
   
   invoices      Invoice[]
   
-  @@index([email])
-  @@index([createdAt])
   @@map("buyers")
 }
 
 model Invoice {
-  id                String   @id @default(cuid())
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
   invoiceNumber     String   @unique
   orderNumber       String   @unique
   
-  buyerId           String?  @map("buyer_id")
+  buyerId           String?  @db.ObjectId
   buyer             Buyer?   @relation(fields: [buyerId], references: [id], onDelete: SetNull)
   
   customerName      String
@@ -54,14 +51,12 @@ model Invoice {
   invoiceDate       DateTime @default(now())
   
   @@index([buyerId])
-  @@index([invoiceNumber])
-  @@index([customerEmail])
   @@map("invoices")
 }
 
 model InvoiceItem {
-  id            String   @id @default(cuid())
-  invoiceId     String   @map("invoice_id")
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  invoiceId     String   @db.ObjectId
   invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   
   productId     String
@@ -74,57 +69,50 @@ model InvoiceItem {
 }
 
 model Product {
-  id                String   @id @default(cuid())
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
   name              String
-  description       String   @db.Text
+  description       String
   sellPrice         Float
   rentPrice         Float    @default(0)
-  category          String   // "adults" or "kids"
+  category          String
   badge             String?
-  image             String   // Main image (base64 or URL)
-  images            String[]  // Array of images (base64 or URLs)
+  imageUrl          String   // Main Cloudinary URL
+  imageUrls         String[] // Array of Cloudinary URLs
   
-  // Product details
-  sizes             String?   // Comma-separated sizes
+  sizes             String?
   color             String?
   material          String?
   condition         String?
-  careInstructions  String?   @db.Text
+  careInstructions  String?
   
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
   orderItems        OrderItem[]
 
-  // ⚡ Database indexes for faster queries
   @@index([category])
-  @@index([createdAt])
-  @@index([category, createdAt])
-
   @@map("products")
 }
 
 model Order {
-  id                String   @id @default(cuid())
-  orderNumber       String   @unique @default(cuid())
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber       String   @unique
   
-  // Customer info
   firstName         String
   lastName          String
   email             String
   phone             String?
   address           String?
-  busStop           String?   // For EMPI delivery
+  busStop           String?
   city              String?
   state             String?
   zipCode           String?
   country           String
   
-  // Shipping & Payment
-  shippingType      String    // "self" or "handled"
+  shippingType      String
   shippingCost      Float     @default(0)
   subtotal          Float
   total             Float
-  paymentMethod     String    // "card" or "bank"
+  paymentMethod     String
   status            String    @default("confirmed")
   
   items             OrderItem[]
@@ -135,18 +123,18 @@ model Order {
 }
 
 model OrderItem {
-  id          String  @id @default(cuid())
-  orderId     String  @map("order_id")
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  orderId     String  @db.ObjectId
   order       Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   
-  productId   String  @map("product_id")
+  productId   String
   product     Product @relation(fields: [productId], references: [id])
   
   name        String
   quantity    Int
   price       Float
   rentPrice   Float?
-  mode        String  // "buy" or "rent"
+  mode        String
   selectedSize String?
   rentalDays  Int     @default(0)
   
@@ -154,8 +142,8 @@ model OrderItem {
 }
 
 model Cart {
-  id          String  @id @default(cuid())
-  sessionId   String  @unique @map("session_id")
+  id          String  @id @default(auto()) @map("_id") @db.ObjectId
+  sessionId   String  @unique
   
   items       CartItem[]
   createdAt   DateTime @default(now())
@@ -165,8 +153,8 @@ model Cart {
 }
 
 model CartItem {
-  id        String  @id @default(cuid())
-  cartId    String  @map("cart_id")
+  id        String  @id @default(auto()) @map("_id") @db.ObjectId
+  cartId    String  @db.ObjectId
   cart      Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
   
   productId String
@@ -174,11 +162,11 @@ model CartItem {
   quantity  Int
   price     Float
   rentPrice Float?
-  mode      String  // "buy" or "rent"
+  mode      String
   selectedSize String?
   rentalDays Int @default(0)
-  image     String  @db.Text
-  
+  image     String
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -186,17 +174,16 @@ model CartItem {
 }
 
 model ErrorLog {
-  id        String   @id @default(cuid())
-  type      String   // e.g., "mobile_upload", "image_compression", "api_error"
-  message   String   @db.Text
-  stack     String?  @db.Text
-  context   String?  @db.Text // JSON string with additional context
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  type      String
+  message   String
+  stack     String?
+  context   String?
   userAgent String?
   url       String?
   timestamp DateTime @default(now())
   
   @@index([type])
   @@index([timestamp])
-  @@index([type, timestamp])
   @@map("error_logs")
 }

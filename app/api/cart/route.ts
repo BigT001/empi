@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-
-// Simple in-memory cart storage for development
-const carts: Map<string, any> = new Map();
+import connectDB from "@/lib/mongodb";
+import Cart from "@/lib/models/Cart";
+import { serializeDoc } from "@/lib/serializer";
 
 // GET user's cart
 export async function GET(req: NextRequest) {
   try {
+    await connectDB();
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
 
@@ -13,8 +14,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Session ID required" }, { status: 400 });
     }
 
-    const cart = carts.get(sessionId) || { sessionId, items: [] };
-    return NextResponse.json(cart);
+    let cart = await Cart.findOne({ sessionId });
+    if (!cart) {
+      cart = new Cart({ sessionId, items: [] });
+      await cart.save();
+    }
+    return NextResponse.json(serializeDoc(cart));
   } catch (error) {
     console.error("Error fetching cart:", error);
     const sessionId = new URL(req.url).searchParams.get("sessionId");
@@ -25,6 +30,7 @@ export async function GET(req: NextRequest) {
 // POST add to cart or update cart
 export async function POST(req: NextRequest) {
   try {
+    await connectDB();
     const body = await req.json();
     const { sessionId, items } = body;
 
@@ -32,8 +38,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Session ID required" }, { status: 400 });
     }
 
-    const cart = { sessionId, items: items || [] };
-    carts.set(sessionId, cart);
+    let cart = await Cart.findOne({ sessionId });
+    if (!cart) {
+      cart = new Cart({ sessionId, items: items || [] });
+    } else {
+      cart.items = items || [];
+    }
+    await cart.save();
 
     return NextResponse.json(cart);
   } catch (error) {
@@ -45,6 +56,7 @@ export async function POST(req: NextRequest) {
 // DELETE clear cart
 export async function DELETE(req: NextRequest) {
   try {
+    await connectDB();
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
 
@@ -52,7 +64,7 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Session ID required" }, { status: 400 });
     }
 
-    carts.delete(sessionId);
+    await Cart.deleteOne({ sessionId });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting cart:", error);

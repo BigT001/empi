@@ -1,28 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import connectDB from '@/lib/mongodb';
+import Product from '@/lib/models/Product';
+import { serializeDoc, serializeDocs } from '@/lib/serializer';
 import { revalidatePath } from 'next/cache';
 
-// Retry helper for transient failures
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  maxRetries = 3,
-  delayMs = 1000
-): Promise<T> {
-  for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (attempt === maxRetries) throw error;
-      const delay = delayMs * Math.pow(2, attempt - 1); // exponential backoff
-      console.log(`⏳ Retry attempt ${attempt}/${maxRetries} after ${delay}ms...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-    }
-  }
-  throw new Error("Max retries exceeded");
-}
-
 // GET all products with CDN caching headers
-// Returns ONLY real database products - NO demo data
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
@@ -31,20 +13,20 @@ export async function GET(request: NextRequest) {
     console.log("📥 GET /api/products - Fetching products from database...");
     console.log("🔍 Category filter:", category || "none");
 
-    // Fetch with retry logic for transient connection issues
-    const products = await withRetry(
-      () => prisma.product.findMany({
-        where: category ? { category } : {},
-        orderBy: { createdAt: 'desc' },
-      }),
-      2, // retry 2 times (3 attempts total)
-      500  // start with 500ms delay
-    );
+    await connectDB();
 
-    console.log("✅ Products fetched successfully, count:", products.length);
+    const query = category ? { category } : {};
+    const products = await Product.find(query).sort({ createdAt: -1 }).lean();
+
+    // Serialize and transform MongoDB _id to id for frontend consistency
+    const transformedProducts = serializeDocs(products).map((p: any) => ({
+      ...p,
+      id: p._id || p.id,
+    }));
+
+    console.log("✅ Products fetched successfully, count:", transformedProducts.length);
     
-    // Create response with Edge Cache headers
-    const response = NextResponse.json(products);
+    const response = NextResponse.json(transformedProducts);
     response.headers.set(
       "Cache-Control",
       "public, s-maxage=300, stale-while-revalidate=600"
@@ -55,12 +37,10 @@ export async function GET(request: NextRequest) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error('❌ Error details:', errorMessage);
     
-    // Return error - client will use cached data if available
     return NextResponse.json(
       { 
         error: "Failed to fetch products",
         details: errorMessage,
-        message: "Database connection failed. If you have cached products, they will be shown."
       },
       { status: 500 }
     );
@@ -72,11 +52,11 @@ export async function POST(request: NextRequest) {
   try {
     console.log("📥 Received POST request to /api/products");
     
+    await connectDB();
     const body = await request.json();
     console.log("📋 Request body keys:", Object.keys(body));
 
-    // Validate required fields
-    const requiredFields = ['name', 'description', 'sellPrice', 'rentPrice', 'category', 'image', 'images'];
+    const requiredFields = ['name', 'description', 'sellPrice', 'rentPrice', 'category', 'imageUrl'];
     const missingFields = requiredFields.filter(field => !body[field]);
     
     if (missingFields.length > 0) {
@@ -88,17 +68,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("✅ All required fields present");
-    console.log("📝 Product details:", {
-      name: body.name,
-      description: body.description.substring(0, 50) + "...",
-      sellPrice: body.sellPrice,
-      rentPrice: body.rentPrice,
-      category: body.category,
-      imageSize: body.image?.length || 0,
-      imagesCount: Array.isArray(body.images) ? body.images.length : 0,
-    });
 
-    // Validate field types
     if (typeof body.sellPrice !== 'number' || typeof body.rentPrice !== 'number') {
       console.error("❌ Invalid price types");
       return NextResponse.json(
@@ -107,43 +77,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!Array.isArray(body.images)) {
-      console.error("❌ Images is not an array");
-      return NextResponse.json(
-        { error: "Images must be an array" },
-        { status: 400 }
-      );
-    }
-
     console.log("✅ Field validation passed");
     console.log("🗄️ Creating product in database...");
 
-    const product = await prisma.product.create({
-      data: {
-        name: body.name,
-        description: body.description,
-        sellPrice: body.sellPrice,
-        rentPrice: body.rentPrice || 0,
-        category: body.category,
-        badge: body.badge || null,
-        image: body.image,
-        images: body.images || [],
-        sizes: body.sizes || null,
-        color: body.color || null,
-        material: body.material || null,
-        condition: body.condition || null,
-        careInstructions: body.careInstructions || null,
-      },
+    const product = new Product({
+      name: body.name,
+      description: body.description,
+      sellPrice: body.sellPrice,
+      rentPrice: body.rentPrice || 0,
+      category: body.category,
+      badge: body.badge || null,
+      imageUrl: body.imageUrl,
+      imageUrls: body.imageUrls || [],
+      sizes: body.sizes || null,
+      color: body.color || null,
+      material: body.material || null,
+      condition: body.condition || null,
+      careInstructions: body.careInstructions || null,
     });
 
-    console.log("✅ Product created successfully with ID:", product.id);
+    await product.save();
+
+    console.log("✅ Product created successfully with ID:", product._id);
     
-    // Clear all cached data so new product appears immediately
     revalidatePath("/");
     revalidatePath("/admin");
     
-    // Return product with headers to bypass any caching
-    const response = NextResponse.json(product, { status: 201 });
+    // Serialize response to include id field for consistency
+    const responseData = serializeDoc(product);
+    responseData.id = responseData._id;
+    
+    const response = NextResponse.json(responseData, { status: 201 });
     response.headers.set("Cache-Control", "no-cache, no-store, must-revalidate");
     return response;
   } catch (error) {
@@ -172,6 +136,7 @@ export async function DELETE(request: NextRequest) {
   try {
     console.log("📥 Received DELETE request to /api/products");
     
+    await connectDB();
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -185,27 +150,25 @@ export async function DELETE(request: NextRequest) {
 
     console.log("🗑️ Deleting product with ID:", id);
 
-    const product = await prisma.product.delete({
-      where: { id },
-    });
+    const product = await Product.findByIdAndDelete(id);
 
-    console.log("✅ Product deleted successfully:", product.id);
-    
-    return NextResponse.json({ message: "Product deleted successfully", id: product.id }, { status: 200 });
-  } catch (error) {
-    console.error("❌ Error deleting product:", error);
-    
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    console.error("❌ Error details:", errorMessage);
-    
-    // Check if product not found
-    if (errorMessage.includes("not found")) {
+    if (!product) {
       return NextResponse.json(
         { error: "Product not found" },
         { status: 404 }
       );
     }
 
+    console.log("✅ Product deleted successfully:", product._id);
+    
+    const deletedData = serializeDoc(product);
+    return NextResponse.json({ message: "Product deleted successfully", id: deletedData._id }, { status: 200 });
+  } catch (error) {
+    console.error("❌ Error deleting product:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    console.error("❌ Error details:", errorMessage);
+    
     return NextResponse.json(
       { error: `Failed to delete product: ${errorMessage}` },
       { status: 500 }

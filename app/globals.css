@@ -119,3 +119,12 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Sidebar text visibility when collapsed */
+.sidebar-collapsed .sidebar-text {
+  @apply hidden;
+}
+
+.sidebar-expanded .sidebar-text {
+  @apply block;
+}

@@ -1,21 +1,21 @@
 "use client";
 
 import Image from "next/image";
-import { ShoppingCart, Info, Trash2 } from "lucide-react";
+import { ShoppingCart, Info } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { CURRENCY_RATES } from "./constants";
-import { deleteProduct } from "@/app/product/actions";
-import { useRouter } from "next/navigation";
 import { useCart } from "./CartContext";
+import { useMode } from "@/app/context/ModeContext";
 
 interface Product {
-  id: string;
+  id?: string;
+  _id?: string;
   name: string;
   sellPrice: number;
   rentPrice: number;
-  image: string;
-  images?: string[];
+  imageUrl: string;
+  imageUrls?: string[];
   badge: string | null;
   description?: string;
   category: string;
@@ -25,72 +25,24 @@ interface ProductCardProps {
   product: Product;
   formattedPrice: string;
   currency?: string;
-  onDelete?: (productId: string) => void;
 }
 
-export function ProductCard({ product, formattedPrice: initialFormattedPrice, currency = "NGN", onDelete }: ProductCardProps) {
-  const router = useRouter();
+export function ProductCard({ product, formattedPrice: initialFormattedPrice, currency = "NGN" }: ProductCardProps) {
   const { addItem } = useCart();
-  const [cardMode, setCardMode] = useState("buy");
+  
+  // Get safe product ID (handle both id and _id from MongoDB)
+  const productId = product.id || (product as any)._id || '';
+  
+  const { mode: cardMode, setMode: setCardMode, isHydrated } = useMode(productId);
   const [mainImageIndex, setMainImageIndex] = useState(0);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  const handleDeleteProduct = async () => {
-    setIsDeleting(true);
-    try {
-      console.log("🗑️ Deleting product:", product.id);
-      const result = await deleteProduct(product.id);
-      
-      if (!result.success) {
-        console.error("❌ Delete failed:", result.error);
-        alert(`Failed to delete: ${result.error}`);
-        setIsDeleting(false);
-        setShowDeleteModal(false);
-        return;
-      }
-      
-      console.log("✅ Product deleted successfully");
-      
-      // Clear localStorage cache for all categories
-      ['all', 'adults', 'kids'].forEach(cat => {
-        localStorage.removeItem(`products_${cat}`);
-        localStorage.removeItem(`products_${cat}_time`);
-      });
-      
-      // Notify other tabs/pages to refetch products
-      try {
-        const bc = new BroadcastChannel("empi-products");
-        bc.postMessage("products-updated");
-        bc.close();
-      } catch (e) {
-        // ignore if BroadcastChannel not supported
-      }
-      try {
-        localStorage.setItem("empi-products-updated", Date.now().toString());
-      } catch (e) {
-        // ignore
-      }
-      
-      // Remove from UI immediately
-      if (onDelete) {
-        onDelete(product.id);
-      }
-      setShowDeleteModal(false);
-    } catch (e) {
-      console.error("❌ Unexpected error:", e);
-      alert("Error deleting product. Please try again.");
-      setIsDeleting(false);
-    }
-  };
 
   const handleAddToCart = () => {
     const price = cardMode === "rent" ? product.rentPrice : product.sellPrice;
     addItem({
-      id: product.id,
+      id: productId,
       name: product.name,
       price: price,
-      image: product.image,
+      image: product.imageUrl,
       mode: cardMode as "buy" | "rent",
       quantity: 1,
     });
@@ -98,12 +50,12 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
     console.log(`✅ Added ${product.name} (${cardMode}) to cart`);
   };
 
-  // Get all images - use images array if available, otherwise use main image
-  const allImages = (product.images && product.images.length > 0) 
-    ? product.images 
-    : [product.image];
+  // Get all images - use imageUrls array if available, otherwise use main imageUrl
+  const allImages = (product.imageUrls && product.imageUrls.length > 0) 
+    ? product.imageUrls 
+    : [product.imageUrl];
   
-  const mainImage = allImages[mainImageIndex] || product.image;
+  const mainImage = allImages[mainImageIndex] || product.imageUrl;
 
   // Format price based on currency
   const formatPrice = (price: number) => {
@@ -129,14 +81,6 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
             {product.badge}
           </div>
         )}
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          disabled={isDeleting}
-          className="absolute top-2 md:top-3 left-2 md:left-3 z-10 bg-red-500 hover:bg-red-600 text-white p-1.5 md:p-2 rounded-full transition disabled:opacity-50"
-          title="Delete product"
-        >
-          <Trash2 className="h-3 w-3 md:h-4 md:w-4" />
-        </button>
         <Image 
           src={mainImage} 
           alt={product.name} 
@@ -200,7 +144,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
             <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
             <span>Add to cart</span>
           </button>
-          <Link href={`/product/${product.id}`} className="flex-1 w-full">
+          <Link href={`/product/${productId}?mode=${cardMode}`} className="flex-1 w-full">
             <button className="w-full px-2 md:px-4 py-1.5 md:py-2 rounded-lg border-2 border-gray-300 text-gray-900 hover:bg-gray-50 font-semibold transition flex items-center justify-center gap-1 text-xs md:text-sm">
               <Info className="h-3 w-3 md:h-4 md:w-4" />
               <span>Info</span>
@@ -208,34 +152,6 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
           </Link>
         </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-sm w-full mx-4 shadow-xl">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Product?</h3>
-            <p className="text-gray-600 mb-6">
-              Are you sure you want to delete <strong>{product.name}</strong>? This action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                disabled={isDeleting}
-                className="flex-1 px-4 py-2 rounded-lg border-2 border-gray-300 text-gray-900 hover:bg-gray-50 font-semibold transition disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteProduct}
-                disabled={isDeleting}
-                className="flex-1 px-4 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white font-semibold transition disabled:opacity-50"
-              >
-                {isDeleting ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </article>
   );
 }

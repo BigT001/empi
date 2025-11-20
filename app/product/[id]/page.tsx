@@ -1,61 +1,33 @@
-import { prisma } from "@/lib/prisma";
+import connectDB from "@/lib/mongodb";
+import Product from "@/lib/models/Product";
 import { notFound } from "next/navigation";
 import ProductDetailClient from "./ProductDetailClient";
+import { serializeDoc, serializeDocs } from "@/lib/serializer";
 
-export const revalidate = 1; // ISR: regenerate page every 1 second for instant deletion
+export const revalidate = 3600; // Cache for 1 hour for better performance
 
 export default async function ProductPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const productRaw = await prisma.product.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      sellPrice: true,
-      rentPrice: true,
-      category: true,
-      badge: true,
-      image: true,
-      images: true,
-      sizes: true,
-      color: true,
-      material: true,
-      condition: true,
-      careInstructions: true,
-      createdAt: true,
-      updatedAt: true,
-    },
-  });
+  try {
+    await connectDB();
+    
+    const productRaw = await Product.findById(id).lean<any>();
 
-  if (!productRaw) return notFound();
+    if (!productRaw) return notFound();
 
-  const allProductsRaw = await prisma.product.findMany({
-    where: { category: productRaw.category },
-    orderBy: { createdAt: 'desc' },
-    take: 12,
-    select: {
-      id: true,
-      name: true,
-      sellPrice: true,
-      rentPrice: true,
-      image: true,
-      images: true,
-      badge: true,
-      category: true,
-    },
-  });
+    const allProductsRaw = await Product.find({ category: productRaw.category })
+      .sort({ createdAt: -1 })
+      .limit(12)
+      .lean<any[]>();
 
-  // Serialize dates and ensure arrays are defined for client
-  const product = {
-    ...productRaw,
-    createdAt: productRaw.createdAt?.toISOString(),
-    updatedAt: productRaw.updatedAt?.toISOString(),
-    images: productRaw.images ?? [],
-  };
+    // Serialize MongoDB documents to plain objects
+    const product = serializeDoc(productRaw);
+    const allProducts = serializeDocs(allProductsRaw);
 
-  const allProducts = allProductsRaw.map((p) => ({ ...p, images: p.images ?? [] }));
-
-  return <ProductDetailClient product={product} allProducts={allProducts} />;
+    return <ProductDetailClient product={product} allProducts={allProducts} />;
+  } catch (error) {
+    console.error("Error loading product:", error);
+    return notFound();
+  }
 }

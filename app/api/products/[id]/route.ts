@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-import { devStore } from '@/lib/devStore';
-
-const prisma = new PrismaClient();
+import connectDB from '@/lib/mongodb';
+import Product from '@/lib/models/Product';
+import { serializeDoc } from '@/lib/serializer';
 
 // GET single product
 export async function GET(
@@ -10,10 +9,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await connectDB();
     const { id } = await params;
-    const product = await prisma.product.findUnique({
-      where: { id },
-    });
+    const product = await Product.findById(id);
 
     if (!product) {
       return NextResponse.json(
@@ -22,13 +20,13 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(product);
+    return NextResponse.json(serializeDoc(product));
   } catch (error) {
     console.error('Error fetching product:', error);
-    // Fallback to dev store
-    const { id } = await params;
-    const devProduct = devStore.getProduct(id);
-    return NextResponse.json(devProduct || null);
+    return NextResponse.json(
+      { error: 'Product not found' },
+      { status: 404 }
+    );
   }
 }
 
@@ -38,34 +36,41 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await connectDB();
     const { id } = await params;
     const body = await request.json();
 
-    const product = await prisma.product.update({
-      where: { id },
-      data: {
-        ...(body.name && { name: body.name }),
-        ...(body.description && { description: body.description }),
-        ...(body.sellPrice && { sellPrice: body.sellPrice }),
-        ...(body.rentPrice !== undefined && { rentPrice: body.rentPrice }),
-        ...(body.category && { category: body.category }),
-        ...(body.badge && { badge: body.badge }),
-        ...(body.image && { image: body.image }),
-        ...(body.images && { images: body.images }),
-        ...(body.sizes && { sizes: body.sizes }),
-        ...(body.color && { color: body.color }),
-        ...(body.material && { material: body.material }),
-        ...(body.condition && { condition: body.condition }),
-        ...(body.careInstructions && { careInstructions: body.careInstructions }),
-      },
-    });
+    const updateData: any = {};
+    if (body.name) updateData.name = body.name;
+    if (body.description) updateData.description = body.description;
+    if (body.sellPrice !== undefined) updateData.sellPrice = body.sellPrice;
+    if (body.rentPrice !== undefined) updateData.rentPrice = body.rentPrice;
+    if (body.category) updateData.category = body.category;
+    if (body.badge) updateData.badge = body.badge;
+    if (body.imageUrl) updateData.imageUrl = body.imageUrl;
+    if (body.imageUrls) updateData.imageUrls = body.imageUrls;
+    if (body.sizes) updateData.sizes = body.sizes;
+    if (body.color) updateData.color = body.color;
+    if (body.material) updateData.material = body.material;
+    if (body.condition) updateData.condition = body.condition;
+    if (body.careInstructions) updateData.careInstructions = body.careInstructions;
 
-    return NextResponse.json(product);
+    const product = await Product.findByIdAndUpdate(id, updateData, { new: true });
+
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json(serializeDoc(product));
   } catch (error) {
     console.error('Error updating product:', error);
-    // Return the body as product when database unavailable
-    const body = await request.json();
-    return NextResponse.json(body);
+    return NextResponse.json(
+      { error: 'Failed to update product' },
+      { status: 500 }
+    );
   }
 }
 
@@ -75,10 +80,16 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    await connectDB();
     const { id } = await params;
-    await prisma.product.delete({
-      where: { id },
-    });
+    const product = await Product.findByIdAndDelete(id);
+
+    if (!product) {
+      return NextResponse.json(
+        { error: 'Product not found' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json(
       { message: 'Product deleted successfully' },
@@ -86,12 +97,9 @@ export async function DELETE(
     );
   } catch (error) {
     console.error('Error deleting product:', error);
-    // Fallback to dev store
-    const { id } = await params;
-    devStore.deleteProduct(id);
     return NextResponse.json(
-      { message: 'Product deleted successfully' },
-      { status: 200 }
+      { error: 'Failed to delete product' },
+      { status: 500 }
     );
   }
 }
