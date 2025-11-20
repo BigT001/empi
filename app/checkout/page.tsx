@@ -4,27 +4,38 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Header } from "../components/Header";
-import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
-import { CURRENCY_RATES } from "../components/constants";
-import { ShoppingBag, Check, ArrowLeft, Lock } from "lucide-react";
+import { useBuyer } from "../context/BuyerContext";
+import { ShoppingBag, Check, Lock, Download, Printer, LogIn, UserPlus } from "lucide-react";
+import { createInvoiceData, saveInvoice } from "@/lib/invoiceGenerator";
+import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
+import { getBuyerInvoices } from "@/lib/invoiceStorage";
 
 export default function CheckoutPage() {
   const { items, clearCart, total } = useCart();
-  const [currency, setCurrency] = useState("NGN");
-  const [category, setCategory] = useState("adults");
-  const [processing, setProcessing] = useState(false);
+  const { buyer, register, loginByEmail } = useBuyer();
+  const [processing, setProcessing] = useState(true);
   const [done, setDone] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
-  const [formData, setFormData] = useState({
-    fullName: "",
+  const [invoice, setInvoice] = useState<any>(null);
+  const [showAuthPrompt, setShowAuthPrompt] = useState(false);
+  const [authDismissed, setAuthDismissed] = useState(false);
+  const [orderProcessed, setOrderProcessed] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("register");
+  const [authData, setAuthData] = useState({
     email: "",
+    fullName: "",
     phone: "",
-    address: "",
-    city: "",
+  });
+  const [formData, setFormData] = useState({
+    fullName: "Test Customer",
+    email: "customer@example.com",
+    phone: "+234 8012345678",
+    address: "123 Main Street",
+    city: "Lagos",
     state: "Lagos",
-    postalCode: "",
+    postalCode: "100001",
     paymentMethod: "card",
   });
 
@@ -32,11 +43,151 @@ export default function CheckoutPage() {
     setIsHydrated(true);
   }, []);
 
-  const formatPrice = (price: number) => {
-    const rate = CURRENCY_RATES[currency]?.rate || 1;
-    const converted = price / rate;
-    const symbol = CURRENCY_RATES[currency]?.symbol || "₦";
-    return `${symbol}${converted.toFixed(2)}`;
+  // Reset order processing when items change
+  useEffect(() => {
+    if (items.length === 0) {
+      setOrderProcessed(false);
+      setDone(false);
+      setProcessing(false);
+      setInvoice(null);
+    }
+  }, [items.length]);
+
+  // Show auth prompt only if user is NOT logged in, prompt not dismissed, and has items
+  useEffect(() => {
+    if (isHydrated && items.length > 0 && !orderProcessed) {
+      if (buyer) {
+        // User is logged in - mark as ready to process
+        setShowAuthPrompt(false);
+        setAuthDismissed(true);
+      } else if (!authDismissed) {
+        // User is not logged in AND hasn't dismissed prompt yet - show auth prompt
+        setShowAuthPrompt(true);
+        setProcessing(false);
+      } else {
+        // Prompt was already dismissed but user still not logged in - continue as guest
+        setShowAuthPrompt(false);
+      }
+    }
+  }, [isHydrated, items.length, buyer, authDismissed, orderProcessed]);
+
+  // Auto-process order when buyer is logged in and we have items
+  useEffect(() => {
+    if (buyer && items.length > 0 && !done && !orderProcessed && !showAuthPrompt && isHydrated) {
+      // Auto-process the order for logged-in users
+      setOrderProcessed(true);
+      processOrder(buyer.email, buyer.fullName, buyer.phone);
+    }
+  }, [buyer, items.length, done, orderProcessed, showAuthPrompt, isHydrated]);
+
+  const shippingCost = 2500;
+  const taxEstimate = total * 0.075;
+  const totalAmount = total + shippingCost + taxEstimate;
+
+  const handleRegisterAndCheckout = async () => {
+    if (!authData.email || !authData.fullName || !authData.phone) {
+      alert("Please fill in all required fields");
+      return;
+    }
+
+    // Register the buyer
+    const newBuyer = await register({
+      email: authData.email,
+      fullName: authData.fullName,
+      phone: authData.phone,
+      address: authData.email.includes("@") ? formData.address : "",
+      city: formData.city,
+      state: formData.state,
+      postalCode: formData.postalCode,
+    });
+
+    setAuthDismissed(true);
+    setShowAuthPrompt(false);
+    
+    // Process order with registered buyer
+    processOrder(authData.email, authData.fullName, authData.phone);
+  };
+
+  const handleContinueAsGuest = () => {
+    setAuthDismissed(true);
+    processOrder(formData.email, formData.fullName, formData.phone);
+  };
+
+  const processOrder = async (email: string, fullName: string, phone: string) => {
+    setShowAuthPrompt(false);
+    setProcessing(true);
+
+    // Simulate payment processing delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Create invoice with buyer ID if logged in
+    const invoiceData = createInvoiceData({
+      items,
+      subtotal: total,
+      shippingCost,
+      taxAmount: taxEstimate,
+      totalAmount,
+      customerName: fullName,
+      customerEmail: email,
+      customerPhone: phone,
+      customerAddress: formData.address,
+      customerCity: formData.city,
+      customerState: formData.state,
+      customerPostalCode: formData.postalCode,
+      shippingPreference: "empi",
+      paymentMethod: formData.paymentMethod,
+      currency: "NGN",
+      currencySymbol: "₦",
+    });
+
+    // Add buyer ID if logged in
+    const invoiceWithBuyer = {
+      ...invoiceData,
+      buyerId: buyer?.id,
+    };
+
+    // Save invoice to localStorage with buyer ID
+    saveInvoice(invoiceData, buyer?.id);
+    setInvoice(invoiceWithBuyer);
+
+    // Clear cart and show success
+    clearCart();
+    setProcessing(false);
+    setDone(true);
+
+    console.log("✅ Invoice generated:", invoiceData.invoiceNumber);
+  };
+
+  const handlePrintInvoice = () => {
+    if (!invoice) return;
+    const buyerInvoices = getBuyerInvoices();
+    const storedInvoice = buyerInvoices.find(inv => inv.invoiceNumber === invoice.invoiceNumber);
+    if (!storedInvoice) return;
+    
+    const htmlContent = generateProfessionalInvoiceHTML(storedInvoice);
+    const printWindow = window.open("", "", "width=1000,height=600");
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
+  const handleDownloadInvoice = () => {
+    if (!invoice) return;
+    // Get the stored invoice from buyer storage
+    const buyerInvoices = getBuyerInvoices();
+    const storedInvoice = buyerInvoices.find(inv => inv.invoiceNumber === invoice.invoiceNumber);
+    if (!storedInvoice) return;
+    
+    const htmlContent = generateProfessionalInvoiceHTML(storedInvoice);
+    const blob = new Blob([htmlContent], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Invoice-${storedInvoice.invoiceNumber}.html`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   if (!isHydrated) return null; // Prevent hydration mismatch
@@ -46,11 +197,8 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
         <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
-          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-center gap-2 md:justify-between md:gap-8">
+          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-between">
             <Header />
-            <nav className="flex items-center flex-1">
-              <Navigation category={category} onCategoryChange={setCategory} currency={currency} onCurrencyChange={setCurrency} />
-            </nav>
           </div>
         </header>
         <main className="flex-1 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 w-full text-center">
@@ -72,267 +220,385 @@ export default function CheckoutPage() {
     );
   }
 
-  // Order confirmation screen
-  if (done) {
+  // Processing state
+  if (processing) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-lime-50 to-green-50 text-gray-900 flex flex-col">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-blue-100 text-gray-900 flex flex-col">
         <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
-          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-center gap-2 md:justify-between md:gap-8">
+          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-between">
             <Header />
-            <nav className="flex items-center flex-1">
-              <Navigation category={category} onCategoryChange={setCategory} currency={currency} onCurrencyChange={setCurrency} />
-            </nav>
           </div>
         </header>
 
         <main className="flex-1 max-w-3xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-12 w-full">
           <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 md:p-12 text-center">
             <div className="flex justify-center mb-4 md:mb-6">
-              <div className="bg-green-100 rounded-full p-3 md:p-4">
-                <Check className="h-8 w-8 md:h-10 md:w-10 text-green-600" />
+              <div className="bg-blue-100 rounded-full p-3 md:p-4 animate-pulse">
+                <Lock className="h-8 w-8 md:h-10 md:w-10 text-blue-600" />
               </div>
             </div>
-            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 md:mb-4 text-green-600">Order Confirmed!</h1>
-            <p className="text-gray-600 mb-2 text-sm md:text-base">Thank you for your purchase.</p>
-            <p className="text-gray-600 mb-6 md:mb-8 text-xs sm:text-sm">We've received your order and will send confirmation to your email shortly.</p>
-            <Link href="/" className="inline-block bg-lime-600 hover:bg-lime-700 text-white font-semibold px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-lg transition text-xs sm:text-sm md:text-base">
-              Back to Shop
-            </Link>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 md:mb-4 text-blue-600">Processing Your Order...</h1>
+            <p className="text-gray-600 mb-6 md:mb-8 text-xs sm:text-sm">
+              Your payment is being processed. Your invoice will be generated automatically.
+            </p>
+            <div className="flex justify-center gap-2 mb-6 md:mb-8">
+              <div className="w-2 h-2 bg-lime-600 rounded-full animate-bounce" style={{ animationDelay: "0s" }}></div>
+              <div className="w-2 h-2 bg-lime-600 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }}></div>
+              <div className="w-2 h-2 bg-lime-600 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }}></div>
+            </div>
           </div>
         </main>
+
         <Footer />
       </div>
     );
   }
 
-  // Checkout form
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-  };
+  // Order confirmation with invoice
+  if (done && invoice) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-lime-50 to-green-50 text-gray-900 flex flex-col">
+        <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
+          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-between">
+            <Header />
+          </div>
+        </header>
 
-  const handlePlaceOrder = () => {
-    if (!formData.fullName || !formData.email || !formData.phone || !formData.address) {
-      alert("Please fill in all required fields");
-      return;
-    }
-    setProcessing(true);
-    setTimeout(() => {
-      clearCart();
-      setProcessing(false);
-      setDone(true);
-    }, 1500);
-  };
+        <main className="flex-1 max-w-4xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-12 w-full">
+          {/* Success Header */}
+          <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 md:p-12 mb-6 md:mb-8 text-center">
+            <div className="flex justify-center mb-4 md:mb-6">
+              <div className="bg-green-100 rounded-full p-3 md:p-4">
+                <Check className="h-8 w-8 md:h-10 md:w-10 text-green-600" />
+              </div>
+            </div>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 md:mb-4 text-green-600">✓ Order Confirmed!</h1>
+            <p className="text-gray-600 mb-2 text-sm md:text-base">Thank you for your purchase.</p>
+            <p className="text-gray-600 mb-1 text-xs sm:text-sm">Invoice: <span className="font-bold text-gray-900">{invoice.invoiceNumber}</span></p>
+            <p className="text-gray-600 mb-6 md:mb-8 text-xs sm:text-sm">Order #: <span className="font-bold text-gray-900">{invoice.orderNumber}</span></p>
+          </div>
 
-  const shippingCost = 2500;
-  const taxEstimate = total * 0.075;
-  const totalAmount = total + shippingCost + taxEstimate;
+          {/* Invoice Preview */}
+          <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-6 md:p-8 mb-6 md:mb-8">
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 md:mb-6">Invoice</h2>
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
-      {/* Header */}
-      <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
-        <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-center gap-2 md:justify-between md:gap-8">
-          <Header />
-          <nav className="flex items-center flex-1">
-            <Navigation category={category} onCategoryChange={setCategory} currency={currency} onCurrencyChange={setCurrency} />
-          </nav>
-        </div>
-      </header>
+            {/* Invoice Header */}
+            <div className="grid grid-cols-2 gap-4 mb-6 pb-6 border-b-2 border-lime-600">
+              <div>
+                <h3 className="text-lime-600 font-bold text-lg md:text-xl">EMPI</h3>
+                <p className="text-xs text-gray-600 mt-2">{invoice.companyAddress}</p>
+                <p className="text-xs text-gray-600">{invoice.companyCity}, {invoice.companyState}</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-600"><span className="font-bold">Invoice:</span> {invoice.invoiceNumber}</p>
+                <p className="text-xs text-gray-600"><span className="font-bold">Date:</span> {invoice.invoiceDate}</p>
+                <p className="text-xs text-gray-600"><span className="font-bold">Status:</span> <span className="text-green-600 font-bold">✓ PAID</span></p>
+              </div>
+            </div>
 
-      <main className="flex-1 max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 w-full">
-        {/* Breadcrumb */}
-        <div className="mb-4 sm:mb-6 md:mb-8">
-          <Link href="/cart" className="inline-flex items-center gap-2 text-lime-600 hover:text-lime-700 font-medium text-xs sm:text-sm md:text-base">
-            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
-            Back to Cart
-          </Link>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2 md:mt-4">Checkout</h1>
-        </div>
+            {/* Customer Info */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 pb-6 border-b border-gray-200">
+              <div>
+                <p className="text-xs font-bold text-gray-700 mb-3">BILL TO:</p>
+                <p className="text-sm font-semibold">{invoice.customerName}</p>
+                <p className="text-xs text-gray-600">{invoice.customerAddress}</p>
+                <p className="text-xs text-gray-600">{invoice.customerCity}, {invoice.customerState}</p>
+                <p className="text-xs text-gray-600 mt-2">{invoice.customerEmail}</p>
+                <p className="text-xs text-gray-600">{invoice.customerPhone}</p>
+              </div>
+              <div>
+                <p className="text-xs font-bold text-gray-700 mb-3">SHIPPING METHOD:</p>
+                <p className="text-sm font-semibold">{invoice.shippingMethod}</p>
+                <p className="text-xs text-gray-600 mt-2">Est. Delivery: 3-5 business days</p>
+              </div>
+            </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 lg:gap-8">
-          {/* Checkout Form - Left Side */}
-          <div className="lg:col-span-2 space-y-4 sm:space-y-5 md:space-y-6">
-            {/* Billing Information */}
-            <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 md:mb-6">Billing Information</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 md:mb-2">Full Name *</label>
-                  <input
-                    type="text"
-                    name="fullName"
-                    value={formData.fullName}
-                    onChange={handleInputChange}
-                    placeholder="John Doe"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent bg-white text-xs sm:text-sm"
-                  />
+            {/* Items Table */}
+            <div className="mb-6">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="bg-gray-100 border-b-2 border-gray-300">
+                    <th className="text-left px-2 py-2 text-xs font-bold">Product</th>
+                    <th className="text-center px-2 py-2 text-xs font-bold w-16">Qty</th>
+                    <th className="text-right px-2 py-2 text-xs font-bold">Price</th>
+                    <th className="text-right px-2 py-2 text-xs font-bold">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {invoice.items.map((item: any) => (
+                    <tr key={`${item.id}-${item.mode}`} className="border-b border-gray-200">
+                      <td className="px-2 py-3 text-xs">{item.name}</td>
+                      <td className="px-2 py-3 text-center text-xs">{item.quantity}</td>
+                      <td className="px-2 py-3 text-right text-xs">{invoice.currencySymbol}{item.price.toLocaleString()}</td>
+                      <td className="px-2 py-3 text-right text-xs font-semibold">{invoice.currencySymbol}{(item.price * item.quantity).toLocaleString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Totals */}
+            <div className="flex justify-end mb-6">
+              <div className="w-full md:w-80">
+                <div className="flex justify-between text-xs mb-2 text-gray-600">
+                  <span>Subtotal:</span>
+                  <span>{invoice.currencySymbol}{invoice.subtotal.toLocaleString()}</span>
                 </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 md:mb-2">Email *</label>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    placeholder="john@example.com"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent bg-white text-xs sm:text-sm"
-                  />
+                <div className="flex justify-between text-xs mb-2 text-gray-600">
+                  <span>Shipping:</span>
+                  <span>{invoice.currencySymbol}{invoice.shippingCost.toLocaleString()}</span>
                 </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 md:mb-2">Phone *</label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={formData.phone}
-                    onChange={handleInputChange}
-                    placeholder="+234 8012345678"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent bg-white text-xs sm:text-sm"
-                  />
+                <div className="flex justify-between text-xs mb-4 pb-4 border-b-2 border-gray-300 text-gray-600">
+                  <span>Tax (7.5%):</span>
+                  <span>{invoice.currencySymbol}{invoice.taxAmount.toLocaleString()}</span>
                 </div>
-                <div>
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 md:mb-2">Postal Code</label>
-                  <input
-                    type="text"
-                    name="postalCode"
-                    value={formData.postalCode}
-                    onChange={handleInputChange}
-                    placeholder="100001"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent bg-white text-xs sm:text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 md:mb-2">Address *</label>
-                  <input
-                    type="text"
-                    name="address"
-                    value={formData.address}
-                    onChange={handleInputChange}
-                    placeholder="123 Main Street, Apartment 4B"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent bg-white text-xs sm:text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 md:mb-2">City</label>
-                  <input
-                    type="text"
-                    name="city"
-                    value={formData.city}
-                    onChange={handleInputChange}
-                    placeholder="Lagos"
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent bg-white text-xs sm:text-sm"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1.5 md:mb-2">State</label>
-                  <select
-                    name="state"
-                    value={formData.state}
-                    onChange={handleInputChange}
-                    className="w-full px-3 sm:px-4 py-2 sm:py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent bg-white text-xs sm:text-sm"
-                  >
-                    <option>Lagos</option>
-                    <option>Ogun</option>
-                    <option>Oyo</option>
-                    <option>Osun</option>
-                  </select>
+                <div className="flex justify-between text-sm font-bold text-lime-600">
+                  <span>Total Amount:</span>
+                  <span>{invoice.currencySymbol}{invoice.totalAmount.toLocaleString()}</span>
                 </div>
               </div>
             </div>
 
-            {/* Payment Method */}
-            <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 md:mb-6 flex items-center gap-2">
-                <Lock className="h-4 w-4 sm:h-5 sm:w-5 text-lime-600" />
-                Payment Method
-              </h2>
-              <div className="space-y-2 sm:space-y-3">
-                {["card", "bank", "wallet"].map(method => (
-                  <label key={method} className="flex items-center gap-3 p-3 sm:p-4 border-2 rounded-lg cursor-pointer transition" style={{
-                    borderColor: formData.paymentMethod === method ? "#84cc16" : "#e5e7eb",
-                    backgroundColor: formData.paymentMethod === method ? "#fafce8" : "white"
-                  }}>
-                    <input
-                      type="radio"
-                      name="paymentMethod"
-                      value={method}
-                      checked={formData.paymentMethod === method}
-                      onChange={handleInputChange}
-                      className="w-4 h-4"
-                    />
-                    <span className="font-semibold text-xs sm:text-sm md:text-base capitalize">{method === "card" ? "💳 Card" : method === "bank" ? "🏦 Bank Transfer" : "💰 Wallet"}</span>
-                  </label>
-                ))}
-              </div>
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3 justify-center pt-6 border-t border-gray-200">
+              <button
+                onClick={handlePrintInvoice}
+                className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition text-sm"
+              >
+                <Printer className="h-4 w-4" />
+                Print Invoice
+              </button>
+              <button
+                onClick={handleDownloadInvoice}
+                className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition text-sm"
+              >
+                <Download className="h-4 w-4" />
+                Download Invoice
+              </button>
             </div>
           </div>
 
-          {/* Order Summary - Right Sidebar */}
-          <div className="lg:col-span-1 space-y-4 sm:space-y-5 md:space-y-6">
-            {/* Order Items */}
-            <div className="bg-white rounded-lg sm:rounded-xl shadow-sm border border-gray-200 p-4 sm:p-5 md:p-6 max-h-96 overflow-y-auto">
-              <h2 className="text-lg sm:text-xl md:text-2xl font-bold mb-4 md:mb-6">Order Summary</h2>
-              <div className="space-y-3 sm:space-y-4">
-                {items.map((item) => (
-                  <div key={`${item.id}-${item.mode}`} className="flex gap-2 sm:gap-3 text-xs sm:text-sm">
-                    {item.image && (
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 sm:w-14 sm:h-14 relative rounded overflow-hidden bg-gray-100 border border-gray-200">
-                          <Image src={item.image} alt={item.name} fill className="object-contain p-1" />
-                        </div>
-                      </div>
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-gray-900 line-clamp-2">{item.name}</p>
-                      <p className="text-gray-600 text-xs">{item.quantity}x {formatPrice(item.price)}</p>
-                    </div>
-                    <div className="text-right flex-shrink-0 font-semibold">
-                      {formatPrice(item.price * item.quantity)}
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="border-t border-gray-200 mt-4 sm:mt-6 pt-4 sm:pt-6 space-y-2 sm:space-y-2.5">
-                <div className="flex justify-between text-xs sm:text-sm text-gray-600">
-                  <span>Subtotal</span>
-                  <span>{formatPrice(total)}</span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm text-gray-600">
-                  <span>Shipping</span>
-                  <span>{formatPrice(shippingCost)}</span>
-                </div>
-                <div className="flex justify-between text-xs sm:text-sm text-gray-600">
-                  <span>Tax (7.5%)</span>
-                  <span>{formatPrice(taxEstimate)}</span>
-                </div>
-                <div className="border-t border-gray-200 pt-2 sm:pt-3 flex justify-between text-sm sm:text-base font-bold">
-                  <span>Total</span>
-                  <span className="text-lime-600">{formatPrice(totalAmount)}</span>
-                </div>
-              </div>
-            </div>
+          {/* Next Steps */}
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 md:p-6 mb-6 md:mb-8">
+            <h3 className="font-bold text-blue-900 mb-2 text-sm md:text-base">What happens next?</h3>
+            <ul className="text-xs md:text-sm text-blue-800 space-y-1">
+              <li>✓ A confirmation email will be sent to {invoice.customerEmail}</li>
+              <li>✓ Your invoice has been saved and can be printed or downloaded anytime</li>
+              <li>✓ Items will be prepared and shipped within 24-48 hours</li>
+              <li>✓ You'll receive a tracking number via email when shipped</li>
+            </ul>
+          </div>
 
-            {/* Place Order Button */}
-            <button
-              onClick={handlePlaceOrder}
-              disabled={processing}
-              className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white font-bold py-2.5 sm:py-3 md:py-4 px-4 rounded-lg transition text-xs sm:text-sm md:text-base"
+          {/* CTA Buttons */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <Link
+              href="/"
+              className="inline-block bg-lime-600 hover:bg-lime-700 text-white font-semibold px-6 py-3 rounded-lg transition text-sm md:text-base text-center"
             >
-              {processing ? "Processing..." : "Place Order"}
-            </button>
-
+              Continue Shopping
+            </Link>
             <Link
               href="/cart"
-              className="block w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:bg-gray-50 font-semibold py-2.5 sm:py-3 md:py-4 px-4 rounded-lg text-center transition text-xs sm:text-sm md:text-base"
+              className="inline-block border-2 border-lime-600 text-lime-600 hover:bg-lime-50 font-semibold px-6 py-3 rounded-lg transition text-sm md:text-base text-center"
             >
-              Back to Cart
+              View Cart
             </Link>
           </div>
-        </div>
-      </main>
+        </main>
 
-      <Footer />
-    </div>
-  );
+        <Footer />
+      </div>
+    );
+  }
+
+  // Auth prompt modal
+  if (showAuthPrompt) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
+        <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
+          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-between">
+            <Header />
+          </div>
+        </header>
+
+        {/* Auth Modal Overlay */}
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-8 max-h-[90vh] overflow-y-auto">
+            {/* Toggle Tabs */}
+            <div className="flex gap-4 mb-6 border-b-2 border-gray-200">
+              <button
+                onClick={() => setAuthMode("register")}
+                className={`pb-3 px-4 font-semibold text-sm transition flex items-center gap-2 ${
+                  authMode === "register"
+                    ? "text-lime-600 border-b-2 border-lime-600 -mb-[2px]"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <UserPlus className="h-4 w-4" />
+                Register
+              </button>
+              <button
+                onClick={() => setAuthMode("login")}
+                className={`pb-3 px-4 font-semibold text-sm transition flex items-center gap-2 ${
+                  authMode === "login"
+                    ? "text-lime-600 border-b-2 border-lime-600 -mb-[2px]"
+                    : "text-gray-600 hover:text-gray-900"
+                }`}
+              >
+                <LogIn className="h-4 w-4" />
+                Login
+              </button>
+            </div>
+
+            {authMode === "register" ? (
+              <>
+                <h2 className="text-2xl font-bold mb-2">Create Account</h2>
+                <p className="text-gray-600 text-sm mb-6">
+                  Register to track your orders and view your invoice history.
+                </p>
+
+                {/* Form Fields */}
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={authData.fullName}
+                      onChange={(e) => setAuthData({ ...authData, fullName: e.target.value })}
+                      placeholder="John Doe"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      value={authData.email}
+                      onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
+                      placeholder="you@example.com"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      value={authData.phone}
+                      onChange={(e) => setAuthData({ ...authData, phone: e.target.value })}
+                      placeholder="+234 8012345678"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <button
+                    onClick={handleRegisterAndCheckout}
+                    className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                  >
+                    <UserPlus className="h-5 w-5" />
+                    Register & Proceed to Payment
+                  </button>
+                  <button
+                    onClick={handleContinueAsGuest}
+                    className="w-full border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-3 rounded-lg transition"
+                  >
+                    Continue as Guest
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <h2 className="text-2xl font-bold mb-2">Login</h2>
+                <p className="text-gray-600 text-sm mb-6">
+                  Sign in to view your past orders and invoices.
+                </p>
+
+                {/* Form Fields */}
+                <div className="space-y-4 mb-6">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={authData.email}
+                      onChange={(e) => setAuthData({ ...authData, email: e.target.value })}
+                      placeholder="you@example.com"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      value={authData.phone}
+                      onChange={(e) => setAuthData({ ...authData, phone: e.target.value })}
+                      placeholder="+234 8012345678"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="space-y-3">
+                  <button
+                    onClick={async () => {
+                      if (!authData.email || !authData.phone) {
+                        alert("Please enter your email and phone");
+                        return;
+                      }
+                      
+                      // Try to login with existing account
+                      const loginResult = await loginByEmail(authData.email, authData.phone);
+                      
+                      if (loginResult) {
+                        setAuthDismissed(true);
+                        setShowAuthPrompt(false);
+                        processOrder(authData.email, loginResult.fullName, authData.phone);
+                      } else {
+                        alert("Account not found. Please register or continue as guest.");
+                      }
+                    }}
+                    className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                  >
+                    <LogIn className="h-5 w-5" />
+                    Login & Proceed
+                  </button>
+                  <button
+                    onClick={handleContinueAsGuest}
+                    className="w-full border-2 border-gray-300 text-gray-700 hover:bg-gray-50 font-semibold py-3 rounded-lg transition"
+                  >
+                    Continue as Guest
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* Info Box */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <p className="text-xs text-blue-800">
+                <span className="font-semibold">💡 Tip:</span> Registering helps you track orders and access invoices anytime from your dashboard.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }
 

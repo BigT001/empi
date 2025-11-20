@@ -2,9 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings } from "lucide-react";
+import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings, LogOut } from "lucide-react";
 import { CURRENCY_RATES } from "./constants";
 import { useCart } from "./CartContext";
+import { useBuyer } from "../context/BuyerContext";
 
 interface NavigationProps {
   category: string;
@@ -17,7 +18,9 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
   const { items } = useCart();
+  const { buyer, logout } = useBuyer();
 
   return (
     <>
@@ -153,6 +156,54 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
           <Settings className="h-4 w-4" />
           <span className="text-sm">Admin</span>
         </Link>
+
+        {/* Account Menu - Only show if logged in */}
+        {buyer && (
+          <div className="relative">
+            <button
+              onClick={() => setShowAccountMenu(!showAccountMenu)}
+              className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-lime-50 border border-lime-200 text-gray-700 hover:border-lime-600 hover:bg-lime-100 font-semibold transition"
+            >
+              <User className="h-4 w-4 text-lime-600" />
+              <span className="text-sm">{buyer.fullName}</span>
+            </button>
+
+            {/* Dropdown Menu */}
+            {showAccountMenu && (
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-xl border border-gray-200 z-50">
+                <div className="p-4 border-b border-gray-200">
+                  <p className="text-sm font-semibold text-gray-900">{buyer.fullName}</p>
+                  <p className="text-xs text-gray-600">{buyer.email}</p>
+                </div>
+
+                <div className="py-2">
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setShowAccountMenu(false)}
+                    className="flex items-center gap-3 px-4 py-2 hover:bg-gray-50 text-sm text-gray-700 transition"
+                  >
+                    <User className="h-4 w-4 text-blue-600" />
+                    My Dashboard
+                  </Link>
+                </div>
+
+                <div className="p-2 border-t border-gray-200">
+                  <button
+                    onClick={() => {
+                      logout();
+                      setShowAccountMenu(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 text-sm text-red-600 font-semibold rounded transition"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    Logout
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         <Link href="/cart" className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2 rounded-lg font-medium transition relative">
           <ShoppingCart className="h-4 w-4" />
           <span className="hidden sm:inline text-sm">Cart</span>

@@ -8,6 +8,71 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model Buyer {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  fullName      String
+  phone         String
+  address       String?
+  city          String?
+  state         String?
+  postalCode    String?
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  lastLogin     DateTime?
+  
+  invoices      Invoice[]
+  
+  @@index([email])
+  @@index([createdAt])
+  @@map("buyers")
+}
+
+model Invoice {
+  id                String   @id @default(cuid())
+  invoiceNumber     String   @unique
+  orderNumber       String   @unique
+  
+  buyerId           String?  @map("buyer_id")
+  buyer             Buyer?   @relation(fields: [buyerId], references: [id], onDelete: SetNull)
+  
+  customerName      String
+  customerEmail     String
+  customerPhone     String
+  customerAddress   String?
+  customerCity      String?
+  customerState     String?
+  customerPostalCode String?
+  
+  subtotal          Float
+  shippingCost      Float
+  taxAmount         Float
+  totalAmount       Float
+  
+  items             InvoiceItem[]
+  invoiceDate       DateTime @default(now())
+  
+  @@index([buyerId])
+  @@index([invoiceNumber])
+  @@index([customerEmail])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id            String   @id @default(cuid())
+  invoiceId     String   @map("invoice_id")
+  invoice       Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  productId     String
+  name          String
+  quantity      Int
+  price         Float
+  mode          String   // "buy" or "rent"
+  
+  @@map("invoice_items")
+}
+
 model Product {
   id                String   @id @default(cuid())
   name              String
