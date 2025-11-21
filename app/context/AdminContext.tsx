@@ -104,7 +104,8 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Always clear state and redirect
+      // Always clear state immediately
+      console.log('Clearing admin state');
       setAdmin(null);
       setIsLoading(false);
     }

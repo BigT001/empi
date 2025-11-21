@@ -73,10 +73,10 @@ export function AdminSidebar() {
 
   const handleLogout = async () => {
     await logout();
-    // Small delay to ensure logout completes
+    // Delay to ensure state update and re-renders propagate through React
     setTimeout(() => {
       router.push('/admin/login');
-    }, 100);
+    }, 300);
   };
 
   return (

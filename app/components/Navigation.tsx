@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings, LogOut } from "lucide-react";
 import { CURRENCY_RATES } from "./constants";
@@ -23,6 +23,15 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   const { items } = useCart();
   const { buyer, logout } = useBuyer();
   const { admin } = useAdmin();
+
+  // Log admin state changes for debugging
+  useEffect(() => {
+    if (admin) {
+      console.log('Admin logged in:', admin.email);
+    } else {
+      console.log('Admin logged out');
+    }
+  }, [admin]);
 
   return (
     <>
