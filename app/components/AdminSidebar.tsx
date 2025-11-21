@@ -73,7 +73,10 @@ export function AdminSidebar() {
 
   const handleLogout = async () => {
     await logout();
-    router.push('/admin/login');
+    // Small delay to ensure logout completes
+    setTimeout(() => {
+      router.push('/admin/login');
+    }, 100);
   };
 
   return (

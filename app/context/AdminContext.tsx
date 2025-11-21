@@ -47,6 +47,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
           permissions: data.permissions,
           lastLogin: data.lastLogin,
         });
+      } else if (response.status === 401) {
+        // Session expired or invalid
+        console.log('Admin session expired or invalid');
+        setAdmin(null);
       } else {
         setAdmin(null);
       }
@@ -89,19 +93,20 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch('/api/admin/logout', {
+      const response = await fetch('/api/admin/logout', {
         method: 'POST',
         credentials: 'include',
       });
+      
+      if (!response.ok) {
+        console.error('Logout API failed:', response.status);
+      }
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      // Clear admin state regardless of API response
+      // Always clear state and redirect
       setAdmin(null);
-      // Force page reload to ensure all state is cleared
-      if (typeof window !== 'undefined') {
-        window.location.href = '/admin/login';
-      }
+      setIsLoading(false);
     }
   };
 
