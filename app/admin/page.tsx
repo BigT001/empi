@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { Upload, X, Plus, Trash2 } from "lucide-react";
+import { useAdmin } from "@/app/context/AdminContext";
 import * as Sentry from "@sentry/nextjs";
 import { captureImageUploadError, captureUploadSuccess } from "@/lib/sentry-utils";
 

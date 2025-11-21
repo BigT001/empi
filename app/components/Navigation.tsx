@@ -6,6 +6,7 @@ import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings, LogOut 
 import { CURRENCY_RATES } from "./constants";
 import { useCart } from "./CartContext";
 import { useBuyer } from "../context/BuyerContext";
+import { useAdmin } from "../context/AdminContext";
 
 interface NavigationProps {
   category: string;
@@ -21,6 +22,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const { items } = useCart();
   const { buyer, logout } = useBuyer();
+  const { admin } = useAdmin();
 
   return (
     <>
@@ -152,10 +154,12 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         <button className="hidden p-2 text-gray-700 hover:text-lime-600 hover:bg-gray-100 rounded-lg transition md:flex">
           <Heart className="h-5 w-5" />
         </button>
-        <Link href="/admin" className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:border-lime-600 hover:text-lime-600 font-semibold transition">
-          <Settings className="h-4 w-4" />
-          <span className="text-sm">Admin</span>
-        </Link>
+        {admin && (
+          <Link href="/admin" className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:border-lime-600 hover:text-lime-600 font-semibold transition">
+            <Settings className="h-4 w-4" />
+            <span className="text-sm">Admin</span>
+          </Link>
+        )}
 
         {/* Account Menu - Only show if logged in */}
         {buyer && (
@@ -355,9 +359,11 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
             <Link href="/about" className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 rounded-lg transition">
               About Us
             </Link>
-            <Link href="/admin" className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 rounded-lg transition">
-              Admin
-            </Link>
+            {admin && (
+              <Link href="/admin" className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 rounded-lg transition">
+                Admin
+              </Link>
+            )}
           </div>
         </div>
       )}

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Plus, BarChart3, Settings, LogOut, FileText, Database, Image as ImageIcon, Menu } from "lucide-react";
+import { useAdmin } from "@/app/context/AdminContext";
 import {
   Sidebar,
   SidebarContent,
@@ -51,8 +53,10 @@ const sidebarItems: SidebarItem[] = [
 ];
 
 export function AdminSidebar() {
+  const router = useRouter();
   const pathname = usePathname();
   const { state, isMobile, setOpenMobile } = useSidebar();
+  const { logout } = useAdmin();
 
   const isActive = (href: string) => {
     if (href === "/admin") {
@@ -65,6 +69,11 @@ export function AdminSidebar() {
     if (isMobile) {
       setOpenMobile(false);
     }
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/admin/login');
   };
 
   return (
@@ -110,7 +119,7 @@ export function AdminSidebar() {
 
       <SidebarFooter className="border-t border-gray-100 pt-4">
         <button
-          onClick={handleMenuClick}
+          onClick={handleLogout}
           className="flex items-center gap-3 w-full px-4 py-2.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg font-medium transition text-sm border border-transparent hover:border-red-200"
           title="Logout"
         >

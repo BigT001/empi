@@ -3,6 +3,9 @@ import connectDB from "@/lib/mongodb";
 import Buyer from "@/lib/models/Buyer";
 import { serializeDoc } from "@/lib/serializer";
 
+// Get admin emails from environment variable (comma-separated)
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').filter(e => e.trim());
+
 // Register a new buyer with password
 export async function POST(request: NextRequest) {
   try {
@@ -37,6 +40,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if email is admin email
+    const isAdmin = ADMIN_EMAILS.includes(email.toLowerCase().trim());
+
     // Create new buyer
     const buyer = new Buyer({
       email: email.toLowerCase(),
@@ -47,11 +53,12 @@ export async function POST(request: NextRequest) {
       city: city || null,
       state: state || null,
       postalCode: postalCode || null,
+      isAdmin,
       lastLogin: new Date(),
     });
 
     await buyer.save();
-    console.log(`✅ Buyer registered: ${email}`);
+    console.log(`✅ Buyer registered: ${email}${isAdmin ? ' (ADMIN)' : ''}`);
 
     // Return buyer without password - properly serialized
     const buyerData = serializeDoc(buyer);
@@ -122,11 +129,18 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Check if email is admin email (in case it wasn't set during registration)
+    const isAdmin = ADMIN_EMAILS.includes(buyer.email.toLowerCase().trim());
+    if (isAdmin && !buyer.isAdmin) {
+      buyer.isAdmin = true;
+      await buyer.save();
+    }
+
     // Update last login
     buyer.lastLogin = new Date();
     await buyer.save();
 
-    console.log(`✅ Buyer logged in: ${email || phone}`);
+    console.log(`✅ Buyer logged in: ${email || phone}${buyer.isAdmin ? ' (ADMIN)' : ''}`);
 
     // Return buyer without password - properly serialized
     const buyerData = serializeDoc(buyer);

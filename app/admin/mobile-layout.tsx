@@ -80,7 +80,7 @@ export default function MobileAdminLayout({
     <div className="flex flex-col h-screen bg-white overflow-hidden md:hidden">
       {/* Mobile Header */}
       <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-        <Link href="/admin" className="flex items-center">
+        <Link href="/" className="flex items-center hover:opacity-80 transition">
           <Image
             src="/logo/EMPI-2k24-LOGO-1.PNG"
             alt="EMPI"

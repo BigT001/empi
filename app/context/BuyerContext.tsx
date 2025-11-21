@@ -13,6 +13,7 @@ export interface BuyerProfile {
   postalCode?: string;
   createdAt: string;
   lastLogin?: string;
+  isAdmin?: boolean;
 }
 
 interface BuyerContextType {
