@@ -1,29 +1,30 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdmin } from '@/app/context/AdminContext';
 import { LogIn, Eye, EyeOff } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login, admin } = useAdmin();
+  const { login, admin, isLoading } = useAdmin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
-  // If already logged in, redirect to dashboard
-  if (admin) {
-    router.push('/admin');
-    return null;
-  }
+  // Redirect to dashboard if already logged in
+  useEffect(() => {
+    if (admin && !isLoading) {
+      router.push('/admin');
+    }
+  }, [admin, isLoading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setLoading(true);
+    setSubmitting(true);
 
     try {
       if (!email.trim()) {
@@ -38,9 +39,25 @@ export default function AdminLoginPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
     } finally {
-      setLoading(false);
+      setSubmitting(false);
     }
   };
+
+  // Show loading state while checking auth
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-lime-50 to-lime-100 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="animate-spin">
+              <LogIn className="h-8 w-8 text-lime-600" />
+            </div>
+            <p className="text-gray-600">Loading...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-lime-50 to-lime-100 flex items-center justify-center p-4">
@@ -73,7 +90,7 @@ export default function AdminLoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@example.com"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 transition"
-              disabled={loading}
+              disabled={submitting}
             />
           </div>
 
@@ -88,7 +105,7 @@ export default function AdminLoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 transition pr-10"
-                disabled={loading}
+                disabled={submitting}
               />
               <button
                 type="button"
@@ -106,10 +123,10 @@ export default function AdminLoginPage() {
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={submitting}
             className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg transition mt-6"
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {submitting ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
