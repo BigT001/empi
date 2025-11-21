@@ -3,8 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import MobileAdminUpload from "../mobile-upload";
-
-const MobileAdminLayout = dynamic(() => import("../mobile-layout"), { ssr: false });
+import MobileAdminLayout from "../mobile-layout";
 
 export default function AdminUploadPage() {
   const [isMobile, setIsMobile] = useState(false);

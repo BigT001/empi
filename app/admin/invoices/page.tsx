@@ -11,7 +11,7 @@ import { Trash2, Eye } from "lucide-react";
 
 // Mobile components
 const MobileInvoicesPage = dynamic(() => import("../mobile-invoices"), { ssr: false });
-const MobileAdminLayout = dynamic(() => import("../mobile-layout"), { ssr: false });
+import MobileAdminLayout from "../mobile-layout";
 
 export default function AdminInvoicesPage() {
   const [isMobile, setIsMobile] = useState(false);

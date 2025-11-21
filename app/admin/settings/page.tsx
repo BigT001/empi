@@ -6,7 +6,7 @@ import { Save, Bell, Lock, User } from "lucide-react";
 
 // Mobile components
 const MobileSettingsPage = dynamic(() => import("../mobile-settings"), { ssr: false });
-const MobileAdminLayout = dynamic(() => import("../mobile-layout"), { ssr: false });
+import MobileAdminLayout from "../mobile-layout";
 
 export default function SettingsPage() {
   const [isMobile, setIsMobile] = useState(false);

@@ -7,7 +7,7 @@ import { ArrowLeft, TrendingUp, DollarSign, ShoppingCart, BarChart3 } from "luci
 
 // Mobile components
 const MobileFinancePage = dynamic(() => import("../mobile-finance"), { ssr: false });
-const MobileAdminLayout = dynamic(() => import("../mobile-layout"), { ssr: false });
+import MobileAdminLayout from "../mobile-layout";
 
 export default function FinancePage() {
   const [isMobile, setIsMobile] = useState(false);

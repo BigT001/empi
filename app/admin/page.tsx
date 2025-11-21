@@ -11,6 +11,7 @@ import { captureImageUploadError, captureUploadSuccess } from "@/lib/sentry-util
 // Mobile component
 const MobileAdminDashboard = dynamic(() => import("./mobile-dashboard"), { ssr: false });
 const MobileAdminUpload = dynamic(() => import("./mobile-upload"), { ssr: false });
+import MobileAdminLayout from "./mobile-layout";
 
 interface ProductForm {
   name: string;
@@ -63,7 +64,11 @@ export default function AdminDashboard() {
 
   // Show mobile view on small screens
   if (isMobile) {
-    return <MobileAdminDashboard />;
+    return (
+      <MobileAdminLayout>
+        <MobileAdminDashboard />
+      </MobileAdminLayout>
+    );
   }
 
   // Simple image resize without canvas (avoids MIME type issues on mobile)

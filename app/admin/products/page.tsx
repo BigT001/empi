@@ -7,7 +7,7 @@ import { Trash2, AlertCircle, ChevronDown } from 'lucide-react';
 
 // Mobile components
 const MobileProductsPage = dynamic(() => import("../mobile-products"), { ssr: false });
-const MobileAdminLayout = dynamic(() => import("../mobile-layout"), { ssr: false });
+import MobileAdminLayout from "../mobile-layout";
 
 interface Product {
   _id: string;
