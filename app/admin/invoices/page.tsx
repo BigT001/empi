@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Header } from "../../components/Header";
 import { Navigation } from "../../components/Navigation";
@@ -8,11 +9,29 @@ import { Footer } from "../../components/Footer";
 import { getAdminInvoices, deleteAdminInvoice, clearAdminInvoices, StoredInvoice } from "@/lib/invoiceStorage";
 import { Trash2, Eye } from "lucide-react";
 
+// Mobile component
+const MobileInvoicesPage = dynamic(() => import("../mobile-invoices"), { ssr: false });
+
 export default function AdminInvoicesPage() {
+  const [isMobile, setIsMobile] = useState(false);
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [currency, setCurrency] = useState("NGN");
   const [category, setCategory] = useState("adults");
   const [isHydrated, setIsHydrated] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Show mobile view on small screens
+  if (isMobile) {
+    return <MobileInvoicesPage />;
+  }
 
   useEffect(() => {
     setIsHydrated(true);

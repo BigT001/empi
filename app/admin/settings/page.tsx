@@ -1,9 +1,30 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import { Save, Bell, Lock, User } from "lucide-react";
 
+// Mobile component
+const MobileSettingsPage = dynamic(() => import("../mobile-settings"), { ssr: false });
+
 export default function SettingsPage() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Show mobile view on small screens
+  if (isMobile) {
+    return <MobileSettingsPage />;
+  }
+
   const [settings, setSettings] = useState({
     storeName: "EMPI Costumes",
     email: "admin@empicostumes.com",

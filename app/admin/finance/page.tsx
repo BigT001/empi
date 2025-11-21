@@ -1,9 +1,31 @@
 "use client";
 
+import { useState, useEffect } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowLeft, TrendingUp, DollarSign, ShoppingCart, BarChart3 } from "lucide-react";
 
+// Mobile component
+const MobileFinancePage = dynamic(() => import("../mobile-finance"), { ssr: false });
+
 export default function FinancePage() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Show mobile view on small screens
+  if (isMobile) {
+    return <MobileFinancePage />;
+  }
+
   const financialData = [
     { label: "Total Revenue", value: "$12,450.50", icon: DollarSign, color: "text-green-600", bg: "bg-green-50" },
     { label: "Total Sales", value: "156", icon: ShoppingCart, color: "text-blue-600", bg: "bg-blue-50" },

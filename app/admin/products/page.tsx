@@ -1,8 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { Trash2, AlertCircle, ChevronDown } from 'lucide-react';
+
+// Mobile component
+const MobileProductsPage = dynamic(() => import("../mobile-products"), { ssr: false });
 
 interface Product {
   _id: string;
@@ -22,6 +26,7 @@ interface Product {
 }
 
 export default function ProductsPage() {
+  const [isMobile, setIsMobile] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -29,6 +34,21 @@ export default function ProductsPage() {
   const [deleteError, setDeleteError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Show mobile view on small screens
+  if (isMobile) {
+    return <MobileProductsPage />;
+  }
 
   // Fetch products from database
   const fetchProducts = async () => {

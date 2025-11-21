@@ -1,11 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { Upload, X, Plus, Trash2 } from "lucide-react";
 import * as Sentry from "@sentry/nextjs";
 import { captureImageUploadError, captureUploadSuccess } from "@/lib/sentry-utils";
+
+// Mobile component
+const MobileAdminUpload = dynamic(() => import("./mobile-upload"), { ssr: false });
 
 interface ProductForm {
   name: string;
@@ -24,6 +28,7 @@ interface ProductForm {
 }
 
 export default function AdminDashboard() {
+  const [isMobile, setIsMobile] = useState(false);
   const [form, setForm] = useState<ProductForm>({
     name: "",
     description: "",
@@ -44,6 +49,21 @@ export default function AdminDashboard() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
   const [uploadProgress, setUploadProgress] = useState<string>("");
+
+  // Detect mobile device
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Show mobile view on small screens
+  if (isMobile) {
+    return <MobileAdminUpload />;
+  }
 
   // Simple image resize without canvas (avoids MIME type issues on mobile)
   const resizeImage = (base64: string, maxWidth: number = 800, maxHeight: number = 800): string => {
