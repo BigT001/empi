@@ -289,27 +289,58 @@ export default function AdminDashboard() {
       for (let i = 0; i < form.imagePreviews.length; i++) {
         setUploadProgress(`Uploading image ${i + 1}/${form.imagePreviews.length} to cloud...`);
         
-        const uploadResponse = await fetch("/api/cloudinary/upload", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageData: form.imagePreviews[i],
-            fileName: form.imageFiles[i]?.name || `image-${i + 1}`,
-          }),
-        });
+        try {
+          // Create abort controller for this specific upload with 120 second timeout
+          const uploadController = new AbortController();
+          const uploadTimeoutId = setTimeout(() => uploadController.abort(), 120000);
 
-        if (!uploadResponse.ok) {
-          const error = await uploadResponse.json();
-          throw new Error(`Failed to upload image ${i + 1}: ${error.details || error.error}`);
+          const uploadResponse = await fetch("/api/cloudinary/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              imageData: form.imagePreviews[i],
+              fileName: form.imageFiles[i]?.name || `image-${i + 1}`,
+            }),
+            signal: uploadController.signal,
+          });
+
+          clearTimeout(uploadTimeoutId);
+
+          if (!uploadResponse.ok) {
+            const error = await uploadResponse.json();
+            console.error(`❌ Cloudinary API error for image ${i + 1}:`, error);
+            throw new Error(`Failed to upload image ${i + 1}: ${error.error || error.details || 'Unknown error'}`);
+          }
+
+          const uploadData = await uploadResponse.json();
+          if (!uploadData.url) {
+            console.error(`❌ No URL in response for image ${i + 1}`);
+            throw new Error(`No URL returned for image ${i + 1}`);
+          }
+
+          cloudinaryUrls.push(uploadData.url);
+          console.log(`✅ Image ${i + 1} uploaded: ${uploadData.url}`);
+        } catch (uploadError) {
+          const errorMsg = uploadError instanceof Error ? uploadError.message : 'Unknown error';
+          console.error(`❌ Error uploading image ${i + 1}:`, errorMsg);
+          
+          // Capture upload error for debugging
+          Sentry.captureException(uploadError, {
+            tags: {
+              component: 'product-upload',
+              stage: 'cloudinary-upload',
+              image_index: i + 1,
+            },
+            contexts: {
+              image: {
+                fileName: form.imageFiles[i]?.name || `image-${i + 1}`,
+                size: form.imageFiles[i]?.size || 0,
+              },
+            },
+          });
+
+          throw uploadError;
         }
-
-        const uploadData = await uploadResponse.json();
-        if (!uploadData.url) {
-          throw new Error(`No URL returned for image ${i + 1}`);
-        }
-
-        cloudinaryUrls.push(uploadData.url);
-        console.log(`✅ Image ${i + 1} uploaded: ${uploadData.url}`);
       }
 
       // Step 2: Create product with Cloudinary URLs (not base64)
