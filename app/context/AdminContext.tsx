@@ -15,7 +15,7 @@ interface AdminContextType {
   admin: AdminProfile | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
 }
 
@@ -27,18 +27,23 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
 
   // Check if admin is already logged in
   useEffect(() => {
+    console.log('[AdminContext] Mounting - checking auth on load');
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
+    console.log('[AdminContext] checkAuth() called');
     try {
       const response = await fetch('/api/admin/me', {
         method: 'GET',
         credentials: 'include',
       });
 
+      console.log('[AdminContext] checkAuth response status:', response.status);
+      
       if (response.ok) {
         const data = await response.json();
+        console.log('[AdminContext] ✅ Admin authenticated:', data.email);
         setAdmin({
           id: data._id || data.id,
           email: data.email,
@@ -49,13 +54,14 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         });
       } else if (response.status === 401) {
         // Session expired or invalid
-        console.log('Admin session expired or invalid');
+        console.log('[AdminContext] ❌ Admin session expired or invalid (401)');
         setAdmin(null);
       } else {
+        console.log('[AdminContext] ❌ Auth check failed with status:', response.status);
         setAdmin(null);
       }
     } catch (error) {
-      console.error('Auth check failed:', error);
+      console.error('[AdminContext] Auth check error:', error);
       setAdmin(null);
     } finally {
       setIsLoading(false);
@@ -63,6 +69,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   };
 
   const login = async (email: string, password: string) => {
+    console.log('[AdminContext] login() called for:', email);
     setIsLoading(true);
     try {
       const response = await fetch('/api/admin/login', {
@@ -72,12 +79,15 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         credentials: 'include',
       });
 
+      console.log('[AdminContext] login response status:', response.status);
+
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.error || 'Login failed');
       }
 
       const data = await response.json();
+      console.log('[AdminContext] ✅ Login successful for:', data.email);
       setAdmin({
         id: data._id || data.id,
         email: data.email,
@@ -86,28 +96,40 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         permissions: data.permissions,
         lastLogin: data.lastLogin,
       });
+    } catch (error) {
+      console.error('[AdminContext] Login error:', error);
     } finally {
       setIsLoading(false);
     }
   };
 
   const logout = async () => {
+    // Clear state immediately first
+    console.log('[AdminContext] logout() called');
+    console.log('[AdminContext] Current admin state before logout:', admin?.email || 'null');
+    
+    setAdmin(null);
+    console.log('[AdminContext] ✅ Admin state cleared to null');
+    setIsLoading(true);
+    
     try {
       const response = await fetch('/api/admin/logout', {
         method: 'POST',
         credentials: 'include',
       });
       
+      console.log('[AdminContext] logout API response status:', response.status);
+      
       if (!response.ok) {
-        console.error('Logout API failed:', response.status);
+        console.error('[AdminContext] Logout API failed:', response.status);
+      } else {
+        console.log('[AdminContext] ✅ Logout API successful - session cleared on server');
       }
     } catch (error) {
-      console.error('Logout error:', error);
+      console.error('[AdminContext] Logout error:', error);
     } finally {
-      // Always clear state immediately
-      console.log('Clearing admin state');
-      setAdmin(null);
       setIsLoading(false);
+      console.log('[AdminContext] logout() completed');
     }
   };
 

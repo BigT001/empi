@@ -34,6 +34,9 @@ interface ProductForm {
 export default function AdminDashboard() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const router = useRouter();
+  const { admin, isLoading } = useAdmin();
+  
   const [form, setForm] = useState<ProductForm>({
     name: "",
     description: "",
@@ -55,6 +58,15 @@ export default function AdminDashboard() {
   const [submitMessage, setSubmitMessage] = useState("");
   const [uploadProgress, setUploadProgress] = useState<string>("");
 
+  // Check authentication
+  useEffect(() => {
+    console.log('[AdminDashboard] useEffect running - isLoading:', isLoading, 'admin:', admin?.email || 'null');
+    if (!isLoading && !admin) {
+      console.log('[AdminDashboard] 🔐 Admin not authenticated, redirecting to login');
+      router.push('/admin/login');
+    }
+  }, [admin, isLoading, router]);
+
   // Detect mobile device
   useEffect(() => {
     setIsMounted(true);
@@ -66,11 +78,12 @@ export default function AdminDashboard() {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
-  // Show mobile view on small screens
-  if (!isMounted) {
+  // Show loading or redirect state
+  if (!isMounted || isLoading || !admin) {
     return null;
   }
 
+  // Show mobile view on small screens
   if (isMobile) {
     return (
       <MobileAdminLayout>

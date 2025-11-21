@@ -27,9 +27,9 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   // Log admin state changes for debugging
   useEffect(() => {
     if (admin) {
-      console.log('Admin logged in:', admin.email);
+      console.log('[Navigation] Admin logged in:', admin.email);
     } else {
-      console.log('Admin logged out');
+      console.log('[Navigation] Admin logged out - admin state is null');
     }
   }, [admin]);
 
@@ -163,12 +163,12 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         <button className="hidden p-2 text-gray-700 hover:text-lime-600 hover:bg-gray-100 rounded-lg transition md:flex">
           <Heart className="h-5 w-5" />
         </button>
-        {admin && (
+        {admin ? (
           <Link href="/admin" className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:border-lime-600 hover:text-lime-600 font-semibold transition">
             <Settings className="h-4 w-4" />
             <span className="text-sm">Admin</span>
           </Link>
-        )}
+        ) : null}
 
         {/* Account Menu - Only show if logged in */}
         {buyer && (

@@ -72,9 +72,12 @@ export function AdminSidebar() {
   };
 
   const handleLogout = async () => {
+    console.log('[AdminSidebar] handleLogout() called');
     await logout();
+    console.log('[AdminSidebar] logout() promise resolved, waiting 300ms before redirect');
     // Delay to ensure state update and re-renders propagate through React
     setTimeout(() => {
+      console.log('[AdminSidebar] 300ms elapsed, redirecting to /admin/login');
       router.push('/admin/login');
     }, 300);
   };
