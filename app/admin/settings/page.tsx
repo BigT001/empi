@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import dynamic from "next/dynamic";
-import { Save, Bell, Lock, User } from "lucide-react";
+import { useAdmin } from "@/app/context/AdminContext";
+import { Save, Bell, Lock, User, Shield, Users } from "lucide-react";
 
 // Mobile components
 const MobileSettingsPage = dynamic(() => import("../mobile-settings"), { ssr: false });
 import MobileAdminLayout from "../mobile-layout";
 
 export default function SettingsPage() {
+  const { admin } = useAdmin();
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
@@ -200,12 +203,24 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-4">
-              <button className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 font-semibold hover:bg-gray-50 transition">
+              <Link
+                href="/admin/settings/change-password"
+                className="block w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 font-semibold hover:bg-gray-50 transition text-center"
+              >
                 Change Password
-              </button>
-              <button className="w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 font-semibold hover:bg-gray-50 transition">
-                Two-Factor Authentication
-              </button>
+              </Link>
+              {admin?.role === 'super_admin' && (
+                <Link
+                  href="/admin/settings/manage-admins"
+                  className="flex items-center justify-between w-full px-4 py-3 border border-gray-300 rounded-lg text-gray-900 font-semibold hover:bg-gray-50 transition"
+                >
+                  <span className="flex items-center gap-2">
+                    <Users className="h-5 w-5" />
+                    Manage Admin Users
+                  </span>
+                  <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Super Admin</span>
+                </Link>
+              )}
             </div>
           </div>
 

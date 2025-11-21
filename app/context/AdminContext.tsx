@@ -96,7 +96,12 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      // Clear admin state regardless of API response
       setAdmin(null);
+      // Force page reload to ensure all state is cleared
+      if (typeof window !== 'undefined') {
+        window.location.href = '/admin/login';
+      }
     }
   };
 
