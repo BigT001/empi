@@ -282,8 +282,38 @@ export default function AdminDashboard() {
     setUploadProgress("Preparing upload...");
 
     try {
-      // Convert first image to base64 as main image
-      const mainImage = form.imagePreviews[0];
+      // Step 1: Upload all images to Cloudinary first
+      console.log(`📤 Uploading ${form.imagePreviews.length} images to Cloudinary...`);
+      const cloudinaryUrls: string[] = [];
+      
+      for (let i = 0; i < form.imagePreviews.length; i++) {
+        setUploadProgress(`Uploading image ${i + 1}/${form.imagePreviews.length} to cloud...`);
+        
+        const uploadResponse = await fetch("/api/cloudinary/upload", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            imageData: form.imagePreviews[i],
+            fileName: form.imageFiles[i]?.name || `image-${i + 1}`,
+          }),
+        });
+
+        if (!uploadResponse.ok) {
+          const error = await uploadResponse.json();
+          throw new Error(`Failed to upload image ${i + 1}: ${error.details || error.error}`);
+        }
+
+        const uploadData = await uploadResponse.json();
+        if (!uploadData.url) {
+          throw new Error(`No URL returned for image ${i + 1}`);
+        }
+
+        cloudinaryUrls.push(uploadData.url);
+        console.log(`✅ Image ${i + 1} uploaded: ${uploadData.url}`);
+      }
+
+      // Step 2: Create product with Cloudinary URLs (not base64)
+      const mainImage = cloudinaryUrls[0];
       
       const payload = {
         name: form.name,
@@ -293,7 +323,7 @@ export default function AdminDashboard() {
         category: form.category,
         badge: form.badge || null,
         imageUrl: mainImage,
-        imageUrls: form.imagePreviews,
+        imageUrls: cloudinaryUrls,
         sizes: form.sizes,
         color: form.color,
         material: form.material,
@@ -301,12 +331,12 @@ export default function AdminDashboard() {
         careInstructions: form.careInstructions,
       };
 
-      console.log("📤 Submitting product:", { name: form.name, imageCount: form.imageFiles.length });
-      setUploadProgress("Uploading product (please wait)...");
+      console.log("📤 Submitting product:", { name: form.name, imageCount: cloudinaryUrls.length });
+      setUploadProgress("Creating product record...");
 
-      // Add timeout for mobile networks (30 seconds should be enough)
+      // Add timeout for mobile networks (60 seconds for full upload + product creation)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const timeoutId = setTimeout(() => controller.abort(), 60000);
 
       const response = await fetch("/api/products", {
         method: "POST",
