@@ -9,6 +9,7 @@ import * as Sentry from "@sentry/nextjs";
 import { captureImageUploadError, captureUploadSuccess } from "@/lib/sentry-utils";
 
 // Mobile component
+const MobileAdminDashboard = dynamic(() => import("./mobile-dashboard"), { ssr: false });
 const MobileAdminUpload = dynamic(() => import("./mobile-upload"), { ssr: false });
 
 interface ProductForm {
@@ -62,7 +63,7 @@ export default function AdminDashboard() {
 
   // Show mobile view on small screens
   if (isMobile) {
-    return <MobileAdminUpload />;
+    return <MobileAdminDashboard />;
   }
 
   // Simple image resize without canvas (avoids MIME type issues on mobile)

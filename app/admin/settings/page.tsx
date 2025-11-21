@@ -4,8 +4,9 @@ import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
 import { Save, Bell, Lock, User } from "lucide-react";
 
-// Mobile component
+// Mobile components
 const MobileSettingsPage = dynamic(() => import("../mobile-settings"), { ssr: false });
+const MobileAdminLayout = dynamic(() => import("../mobile-layout"), { ssr: false });
 
 export default function SettingsPage() {
   const [isMobile, setIsMobile] = useState(false);
@@ -22,7 +23,11 @@ export default function SettingsPage() {
 
   // Show mobile view on small screens
   if (isMobile) {
-    return <MobileSettingsPage />;
+    return (
+      <MobileAdminLayout>
+        <MobileSettingsPage />
+      </MobileAdminLayout>
+    );
   }
 
   const [settings, setSettings] = useState({

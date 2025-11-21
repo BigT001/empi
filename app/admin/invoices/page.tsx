@@ -9,8 +9,9 @@ import { Footer } from "../../components/Footer";
 import { getAdminInvoices, deleteAdminInvoice, clearAdminInvoices, StoredInvoice } from "@/lib/invoiceStorage";
 import { Trash2, Eye } from "lucide-react";
 
-// Mobile component
+// Mobile components
 const MobileInvoicesPage = dynamic(() => import("../mobile-invoices"), { ssr: false });
+const MobileAdminLayout = dynamic(() => import("../mobile-layout"), { ssr: false });
 
 export default function AdminInvoicesPage() {
   const [isMobile, setIsMobile] = useState(false);
@@ -30,7 +31,11 @@ export default function AdminInvoicesPage() {
 
   // Show mobile view on small screens
   if (isMobile) {
-    return <MobileInvoicesPage />;
+    return (
+      <MobileAdminLayout>
+        <MobileInvoicesPage />
+      </MobileAdminLayout>
+    );
   }
 
   useEffect(() => {

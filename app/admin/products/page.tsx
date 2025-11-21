@@ -5,8 +5,9 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { Trash2, AlertCircle, ChevronDown } from 'lucide-react';
 
-// Mobile component
+// Mobile components
 const MobileProductsPage = dynamic(() => import("../mobile-products"), { ssr: false });
+const MobileAdminLayout = dynamic(() => import("../mobile-layout"), { ssr: false });
 
 interface Product {
   _id: string;
@@ -47,7 +48,11 @@ export default function ProductsPage() {
 
   // Show mobile view on small screens
   if (isMobile) {
-    return <MobileProductsPage />;
+    return (
+      <MobileAdminLayout>
+        <MobileProductsPage />
+      </MobileAdminLayout>
+    );
   }
 
   // Fetch products from database

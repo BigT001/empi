@@ -15,8 +15,14 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   {
+    name: "Dashboard",
+    href: "/admin/dashboard",
+    icon: <Home className="h-6 w-6" />,
+    label: "Overview",
+  },
+  {
     name: "Upload",
-    href: "/admin",
+    href: "/admin/upload",
     icon: <Plus className="h-6 w-6" />,
     label: "Add Product",
   },
@@ -59,10 +65,13 @@ export default function MobileAdminLayout({
   }, []);
 
   const isActive = (href: string) => {
-    if (href === "/admin") {
-      return pathname === "/admin";
+    if (href === "/admin/dashboard") {
+      return pathname === "/admin/dashboard" || pathname === "/admin";
     }
-    return pathname.startsWith(href);
+    if (href === "/admin/upload") {
+      return pathname === "/admin/upload" || pathname === "/admin";
+    }
+    return pathname.startsWith(href) && href !== "/admin/dashboard";
   };
 
   if (!isMounted) return null;
