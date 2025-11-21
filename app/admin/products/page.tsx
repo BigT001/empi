@@ -28,6 +28,7 @@ interface Product {
 
 export default function ProductsPage() {
   const [isMobile, setIsMobile] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,6 +39,7 @@ export default function ProductsPage() {
 
   // Detect mobile device
   useEffect(() => {
+    setIsMounted(true);
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
@@ -47,6 +49,10 @@ export default function ProductsPage() {
   }, []);
 
   // Show mobile view on small screens
+  if (!isMounted) {
+    return null;
+  }
+
   if (isMobile) {
     return (
       <MobileAdminLayout>

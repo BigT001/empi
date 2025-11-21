@@ -15,12 +15,14 @@ import MobileAdminLayout from "../mobile-layout";
 
 export default function AdminInvoicesPage() {
   const [isMobile, setIsMobile] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [currency, setCurrency] = useState("NGN");
   const [category, setCategory] = useState("adults");
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
@@ -30,6 +32,10 @@ export default function AdminInvoicesPage() {
   }, []);
 
   // Show mobile view on small screens
+  if (!isMounted) {
+    return null;
+  }
+
   if (isMobile) {
     return (
       <MobileAdminLayout>

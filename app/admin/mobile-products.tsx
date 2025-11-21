@@ -35,11 +35,13 @@ export default function MobileProductsPage() {
       setIsLoading(true);
       setError("");
 
-      const response = await fetch("/api/products?limit=100");
+      const response = await fetch("/api/products");
       if (!response.ok) throw new Error("Failed to fetch products");
 
       const data = await response.json();
-      setProducts(data.products || []);
+      // Handle both response formats: direct array and { products: [] }
+      const productList = Array.isArray(data) ? data : (data.products || []);
+      setProducts(productList);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error loading products";
       setError(message);

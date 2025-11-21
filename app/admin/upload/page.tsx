@@ -7,8 +7,10 @@ import MobileAdminLayout from "../mobile-layout";
 
 export default function AdminUploadPage() {
   const [isMobile, setIsMobile] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    setIsMounted(true);
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
@@ -16,6 +18,10 @@ export default function AdminUploadPage() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  if (!isMounted) {
+    return null;
+  }
 
   if (!isMobile) {
     return null;

@@ -11,9 +11,11 @@ import MobileAdminLayout from "../mobile-layout";
 
 export default function FinancePage() {
   const [isMobile, setIsMobile] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
 
   // Detect mobile device
   useEffect(() => {
+    setIsMounted(true);
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
@@ -23,6 +25,10 @@ export default function FinancePage() {
   }, []);
 
   // Show mobile view on small screens
+  if (!isMounted) {
+    return null;
+  }
+
   if (isMobile) {
     return (
       <MobileAdminLayout>

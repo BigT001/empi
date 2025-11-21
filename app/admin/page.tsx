@@ -31,6 +31,7 @@ interface ProductForm {
 
 export default function AdminDashboard() {
   const [isMobile, setIsMobile] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [form, setForm] = useState<ProductForm>({
     name: "",
     description: "",
@@ -54,6 +55,7 @@ export default function AdminDashboard() {
 
   // Detect mobile device
   useEffect(() => {
+    setIsMounted(true);
     const checkMobile = () => {
       setIsMobile(window.innerWidth < 768);
     };
@@ -63,6 +65,10 @@ export default function AdminDashboard() {
   }, []);
 
   // Show mobile view on small screens
+  if (!isMounted) {
+    return null;
+  }
+
   if (isMobile) {
     return (
       <MobileAdminLayout>
