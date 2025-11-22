@@ -6,11 +6,12 @@ import { serializeDoc } from "@/lib/serializer";
 // Get single invoice
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const invoice = await Invoice.findById(params.id);
+    const { id } = await params;
+    const invoice = await Invoice.findById(id);
 
     if (!invoice) {
       return NextResponse.json(
@@ -32,14 +33,15 @@ export async function GET(
 // Update invoice
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
+    const { id } = await params;
     const body = await request.json();
 
     const updatedInvoice = await Invoice.findByIdAndUpdate(
-      params.id,
+      id,
       {
         ...body,
         updatedAt: new Date(),
@@ -76,11 +78,12 @@ export async function PUT(
 // Delete invoice
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     await connectDB();
-    const invoice = await Invoice.findByIdAndDelete(params.id);
+    const { id } = await params;
+    const invoice = await Invoice.findByIdAndDelete(id);
 
     if (!invoice) {
       return NextResponse.json(
