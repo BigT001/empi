@@ -37,6 +37,9 @@ const productSchema = new Schema<IProduct>(
   { timestamps: true }
 );
 
+// Indexes for faster queries
 productSchema.index({ category: 1 });
+productSchema.index({ createdAt: -1 });
+productSchema.index({ name: 'text' }); // text search index
 
 export default mongoose.models.Product || mongoose.model<IProduct>('Product', productSchema);

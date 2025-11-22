@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { Trash2, Edit2, X } from "lucide-react";
-import * as Sentry from "@sentry/nextjs";
+import { Trash2, Edit2, X, AlertCircle } from "lucide-react";
 
 interface Product {
   _id: string;
@@ -16,6 +15,9 @@ interface Product {
   category: string;
   badge?: string;
   condition: string;
+  color?: string;
+  material?: string;
+  sizes?: string;
 }
 
 export default function MobileProductsPage() {
@@ -25,6 +27,8 @@ export default function MobileProductsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deleteMessage, setDeleteMessage] = useState("");
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     loadProducts();
@@ -45,7 +49,7 @@ export default function MobileProductsPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error loading products";
       setError(message);
-      Sentry.captureException(err);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -70,9 +74,40 @@ export default function MobileProductsPage() {
       setTimeout(() => setDeleteMessage(""), 2000);
     } catch (err) {
       setDeleteMessage("❌ Delete failed");
-      Sentry.captureException(err);
+      console.error(err);
     } finally {
       setDeletingId(null);
+    }
+  };
+
+  const handleEditProduct = async (updatedProduct: Product) => {
+    setIsSaving(true);
+    try {
+      const response = await fetch(`/api/products/${updatedProduct._id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProduct),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update product");
+      }
+
+      const updated = await response.json();
+      setProducts((prev) =>
+        prev.map((p) => (p._id === updated._id ? updated : p))
+      );
+      setEditingProduct(null);
+      setSelectedProduct(updated);
+      setDeleteMessage("✅ Product updated successfully");
+      setTimeout(() => setDeleteMessage(""), 2000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to update product";
+      setDeleteMessage(`❌ ${message}`);
+      console.error(err);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -197,6 +232,7 @@ export default function MobileProductsPage() {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    setEditingProduct(product);
                   }}
                   className="flex-1 py-2 px-3 bg-lime-50 hover:bg-lime-100 text-lime-600 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2"
                 >
@@ -298,6 +334,13 @@ export default function MobileProductsPage() {
                   Delete
                 </button>
                 <button
+                  onClick={() => setEditingProduct(selectedProduct)}
+                  className="flex-1 py-4 px-4 bg-lime-500 hover:bg-lime-600 text-white rounded-xl font-bold text-lg transition flex items-center justify-center gap-2"
+                >
+                  <Edit2 className="h-5 w-5" />
+                  Edit
+                </button>
+                <button
                   onClick={() => setSelectedProduct(null)}
                   className="flex-1 py-4 px-4 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-xl font-bold text-lg transition"
                 >
@@ -305,6 +348,194 @@ export default function MobileProductsPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Product Modal */}
+      {editingProduct && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-2xl w-full my-8">
+            {/* Header */}
+            <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white">
+              <h2 className="text-2xl font-bold text-gray-900">Edit Product</h2>
+              <button
+                onClick={() => setEditingProduct(null)}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
+              >
+                <X className="h-6 w-6 text-gray-600" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (editingProduct) {
+                  handleEditProduct(editingProduct);
+                }
+              }}
+              className="p-6 space-y-6 overflow-y-auto max-h-[calc(100vh-200px)]"
+            >
+              {/* Product Image Preview */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-3">Product Image</label>
+                <div className="relative w-full h-64 bg-gray-100 rounded-xl overflow-hidden border-2 border-gray-200">
+                  <Image
+                    src={editingProduct.imageUrl}
+                    alt={editingProduct.name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              </div>
+
+              {/* Product Name */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Product Name *</label>
+                <input
+                  type="text"
+                  value={editingProduct.name}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, name: e.target.value })
+                  }
+                  placeholder="Enter product name"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                />
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Description *</label>
+                <textarea
+                  value={editingProduct.description}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, description: e.target.value })
+                  }
+                  placeholder="Enter product description"
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                />
+              </div>
+
+              {/* Prices */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Sell Price (₦) *</label>
+                  <input
+                    type="number"
+                    value={editingProduct.sellPrice}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        sellPrice: parseFloat(e.target.value),
+                      })
+                    }
+                    placeholder="0"
+                    step="0.01"
+                    min="0"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2">Rent Price (₦/day) *</label>
+                  <input
+                    type="number"
+                    value={editingProduct.rentPrice}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        rentPrice: parseFloat(e.target.value),
+                      })
+                    }
+                    placeholder="0"
+                    step="0.01"
+                    min="0"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  />
+                </div>
+              </div>
+
+              {/* Condition */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Condition *</label>
+                <select
+                  value={editingProduct.condition || ""}
+                  onChange={(e) =>
+                    setEditingProduct({ ...editingProduct, condition: e.target.value })
+                  }
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                >
+                  <option value="">Select condition</option>
+                  <option value="New">New</option>
+                  <option value="Like New">Like New</option>
+                  <option value="Good">Good</option>
+                  <option value="Fair">Fair</option>
+                </select>
+              </div>
+
+              {/* Additional Details */}
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-4">Additional Details</label>
+                <div className="space-y-3">
+                  <input
+                    type="text"
+                    value={editingProduct.color || ""}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, color: e.target.value })
+                    }
+                    placeholder="Color (e.g., Red, Blue)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  />
+                  <input
+                    type="text"
+                    value={editingProduct.material || ""}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, material: e.target.value })
+                    }
+                    placeholder="Material (e.g., Cotton, Silk)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  />
+                  <input
+                    type="text"
+                    value={editingProduct.sizes || ""}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, sizes: e.target.value })
+                    }
+                    placeholder="Available Sizes (e.g., S, M, L, XL)"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  />
+                  <input
+                    type="text"
+                    value={editingProduct.badge || ""}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, badge: e.target.value })
+                    }
+                    placeholder="Badge (e.g., Sale, New) - Leave empty for none"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  />
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-6 border-t border-gray-200">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="flex-1 py-3 px-4 bg-lime-600 hover:bg-lime-700 text-white rounded-lg font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditingProduct(null)}
+                  disabled={isSaving}
+                  className="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-lg font-bold transition disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

@@ -44,7 +44,13 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isHydrated) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        // If cart is empty, remove the storage key entirely to avoid
+        // persisting an empty array string and to make clears deterministic.
+        if (!items || items.length === 0) {
+          localStorage.removeItem(STORAGE_KEY);
+        } else {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+        }
       } catch (error) {
         console.error("Failed to save cart to localStorage", error);
       }

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { TrendingUp, Users, Package, DollarSign } from "lucide-react";
-import * as Sentry from "@sentry/nextjs";
 
 interface FinanceStats {
   totalRevenue: number;
@@ -88,7 +87,7 @@ export default function MobileFinancePage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error loading finance data";
       setError(message);
-      Sentry.captureException(err);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }

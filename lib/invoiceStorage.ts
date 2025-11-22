@@ -4,7 +4,7 @@
 export interface StoredInvoice {
   id?: string;
   invoiceNumber: string;
-  orderNumber: string;
+  orderNumber?: string;
   invoiceDate: string;
   dueDate?: string;
   
@@ -22,11 +22,12 @@ export interface StoredInvoice {
   
   // Items
   items: Array<{
-    id: string;
+    id?: string;
     name: string;
     quantity: number;
     price: number;
     mode?: string;
+    productId?: string;
   }>;
   
   // Pricing
@@ -43,12 +44,17 @@ export interface StoredInvoice {
   
   currency?: string;
   currencySymbol?: string;
+  taxRate?: number;
   
   // Company info
   companyName?: string;
   companyAddress?: string;
   companyCity?: string;
   companyState?: string;
+  
+  // Invoice Type & Status
+  type?: 'automatic' | 'manual';
+  status?: 'draft' | 'sent' | 'paid' | 'overdue';
   
   // Metadata
   createdAt?: string;
@@ -186,7 +192,7 @@ export function searchInvoices(query: string, type: "buyer" | "admin" = "admin")
   
   return invoices.filter(inv =>
     inv.invoiceNumber.toLowerCase().includes(lower) ||
-    inv.orderNumber.toLowerCase().includes(lower) ||
+    (inv.orderNumber?.toLowerCase().includes(lower) || false) ||
     inv.customerName.toLowerCase().includes(lower) ||
     inv.customerEmail.toLowerCase().includes(lower)
   );

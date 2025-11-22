@@ -3,8 +3,6 @@
 import { useState } from "react";
 import Image from "next/image";
 import { Upload, X, Plus, Trash2, Check } from "lucide-react";
-import * as Sentry from "@sentry/nextjs";
-import { captureImageUploadError, captureUploadSuccess } from "@/lib/sentry-utils";
 
 interface ProductForm {
   name: string;
@@ -61,12 +59,7 @@ export default function MobileAdminUpload() {
 
         if (!file.type.startsWith("image/")) {
           const error = new Error(`File ${i + 1} is not a valid image`);
-          captureImageUploadError(error, {
-            fileName: file.name,
-            fileSize: file.size,
-            fileType: file.type,
-            step: "validation",
-          });
+          console.error(error);
           throw error;
         }
 
@@ -107,7 +100,7 @@ export default function MobileAdminUpload() {
 
     setUploadProgress("");
     if (results.length > 0) {
-      captureUploadSuccess(results.length, totalSize);
+      console.log(`Successfully processed ${results.length} images`);
     }
     return results;
   };
@@ -152,13 +145,6 @@ export default function MobileAdminUpload() {
       const errorMsg = err instanceof Error ? err.message : "Unknown error";
       setSubmitMessage(`❌ Error: ${errorMsg}`);
       setUploadProgress("");
-
-      Sentry.captureException(err, {
-        tags: {
-          component: "product-upload",
-          stage: "image-selection",
-        },
-      });
     } finally {
       try {
         e.currentTarget.value = "";

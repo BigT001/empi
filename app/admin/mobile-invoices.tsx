@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { Download, Eye, Filter } from "lucide-react";
-import * as Sentry from "@sentry/nextjs";
+import { AutomaticInvoiceGenerator } from "./invoices/AutomaticInvoiceGenerator";
+import { ManualInvoiceGenerator } from "./invoices/ManualInvoiceGenerator";
+import { SavedInvoices } from "./invoices/SavedInvoices";
 
 interface Invoice {
   _id: string;
@@ -22,6 +25,7 @@ export default function MobileInvoicesPage() {
   const [error, setError] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "paid" | "pending" | "overdue">("all");
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [activeTab, setActiveTab] = useState<"automatic" | "manual" | "saved">("automatic");
 
   useEffect(() => {
     loadInvoices();
@@ -40,7 +44,7 @@ export default function MobileInvoicesPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error loading invoices";
       setError(message);
-      Sentry.captureException(err);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -103,7 +107,7 @@ export default function MobileInvoicesPage() {
       URL.revokeObjectURL(url);
     } catch (err) {
       alert("Failed to download invoice");
-      Sentry.captureException(err);
+      console.error(err);
     }
   };
 
@@ -135,212 +139,52 @@ export default function MobileInvoicesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-6">
       {/* Header */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-4">
-        <h1 className="text-xl font-bold text-gray-900">📑 Invoices ({invoices.length})</h1>
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-4 shadow-sm">
+        <h1 className="text-2xl font-bold text-gray-900">Invoice Management</h1>
       </div>
 
-      {/* Filter Tabs */}
-      <div className="sticky top-12 z-20 bg-white border-b border-gray-200 px-4 overflow-x-auto flex gap-2 py-3">
-        {(["all", "paid", "pending", "overdue"] as const).map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-4 py-2 rounded-full font-semibold text-sm transition whitespace-nowrap ${
-              filterStatus === status
-                ? "bg-lime-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-            }`}
-          >
-            {status === "all" ? "All" : status.charAt(0).toUpperCase() + status.slice(1)}
-            {status === "all"
-              ? ` (${invoices.length})`
-              : ` (${invoices.filter((inv) => inv.status === status).length})`}
-          </button>
-        ))}
+      {/* Tab Navigation */}
+      <div className="sticky top-16 z-20 bg-white border-b border-gray-200 px-3 overflow-x-auto flex gap-1 py-2">
+        <button
+          onClick={() => setActiveTab("automatic")}
+          className={`px-4 py-2 font-semibold text-sm transition whitespace-nowrap rounded-t-lg ${
+            activeTab === "automatic"
+              ? "border-b-2 border-lime-600 text-lime-600 bg-lime-50"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Automatic
+        </button>
+        <button
+          onClick={() => setActiveTab("manual")}
+          className={`px-4 py-2 font-semibold text-sm transition whitespace-nowrap rounded-t-lg ${
+            activeTab === "manual"
+              ? "border-b-2 border-blue-600 text-blue-600 bg-blue-50"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Manual
+        </button>
+        <button
+          onClick={() => setActiveTab("saved")}
+          className={`px-4 py-2 font-semibold text-sm transition whitespace-nowrap rounded-t-lg ${
+            activeTab === "saved"
+              ? "border-b-2 border-purple-600 text-purple-600 bg-purple-50"
+              : "text-gray-600 hover:text-gray-900"
+          }`}
+        >
+          Saved (DB)
+        </button>
       </div>
 
-      {/* Invoices List */}
-      <div className="px-4 py-4 space-y-3">
-        {filteredInvoices.length > 0 ? (
-          filteredInvoices.map((invoice) => (
-            <div
-              key={invoice._id}
-              className="bg-white rounded-2xl border border-gray-200 overflow-hidden hover:shadow-md transition cursor-pointer"
-              onClick={() => setSelectedInvoice(invoice)}
-            >
-              <div className="p-4">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <p className="font-bold text-gray-900 text-lg">
-                      Invoice #{invoice.invoiceNumber}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">{formatDate(invoice.createdAt)}</p>
-                  </div>
-                  <div
-                    className={`px-3 py-1 rounded-full text-xs font-bold border ${getStatusColor(
-                      invoice.status
-                    )}`}
-                  >
-                    {getStatusIcon(invoice.status)} {invoice.status.toUpperCase()}
-                  </div>
-                </div>
-
-                {/* Customer Info */}
-                <div className="bg-gray-50 p-3 rounded-lg mb-3">
-                  <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-1">
-                    Customer
-                  </p>
-                  <p className="font-semibold text-gray-900">{invoice.customerName}</p>
-                  <p className="text-xs text-gray-600">{invoice.customerEmail}</p>
-                </div>
-
-                {/* Amount */}
-                <div className="bg-lime-50 p-3 rounded-lg mb-3 border border-lime-200">
-                  <p className="text-xs text-gray-600 font-semibold uppercase tracking-wider mb-1">
-                    Total Amount
-                  </p>
-                  <p className="text-2xl font-black text-lime-600">{formatNaira(invoice.totalAmount)}</p>
-                </div>
-
-                {/* Dates */}
-                <div className="grid grid-cols-2 gap-3 mb-4 text-xs">
-                  <div>
-                    <p className="text-gray-600 font-semibold mb-1">Created</p>
-                    <p className="text-gray-900 font-bold">{formatDate(invoice.createdAt)}</p>
-                  </div>
-                  <div>
-                    <p className="text-gray-600 font-semibold mb-1">Due Date</p>
-                    <p className="text-gray-900 font-bold">{formatDate(invoice.dueDate)}</p>
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2 pt-3 border-t border-gray-200">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedInvoice(invoice);
-                    }}
-                    className="flex-1 py-2 px-3 bg-lime-50 hover:bg-lime-100 text-lime-600 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2"
-                  >
-                    <Eye className="h-4 w-4" />
-                    View
-                  </button>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      downloadInvoice(invoice._id);
-                    }}
-                    className="flex-1 py-2 px-3 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg font-semibold text-sm transition flex items-center justify-center gap-2"
-                  >
-                    <Download className="h-4 w-4" />
-                    Download
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
-        ) : (
-          <div className="bg-white rounded-2xl p-8 border border-gray-200 text-center">
-            <p className="text-gray-500 font-semibold">📭 No invoices</p>
-            <p className="text-xs text-gray-400 mt-2">Invoices will appear here once orders are processed</p>
-          </div>
-        )}
+      {/* Tab Content */}
+      <div className="px-4 py-4">
+        {activeTab === "automatic" && <AutomaticInvoiceGenerator />}
+        {activeTab === "manual" && <ManualInvoiceGenerator />}
+        {activeTab === "saved" && <SavedInvoices />}
       </div>
-
-      {/* Invoice Detail Modal */}
-      {selectedInvoice && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="w-full bg-white rounded-t-3xl overflow-hidden max-h-[90vh] overflow-y-auto">
-            {/* Header */}
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center">
-              <h2 className="font-bold text-lg">Invoice Details</h2>
-              <button
-                onClick={() => setSelectedInvoice(null)}
-                className="text-gray-500 hover:text-gray-700 font-bold text-xl"
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-6 space-y-4">
-              {/* Invoice Header */}
-              <div className="border-b border-gray-200 pb-4">
-                <p className="text-2xl font-black text-gray-900 mb-1">
-                  Invoice #{selectedInvoice.invoiceNumber}
-                </p>
-                <p className="text-sm text-gray-600">{formatDate(selectedInvoice.createdAt)}</p>
-              </div>
-
-              {/* Status */}
-              <div
-                className={`px-4 py-3 rounded-xl font-bold text-center border ${getStatusColor(
-                  selectedInvoice.status
-                )}`}
-              >
-                {getStatusIcon(selectedInvoice.status)} {selectedInvoice.status.toUpperCase()}
-              </div>
-
-              {/* Customer */}
-              <div className="bg-gray-50 p-4 rounded-xl">
-                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
-                  Bill To
-                </p>
-                <p className="font-bold text-gray-900 text-lg">{selectedInvoice.customerName}</p>
-                <p className="text-sm text-gray-600">{selectedInvoice.customerEmail}</p>
-              </div>
-
-              {/* Amount */}
-              <div className="bg-lime-50 p-4 rounded-xl border border-lime-200">
-                <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-2">
-                  Total Amount Due
-                </p>
-                <p className="text-4xl font-black text-lime-600">{formatNaira(selectedInvoice.totalAmount)}</p>
-              </div>
-
-              {/* Dates */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">
-                    Issue Date
-                  </p>
-                  <p className="font-bold text-gray-900">{formatDate(selectedInvoice.createdAt)}</p>
-                </div>
-                <div className="bg-gray-50 p-4 rounded-xl">
-                  <p className="text-xs font-bold text-gray-600 uppercase tracking-wider mb-1">
-                    Due Date
-                  </p>
-                  <p className="font-bold text-gray-900">{formatDate(selectedInvoice.dueDate)}</p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-3 pt-4 border-t border-gray-200">
-                <button
-                  onClick={() => {
-                    downloadInvoice(selectedInvoice._id);
-                    setSelectedInvoice(null);
-                  }}
-                  className="flex-1 py-4 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition flex items-center justify-center gap-2"
-                >
-                  <Download className="h-5 w-5" />
-                  Download PDF
-                </button>
-                <button
-                  onClick={() => setSelectedInvoice(null)}
-                  className="flex-1 py-4 px-4 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-xl font-bold transition"
-                >
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

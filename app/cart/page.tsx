@@ -11,7 +11,27 @@ import { useBuyer } from "../context/BuyerContext";
 import { AuthForm } from "../components/AuthForm";
 import { useState, useEffect } from "react";
 import { CURRENCY_RATES } from "../components/constants";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft } from "lucide-react";
+import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Truck, MapPin } from "lucide-react";
+
+// Shipping options
+const SHIPPING_OPTIONS = {
+  empi: {
+    id: "empi",
+    name: "EMPI Delivery",
+    description: "We handle delivery to your doorstep",
+    cost: 2500,
+    estimatedDays: "2-5 business days",
+    icon: Truck,
+  },
+  self: {
+    id: "self",
+    name: "Self Pickup",
+    description: "You pick up from our warehouse (Suru Lere, Lagos)",
+    cost: 0,
+    estimatedDays: "Ready within 24 hours",
+    icon: MapPin,
+  },
+};
 
 // Shipping zones with detailed states and pricing
 const SHIPPING_ZONES = {
@@ -91,11 +111,30 @@ export default function CartPage() {
   const [category, setCategory] = useState("adults");
   const [isHydrated, setIsHydrated] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [shippingOption, setShippingOption] = useState<"empi" | "self">("empi");
 
-  // Handle hydration
+  // Handle hydration and load shipping preference
   useEffect(() => {
     setIsHydrated(true);
+    try {
+      const saved = localStorage.getItem("empi_shipping_option");
+      if (saved) {
+        setShippingOption(saved as "empi" | "self");
+      }
+    } catch (error) {
+      console.warn("Failed to load shipping option:", error);
+    }
   }, []);
+
+  // Save shipping option to localStorage
+  const handleShippingChange = (option: "empi" | "self") => {
+    setShippingOption(option);
+    try {
+      localStorage.setItem("empi_shipping_option", option);
+    } catch (error) {
+      console.warn("Failed to save shipping option:", error);
+    }
+  };
 
   const formatPrice = (price: number) => {
     const rate = CURRENCY_RATES[currency]?.rate || 1;
@@ -267,7 +306,7 @@ export default function CartPage() {
                   </div>
                   <div className="flex justify-between items-center text-sm">
                     <span className="text-gray-600">Shipping</span>
-                    <span className="font-semibold text-gray-600">Calculated at checkout</span>
+                    <span className="font-semibold text-lime-600">₦{SHIPPING_OPTIONS[shippingOption].cost.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between items-center text-sm text-gray-600">
                     <span className="flex items-center gap-1">
@@ -280,14 +319,73 @@ export default function CartPage() {
 
                 {/* Total */}
                 <div className="flex justify-between items-center mb-6 text-xl">
-                  <span className="font-semibold">Subtotal + Tax</span>
-                  <span className="font-bold text-lime-600">{formatPrice(subtotal + parseFloat(taxEstimate))}</span>
+                  <span className="font-semibold">Total</span>
+                  <span className="font-bold text-lime-600">{formatPrice(subtotal + parseFloat(taxEstimate) + SHIPPING_OPTIONS[shippingOption].cost)}</span>
+                </div>
+
+                {/* Shipping Options */}
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <p className="font-semibold text-blue-900 mb-4">Delivery Method</p>
+                  
+                  {/* EMPI Delivery Option */}
+                  <label className={`block p-4 rounded-lg border-2 mb-3 cursor-pointer transition ${
+                    shippingOption === "empi" 
+                      ? "border-lime-600 bg-lime-50" 
+                      : "border-gray-300 bg-white hover:border-gray-400"
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="shipping"
+                        value="empi"
+                        checked={shippingOption === "empi"}
+                        onChange={() => handleShippingChange("empi")}
+                        className="mt-1 w-4 h-4 accent-lime-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900 flex items-center gap-2">
+                          <Truck className="h-4 w-4 text-lime-600" />
+                          {SHIPPING_OPTIONS.empi.name}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">{SHIPPING_OPTIONS.empi.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">⏱️ {SHIPPING_OPTIONS.empi.estimatedDays}</p>
+                        <p className="text-sm font-semibold text-lime-600 mt-2">₦{SHIPPING_OPTIONS.empi.cost.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </label>
+                  
+                  {/* Self Pickup Option */}
+                  <label className={`block p-4 rounded-lg border-2 cursor-pointer transition ${
+                    shippingOption === "self" 
+                      ? "border-lime-600 bg-lime-50" 
+                      : "border-gray-300 bg-white hover:border-gray-400"
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      <input
+                        type="radio"
+                        name="shipping"
+                        value="self"
+                        checked={shippingOption === "self"}
+                        onChange={() => handleShippingChange("self")}
+                        className="mt-1 w-4 h-4 accent-lime-600"
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-gray-900 flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-blue-600" />
+                          {SHIPPING_OPTIONS.self.name}
+                        </div>
+                        <p className="text-sm text-gray-600 mt-1">{SHIPPING_OPTIONS.self.description}</p>
+                        <p className="text-xs text-gray-500 mt-1">⏱️ {SHIPPING_OPTIONS.self.estimatedDays}</p>
+                        <p className="text-sm font-semibold text-green-600 mt-2">FREE</p>
+                      </div>
+                    </div>
+                  </label>
                 </div>
 
                 {/* Information */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-sm text-blue-700">
-                  <p className="font-semibold mb-1">ℹ️ Final pricing</p>
-                  <p>Shipping and final taxes will be calculated at checkout based on your address.</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-700">
+                  <p className="font-semibold mb-1">📍 Selected: {SHIPPING_OPTIONS[shippingOption].name}</p>
+                  <p>Your shipping preference will be applied at checkout.</p>
                 </div>
 
                 {/* Checkout Button */}

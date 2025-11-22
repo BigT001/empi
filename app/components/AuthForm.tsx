@@ -50,7 +50,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
     setError("");
 
     try {
-      if (mode === "register") {
+  if (mode === "register") {
         // Validation
         if (!formData.email?.trim()) throw new Error("Email is required");
         if (!validateEmail(formData.email)) throw new Error("Please enter a valid email");
@@ -96,8 +96,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           createdAt: newBuyer.createdAt,
         };
         
-        // Store in context
-        register(buyerProfile);
+  // Store in context (mark as logged in)
+  login(buyerProfile);
 
         if (redirectToCheckout) {
           router.push("/checkout");
@@ -105,22 +105,25 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           onSuccessfulAuth(buyerProfile);
         }
       } else {
-        // Login
-        if (!formData.email?.trim()) throw new Error("Email is required");
-        if (!validateEmail(formData.email)) throw new Error("Please enter a valid email");
+        // Login (allow email or phone)
+        if (!formData.email?.trim() && !formData.phone?.trim()) throw new Error("Email or phone is required");
+
+        if (formData.email?.trim() && !validateEmail(formData.email)) throw new Error("Please enter a valid email");
+        if (formData.phone?.trim() && !validatePhone(formData.phone)) throw new Error("Please enter a valid phone number");
         if (!formData.password?.trim()) throw new Error("Password is required");
+
+        const payload: any = { password: formData.password };
+        if (formData.email?.trim()) payload.email = formData.email.toLowerCase();
+        if (formData.phone?.trim()) payload.phone = formData.phone;
 
         const response = await fetch("/api/buyers", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email: formData.email.toLowerCase(),
-            password: formData.password,
-          }),
+          body: JSON.stringify(payload),
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          const errorData = await response.json().catch(() => ({}));
           throw new Error(errorData.error || "Login failed");
         }
 
@@ -215,7 +218,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address *
+                Email (optional)
               </label>
               <input
                 type="email"
@@ -294,7 +297,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Email Address *
+                Email Address
               </label>
               <input
                 type="email"
@@ -305,6 +308,31 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
                 disabled={loading}
               />
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">
+                Or Phone Number
+              </label>
+              <div className="flex gap-2">
+                <select className="w-20 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 bg-white">
+                  <option>+234</option>
+                  <option>+1</option>
+                  <option>+44</option>
+                  <option>+27</option>
+                  <option>+254</option>
+                  <option>+233</option>
+                </select>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleChange}
+                  placeholder="812 345 6789"
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                  disabled={loading}
+                />
+              </div>
             </div>
 
             <div>

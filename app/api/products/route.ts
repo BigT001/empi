@@ -8,15 +8,26 @@ import { revalidatePath } from 'next/cache';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
+  const lite = searchParams.get('lite'); // lightweight mode for product picker
 
   try {
     console.log("📥 GET /api/products - Fetching products from database...");
     console.log("🔍 Category filter:", category || "none");
+    console.log("📦 Lite mode:", lite ? "yes" : "no");
 
     await connectDB();
 
     const query = category ? { category } : {};
-    const products = await Product.find(query).sort({ createdAt: -1 }).lean();
+    
+    // For product picker (lite mode), only fetch essential fields
+    let query_builder = Product.find(query);
+    if (lite) {
+      query_builder = query_builder.select('_id name sellPrice imageUrl').lean();
+    } else {
+      query_builder = query_builder.lean();
+    }
+    
+    const products = await query_builder.sort({ createdAt: -1 });
 
     // Serialize and transform MongoDB _id to id for frontend consistency
     const transformedProducts = serializeDocs(products).map((p: any) => ({

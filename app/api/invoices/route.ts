@@ -24,11 +24,16 @@ export async function POST(request: NextRequest) {
       taxAmount,
       totalAmount,
       items,
+      dueDate,
+      currency,
+      currencySymbol,
+      taxRate,
+      type = 'automatic',
+      status = 'sent',
     } = body;
 
     if (
       !invoiceNumber ||
-      !orderNumber ||
       !customerName ||
       !customerEmail ||
       !customerPhone
@@ -36,7 +41,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "invoiceNumber, orderNumber, customerName, customerEmail, and customerPhone are required",
+            "invoiceNumber, customerName, customerEmail, and customerPhone are required",
         },
         { status: 400 }
       );
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest) {
     // Create new invoice
     const invoice = new Invoice({
       invoiceNumber,
-      orderNumber,
+      orderNumber: orderNumber || `MAN-${Date.now()}`,
       buyerId: buyerId || null,
       customerName,
       customerEmail,
@@ -74,10 +79,16 @@ export async function POST(request: NextRequest) {
       totalAmount: totalAmount || 0,
       items: items || [],
       invoiceDate: new Date(),
+      dueDate: dueDate ? new Date(dueDate) : null,
+      currency: currency || 'NGN',
+      currencySymbol: currencySymbol || '₦',
+      taxRate: taxRate || 7.5,
+      type,
+      status,
     });
 
     await invoice.save();
-    console.log(`✅ Invoice saved: ${invoiceNumber} for buyer: ${buyerId || "guest"}`);
+    console.log(`✅ Invoice saved: ${invoiceNumber} (${type}) for buyer: ${buyerId || "guest"}`);
 
     return NextResponse.json(
       { 
@@ -97,20 +108,29 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get invoices for a buyer
+// Get invoices for a buyer or all invoices
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
     const buyerId = request.nextUrl.searchParams.get("buyerId");
+    const type = request.nextUrl.searchParams.get("type"); // 'automatic', 'manual', or all
+    const status = request.nextUrl.searchParams.get("status");
 
-    if (!buyerId) {
-      return NextResponse.json(
-        { error: "buyerId is required" },
-        { status: 400 }
-      );
+    const query: any = {};
+
+    if (buyerId) {
+      query.buyerId = buyerId;
     }
 
-    const invoices = await Invoice.find({ buyerId });
+    if (type) {
+      query.type = type;
+    }
+
+    if (status) {
+      query.status = status;
+    }
+
+    const invoices = await Invoice.find(query).sort({ createdAt: -1 });
     return NextResponse.json(serializeDocs(invoices), { status: 200 });
   } catch (error) {
     console.error("Error fetching invoices:", error);

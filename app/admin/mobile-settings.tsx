@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Save, LogOut, AlertCircle, CheckCircle } from "lucide-react";
-import * as Sentry from "@sentry/nextjs";
 
 export default function MobileSettingsPage() {
   const [adminName, setAdminName] = useState("Admin");
@@ -26,7 +25,7 @@ export default function MobileSettingsPage() {
       setTimeout(() => setMessage(""), 3000);
     } catch (err) {
       setMessage("❌ Failed to update profile");
-      Sentry.captureException(err);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -44,7 +43,7 @@ export default function MobileSettingsPage() {
       setTimeout(() => setMessage(""), 3000);
     } catch (err) {
       setMessage("❌ Failed to update settings");
-      Sentry.captureException(err);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +61,7 @@ export default function MobileSettingsPage() {
       setTimeout(() => setMessage(""), 3000);
     } catch (err) {
       setMessage("❌ Failed to change password");
-      Sentry.captureException(err);
+      console.error(err);
     } finally {
       setIsLoading(false);
     }

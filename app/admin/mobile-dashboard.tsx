@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { TrendingUp, Users, Package, DollarSign, ShoppingBag, Clock } from "lucide-react";
-import * as Sentry from "@sentry/nextjs";
+import { useAdmin } from "@/app/context/AdminContext";
 
 interface DashboardStats {
   totalRevenue: number;
@@ -30,6 +30,9 @@ export default function MobileDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<
+    'overview' | 'users' | 'orders' | 'products' | 'pending'
+  >('overview');
 
   useEffect(() => {
     loadDashboardData();
@@ -126,9 +129,7 @@ export default function MobileDashboard() {
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Failed to load dashboard";
       setError(errorMsg);
-      Sentry.captureException(err, {
-        tags: { component: "MobileDashboard" },
-      });
+      console.error(err);
     } finally {
       setIsLoading(false);
     }
