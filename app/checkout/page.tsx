@@ -7,6 +7,7 @@ import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
+import PaymentSuccessModal from "../components/PaymentSuccessModal";
 import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin } from "lucide-react";
 
 const SHIPPING_OPTIONS = {
@@ -21,6 +22,10 @@ export default function CheckoutPage() {
 
   const [isHydrated, setIsHydrated] = useState(false);
   const [shippingOption, setShippingOption] = useState<"empi" | "self">("empi");
+  const [successModalOpen, setSuccessModalOpen] = useState(false);
+  const [successReference, setSuccessReference] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   useEffect(() => {
     setIsHydrated(true);
@@ -28,6 +33,101 @@ export default function CheckoutPage() {
     const saved = localStorage.getItem("empi_shipping_option");
     if (saved) setShippingOption(saved as "empi" | "self");
   }, []);
+
+  // Handle payment success - save order and invoice
+  const handlePaymentSuccess = async (response: any) => {
+    console.log("🟢 Payment success handler called");
+    console.log("Reference:", response?.reference);
+
+    try {
+      const shippingCost = shippingOption === "empi" ? 2500 : 0;
+      const taxEstimate = total * 0.075;
+      const totalAmount = total + shippingCost + taxEstimate;
+
+      const orderData = {
+        reference: response.reference,
+        customer: {
+          name: buyer?.fullName || "",
+          email: buyer?.email || "",
+          phone: buyer?.phone || "",
+        },
+        items,
+        pricing: {
+          subtotal: total,
+          tax: taxEstimate,
+          shipping: shippingCost,
+          total: totalAmount,
+        },
+        status: "completed",
+        createdAt: new Date().toISOString(),
+      };
+
+      console.log("📮 Saving order...");
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData),
+      });
+
+      if (res.ok) {
+        console.log("✅ Order saved");
+        
+        // Generate invoice
+        const invoiceData = {
+          invoiceNumber: `INV-${response.reference}`,
+          orderNumber: response.reference,
+          customerName: buyer?.fullName || "",
+          customerEmail: buyer?.email || "",
+          customerPhone: buyer?.phone || "",
+          subtotal: total,
+          shippingCost,
+          taxAmount: taxEstimate,
+          totalAmount,
+          items: items.map((item: any) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            mode: item.mode || 'buy',
+          })),
+          invoiceDate: new Date().toISOString(),
+          type: 'automatic',
+          status: 'paid',
+          currencySymbol: '₦',
+        };
+
+        console.log("📋 Generating invoice...");
+        console.log("📊 Invoice data:", invoiceData);
+        const invoiceRes = await fetch("/api/invoices", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(invoiceData),
+        });
+
+        const invoiceResData = await invoiceRes.json();
+        console.log("📮 Invoice response:", invoiceResData);
+
+        if (invoiceRes.ok) {
+          console.log("✅ Invoice generated");
+        } else {
+          console.error("❌ Invoice generation failed:", invoiceResData);
+        }
+
+        // Clear cart and show success modal AFTER both are saved
+        console.log("🧹 Clearing cart and showing success modal");
+        setSuccessReference(response.reference);
+        setSuccessModalOpen(true);
+        clearCart();
+      } else {
+        console.error("❌ Order save failed");
+        setOrderError("Failed to save order. Please contact support.");
+      }
+    } catch (error) {
+      console.error("❌ Error saving order:", error);
+      setOrderError("An error occurred. Please try again.");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
 
   if (!isHydrated) return null;
 
@@ -127,11 +227,13 @@ export default function CheckoutPage() {
               </div>
 
               {/* Payment Notice */}
-              <div className="bg-yellow-50 border border-yellow-300 rounded-lg p-4 mb-6">
-                <p className="text-sm text-yellow-800">
-                  <strong>⏳ Payment Processing:</strong> Payment processing is currently being set up. Please contact support to complete your order.
-                </p>
-              </div>
+              {orderError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-red-800">
+                    <strong>❌ Error:</strong> {orderError}
+                  </p>
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex gap-3">
@@ -141,12 +243,139 @@ export default function CheckoutPage() {
                 >
                   ← Back to Cart
                 </Link>
-                <Link
-                  href="/"
-                  className="flex-1 inline-block text-center bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-3 rounded-lg transition"
+                <button
+                  onClick={() => {
+                    console.log("🖱️ Pay button clicked");
+                    
+                    if (!buyer?.fullName || !buyer?.email || !buyer?.phone) {
+                      setOrderError("Please ensure your profile has complete information");
+                      console.error("❌ Missing profile info:", {fullName: buyer?.fullName, email: buyer?.email, phone: buyer?.phone});
+                      return;
+                    }
+                    
+                    setIsProcessing(true);
+                    setOrderError(null);
+                    console.log("💳 Initiating payment for:", buyer.email);
+
+                    // Initialize Paystack
+                    const initPaystack = () => {
+                      if (typeof window !== "undefined" && (window as any).PaystackPop) {
+                        console.log("✅ Paystack loaded");
+
+                        const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                        console.log("📝 Reference generated:", ref);
+
+                        try {
+                          const handler = (window as any).PaystackPop.setup({
+                            key: process.env.NEXT_PUBLIC_PAYSTACK_KEY || "",
+                            email: buyer.email,
+                            amount: Math.round(totalAmount * 100),
+                            currency: "NGN",
+                            ref: ref,
+                            firstname: buyer.fullName.split(" ")[0],
+                            lastname: buyer.fullName.split(" ").slice(1).join(" ") || " ",
+                            phone: buyer.phone,
+                            onClose: () => {
+                              console.log("🔴 Modal closed - onClose callback fired!");
+                              console.log("🔴 Modal closed - verifying payment...");
+                              
+                              // Verify payment with our API
+                              fetch(`/api/verify-payment?reference=${ref}`)
+                                .then(async (res) => {
+                                  const data = await res.json();
+                                  console.log("📊 Verification data:", data);
+                                  
+                                  if (data.success) {
+                                    console.log("✅ Payment verified! Calling handlePaymentSuccess");
+                                    handlePaymentSuccess({ 
+                                      reference: data.reference,
+                                      ...data 
+                                    });
+                                  } else {
+                                    console.warn("⚠️ Payment verification returned false");
+                                    setIsProcessing(false);
+                                    setOrderError("Payment not confirmed. Please check your email or try again.");
+                                  }
+                                })
+                                .catch(err => {
+                                  console.error("❌ Verification error:", err);
+                                  setIsProcessing(false);
+                                  setOrderError("Could not verify payment. Please check your email or contact support.");
+                                });
+                            },
+                            onSuccess: (response: any) => {
+                              console.log("🟢 onSuccess callback fired!");
+                              console.log("🟢 onSuccess fired with response:", response);
+                              handlePaymentSuccess(response);
+                            },
+                            onError: (error: any) => {
+                              console.error("❌ onError callback fired!");
+                              console.error("❌ Payment error:", error);
+                              setIsProcessing(false);
+                              setOrderError("Payment failed. Please try again.");
+                            },
+                          });
+
+                          console.log("🔵 Opening iframe...");
+                          if (typeof (handler as any).openIframe === 'function') {
+                            (handler as any).openIframe();
+                            console.log("📱 Iframe opened, waiting for callback...");
+                            // Force display the iframe
+                            if (handler.iframe && (handler.iframe as any).style) {
+                              (handler.iframe as any).style.display = 'block';
+                              (handler.iframe as any).style.visibility = 'visible';
+                            }
+                            
+                            // WORKAROUND: Since callbacks don't fire in test mode, 
+                            // poll for payment status every second for 60 seconds
+                            let pollCount = 0;
+                            const maxPolls = 60;
+                            const pollInterval = setInterval(async () => {
+                              pollCount++;
+                              
+                              try {
+                                const verifyRes = await fetch(`/api/verify-payment?reference=${ref}`);
+                                const verifyData = await verifyRes.json();
+                                
+                                if (verifyData.success && verifyData.status === 'success') {
+                                  console.log("✅ PAYMENT DETECTED via polling!");
+                                  console.log("📊 Verification data:", verifyData);
+                                  clearInterval(pollInterval);
+                                  handlePaymentSuccess({ reference: ref, ...verifyData });
+                                  return;
+                                }
+                              } catch (err) {
+                                // Silently fail - normal if not yet complete
+                              }
+                              
+                              // Stop polling after 60 seconds
+                              if (pollCount >= maxPolls) {
+                                console.log("⏰ Polling stopped (60 second timeout)");
+                                clearInterval(pollInterval);
+                                setIsProcessing(false);
+                              }
+                            }, 1000);
+                          } else {
+                            console.error("❌ openIframe is not a function!");
+                          }
+                        } catch (error) {
+                          console.error("❌ Setup error:", error);
+                          setIsProcessing(false);
+                          setOrderError("Failed to open payment modal");
+                        }
+                      } else {
+                        console.log("⏳ Retrying Paystack load...");
+                        setTimeout(initPaystack, 500);
+                      }
+                    };
+
+                    initPaystack();
+                  }}
+                  disabled={isProcessing}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg transition"
                 >
-                  Continue Shopping
-                </Link>
+                  {isProcessing ? "Processing..." : `Pay ₦${totalAmount.toLocaleString()}`}
+                </button>
               </div>
             </div>
           </div>
@@ -185,6 +414,18 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
+
+      {/* Success Modal */}
+      <PaymentSuccessModal
+        isOpen={successModalOpen}
+        onClose={() => {
+          setSuccessModalOpen(false);
+          // Cart already cleared in handlePaymentSuccess
+        }}
+        orderReference={successReference}
+        total={totalAmount}
+      />
+
       <Footer />
     </div>
   );

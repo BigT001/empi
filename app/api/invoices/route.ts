@@ -6,8 +6,11 @@ import { serializeDoc, serializeDocs } from "@/lib/serializer";
 // Save invoice with items
 export async function POST(request: NextRequest) {
   try {
+    console.log("🔷 Invoice POST endpoint called");
     await connectDB();
     const body = await request.json();
+    console.log("📥 Invoice request body:", body);
+    
     const {
       invoiceNumber,
       orderNumber,
@@ -32,12 +35,15 @@ export async function POST(request: NextRequest) {
       status = 'sent',
     } = body;
 
+    console.log("📋 Extracted fields:", {invoiceNumber, customerName, customerEmail, customerPhone});
+
     if (
       !invoiceNumber ||
       !customerName ||
       !customerEmail ||
       !customerPhone
     ) {
+      console.error("❌ Missing required fields");
       return NextResponse.json(
         {
           error:
@@ -78,7 +84,7 @@ export async function POST(request: NextRequest) {
       taxAmount: taxAmount || 0,
       totalAmount: totalAmount || 0,
       items: items || [],
-      invoiceDate: new Date(),
+      invoiceDate: body.invoiceDate ? new Date(body.invoiceDate) : new Date(),
       dueDate: dueDate ? new Date(dueDate) : null,
       currency: currency || 'NGN',
       currencySymbol: currencySymbol || '₦',

@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import { ItemSize } from "@/app/lib/deliverySystem";
 
 export interface CartItem {
   id: string;
@@ -9,6 +10,10 @@ export interface CartItem {
   image: string;
   mode: "buy" | "rent";
   quantity: number;
+  // New delivery metadata
+  size?: ItemSize;
+  weight?: number; // kg per unit
+  fragile?: boolean;
 }
 
 interface CartContextType {
@@ -18,6 +23,11 @@ interface CartContextType {
   updateQuantity: (id: string, mode: "buy" | "rent", quantity: number) => void;
   clearCart: () => void;
   total: number;
+  // Delivery state
+  deliveryState: string | null;
+  setDeliveryState: (state: string | null) => void;
+  deliveryDistance: number;
+  setDeliveryDistance: (distance: number) => void;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -26,6 +36,8 @@ const STORAGE_KEY = "empi_cart_context";
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [deliveryState, setDeliveryState] = useState<string | null>(null);
+  const [deliveryDistance, setDeliveryDistance] = useState(50);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -33,6 +45,14 @@ export function CartProvider({ children }: { children: ReactNode }) {
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         setItems(JSON.parse(stored));
+      }
+      const savedState = localStorage.getItem("empi_delivery_state");
+      if (savedState) {
+        setDeliveryState(savedState);
+      }
+      const savedDistance = localStorage.getItem("empi_delivery_distance");
+      if (savedDistance) {
+        setDeliveryDistance(parseInt(savedDistance, 10));
       }
     } catch (error) {
       console.error("Failed to load cart from localStorage", error);
@@ -44,8 +64,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isHydrated) {
       try {
-        // If cart is empty, remove the storage key entirely to avoid
-        // persisting an empty array string and to make clears deterministic.
         if (!items || items.length === 0) {
           localStorage.removeItem(STORAGE_KEY);
         } else {
@@ -56,6 +74,20 @@ export function CartProvider({ children }: { children: ReactNode }) {
       }
     }
   }, [items, isHydrated]);
+
+  // Save delivery state
+  useEffect(() => {
+    if (deliveryState) {
+      localStorage.setItem("empi_delivery_state", deliveryState);
+    } else {
+      localStorage.removeItem("empi_delivery_state");
+    }
+  }, [deliveryState]);
+
+  // Save delivery distance
+  useEffect(() => {
+    localStorage.setItem("empi_delivery_distance", deliveryDistance.toString());
+  }, [deliveryDistance]);
 
   const addItem = (newItem: CartItem) => {
     setItems((prev) => {
@@ -94,7 +126,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, deliveryState, setDeliveryState, deliveryDistance, setDeliveryDistance }}>
       {children}
     </CartContext.Provider>
   );

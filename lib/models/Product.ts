@@ -14,6 +14,10 @@ export interface IProduct extends Document {
   material?: string;
   condition?: string;
   careInstructions?: string;
+  // Delivery metadata
+  deliverySize?: 'SMALL' | 'MEDIUM' | 'LARGE';
+  weight?: number; // in kg
+  fragile?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,6 +37,10 @@ const productSchema = new Schema<IProduct>(
     material: String,
     condition: String,
     careInstructions: String,
+    // Delivery metadata
+    deliverySize: { type: String, enum: ['SMALL', 'MEDIUM', 'LARGE'], default: 'MEDIUM' },
+    weight: { type: Number, default: 0.5 }, // in kg
+    fragile: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

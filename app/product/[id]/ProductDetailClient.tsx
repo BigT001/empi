@@ -39,7 +39,7 @@ interface Props {
 export default function ProductDetailClient({ product, allProducts, currency = "NGN" }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addItem } = useCart();
+  const { addItem, items } = useCart();
   
   // Get safe product ID first
   const productId = product.id || product._id || '';
@@ -129,8 +129,14 @@ export default function ProductDetailClient({ product, allProducts, currency = "
           <Link href="/product" className="flex items-center gap-2 text-gray-700 hover:text-lime-600 transition font-semibold text-sm md:text-base">
             <ArrowLeft className="h-5 w-5" /> Back to Products
           </Link>
-          <button onClick={() => router.push('/cart')} className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg hover:shadow-xl">
-            <ShoppingCart className="h-5 w-5" /> Cart
+          <button onClick={() => router.push('/cart')} className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2.5 rounded-lg font-semibold transition shadow-lg hover:shadow-xl relative">
+            <ShoppingCart className="h-5 w-5" /> 
+            <span>Cart</span>
+            {items.length > 0 && (
+              <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                {items.length}
+              </span>
+            )}
           </button>
         </div>
       </header>

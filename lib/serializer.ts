@@ -1,6 +1,6 @@
 /**
  * Convert MongoDB documents to plain JSON-serializable objects
- * Converts ObjectIds to strings to avoid "toJSON" method errors
+ * Converts ObjectIds to strings and Dates to ISO strings
  */
 export function serializeDoc(doc: any): any {
   if (!doc) return null;
@@ -8,9 +8,14 @@ export function serializeDoc(doc: any): any {
   // Convert to plain object
   const obj = doc.toObject?.() || doc;
   
-  // Recursively convert ObjectIds to strings
+  // Recursively convert ObjectIds to strings and Dates to ISO strings
   const serialize = (val: any): any => {
     if (!val) return val;
+    
+    // Handle Date objects - convert to ISO string
+    if (val instanceof Date) {
+      return val.toISOString();
+    }
     
     // Handle ObjectId
     if (val._bsontype === 'ObjectId' || (val.constructor?.name === 'ObjectId')) {

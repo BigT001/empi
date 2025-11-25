@@ -141,3 +141,59 @@
 .animate-fadeIn {
   animation: fadeIn 0.3s ease-in;
 }
+
+/* Category Toggle Animations - Uniform smooth flow */
+@keyframes slideToAdults {
+  from {
+    left: calc(var(--start-left, 0.25rem));
+  }
+  to {
+    left: 0.25rem;
+  }
+}
+
+@keyframes slideToKids {
+  from {
+    left: var(--start-left, 0.25rem);
+  }
+  to {
+    left: calc(100% / 3 - 0.25rem);
+  }
+}
+
+@keyframes slideToCustom {
+  from {
+    left: var(--start-left, 0.25rem);
+  }
+  to {
+    left: calc(200% / 3 - 0.25rem);
+  }
+}
+
+.slide-to-adults {
+  animation: slideToAdults 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.slide-to-kids {
+  animation: slideToKids 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.slide-to-custom {
+  animation: slideToCustom 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out forwards;
+}
+

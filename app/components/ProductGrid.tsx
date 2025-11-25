@@ -74,9 +74,9 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
         .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
-    <section className="flex-grow mx-auto w-full max-w-7xl px-6 py-12">
+    <section className="flex-grow mx-auto w-full max-w-7xl px-6 py-12 animate-in fade-in duration-500">
       {/* Products Grid Header */}
-      <div className="mb-8">
+      <div className="mb-8 animate-in slide-in-from-top-4 fade-in duration-500">
         <h1 className="text-3xl font-bold text-gray-900">
           {category === "kids" ? "Kids' Costumes" : category === "adults" ? "Adult Costumes" : "All Costumes"}
         </h1>
@@ -91,14 +91,14 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
 
       {/* Loading State */}
       {loading && dbProducts.length === 0 && (
-        <div className="text-center py-12">
+        <div className="text-center py-12 animate-in fade-in duration-300">
           <p className="text-gray-500">🔄 Loading products...</p>
         </div>
       )}
 
       {/* Error State - Only show if we have no products and cache failed */}
       {showError && !loading && dbProducts.length === 0 && (
-        <div className="text-center py-12">
+        <div className="text-center py-12 animate-in fade-in duration-300">
           <p className="text-red-500">❌ Error loading products: {error}</p>
           <p className="text-gray-500 mt-2 text-sm">Please try refreshing the page. Admin must upload products to the database.</p>
         </div>
@@ -106,22 +106,40 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
 
       {/* Empty State */}
       {!loading && filteredProducts.length === 0 && dbProducts.length > 0 && (
-        <div className="text-center py-12">
+        <div className="text-center py-12 animate-in fade-in duration-300">
           <p className="text-gray-500">No products available in this category</p>
         </div>
       )}
 
-      {/* Products Grid */}
+      {/* Products Bento Grid */}
       {filteredProducts.length > 0 && (
-        <div className="grid gap-6 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
-          {filteredProducts.map((product, idx) => (
-            <ProductCard
-              key={product.id || (product as any)._id || `product-${idx}`}
-              product={product}
-              formattedPrice={formatPrice(product.sellPrice)}
-              currency={currency}
-            />
-          ))}
+        <div>
+          {/* Bento Grid Layout - 4 columns on desktop, 3 on tablet, 2 on mobile */}
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 auto-rows-max">
+            {filteredProducts.map((product, idx) => {
+              // Simple pattern - mostly small cards
+              let size: "small" | "medium" | "large" = "small";
+              const pattern = idx % 12;
+              
+              if (pattern === 0 || pattern === 6) {
+                size = "medium"; // Occasional featured items
+              }
+              
+              return (
+                <div
+                  key={product.id || (product as any)._id || `product-${idx}`}
+                  className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                  style={{ animationDelay: `${idx * 50}ms` }}
+                >
+                  <ProductCard
+                    product={product}
+                    formattedPrice={formatPrice(product.sellPrice)}
+                    currency={currency}
+                  />
+                </div>
+              );
+            })}
+          </div>
         </div>
       )}
     </section>

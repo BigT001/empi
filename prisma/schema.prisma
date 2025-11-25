@@ -180,6 +180,35 @@ model CartItem {
   @@map("cart_items")
 }
 
+model CustomOrder {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  orderNumber       String   @unique
+  
+  fullName          String
+  email             String
+  phone             String
+  address           String?
+  city              String?
+  state             String?
+  
+  costumeType       String   // e.g., "traditional", "modern", "themed", "character"
+  description       String   // Detailed description of what they want
+  designUrl         String?  // Cloudinary URL of uploaded design/image
+  budget            Float?   // Budget range in NGN
+  deliveryDate      DateTime?// When they need it
+  
+  status            String   @default("pending")  // pending, approved, in-progress, ready, completed, rejected
+  notes             String?  // Admin notes
+  quotedPrice       Float?   // Price quote from admin
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([status])
+  @@index([email])
+  @@map("custom_orders")
+}
+
 model ErrorLog {
   id        String   @id @default(auto()) @map("_id") @db.ObjectId
   type      String

@@ -1,186 +1,110 @@
 "use client";
 
+import { useCart } from "../components/CartContext";
+import { Header } from "../components/Header";
+import { Footer } from "../components/Footer";
+import { Navigation } from "../components/Navigation";
+import { useBuyer } from "../context/BuyerContext";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Header } from "../components/Header";
-import { Navigation } from "../components/Navigation";
-import { Footer } from "../components/Footer";
-import { useCart } from "../components/CartContext";
-import { useBuyer } from "../context/BuyerContext";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { DeliverySelector } from "../components/DeliverySelector";
+import { RentalPolicyModal } from "../components/RentalPolicyModal";
+import { ShoppingBag, Trash2, Plus, Minus, Info, ArrowLeft, AlertCircle, Truck, MapPin, Zap, Package } from "lucide-react";
 import { AuthForm } from "../components/AuthForm";
-import { useState, useEffect } from "react";
-import { CURRENCY_RATES } from "../components/constants";
-import { Trash2, Plus, Minus, ShoppingBag, ArrowLeft, Truck, MapPin } from "lucide-react";
-
-// Shipping options
-const SHIPPING_OPTIONS = {
-  empi: {
-    id: "empi",
-    name: "EMPI Delivery",
-    description: "We handle delivery to your doorstep",
-    cost: 2500,
-    estimatedDays: "2-5 business days",
-    icon: Truck,
-  },
-  self: {
-    id: "self",
-    name: "Self Pickup",
-    description: "You pick up from our warehouse (Suru Lere, Lagos)",
-    cost: 0,
-    estimatedDays: "Ready within 24 hours",
-    icon: MapPin,
-  },
-};
-
-// Shipping zones with detailed states and pricing
-const SHIPPING_ZONES = {
-  local: {
-    name: "Local (Lagos)",
-    cost: 2500,
-    delivery: "2-3 days",
-    description: "Pickup and delivery within Lagos State. Your items are handled locally by our team at Suru Lere or Ojo warehouses.",
-  },
-  regional: {
-    name: "South West Region",
-    states: ["Ogun", "Oyo", "Osun", "Ekiti", "Ondo"],
-    cost: 7500,
-    delivery: "3-5 days",
-    description: "Reliable delivery to South West states. EMPI manages full logistics and ensures safe delivery to your doorstep.",
-  },
-  national: {
-    name: "National Delivery",
-    states: ["South-South", "South-East", "North-Central", "North-West", "North-East"],
-    cost: 12500,
-    delivery: "5-7 days",
-    description: "Professional shipping across Nigeria. We partner with trusted logistics to ensure your items arrive safely.",
-  },
-};
-
-const STATE_MAPPING = {
-  // South West
-  "Ogun": "regional",
-  "Oyo": "regional",
-  "Osun": "regional",
-  "Ekiti": "regional",
-  "Ondo": "regional",
-  // South-South
-  "Rivers": "national",
-  "Bayelsa": "national",
-  "Cross River": "national",
-  "Akwa Ibom": "national",
-  "Delta": "national",
-  // South-East
-  "Abia": "national",
-  "Ebonyi": "national",
-  "Enugu": "national",
-  "Imo": "national",
-  "Anambra": "national",
-  // North-Central
-  "Benue": "national",
-  "Kogi": "national",
-  "Kwara": "national",
-  "Nasarawa": "national",
-  "Niger": "national",
-  "Plateau": "national",
-  "FCT": "national",
-  // North-West
-  "Kaduna": "national",
-  "Kano": "national",
-  "Katsina": "national",
-  "Kebbi": "national",
-  "Sokoto": "national",
-  "Zamfara": "national",
-  "Jigawa": "national",
-  // North-East
-  "Adamawa": "national",
-  "Bauchi": "national",
-  "Borno": "national",
-  "Gombe": "national",
-  "Taraba": "national",
-  "Yobe": "national",
-};
-
-const ALL_STATES = Object.keys(STATE_MAPPING);
+import { CartItemDelivery, DeliveryQuote } from "@/app/lib/deliveryCalculator";
+import { ItemSize } from "@/app/lib/deliverySystem";
+import { EnhancedDeliverySelector } from "../components/EnhancedDeliverySelectorNew";
 
 export default function CartPage() {
-  const router = useRouter();
-  const { items, removeItem, updateQuantity, clearCart, total } = useCart();
+  const { items, removeItem, updateQuantity, clearCart, total, deliveryState, setDeliveryState } = useCart();
   const { buyer } = useBuyer();
-  const [currency, setCurrency] = useState("NGN");
-  const [category, setCategory] = useState("adults");
+  const router = useRouter();
+
   const [isHydrated, setIsHydrated] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showRentalPolicy, setShowRentalPolicy] = useState(false);
+  const [category, setCategory] = useState("all");
+  const [currency, setCurrency] = useState("NGN");
   const [shippingOption, setShippingOption] = useState<"empi" | "self">("empi");
+  const [deliveryQuote, setDeliveryQuote] = useState<any>(null);
+  const [deliveryError, setDeliveryError] = useState<string | null>(null);
+  
+  // Billing Information State
+  const [billingInfo, setBillingInfo] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+  });
 
-  // Handle hydration and load shipping preference
   useEffect(() => {
     setIsHydrated(true);
-    try {
-      const saved = localStorage.getItem("empi_shipping_option");
-      if (saved) {
-        setShippingOption(saved as "empi" | "self");
-      }
-    } catch (error) {
-      console.warn("Failed to load shipping option:", error);
+    const saved = localStorage.getItem("empi_shipping_option");
+    if (saved) setShippingOption(saved as "empi" | "self");
+  }, []);
+
+  const handleShippingChange = (option: "empi" | "self") => {
+    setShippingOption(option);
+    localStorage.setItem("empi_shipping_option", option);
+  };
+
+  const handleDeliveryChange = useCallback((quote: DeliveryQuote | null) => {
+    setDeliveryQuote(quote);
+    if (!quote) {
+      setDeliveryError("Unable to calculate delivery fee");
+      localStorage.removeItem("empi_delivery_quote");
+    } else {
+      setDeliveryError(null);
+      // Save to localStorage for checkout persistence
+      localStorage.setItem("empi_delivery_quote", JSON.stringify(quote));
     }
   }, []);
 
-  // Save shipping option to localStorage
-  const handleShippingChange = (option: "empi" | "self") => {
-    setShippingOption(option);
-    try {
-      localStorage.setItem("empi_shipping_option", option);
-    } catch (error) {
-      console.warn("Failed to save shipping option:", error);
-    }
-  };
+  const deliveryItems = useMemo(() => items.map(item => ({
+    id: item.id,
+    name: item.name,
+    quantity: item.quantity,
+    size: ((item.size as any) || ItemSize.MEDIUM) as "SMALL" | "MEDIUM" | "LARGE",
+    weight: item.weight || 0.5,
+    totalWeight: (item.weight || 0.5) * item.quantity,
+    fragile: item.fragile || false,
+  })), [items]);
 
-  const formatPrice = (price: number) => {
-    const rate = CURRENCY_RATES[currency]?.rate || 1;
-    const converted = price / rate;
-    const symbol = CURRENCY_RATES[currency]?.symbol || "₦";
-    return `${symbol}${converted.toFixed(2)}`;
-  };
-
-  // Calculate stats
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = total;
-  const taxEstimate = subtotal > 0 ? (subtotal * 0.075).toFixed(2) : "0.00"; // 7.5% estimate
-  const totalEstimate = subtotal + 2500 + parseFloat(taxEstimate); // 2500 is default shipping
+  const shippingCost = shippingOption === "empi" && deliveryQuote ? deliveryQuote.fee : 0;
+  const taxEstimate = subtotal > 0 ? (subtotal * 0.075).toFixed(2) : "0.00";
+  const totalAmount = subtotal + shippingCost + parseFloat(taxEstimate);
+  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
-  if (!isHydrated) return null; // Prevent hydration mismatch
+  const formatPrice = (price: number | string) => {
+    const numPrice = typeof price === "string" ? parseFloat(price) : price;
+    return `${numPrice.toLocaleString("en-NG", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  };
+
+  if (!isHydrated) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
-      {/* Header with Logo and Navigation */}
       <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-center gap-2 md:justify-between md:gap-8">
           <Header />
           <nav className="flex items-center flex-1">
-            <Navigation 
-              category={category}
-              onCategoryChange={setCategory}
-              currency={currency}
-              onCurrencyChange={setCurrency}
-            />
+            <Navigation category={category} onCategoryChange={setCategory} currency={currency} onCurrencyChange={setCurrency} />
           </nav>
         </div>
       </header>
 
       <main className="flex-1 max-w-7xl mx-auto px-4 py-12 w-full">
-        {/* Page Header */}
         <div className="mb-8">
           <Link href="/" className="inline-flex items-center gap-2 text-lime-600 hover:text-lime-700 font-medium mb-4">
-            <ArrowLeft className="h-4 w-4" />
-            Continue Shopping
+            <ArrowLeft className="h-4 w-4" /> Continue Shopping
           </Link>
           <h1 className="text-4xl font-bold mb-2">Shopping Cart</h1>
-          <p className="text-gray-600">Review your items before checkout</p>
+          <p className="text-gray-600">Review your items and select delivery</p>
         </div>
 
         {items.length === 0 ? (
-          // Empty Cart State
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-16 text-center">
             <div className="flex justify-center mb-6">
               <div className="bg-gray-100 rounded-full p-4">
@@ -188,262 +112,165 @@ export default function CartPage() {
               </div>
             </div>
             <h2 className="text-2xl font-semibold mb-2">Your cart is empty</h2>
-            <p className="text-gray-600 mb-6">Discover our amazing collection of costumes!</p>
+            <p className="text-gray-600 mb-6">Discover our amazing collection!</p>
             <Link href="/" className="inline-block bg-lime-600 hover:bg-lime-700 text-white px-6 py-3 rounded-lg font-semibold transition">
               Start Shopping
             </Link>
           </div>
         ) : (
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Cart Items */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Summary Bar */}
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm">Items in cart</p>
-                  <p className="text-2xl font-bold text-lime-600">{itemCount}</p>
+                  <p className="text-gray-600 text-sm">Items: <span className="text-2xl font-bold text-lime-600">{itemCount}</span></p>
                 </div>
-                <button
-                  onClick={clearCart}
-                  className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition font-medium"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Clear Cart
+                <button onClick={clearCart} className="flex items-center gap-2 px-4 py-2 text-red-600 hover:bg-red-50 rounded-lg transition font-medium">
+                  <Trash2 className="h-4 w-4" /> Clear
                 </button>
               </div>
 
-              {/* Cart Items List */}
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div 
-                    key={`${item.id}-${item.mode}`}
-                    className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition"
-                  >
-                    <div className="p-6 flex gap-6">
-                      {/* Product Image */}
-                      <div className="flex-shrink-0">
-                        {item.image ? (
-                          <div className="w-28 h-28 relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
-                            <Image 
-                              src={item.image} 
-                              alt={item.name} 
-                              fill 
-                              className="object-contain p-2"
-                            />
+                  <div key={`${item.id}-${item.mode}`} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition p-6 flex gap-6">
+                    <div className="flex-shrink-0 w-28 h-28 relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                      {item.image ? <Image src={item.image} alt={item.name} fill className="object-contain p-2" /> : <div className="flex items-center justify-center w-full h-full"><ShoppingBag className="h-8 w-8 text-gray-400" /></div>}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-start justify-between mb-2">
+                      <div>
+                          <h3 className="text-lg font-semibold">{item.name}</h3>
+                          <div className="flex items-center gap-2 mt-1">
+                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${item.mode === "rent" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
+                              {item.mode === "rent" ? "Rent" : "Buy"}
+                            </span>
+                            {item.mode === "rent" && (
+                              <button
+                                onClick={() => setShowRentalPolicy(true)}
+                                className="text-xs text-blue-600 hover:text-blue-700 underline font-medium"
+                              >
+                                View Rental Policy
+                              </button>
+                            )}
                           </div>
-                        ) : (
-                          <div className="w-28 h-28 bg-gray-200 rounded-lg border border-gray-300 flex items-center justify-center">
-                            <ShoppingBag className="h-8 w-8 text-gray-400" />
-                          </div>
-                        )}
+                        </div>
+                        <button onClick={() => removeItem(item.id, item.mode)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition">
+                          <Trash2 className="h-5 w-5" />
+                        </button>
                       </div>
-
-                      {/* Product Details */}
-                      <div className="flex-1">
-                        <div className="flex items-start justify-between mb-2">
-                          <div>
-                            <h3 className="text-lg font-semibold mb-1">{item.name}</h3>
-                            <div className="flex items-center gap-3">
-                              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                                item.mode === "rent" 
-                                  ? "bg-blue-100 text-blue-700" 
-                                  : "bg-green-100 text-green-700"
-                              }`}>
-                                {item.mode === "rent" ? "Rent" : "Buy"}
-                              </span>
-                              <span className="text-sm text-gray-600">Unit: {formatPrice(item.price)}</span>
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => removeItem(item.id, item.mode)}
-                            className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition"
-                            title="Remove from cart"
-                          >
-                            <Trash2 className="h-5 w-5" />
+                      <div className="flex items-center gap-4 mt-4">
+                        <div className="flex items-center border border-gray-300 rounded-lg">
+                          <button onClick={() => updateQuantity(item.id, item.mode, Math.max(1, item.quantity - 1))} className="p-2 text-gray-600 hover:bg-gray-100">
+                            <Minus className="h-4 w-4" />
+                          </button>
+                          <span className="px-4 py-2 font-semibold min-w-12 text-center">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.id, item.mode, item.quantity + 1)} className="p-2 text-gray-600 hover:bg-gray-100">
+                            <Plus className="h-4 w-4" />
                           </button>
                         </div>
-
-                        {/* Quantity Controls */}
-                        <div className="flex items-center gap-4 mt-4">
-                          <div className="flex items-center border border-gray-300 rounded-lg">
-                            <button
-                              onClick={() => updateQuantity(item.id, item.mode, Math.max(1, item.quantity - 1))}
-                              className="p-2 text-gray-600 hover:bg-gray-100 transition"
-                            >
-                              <Minus className="h-4 w-4" />
-                            </button>
-                            <span className="px-4 py-2 font-semibold min-w-12 text-center">{item.quantity}</span>
-                            <button
-                              onClick={() => updateQuantity(item.id, item.mode, item.quantity + 1)}
-                              className="p-2 text-gray-600 hover:bg-gray-100 transition"
-                            >
-                              <Plus className="h-4 w-4" />
-                            </button>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-sm text-gray-600 mb-1">Subtotal</p>
-                            <p className="text-xl font-bold text-lime-600">{formatPrice(item.price * item.quantity)}</p>
-                          </div>
-                        </div>
+                        <p className="text-xl font-bold text-lime-600">{formatPrice(item.price * item.quantity)}</p>
                       </div>
                     </div>
                   </div>
                 ))}
               </div>
+
+              {shippingOption === "empi" && (
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+                    <Truck className="h-5 w-5 text-lime-600" /> Real-Time Delivery
+                  </h2>
+                  {deliveryError && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                      <p className="text-red-800 text-sm">{deliveryError}</p>
+                    </div>
+                  )}
+                  <EnhancedDeliverySelector 
+                    items={deliveryItems}
+                    onDeliveryChange={handleDeliveryChange}
+                  />
+                  {deliveryQuote && (
+                    <div className="mt-6 p-4 bg-gradient-to-r from-lime-50 to-green-50 border border-lime-200 rounded-lg space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <MapPin className="h-4 w-4 text-lime-600" />
+                          <span className="text-sm text-gray-600">Distance:</span>
+                        </div>
+                        <span className="font-semibold text-gray-900">{(deliveryQuote.distance || 0).toFixed(1)} km</span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Zap className="h-4 w-4 text-lime-600" />
+                          <span className="text-sm text-gray-600">Estimated Time:</span>
+                        </div>
+                        <span className="font-semibold text-gray-900">{deliveryQuote.duration || 'Calculating...'}</span>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-lime-300">
+                        <span className="text-sm font-semibold text-gray-700">Delivery Fee:</span>
+                        <span className="font-bold text-lime-600">₦{(deliveryQuote.fee || 0).toLocaleString('en-NG')}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* Order Summary Sidebar */}
-            <div className="lg:col-span-1 space-y-6">
-              {/* Order Summary */}
+            <div className="lg:col-span-1">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 sticky top-32">
                 <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
-                
-                {/* Price Breakdown */}
                 <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Subtotal ({itemCount} items)</span>
-                    <span className="font-semibold">{formatPrice(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm">
-                    <span className="text-gray-600">Shipping</span>
-                    <span className="font-semibold text-lime-600">₦{SHIPPING_OPTIONS[shippingOption].cost.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between items-center text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      Tax (Est.)
-                      <span className="text-xs text-gray-500">7.5%</span>
-                    </span>
-                    <span>{formatPrice(parseFloat(taxEstimate))}</span>
-                  </div>
+                  <div className="flex justify-between"><span className="text-gray-600">Subtotal</span><span className="font-semibold">{formatPrice(subtotal)}</span></div>
+                  {shippingOption === "empi" ? (
+                    deliveryQuote ? (
+                      <div className="flex justify-between text-sm"><span className="text-gray-600">Delivery</span><span className="font-semibold text-lime-600">{formatPrice(deliveryQuote.fee)}</span></div>
+                    ) : (
+                      <div className="flex justify-between text-sm"><span className="text-gray-600">Delivery</span><span className="text-gray-500"></span></div>
+                    )
+                  ) : (
+                    <div className="flex justify-between text-sm"><span className="text-gray-600">Pickup</span><span className="font-semibold text-green-600">FREE</span></div>
+                  )}
+                  <div className="flex justify-between text-sm"><span className="text-gray-600">Tax (7.5%)</span><span>{formatPrice(parseFloat(taxEstimate))}</span></div>
                 </div>
-
-                {/* Total */}
                 <div className="flex justify-between items-center mb-6 text-xl">
-                  <span className="font-semibold">Total</span>
-                  <span className="font-bold text-lime-600">{formatPrice(subtotal + parseFloat(taxEstimate) + SHIPPING_OPTIONS[shippingOption].cost)}</span>
+                  <span className="font-semibold">Total</span><span className="font-bold text-lime-600">{formatPrice(totalAmount)}</span>
                 </div>
-
-                {/* Shipping Options */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <p className="font-semibold text-blue-900 mb-4">Delivery Method</p>
-                  
-                  {/* EMPI Delivery Option */}
-                  <label className={`block p-4 rounded-lg border-2 mb-3 cursor-pointer transition ${
-                    shippingOption === "empi" 
-                      ? "border-lime-600 bg-lime-50" 
-                      : "border-gray-300 bg-white hover:border-gray-400"
-                  }`}>
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="radio"
-                        name="shipping"
-                        value="empi"
-                        checked={shippingOption === "empi"}
-                        onChange={() => handleShippingChange("empi")}
-                        className="mt-1 w-4 h-4 accent-lime-600"
-                      />
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900 flex items-center gap-2">
-                          <Truck className="h-4 w-4 text-lime-600" />
-                          {SHIPPING_OPTIONS.empi.name}
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">{SHIPPING_OPTIONS.empi.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">⏱️ {SHIPPING_OPTIONS.empi.estimatedDays}</p>
-                        <p className="text-sm font-semibold text-lime-600 mt-2">₦{SHIPPING_OPTIONS.empi.cost.toLocaleString()}</p>
+                <div className="space-y-4 mb-6">
+                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-700">
+                    <p className="font-semibold">Select Delivery Option</p>
+                  </div>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <label className={`block p-4 rounded-lg border-2 mb-3 cursor-pointer ${shippingOption === "empi" ? "border-lime-600 bg-lime-50" : "border-gray-300"}`}>
+                      <input type="radio" name="shipping" value="empi" checked={shippingOption === "empi"} onChange={() => handleShippingChange("empi")} className="mt-1 w-4 h-4 accent-lime-600" />
+                      <div className="font-semibold text-gray-900 flex items-center gap-2 mt-2">
+                        <Truck className="h-4 w-4 text-lime-600" /> EMPI Delivery
                       </div>
-                    </div>
-                  </label>
-                  
-                  {/* Self Pickup Option */}
-                  <label className={`block p-4 rounded-lg border-2 cursor-pointer transition ${
-                    shippingOption === "self" 
-                      ? "border-lime-600 bg-lime-50" 
-                      : "border-gray-300 bg-white hover:border-gray-400"
-                  }`}>
-                    <div className="flex items-start gap-3">
-                      <input
-                        type="radio"
-                        name="shipping"
-                        value="self"
-                        checked={shippingOption === "self"}
-                        onChange={() => handleShippingChange("self")}
-                        className="mt-1 w-4 h-4 accent-lime-600"
-                      />
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900 flex items-center gap-2">
-                          <MapPin className="h-4 w-4 text-blue-600" />
-                          {SHIPPING_OPTIONS.self.name}
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">{SHIPPING_OPTIONS.self.description}</p>
-                        <p className="text-xs text-gray-500 mt-1">⏱️ {SHIPPING_OPTIONS.self.estimatedDays}</p>
-                        <p className="text-sm font-semibold text-green-600 mt-2">FREE</p>
+                      <p className="text-sm text-gray-600 mt-1">Fast & reliable delivery</p>
+                    </label>
+                    <label className={`block p-4 rounded-lg border-2 cursor-pointer ${shippingOption === "self" ? "border-lime-600 bg-lime-50" : "border-gray-300"}`}>
+                      <input type="radio" name="shipping" value="self" checked={shippingOption === "self"} onChange={() => handleShippingChange("self")} className="mt-1 w-4 h-4 accent-lime-600" />
+                      <div className="font-semibold text-gray-900 flex items-center gap-2 mt-2">
+                        <MapPin className="h-4 w-4 text-blue-600" /> Self Pickup
                       </div>
-                    </div>
-                  </label>
+                      <p className="text-sm text-gray-600 mt-1">Pick up yourself - FREE</p>
+                    </label>
+                  </div>
                 </div>
-
-                {/* Information */}
-                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6 text-sm text-amber-700">
-                  <p className="font-semibold mb-1">📍 Selected: {SHIPPING_OPTIONS[shippingOption].name}</p>
-                  <p>Your shipping preference will be applied at checkout.</p>
-                </div>
-
-                {/* Checkout Button */}
-                <button 
-                  onClick={() => {
-                    if (buyer) {
-                      // User is logged in - go to checkout page
-                      router.push("/checkout");
-                    } else {
-                      // User not logged in - show auth modal first
-                      setShowAuthModal(true);
-                    }
-                  }}
-                  className="block w-full bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-4 rounded-lg text-center transition mb-3"
-                >
+                <button onClick={() => { if (shippingOption === "empi" && !deliveryQuote) { alert("Please select delivery state and location"); return; } buyer ? router.push("/checkout") : setShowAuthModal(true); }} className="block w-full bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-4 rounded-lg text-center transition mb-3 disabled:opacity-50" disabled={shippingOption === "empi" && !deliveryQuote}>
                   Proceed to Checkout
                 </button>
-
-                {/* Continue Shopping */}
-                <Link 
-                  href="/" 
-                  className="block w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:bg-gray-50 font-semibold py-3 px-4 rounded-lg text-center transition"
-                >
+                <Link href="/" className="block w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:bg-gray-50 font-semibold py-3 px-4 rounded-lg text-center transition">
                   Continue Shopping
                 </Link>
-
-                {/* Payment Methods */}
-                <div className="mt-8 pt-6 border-t border-gray-200">
-                  <p className="text-xs text-gray-500 font-semibold mb-3">We Accept</p>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <span className="inline-block px-2 py-1 bg-gray-100 rounded text-xs">💳 Cards</span>
-                    <span className="inline-block px-2 py-1 bg-gray-100 rounded text-xs">🏦 Bank</span>
-                    <span className="inline-block px-2 py-1 bg-gray-100 rounded text-xs">💰 Wallet</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>
         )}
       </main>
-
-      {/* Auth Modal - Pops up when user clicks checkout without being logged in */}
-      {showAuthModal && (
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowAuthModal(false)}
-        >
-          <AuthForm 
-            redirectToCheckout={true}
-            onCancel={() => {
-              setShowAuthModal(false);
-            }}
-          />
-        </div>
-      )}
-
+      {showAuthModal && <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAuthModal(false)}>
+        <AuthForm redirectToCheckout={true} onCancel={() => setShowAuthModal(false)} />
+      </div>}
+      <RentalPolicyModal isOpen={showRentalPolicy} onClose={() => setShowRentalPolicy(false)} />
       <Footer />
     </div>
   );
 }
-

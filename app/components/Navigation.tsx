@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings, LogOut } from "lucide-react";
 import { CURRENCY_RATES } from "./constants";
 import { useCart } from "./CartContext";
@@ -16,6 +17,7 @@ interface NavigationProps {
 }
 
 export function Navigation({ category, onCategoryChange, currency, onCurrencyChange }: NavigationProps) {
+  const pathname = usePathname();
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -39,80 +41,70 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
       <div className="hidden md:flex items-center justify-between gap-8 flex-1">
       {/* Navigation */}
       <nav className="hidden gap-8 text-sm font-medium md:flex items-center">
-        {/* Modern Animated Category Toggle Switch */}
-        <div className="relative inline-flex items-center bg-gradient-to-r from-gray-100 to-gray-50 rounded-full p-1 shadow-sm border border-gray-200">
-          {/* Animated background slider */}
+        {/* Premium Animated Category Toggle - With Inset Depth */}
+        <div className="relative inline-flex items-center bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-full p-1 shadow-inner border border-gray-300/60 backdrop-blur-sm overflow-hidden">
+          {/* Animated premium gradient background - Uniform smooth flow */}
           <div
-            className={`absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-lime-500 to-lime-600 shadow-lg transition-all duration-300 ease-out ${
-              category === "adults" ? "left-1 right-1/2" : "left-1/2 right-1"
-            }`}
+            className="absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-lime-500 via-lime-600 to-green-600 shadow-inner w-1/3 transition-all ease-in-out"
+            style={{
+              transform: 
+                category === "adults" 
+                  ? "translateX(0)" 
+                  : category === "kids" 
+                  ? "translateX(100%)" 
+                  : "translateX(200%)",
+              transitionDuration: '600ms'
+            }}
           />
 
-          {/* Adults Button */}
+          {/* Adults Button - Inset Style */}
           <button
             onClick={() => onCategoryChange("adults")}
-            className={`relative px-6 py-2.5 rounded-full font-bold text-sm transition-all duration-300 z-10 ${
+            className={`relative px-4 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 flex items-center gap-1 ${
               category === "adults"
-                ? "text-white drop-shadow-md"
-                : "text-gray-600 hover:text-gray-900"
+                ? "text-white shadow-inner"
+                : "text-gray-700 hover:text-gray-900"
             }`}
           >
-            👔 Adults
+            <span>👔</span>
+            <span className="hidden sm:inline">Adults</span>
           </button>
 
-          {/* Kids Button */}
+          {/* Kids Button - Inset Style */}
           <button
             onClick={() => onCategoryChange("kids")}
-            className={`relative px-6 py-2.5 rounded-full font-bold text-sm transition-all duration-300 z-10 ${
+            className={`relative px-4 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 flex items-center gap-1 ${
               category === "kids"
-                ? "text-white drop-shadow-md"
-                : "text-gray-600 hover:text-gray-900"
+                ? "text-white shadow-inner"
+                : "text-gray-700 hover:text-gray-900"
             }`}
           >
-            👶 Kids
+            <span>👶</span>
+            <span className="hidden sm:inline">Kids</span>
           </button>
-        </div>
 
-        {/* Filter Dropdown */}
-        <div className="relative">
+          {/* Custom Button - Inset Style */}
           <button
-            onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-            className="flex items-center gap-1 text-gray-700 hover:text-lime-600 transition"
+            onClick={() => onCategoryChange("custom")}
+            className={`relative px-4 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 flex items-center gap-1 ${
+              category === "custom"
+                ? "text-white shadow-inner"
+                : "text-gray-700 hover:text-gray-900"
+            }`}
           >
-            Filter
-            <ChevronDown className="h-4 w-4" />
+            <span>🎨</span>
+            <span className="hidden sm:inline">Custom</span>
           </button>
-          {showFilterDropdown && (
-            <div className="absolute left-0 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-lg z-50">
-              <button
-                onClick={() => setShowFilterDropdown(false)}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 transition"
-              >
-                Price: Low to High
-              </button>
-              <button
-                onClick={() => setShowFilterDropdown(false)}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 transition"
-              >
-                Price: High to Low
-              </button>
-              <button
-                onClick={() => setShowFilterDropdown(false)}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 transition"
-              >
-                Newest
-              </button>
-              <button
-                onClick={() => setShowFilterDropdown(false)}
-                className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 transition"
-              >
-                Most Popular
-              </button>
-            </div>
-          )}
         </div>
 
-        <Link href="/about" className="text-gray-700 hover:text-lime-600 transition">
+        <Link 
+          href="/about" 
+          className={`transition font-semibold ${
+            pathname === "/about"
+              ? "text-lime-600 border-b-2 border-lime-600 pb-1"
+              : "text-gray-700 hover:text-lime-600"
+          }`}
+        >
           About Us
         </Link>
       </nav>
@@ -237,31 +229,44 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         {/* Category Toggle for Mobile */}
         <div className="flex items-center flex-1 justify-center min-w-0">
           {/* Modern Animated Category Toggle Switch - Optimized for Mobile */}
-          <div className="relative inline-flex items-center bg-gradient-to-r from-gray-100 to-gray-50 rounded-full p-1 shadow-sm border border-gray-200 flex-shrink-0">
+          <div className="relative inline-flex items-center bg-gradient-to-br from-white via-gray-50 to-gray-100 rounded-full p-1 shadow-md border border-gray-200/80 flex-shrink-0">
             <div
-              className={`absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-lime-500 to-lime-600 shadow-lg transition-all duration-300 ease-out ${
-                category === "adults" ? "left-1 right-1/2" : "left-1/2 right-1"
+              className={`absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-lime-500 via-lime-600 to-green-600 shadow-lg transition-all duration-500 ease-out ${
+                category === "adults" ? "left-1 w-1/3" : category === "kids" ? "left-1/3 w-1/3" : "left-2/3 w-1/3"
               }`}
             />
             <button
               onClick={() => onCategoryChange("adults")}
-              className={`relative px-2.5 py-1.5 rounded-full font-bold text-xs md:text-sm transition-all duration-300 z-10 whitespace-nowrap ${
+              className={`relative px-2 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 whitespace-nowrap flex items-center gap-1 ${
                 category === "adults"
-                  ? "text-white drop-shadow-md"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "text-white drop-shadow-lg scale-110"
+                  : "text-gray-700 hover:text-gray-900 hover:scale-105"
               }`}
             >
-              👔 Adults
+              <span>👔</span>
+              <span className="hidden sm:inline">Adults</span>
             </button>
             <button
               onClick={() => onCategoryChange("kids")}
-              className={`relative px-2.5 py-1.5 rounded-full font-bold text-xs md:text-sm transition-all duration-300 z-10 whitespace-nowrap ${
+              className={`relative px-2 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 whitespace-nowrap flex items-center gap-1 ${
                 category === "kids"
-                  ? "text-white drop-shadow-md"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "text-white drop-shadow-lg scale-110"
+                  : "text-gray-700 hover:text-gray-900 hover:scale-105"
               }`}
             >
-              👶 Kids
+              <span>👶</span>
+              <span className="hidden sm:inline">Kids</span>
+            </button>
+            <button
+              onClick={() => onCategoryChange("custom")}
+              className={`relative px-2 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 whitespace-nowrap flex items-center gap-1 ${
+                category === "custom"
+                  ? "text-white drop-shadow-lg scale-110"
+                  : "text-gray-700 hover:text-gray-900 hover:scale-105"
+              }`}
+            >
+              <span>🎨</span>
+              <span className="hidden sm:inline">Custom</span>
             </button>
           </div>
         </div>

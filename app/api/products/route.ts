@@ -105,6 +105,10 @@ export async function POST(request: NextRequest) {
       material: body.material || null,
       condition: body.condition || null,
       careInstructions: body.careInstructions || null,
+      // Delivery metadata
+      deliverySize: body.deliverySize || 'MEDIUM',
+      weight: body.weight || 0.5,
+      fragile: body.fragile || false,
     });
 
     await product.save();

@@ -32,6 +32,11 @@ export interface IOrder extends Document {
   paymentMethod: string;
   status: string;
   items: IOrderItem[];
+  // Delivery fields
+  deliveryState?: string;
+  deliveryFee?: number;
+  estimatedDeliveryDays?: { min: number; max: number };
+  vehicleType?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -68,6 +73,14 @@ const orderSchema = new Schema<IOrder>(
     paymentMethod: { type: String, required: true },
     status: { type: String, default: 'confirmed' },
     items: [orderItemSchema],
+    // Delivery fields
+    deliveryState: String,
+    deliveryFee: { type: Number, default: 0 },
+    estimatedDeliveryDays: {
+      min: Number,
+      max: Number,
+    },
+    vehicleType: String,
   },
   { timestamps: true }
 );
