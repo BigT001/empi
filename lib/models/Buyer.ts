@@ -33,7 +33,6 @@ const buyerSchema = new Schema<IBuyer>(
   { timestamps: true }
 );
 
-buyerSchema.index({ email: 1 });
 buyerSchema.index({ phone: 1 });
 
 // Hash password before saving

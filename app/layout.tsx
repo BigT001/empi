@@ -57,14 +57,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Paystack Payment Gateway Script - Load inline to ensure availability */}
-        <script
-          src="https://js.paystack.co/v1/inline.js"
-          async
-          onError={() => {
-            console.error("❌ Failed to load Paystack script, attempting fallback...");
-          }}
-        ></script>
+        {/* Paystack Payment Gateway Script */}
+        <script src="https://js.paystack.co/v1/inline.js" async></script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}

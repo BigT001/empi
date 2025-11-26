@@ -74,7 +74,6 @@ const invoiceSchema = new Schema<IInvoice>(
 );
 
 invoiceSchema.index({ buyerId: 1 });
-invoiceSchema.index({ invoiceNumber: 1 });
 invoiceSchema.index({ type: 1 });
 invoiceSchema.index({ status: 1 });
 invoiceSchema.index({ createdAt: -1 });
