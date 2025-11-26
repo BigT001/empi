@@ -132,43 +132,58 @@ export default function CartPage() {
 
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div key={`${item.id}-${item.mode}`} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition p-3 md:p-6 flex flex-col md:flex-row gap-3 md:gap-6">
-                    <div className="flex-shrink-0 w-24 h-24 md:w-28 md:h-28 relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
-                      {item.image ? <Image src={item.image} alt={item.name} fill className="object-contain p-2" /> : <div className="flex items-center justify-center w-full h-full"><ShoppingBag className="h-8 w-8 text-gray-400" /></div>}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between mb-2">
-                      <div>
-                          <h3 className="text-lg font-semibold">{item.name}</h3>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${item.mode === "rent" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
-                              {item.mode === "rent" ? "Rent" : "Buy"}
-                            </span>
-                            {item.mode === "rent" && (
-                              <button
-                                onClick={() => setShowRentalPolicy(true)}
-                                className="text-xs text-blue-600 hover:text-blue-700 underline font-medium"
-                              >
-                                View Rental Policy
-                              </button>
-                            )}
+                  <div key={`${item.id}-${item.mode}`} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                    <div className="p-4 md:p-6 flex flex-col md:flex-row gap-4 md:gap-6">
+                      {/* Image Section */}
+                      <div className="flex-shrink-0 w-full md:w-32 h-32 relative rounded-xl overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
+                        {item.image ? (
+                          <Image src={item.image} alt={item.name} fill className="object-contain p-2" />
+                        ) : (
+                          <ShoppingBag className="h-12 w-12 text-gray-300" />
+                        )}
+                      </div>
+
+                      {/* Content Section */}
+                      <div className="flex-1 flex flex-col justify-between">
+                        {/* Header with Title and Delete Button */}
+                        <div className="flex items-start justify-between gap-4 mb-3">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-lg md:text-xl font-bold text-gray-900 truncate">{item.name}</h3>
+                            <div className="flex items-center gap-2 mt-2 flex-wrap">
+                              <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${item.mode === "rent" ? "bg-blue-100 text-blue-700" : "bg-green-100 text-green-700"}`}>
+                                {item.mode === "rent" ? "Rent" : "Buy"}
+                              </span>
+                              {item.mode === "rent" && (
+                                <button
+                                  onClick={() => setShowRentalPolicy(true)}
+                                  className="text-xs text-blue-600 hover:text-blue-700 underline font-medium whitespace-nowrap"
+                                >
+                                  View Policy
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <button onClick={() => removeItem(item.id, item.mode)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition flex-shrink-0">
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        </div>
+
+                        {/* Footer with Controls and Price */}
+                        <div className="flex items-center justify-between gap-4 pt-3 border-t border-gray-100">
+                          <div className="flex items-center border-2 border-gray-200 rounded-lg">
+                            <button onClick={() => updateQuantity(item.id, item.mode, Math.max(1, item.quantity - 1))} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
+                              <Minus className="h-4 w-4" />
+                            </button>
+                            <span className="px-4 py-2 font-bold text-gray-900 min-w-14 text-center">{item.quantity}</span>
+                            <button onClick={() => updateQuantity(item.id, item.mode, item.quantity + 1)} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
+                              <Plus className="h-4 w-4" />
+                            </button>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-xs text-gray-600 mb-1">{item.quantity} × {formatPrice(item.price)}</p>
+                            <p className="text-2xl font-bold text-lime-600">{formatPrice(item.price * item.quantity)}</p>
                           </div>
                         </div>
-                        <button onClick={() => removeItem(item.id, item.mode)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition flex-shrink-0">
-                          <Trash2 className="h-5 w-5" />
-                        </button>
-                      </div>
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mt-4">
-                        <div className="flex items-center border border-gray-300 rounded-lg">
-                          <button onClick={() => updateQuantity(item.id, item.mode, Math.max(1, item.quantity - 1))} className="p-2 text-gray-600 hover:bg-gray-100">
-                            <Minus className="h-4 w-4" />
-                          </button>
-                          <span className="px-4 py-2 font-semibold min-w-12 text-center">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, item.mode, item.quantity + 1)} className="p-2 text-gray-600 hover:bg-gray-100">
-                            <Plus className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <p className="text-xl font-bold text-lime-600">{formatPrice(item.price * item.quantity)}</p>
                       </div>
                     </div>
                   </div>
