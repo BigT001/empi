@@ -129,6 +129,64 @@ export default function CheckoutPage() {
     }
   };
 
+  // Helper function to poll for payment
+  const pollForPayment = (ref: string) => {
+    let pollCount = 0;
+    const maxPolls = 180;
+    const pollInterval = setInterval(async () => {
+      pollCount++;
+      try {
+        const verifyRes = await fetch(`/api/verify-payment?reference=${ref}`);
+        const verifyData = await verifyRes.json();
+        
+        if (verifyData.success && verifyData.status === 'success') {
+          console.log("✅ Payment verified!");
+          clearInterval(pollInterval);
+          handlePaymentSuccess({ reference: ref, ...verifyData });
+          return;
+        }
+      } catch (err) {
+        console.log("Polling...");
+      }
+      
+      if (pollCount >= maxPolls) {
+        clearInterval(pollInterval);
+        setIsProcessing(false);
+      }
+    }, 1000);
+  };
+
+  // Helper function to verify payment
+  const verifyAndProcessPayment = async (ref: string) => {
+    try {
+      const res = await fetch(`/api/verify-payment?reference=${ref}`);
+      const data = await res.json();
+      
+      if (data.success && data.status === 'success') {
+        console.log("✅ Payment confirmed!");
+        handlePaymentSuccess({ reference: ref, ...data });
+      } else {
+        console.log("Payment pending or failed");
+        pollForPayment(ref);
+      }
+    } catch (err) {
+      console.error("Verification error:", err);
+      pollForPayment(ref);
+    }
+  };
+
+  // Helper function to use Paystack redirect (for mobile)
+  const usePaystackRedirect = (ref: string, email: string, amount: number) => {
+    const paystackUrl = new URL("https://checkout.paystack.com/api/standard/pay");
+    paystackUrl.searchParams.set("key", process.env.NEXT_PUBLIC_PAYSTACK_KEY || "");
+    paystackUrl.searchParams.set("email", email);
+    paystackUrl.searchParams.set("amount", amount.toString());
+    paystackUrl.searchParams.set("ref", ref);
+    
+    console.log("🔗 Redirecting to Paystack...");
+    window.location.href = paystackUrl.toString();
+  };
+
   if (!isHydrated) return null;
 
   // ===== EMPTY CART =====
@@ -251,158 +309,95 @@ export default function CheckoutPage() {
                   ← Back to Cart
                 </Link>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     console.log("🖱️ Pay button clicked");
                     
                     if (!buyer?.fullName || !buyer?.email || !buyer?.phone) {
                       setOrderError("Please ensure your profile has complete information");
-                      console.error("❌ Missing profile info:", {fullName: buyer?.fullName, email: buyer?.email, phone: buyer?.phone});
+                      console.error("❌ Missing profile info");
                       return;
                     }
                     
                     if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
-                      setOrderError("Payment service is not configured. Please try again later.");
-                      console.error("❌ NEXT_PUBLIC_PAYSTACK_KEY is not set");
+                      setOrderError("Payment service is not configured");
+                      console.error("❌ PAYSTACK_KEY missing");
                       return;
                     }
                     
                     setIsProcessing(true);
                     setOrderError(null);
-                    console.log("💳 Initiating payment for:", buyer.email);
+                    console.log("💳 Starting payment process...");
 
-                    // Initialize Paystack with retry logic
-                    const initPaystack = (retries = 0) => {
-                      const maxRetries = 5;
-                      
-                      if (typeof window === "undefined") {
-                        console.error("❌ Window object not available");
-                        setIsProcessing(false);
-                        setOrderError("Failed to initialize payment. Please refresh and try again.");
-                        return;
-                      }
+                    try {
+                      // Generate unique reference
+                      const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                      console.log("📝 Reference:", ref);
+
+                      // Save order data first
+                      const shippingCost = shippingOption === "empi" ? 2500 : 0;
+                      const taxEstimate = total * 0.075;
+                      const orderTotal = total + shippingCost + taxEstimate;
+
+                      // Store payment info in localStorage for verification
+                      localStorage.setItem('empi_pending_payment', JSON.stringify({
+                        reference: ref,
+                        email: buyer.email,
+                        amount: Math.round(orderTotal * 100),
+                        timestamp: Date.now()
+                      }));
 
                       // Check if Paystack is available
-                      if ((window as any).PaystackPop) {
-                        console.log("✅ Paystack loaded, initializing payment...");
-
-                        const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                        console.log("📝 Reference generated:", ref);
-
-                        try {
-                          // Setup payment configuration
-                          const paymentConfig = {
-                            key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
-                            email: buyer.email,
-                            amount: Math.round(totalAmount * 100),
-                            currency: "NGN",
-                            ref: ref,
-                            firstname: buyer.fullName.split(" ")[0],
-                            lastname: buyer.fullName.split(" ").slice(1).join(" ") || " ",
-                            phone: buyer.phone,
-                            onClose: () => {
-                              console.log("🔴 Payment modal closed");
-                              // Check payment status on close
-                              setTimeout(() => {
-                                verifyPaymentStatus(ref);
-                              }, 1000);
-                            },
-                            onSuccess: (response: any) => {
-                              console.log("🟢 Payment successful!");
-                              console.log("Response:", response);
-                              handlePaymentSuccess(response);
-                            },
-                          };
-
-                          console.log("🔧 Paystack configuration:", {
-                            key: "***",
-                            email: paymentConfig.email,
-                            amount: paymentConfig.amount,
-                            ref: paymentConfig.ref,
-                          });
-
-                          const handler = (window as any).PaystackPop.setup(paymentConfig);
-                          
-                          if (!handler) {
-                            throw new Error("Failed to create Paystack handler");
-                          }
-
-                          console.log("📱 Opening payment interface...");
-                          
-                          // Try multiple methods to open payment
-                          if (typeof handler.openIframe === 'function') {
-                            console.log("✅ Using openIframe method");
-                            handler.openIframe();
-                          } else if (typeof handler.charge === 'function') {
-                            console.log("✅ Using charge method");
-                            handler.charge();
-                          } else if (typeof (handler as any).pay === 'function') {
-                            console.log("✅ Using pay method");
-                            (handler as any).pay();
-                          } else {
-                            throw new Error("No valid payment method available on Paystack handler");
-                          }
-                          
-                          // Start polling for payment confirmation
-                          let pollCount = 0;
-                          const maxPolls = 180; // 3 minutes
-                          const pollInterval = setInterval(async () => {
-                            pollCount++;
-                            
-                            try {
-                              const verifyRes = await fetch(`/api/verify-payment?reference=${ref}`);
-                              const verifyData = await verifyRes.json();
-                              
-                              if (verifyData.success && verifyData.status === 'success') {
-                                console.log("✅ Payment verified via polling!");
-                                clearInterval(pollInterval);
-                                handlePaymentSuccess({ reference: ref, ...verifyData });
-                                return;
-                              }
-                            } catch (err) {
-                              console.log("⏳ Still waiting for payment confirmation...");
-                            }
-                            
-                            if (pollCount >= maxPolls) {
-                              console.log("⏰ Polling timeout reached");
-                              clearInterval(pollInterval);
-                              setIsProcessing(false);
-                            }
-                          }, 1000);
-
-                        } catch (error) {
-                          console.error("❌ Payment initialization error:", error);
-                          setIsProcessing(false);
-                          setOrderError(`Payment error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
-                        }
-                      } else if (retries < maxRetries) {
-                        // Paystack not loaded yet, retry
-                        console.log(`⏳ Paystack not ready, retrying... (${retries + 1}/${maxRetries})`);
-                        setTimeout(() => initPaystack(retries + 1), 500);
-                      } else {
-                        console.error("❌ Paystack failed to load after retries");
-                        setIsProcessing(false);
-                        setOrderError("Payment service failed to load. Please check your internet connection and try again.");
-                      }
-                    };
-
-                    // Helper function to verify payment status
-                    const verifyPaymentStatus = async (ref: string) => {
-                      try {
-                        const res = await fetch(`/api/verify-payment?reference=${ref}`);
-                        const data = await res.json();
+                      if (typeof window !== "undefined" && (window as any).PaystackPop) {
+                        console.log("✅ Paystack available, using modal");
                         
-                        if (data.success && data.status === 'success') {
-                          console.log("✅ Payment confirmed on close!");
-                          handlePaymentSuccess({ reference: ref, ...data });
-                        } else {
-                          console.log("⚠️ Payment not confirmed yet");
-                        }
-                      } catch (err) {
-                        console.error("❌ Verification failed:", err);
-                      }
-                    };
+                        const handler = (window as any).PaystackPop.setup({
+                          key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
+                          email: buyer.email,
+                          amount: Math.round(orderTotal * 100),
+                          currency: "NGN",
+                          ref: ref,
+                          firstname: buyer.fullName.split(" ")[0],
+                          lastname: buyer.fullName.split(" ").slice(1).join(" ") || " ",
+                          phone: buyer.phone,
+                          onClose: () => {
+                            console.log("🔴 Modal closed, checking payment...");
+                            verifyAndProcessPayment(ref);
+                          },
+                          onSuccess: (response: any) => {
+                            console.log("🟢 Payment success");
+                            handlePaymentSuccess(response);
+                          },
+                        });
 
-                    initPaystack();
+                        // Try to open the payment modal
+                        try {
+                          if (handler.openIframe) {
+                            handler.openIframe();
+                            console.log("📱 Modal opened");
+                          } else if (handler.charge) {
+                            handler.charge();
+                            console.log("📱 Charge called");
+                          } else {
+                            throw new Error("No payment method available");
+                          }
+                        } catch (err) {
+                          console.error("❌ Modal open failed:", err);
+                          // Fallback to redirect method
+                          usePaystackRedirect(ref, buyer.email, Math.round(orderTotal * 100));
+                        }
+
+                        // Poll for completion
+                        pollForPayment(ref);
+                      } else {
+                        console.log("⚠️ Paystack not available, using redirect");
+                        // Use redirect method for mobile or if Paystack not loaded
+                        usePaystackRedirect(ref, buyer.email, Math.round(orderTotal * 100));
+                      }
+                    } catch (error) {
+                      console.error("❌ Payment initiation error:", error);
+                      setIsProcessing(false);
+                      setOrderError("Failed to initialize payment. Please try again.");
+                    }
                   }}
                   disabled={isProcessing}
                   className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg transition"
