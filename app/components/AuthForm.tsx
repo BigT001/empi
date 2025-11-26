@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useBuyer } from "@/app/context/BuyerContext";
+import { useCurrency } from "@/app/context/CurrencyContext";
 import { LogIn, UserPlus, Mail, Phone, Lock, User, MapPin, Eye, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react";
 
@@ -25,6 +26,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const { register, login } = useBuyer();
+  const { setCurrency } = useCurrency();
 
   const [formData, setFormData] = useState({
     email: "",
@@ -93,7 +95,13 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 state: buyer.state,
                 postalCode: buyer.postalCode,
                 createdAt: buyer.createdAt,
+                preferredCurrency: buyer.preferredCurrency || "NGN",
               });
+
+              // Load the user's preferred currency
+              if (buyer.preferredCurrency) {
+                setCurrency(buyer.preferredCurrency);
+              }
 
               if (redirectToCheckout) {
                 router.push("/checkout");
@@ -160,8 +168,14 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           state: newBuyer.state,
           postalCode: newBuyer.postalCode,
           createdAt: newBuyer.createdAt,
+          preferredCurrency: newBuyer.preferredCurrency || "NGN",
         };
         login(buyerProfile);
+        
+        // Set the user's preferred currency
+        if (newBuyer.preferredCurrency) {
+          setCurrency(newBuyer.preferredCurrency);
+        }
 
         setSuccess("✅ Account created successfully! Redirecting...");
         setTimeout(() => {
@@ -209,8 +223,15 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           state: buyer.state,
           postalCode: buyer.postalCode,
           createdAt: buyer.createdAt,
+          preferredCurrency: buyer.preferredCurrency || "NGN",
         };
         login(buyerProfile);
+        
+        // Load the user's preferred currency
+        if (buyer.preferredCurrency) {
+          setCurrency(buyer.preferredCurrency);
+        }
+
         setSuccess("✅ Logged in successfully! Redirecting...");
         setTimeout(() => {
           if (redirectToCheckout) {

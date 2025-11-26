@@ -5,6 +5,8 @@ import { CartProvider } from "./components/CartContext";
 import { BuyerProvider } from "./context/BuyerContext";
 import { AdminProvider } from "./context/AdminContext";
 import { ModeProvider } from "./context/ModeContext";
+import { HomeModeProvider } from "./context/HomeModeContext";
+import { CurrencyProvider } from "./context/CurrencyContext";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -68,15 +70,19 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ModeProvider>
-          <AdminProvider>
-            <BuyerProvider>
-              <CartProvider>
-                {children}
-              </CartProvider>
-            </BuyerProvider>
-          </AdminProvider>
-        </ModeProvider>
+        <BuyerProvider>
+          <CurrencyProvider>
+            <HomeModeProvider>
+              <ModeProvider>
+                <AdminProvider>
+                  <CartProvider>
+                    {children}
+                  </CartProvider>
+                </AdminProvider>
+              </ModeProvider>
+            </HomeModeProvider>
+          </CurrencyProvider>
+        </BuyerProvider>
       </body>
     </html>
   );

@@ -14,6 +14,7 @@ export interface BuyerProfile {
   createdAt: string;
   lastLogin?: string;
   isAdmin?: boolean;
+  preferredCurrency?: string;
 }
 
 interface BuyerContextType {

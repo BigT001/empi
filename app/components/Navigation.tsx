@@ -14,9 +14,11 @@ interface NavigationProps {
   onCategoryChange: (category: string) => void;
   currency: string;
   onCurrencyChange: (currency: string) => void;
+  mode?: "buy" | "rent";
+  onModeChange?: (mode: "buy" | "rent") => void;
 }
 
-export function Navigation({ category, onCategoryChange, currency, onCurrencyChange }: NavigationProps) {
+export function Navigation({ category, onCategoryChange, currency, onCurrencyChange, mode, onModeChange }: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
@@ -166,15 +168,17 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         {/* Currency Switcher */}
         <div className="relative hidden md:block">
           <button
+            ref={setCurrencyButtonRef}
             onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
             className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 hover:border-lime-600 text-gray-700 hover:text-lime-600 text-sm font-medium transition"
+            data-modal-trigger
           >
             {CURRENCY_RATES[currency].symbol}
             <span>{currency}</span>
             <ChevronDown className="h-4 w-4" />
           </button>
           {showCurrencyDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-lg z-50">
+            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-lg z-50" data-modal>
               {Object.entries(CURRENCY_RATES).map(([code, data]) => (
                 <button
                   key={code}

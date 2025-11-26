@@ -11,6 +11,7 @@ export interface IBuyer extends Document {
   state?: string;
   postalCode?: string;
   isAdmin: boolean;
+  preferredCurrency?: string; // User's preferred currency (default: NGN)
   createdAt: Date;
   updatedAt: Date;
   lastLogin?: Date;
@@ -30,6 +31,7 @@ const buyerSchema = new Schema<IBuyer>(
     state: String,
     postalCode: String,
     isAdmin: { type: Boolean, default: false },
+    preferredCurrency: { type: String, default: 'NGN' }, // User's preferred currency
     lastLogin: Date,
     sessionToken: { type: String, default: null }, // Secure session token
     sessionExpiry: { type: Date, default: null },  // When session expires

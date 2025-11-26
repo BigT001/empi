@@ -29,9 +29,11 @@ interface ProductGridProps {
   currency: string;
   category: string;
   initialProducts?: Product[];
+  mode?: "buy" | "rent";
+  onModeChange?: (mode: "buy" | "rent") => void;
 }
 
-export function ProductGrid({ currency, category, initialProducts }: ProductGridProps) {
+export function ProductGrid({ currency, category, initialProducts, mode, onModeChange }: ProductGridProps) {
   const { products: cachedProducts, loading, error, pagination, loadMore } = useProducts(category);
   const [dbProducts, setDbProducts] = useState<Product[]>(initialProducts ?? (cachedProducts as Product[]));
   const [showError, setShowError] = useState(false);

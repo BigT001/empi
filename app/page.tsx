@@ -1,18 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Header } from "./components/Header";
 import { Navigation } from "./components/Navigation";
 import { ProductGrid } from "./components/ProductGrid";
 import { Footer } from "./components/Footer";
 import { DiscountPopup } from "./components/DiscountPopup";
+import { useHomeMode } from "./context/HomeModeContext";
+import { useCurrency } from "./context/CurrencyContext";
 import CustomCostumesPage from "./custom-costumes/page";
 
 export default function Home() {
-  const [currency, setCurrency] = useState("NGN");
+  const { currency, setCurrency } = useCurrency();
   const [category, setCategory] = useState("adults");
-  const [mode, setMode] = useState("buy");
+  const { mode, setMode, isHydrated } = useHomeMode();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // If custom is selected, show the custom costumes page instead
   if (category === "custom") {
@@ -26,6 +33,11 @@ export default function Home() {
         />
       </div>
     );
+  }
+
+  // Only render when hydrated to prevent hydration mismatch
+  if (!isHydrated || !isClient) {
+    return null;
   }
 
   return (
@@ -46,6 +58,8 @@ export default function Home() {
               onCategoryChange={setCategory}
               currency={currency}
               onCurrencyChange={setCurrency}
+              mode={mode}
+              onModeChange={setMode}
             />
           </nav>
         </div>
@@ -77,7 +91,7 @@ export default function Home() {
 
       {/* Custom Costumes CTA Section */}
       {/* Main Content */}
-      <ProductGrid currency={currency} category={category} />
+      <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} />
 
       {/* SEO Text Section */}
       <section className="hidden bg-gray-50 py-12 px-4">
