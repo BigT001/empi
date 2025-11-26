@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "./components/CartContext";
@@ -15,6 +15,12 @@ const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
 
 export const metadata: Metadata = {
   title: "EMPI - Premium Costume Rentals & Sales in Lagos | Professional Costume Maker",
@@ -43,7 +49,6 @@ export const metadata: Metadata = {
     description: "Professional costume maker in Lagos offering quality adult and kids costumes",
     images: ["/logo/EMPI-2k24-LOGO-1.PNG"]
   },
-  viewport: "width=device-width, initial-scale=1, maximum-scale=5",
   icons: {
     icon: "/logo/EMPI-2k24-LOGO-1.PNG",
   }

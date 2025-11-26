@@ -175,18 +175,6 @@ export default function CheckoutPage() {
     }
   };
 
-  // Helper function to use Paystack redirect (for mobile)
-  const usePaystackRedirect = (ref: string, email: string, amount: number) => {
-    const paystackUrl = new URL("https://checkout.paystack.com/api/standard/pay");
-    paystackUrl.searchParams.set("key", process.env.NEXT_PUBLIC_PAYSTACK_KEY || "");
-    paystackUrl.searchParams.set("email", email);
-    paystackUrl.searchParams.set("amount", amount.toString());
-    paystackUrl.searchParams.set("ref", ref);
-    
-    console.log("🔗 Redirecting to Paystack...");
-    window.location.href = paystackUrl.toString();
-  };
-
   if (!isHydrated) return null;
 
   // ===== EMPTY CART =====
@@ -314,87 +302,85 @@ export default function CheckoutPage() {
                     
                     if (!buyer?.fullName || !buyer?.email || !buyer?.phone) {
                       setOrderError("Please ensure your profile has complete information");
-                      console.error("❌ Missing profile info");
                       return;
                     }
                     
                     if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
                       setOrderError("Payment service is not configured");
-                      console.error("❌ PAYSTACK_KEY missing");
                       return;
                     }
                     
                     setIsProcessing(true);
                     setOrderError(null);
-                    console.log("💳 Starting payment process...");
 
                     try {
-                      // Generate unique reference
                       const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                      console.log("📝 Reference:", ref);
-
-                      // Save order data first
                       const shippingCost = shippingOption === "empi" ? 2500 : 0;
                       const taxEstimate = total * 0.075;
                       const orderTotal = total + shippingCost + taxEstimate;
+                      const amountInKobo = Math.round(orderTotal * 100);
 
-                      // Store payment info in localStorage for verification
+                      console.log("💳 Payment Details:", { ref, amount: orderTotal, email: buyer.email });
+
+                      // Store payment info in localStorage
                       localStorage.setItem('empi_pending_payment', JSON.stringify({
                         reference: ref,
                         email: buyer.email,
-                        amount: Math.round(orderTotal * 100),
+                        amount: amountInKobo,
                         timestamp: Date.now()
                       }));
 
-                      // Check if Paystack is available
+                      // Attempt modal first if Paystack is available
+                      let modalAttempted = false;
                       if (typeof window !== "undefined" && (window as any).PaystackPop) {
-                        console.log("✅ Paystack available, using modal");
-                        
-                        const handler = (window as any).PaystackPop.setup({
-                          key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
-                          email: buyer.email,
-                          amount: Math.round(orderTotal * 100),
-                          currency: "NGN",
-                          ref: ref,
-                          firstname: buyer.fullName.split(" ")[0],
-                          lastname: buyer.fullName.split(" ").slice(1).join(" ") || " ",
-                          phone: buyer.phone,
-                          onClose: () => {
-                            console.log("🔴 Modal closed, checking payment...");
-                            verifyAndProcessPayment(ref);
-                          },
-                          onSuccess: (response: any) => {
-                            console.log("🟢 Payment success");
-                            handlePaymentSuccess(response);
-                          },
-                        });
-
-                        // Try to open the payment modal
                         try {
-                          if (handler.openIframe) {
+                          console.log("📱 Attempting Paystack modal...");
+                          const handler = (window as any).PaystackPop.setup({
+                            key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
+                            email: buyer.email,
+                            amount: amountInKobo,
+                            currency: "NGN",
+                            ref: ref,
+                            firstname: buyer.fullName.split(" ")[0] || "Customer",
+                            lastname: buyer.fullName.split(" ").slice(1).join(" ") || "",
+                            phone: buyer.phone,
+                            onClose: () => {
+                              console.log("Modal closed");
+                              verifyAndProcessPayment(ref);
+                            },
+                            onSuccess: (response: any) => {
+                              console.log("Payment successful");
+                              handlePaymentSuccess(response);
+                            },
+                          });
+
+                          if (handler?.openIframe) {
                             handler.openIframe();
-                            console.log("📱 Modal opened");
-                          } else if (handler.charge) {
-                            handler.charge();
-                            console.log("📱 Charge called");
-                          } else {
-                            throw new Error("No payment method available");
+                            modalAttempted = true;
+                            pollForPayment(ref);
+                            return;
                           }
                         } catch (err) {
-                          console.error("❌ Modal open failed:", err);
-                          // Fallback to redirect method
-                          usePaystackRedirect(ref, buyer.email, Math.round(orderTotal * 100));
+                          console.warn("Modal failed, using redirect:", err);
                         }
+                      }
 
-                        // Poll for completion
-                        pollForPayment(ref);
-                      } else {
-                        console.log("⚠️ Paystack not available, using redirect");
-                        // Use redirect method for mobile or if Paystack not loaded
-                        usePaystackRedirect(ref, buyer.email, Math.round(orderTotal * 100));
+                      // Fallback to redirect method
+                      if (!modalAttempted) {
+                        console.log("🔗 Using Paystack redirect method");
+                        const paystackUrl = new URL("https://checkout.paystack.com/api/standard/pay");
+                        paystackUrl.searchParams.set("key", process.env.NEXT_PUBLIC_PAYSTACK_KEY);
+                        paystackUrl.searchParams.set("email", buyer.email);
+                        paystackUrl.searchParams.set("amount", amountInKobo.toString());
+                        paystackUrl.searchParams.set("ref", ref);
+                        paystackUrl.searchParams.set("first_name", buyer.fullName.split(" ")[0] || "Customer");
+                        paystackUrl.searchParams.set("last_name", buyer.fullName.split(" ").slice(1).join(" ") || "");
+                        paystackUrl.searchParams.set("phone", buyer.phone);
+                        
+                        window.location.href = paystackUrl.toString();
                       }
                     } catch (error) {
-                      console.error("❌ Payment initiation error:", error);
+                      console.error("Payment error:", error);
                       setIsProcessing(false);
                       setOrderError("Failed to initialize payment. Please try again.");
                     }
