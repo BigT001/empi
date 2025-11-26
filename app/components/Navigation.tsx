@@ -330,7 +330,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
       {showMobileMenu && (
         <div className="md:hidden absolute top-14 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-40 animate-in slide-in-from-top duration-200" data-mobile-menu>
           <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
-            {/* Search Bar for Mobile */}
+              {/* Search Bar for Mobile */}
             <div className="relative w-full flex gap-2 items-center">
               <div className="relative flex-1">
                 <input
@@ -340,21 +340,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                 />
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               </div>
-
-              {/* Admin Icon - Only show if admin is logged in */}
-              {admin && (
-                <Link 
-                  href="/admin" 
-                  className="flex items-center justify-center p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition"
-                  title="Admin Dashboard"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <Settings className="h-5 w-5" />
-                </Link>
-              )}
-            </div>
-
-            {/* Icon Grid Menu */}
+            </div>            {/* Icon Grid Menu */}
             <div className="grid grid-cols-4 gap-3">
               {/* Currency Button */}
               <div className="relative">
@@ -424,19 +410,6 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                 >
                   <span className="text-2xl mb-1">🔐</span>
                   <span className="text-xs font-semibold text-blue-700 group-hover:text-blue-900">Login</span>
-                </Link>
-              )}
-
-              {/* Admin Button (if admin logged in) */}
-              {admin && (
-                <Link 
-                  href="/admin" 
-                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-orange-100 hover:bg-orange-200 transition duration-300 group"
-                  title="Admin"
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  <span className="text-2xl mb-1">⚙️</span>
-                  <span className="text-xs font-semibold text-orange-700 group-hover:text-orange-900">Admin</span>
                 </Link>
               )}
             </div>
