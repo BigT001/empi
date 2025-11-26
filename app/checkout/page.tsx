@@ -136,14 +136,21 @@ export default function CheckoutPage() {
     return (
       <div className="min-h-screen flex flex-col">
         <Header />
-        <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full text-center">
+        <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
           <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12">
-            <ShoppingBag className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-            <h1 className="text-3xl font-bold mb-2">Your cart is empty</h1>
-            <p className="text-gray-600 mb-6">Add items to proceed with checkout.</p>
-            <Link href="/" className="inline-block bg-lime-600 hover:bg-lime-700 text-white px-6 py-3 rounded-lg font-semibold">
-              Continue Shopping
-            </Link>
+            <div className="text-center mb-8">
+              <ShoppingBag className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+              <h1 className="text-3xl font-bold mb-2">Your cart is empty</h1>
+              <p className="text-gray-600 mb-8">Add items to proceed with checkout.</p>
+              <div className="space-y-3 max-w-sm mx-auto">
+                <Link href="/" className="block w-full bg-lime-600 hover:bg-lime-700 text-white px-6 py-3 rounded-lg font-semibold transition">
+                  Continue Shopping
+                </Link>
+                <Link href="/dashboard?tab=invoices" className="block w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white px-6 py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg">
+                  View Invoices
+                </Link>
+              </div>
+            </div>
           </div>
         </main>
         <Footer />

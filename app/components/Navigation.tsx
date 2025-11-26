@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings, LogOut } from "lucide-react";
@@ -20,6 +20,10 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   const pathname = usePathname();
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
+  const [currencyButtonRef, setCurrencyButtonRef] = useState<HTMLButtonElement | null>(null);
+  const [filterButtonRef, setFilterButtonRef] = useState<HTMLButtonElement | null>(null);
+  const [currencyModalPos, setCurrencyModalPos] = useState({ top: 0, left: 0 });
+  const [filterModalPos, setFilterModalPos] = useState({ top: 0, left: 0 });
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const { items } = useCart();
@@ -35,6 +39,49 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
     }
   }, [admin]);
 
+  // Update currency modal position
+  useEffect(() => {
+    if (currencyButtonRef && showCurrencyDropdown) {
+      const rect = currencyButtonRef.getBoundingClientRect();
+      setCurrencyModalPos({
+        top: rect.bottom + 12,
+        left: window.innerWidth / 2,
+      });
+    }
+  }, [showCurrencyDropdown, currencyButtonRef]);
+
+  // Update filter modal position
+  useEffect(() => {
+    if (filterButtonRef && showFilterDropdown) {
+      const rect = filterButtonRef.getBoundingClientRect();
+      setFilterModalPos({
+        top: rect.bottom + 12,
+        left: window.innerWidth / 2,
+      });
+    }
+  }, [showFilterDropdown, filterButtonRef]);
+
+  // Handle click outside for modals and menu
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      
+      // Close modals if click is outside
+      if (!target.closest('[data-modal]') && !target.closest('[data-modal-trigger]')) {
+        setShowCurrencyDropdown(false);
+        setShowFilterDropdown(false);
+      }
+      
+      // Close mobile menu if click is outside
+      if (!target.closest('[data-mobile-menu]') && !target.closest('[data-menu-toggle]')) {
+        setShowMobileMenu(false);
+      }
+    };
+
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
+
   return (
     <>
       {/* Desktop Navigation */}
@@ -42,58 +89,50 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
       {/* Navigation */}
       <nav className="hidden gap-8 text-sm font-medium md:flex items-center">
         {/* Premium Animated Category Toggle - With Inset Depth */}
-        <div className="relative inline-flex items-center bg-gradient-to-br from-gray-100 via-gray-50 to-white rounded-full p-1 shadow-inner border border-gray-300/60 backdrop-blur-sm overflow-hidden">
-          {/* Animated premium gradient background - Uniform smooth flow */}
-          <div
-            className="absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-lime-500 via-lime-600 to-green-600 shadow-inner w-1/3 transition-all ease-in-out"
-            style={{
-              transform: 
-                category === "adults" 
-                  ? "translateX(0)" 
-                  : category === "kids" 
-                  ? "translateX(100%)" 
-                  : "translateX(200%)",
-              transitionDuration: '600ms'
-            }}
-          />
-
-          {/* Adults Button - Inset Style */}
+        <div className="flex items-center gap-2">
+          {/* Adults Button */}
           <button
             onClick={() => onCategoryChange("adults")}
-            className={`relative px-4 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 flex items-center gap-1 ${
+            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
               category === "adults"
-                ? "text-white shadow-inner"
-                : "text-gray-700 hover:text-gray-900"
+                ? "bg-gray-900 text-white border-gray-900 shadow-lg"
+                : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
             }`}
           >
-            <span>👔</span>
-            <span className="hidden sm:inline">Adults</span>
+            <span className="flex items-center gap-2">
+              <span className="text-lg">👔</span>
+              <span>Adults</span>
+            </span>
           </button>
 
-          {/* Kids Button - Inset Style */}
+          {/* Kids Button */}
           <button
             onClick={() => onCategoryChange("kids")}
-            className={`relative px-4 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 flex items-center gap-1 ${
+            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
               category === "kids"
-                ? "text-white shadow-inner"
-                : "text-gray-700 hover:text-gray-900"
+                ? "bg-gray-900 text-white border-gray-900 shadow-lg"
+                : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
             }`}
           >
-            <span>👶</span>
-            <span className="hidden sm:inline">Kids</span>
+            <span className="flex items-center gap-2">
+              <span className="text-lg">👶</span>
+              <span>Kids</span>
+            </span>
           </button>
 
-          {/* Custom Button - Inset Style */}
+          {/* Custom Button */}
           <button
             onClick={() => onCategoryChange("custom")}
-            className={`relative px-4 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 flex items-center gap-1 ${
+            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
               category === "custom"
-                ? "text-white shadow-inner"
-                : "text-gray-700 hover:text-gray-900"
+                ? "bg-gray-900 text-white border-gray-900 shadow-lg"
+                : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
             }`}
           >
-            <span>🎨</span>
-            <span className="hidden sm:inline">Custom</span>
+            <span className="flex items-center gap-2">
+              <span className="text-lg">🎨</span>
+              <span>Custom</span>
+            </span>
           </button>
         </div>
 
@@ -228,45 +267,46 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
       <div className="md:hidden flex items-center justify-between gap-1 w-full flex-shrink-0">
         {/* Category Toggle for Mobile */}
         <div className="flex items-center flex-1 justify-center min-w-0">
-          {/* Modern Animated Category Toggle Switch - Optimized for Mobile */}
-          <div className="relative inline-flex items-center bg-gradient-to-br from-white via-gray-50 to-gray-100 rounded-full p-1 shadow-md border border-gray-200/80 flex-shrink-0">
-            <div
-              className={`absolute top-1 bottom-1 rounded-full bg-gradient-to-r from-lime-500 via-lime-600 to-green-600 shadow-lg transition-all duration-500 ease-out ${
-                category === "adults" ? "left-1 w-1/3" : category === "kids" ? "left-1/3 w-1/3" : "left-2/3 w-1/3"
-              }`}
-            />
+          {/* Modern Button Group - Mobile */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
               onClick={() => onCategoryChange("adults")}
-              className={`relative px-2 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 whitespace-nowrap flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all duration-300 border-2 ${
                 category === "adults"
-                  ? "text-white drop-shadow-lg scale-110"
-                  : "text-gray-700 hover:text-gray-900 hover:scale-105"
+                  ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                  : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
               }`}
             >
-              <span>👔</span>
-              <span className="hidden sm:inline">Adults</span>
+              <span className="flex items-center gap-1">
+                <span className="text-base">👔</span>
+                <span>Adults</span>
+              </span>
             </button>
             <button
               onClick={() => onCategoryChange("kids")}
-              className={`relative px-2 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 whitespace-nowrap flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all duration-300 border-2 ${
                 category === "kids"
-                  ? "text-white drop-shadow-lg scale-110"
-                  : "text-gray-700 hover:text-gray-900 hover:scale-105"
+                  ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                  : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
               }`}
             >
-              <span>👶</span>
-              <span className="hidden sm:inline">Kids</span>
+              <span className="flex items-center gap-1">
+                <span className="text-base">👶</span>
+                <span>Kids</span>
+              </span>
             </button>
             <button
               onClick={() => onCategoryChange("custom")}
-              className={`relative px-2 py-2 rounded-full font-bold text-xs transition-all duration-500 z-10 whitespace-nowrap flex items-center gap-1 ${
+              className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all duration-300 border-2 ${
                 category === "custom"
-                  ? "text-white drop-shadow-lg scale-110"
-                  : "text-gray-700 hover:text-gray-900 hover:scale-105"
+                  ? "bg-gray-900 text-white border-gray-900 shadow-md"
+                  : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
               }`}
             >
-              <span>🎨</span>
-              <span className="hidden sm:inline">Custom</span>
+              <span className="flex items-center gap-1">
+                <span className="text-base">🎨</span>
+                <span>Custom</span>
+              </span>
             </button>
           </div>
         </div>
@@ -282,101 +322,237 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         </Link>
 
         {/* Mobile Menu Toggle */}
-        <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition flex-shrink-0">
+        <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition flex-shrink-0" data-menu-toggle>
           <Menu className="h-4 w-4" />
         </button>
       </div>
 
       {/* Mobile Dropdown Menu */}
       {showMobileMenu && (
-        <div className="md:hidden absolute top-20 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-40">
-          <div className="p-4 space-y-3 max-h-96 overflow-y-auto">
+        <div className="md:hidden absolute top-14 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-40 animate-in slide-in-from-top duration-200" data-mobile-menu>
+          <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
             {/* Search Bar for Mobile */}
-            <div className="relative w-full">
-              <input
-                aria-label="Search products"
-                placeholder="Search costumes..."
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition"
-              />
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-            </div>
+            <div className="relative w-full flex gap-2 items-center">
+              <div className="relative flex-1">
+                <input
+                  aria-label="Search products"
+                  placeholder="Search costumes..."
+                  className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:bg-white transition"
+                />
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
+              </div>
 
-            {/* Currency Switcher for Mobile */}
-            <div className="relative">
-              <button
-                onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
-                className="w-full flex items-center justify-between px-4 py-2 rounded-lg border border-gray-200 hover:border-lime-600 text-gray-700 hover:text-lime-600 text-sm font-medium transition"
-              >
-                <span>Currency: {CURRENCY_RATES[currency].symbol} {currency}</span>
-                <ChevronDown className="h-4 w-4" />
-              </button>
-              {showCurrencyDropdown && (
-                <div className="absolute left-0 right-0 mt-2 bg-white rounded-lg border border-gray-200 shadow-lg z-50 max-h-48 overflow-y-auto">
-                  {Object.entries(CURRENCY_RATES).map(([code, data]) => (
-                    <button
-                      key={code}
-                      onClick={() => {
-                        onCurrencyChange(code);
-                        setShowCurrencyDropdown(false);
-                      }}
-                      className={`w-full text-left px-4 py-2 text-sm hover:bg-lime-50 hover:text-lime-600 transition ${
-                        currency === code ? "bg-lime-100 text-lime-600 font-semibold" : "text-gray-700"
-                      }`}
-                    >
-                      {data.symbol} {code} - {data.name}
-                    </button>
-                  ))}
-                </div>
+              {/* User Icon - Only show if logged in */}
+              {buyer && (
+                <Link 
+                  href="/dashboard" 
+                  className="flex items-center justify-center p-2 text-lime-600 hover:bg-lime-50 rounded-lg transition"
+                  title="Dashboard"
+                >
+                  <User className="h-4 w-4" />
+                </Link>
+              )}
+
+              {/* Admin Icon - Only show if logged in admin */}
+              {admin && (
+                <Link 
+                  href="/admin" 
+                  className="flex items-center justify-center p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition"
+                  title="Admin"
+                >
+                  <Settings className="h-4 w-4" />
+                </Link>
               )}
             </div>
 
-            {/* Filter Dropdown for Mobile */}
-            <div className="relative">
-              <button
-                onClick={() => setShowFilterDropdown(!showFilterDropdown)}
-                className="w-full flex items-center justify-between px-4 py-2 rounded-lg border border-gray-200 hover:border-lime-600 text-gray-700 hover:text-lime-600 text-sm font-medium transition"
-              >
-                <span>Filter</span>
-                <ChevronDown className="h-4 w-4" />
-              </button>
-              {showFilterDropdown && (
-                <div className="absolute left-0 right-0 mt-2 bg-white rounded-lg border border-gray-200 shadow-lg z-50">
-                  <button
-                    onClick={() => setShowFilterDropdown(false)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 transition"
-                  >
-                    Price: Low to High
-                  </button>
-                  <button
-                    onClick={() => setShowFilterDropdown(false)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 transition"
-                  >
-                    Price: High to Low
-                  </button>
-                  <button
-                    onClick={() => setShowFilterDropdown(false)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 transition"
-                  >
-                    Newest
-                  </button>
-                  <button
-                    onClick={() => setShowFilterDropdown(false)}
-                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 transition"
-                  >
-                    Most Popular
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Icon Grid Menu */}
+            <div className="grid grid-cols-4 gap-3">
+              {/* Currency Button */}
+              <div className="relative">
+                <button
+                  ref={setCurrencyButtonRef}
+                  onClick={() => {
+                    setShowCurrencyDropdown(!showCurrencyDropdown);
+                    setShowFilterDropdown(false);
+                  }}
+                  className="w-full flex flex-col items-center justify-center p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition duration-300 group"
+                  title="Currency"
+                  data-modal-trigger
+                >
+                  <span className="text-2xl mb-1">💱</span>
+                  <span className="text-xs font-semibold text-gray-700 group-hover:text-gray-900">Currency</span>
+                </button>
+              </div>
 
-            {/* Links for Mobile */}
-            <Link href="/about" className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 rounded-lg transition">
-              About Us
-            </Link>
-            {admin && (
-              <Link href="/admin" className="block w-full px-4 py-2 text-sm text-gray-700 hover:bg-lime-50 hover:text-lime-600 rounded-lg transition">
-                Admin
+              {/* Filter Button */}
+              <div className="relative">
+                <button
+                  ref={setFilterButtonRef}
+                  onClick={() => {
+                    setShowFilterDropdown(!showFilterDropdown);
+                    setShowCurrencyDropdown(false);
+                  }}
+                  className="w-full flex flex-col items-center justify-center p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition duration-300 group"
+                  title="Filter"
+                  data-modal-trigger
+                >
+                  <span className="text-2xl mb-1">🎚️</span>
+                  <span className="text-xs font-semibold text-gray-700 group-hover:text-gray-900">Filter</span>
+                </button>
+              </div>
+
+              {/* About Us Button */}
+              <Link 
+                href="/about" 
+                className="flex flex-col items-center justify-center p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition duration-300 group"
+                title="About Us"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <span className="text-2xl mb-1">ℹ️</span>
+                <span className="text-xs font-semibold text-gray-700 group-hover:text-gray-900">About</span>
               </Link>
+
+              {/* Admin Button (if logged in) */}
+              {admin && (
+                <Link 
+                  href="/admin" 
+                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition duration-300 group"
+                  title="Admin"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  <span className="text-2xl mb-1">⚙️</span>
+                  <span className="text-xs font-semibold text-gray-700 group-hover:text-gray-900">Admin</span>
+                </Link>
+              )}
+            </div>
+
+
+
+            {/* Currency Modal */}
+            {showCurrencyDropdown && (
+              <>
+                {/* Modal */}
+                <div 
+                  className="fixed z-50 w-full max-w-sm px-4"
+                  data-modal
+                  style={{
+                    top: `${currencyModalPos.top}px`,
+                    left: `${currencyModalPos.left}px`,
+                    transform: 'translateX(-50%)',
+                    animation: 'slideUpSmooth 250ms ease-out forwards',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border-2 border-lime-500/30">
+                    {/* Header with Lime Gradient */}
+                    <div className="bg-gradient-to-r from-lime-600 to-green-600 text-white p-6 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-black">💱 Currency</h3>
+                        <p className="text-lime-100 text-xs font-semibold mt-1">Select your preferred currency</p>
+                      </div>
+                      <button
+                        onClick={() => setShowCurrencyDropdown(false)}
+                        className="text-white hover:text-lime-100 p-2 rounded-lg transition hover:scale-110"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* Currency Options */}
+                    <div className="p-5 space-y-2 max-h-80 overflow-y-auto">
+                      {Object.entries(CURRENCY_RATES).map(([code, data]) => (
+                        <button
+                          key={code}
+                          onClick={() => {
+                            onCurrencyChange(code);
+                            setShowCurrencyDropdown(false);
+                          }}
+                          className={`w-full text-left px-5 py-3 rounded-2xl font-semibold transition-all duration-300 flex items-center justify-between group ${
+                            currency === code 
+                              ? "bg-gradient-to-r from-lime-500 to-green-500 text-white shadow-lg scale-105" 
+                              : "bg-gray-50 text-gray-700 hover:bg-lime-50 hover:border-lime-300"
+                          } border-2 border-transparent`}
+                        >
+                          <div className="flex items-center gap-3 flex-1">
+                            <span className="text-2xl">{data.symbol}</span>
+                            <div>
+                              <span className="block font-black">{code}</span>
+                              <span className="text-xs opacity-75">{data.name}</span>
+                            </div>
+                          </div>
+                          {currency === code && <span className="text-xl font-black">✓</span>}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Filter Modal */}
+            {showFilterDropdown && (
+              <>
+                {/* Modal */}
+                <div 
+                  className="fixed z-50 w-full max-w-sm px-4"
+                  data-modal
+                  style={{
+                    top: `${filterModalPos.top}px`,
+                    left: `${filterModalPos.left}px`,
+                    transform: 'translateX(-50%)',
+                    animation: 'slideUpSmooth 250ms ease-out forwards',
+                  }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <div className="bg-white rounded-3xl shadow-2xl overflow-hidden border-2 border-lime-500/30">
+                    {/* Header with Lime Gradient */}
+                    <div className="bg-gradient-to-r from-lime-600 to-green-600 text-white p-6 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-xl font-black">🎚️ Sort Products</h3>
+                        <p className="text-lime-100 text-xs font-semibold mt-1">Choose how to display items</p>
+                      </div>
+                      <button
+                        onClick={() => setShowFilterDropdown(false)}
+                        className="text-white hover:text-lime-100 p-2 rounded-lg transition hover:scale-110"
+                      >
+                        ✕
+                      </button>
+                    </div>
+
+                    {/* Filter Options */}
+                    <div className="p-5 space-y-2">
+                      <button
+                        onClick={() => setShowFilterDropdown(false)}
+                        className="w-full text-left px-5 py-3 rounded-2xl font-semibold text-gray-700 bg-gray-50 hover:bg-lime-50 hover:border-lime-300 transition-all duration-300 flex items-center gap-3 border-2 border-transparent group"
+                      >
+                        <span className="text-2xl">⬇️</span>
+                        <span className="group-hover:text-lime-700">Price: Low to High</span>
+                      </button>
+                      <button
+                        onClick={() => setShowFilterDropdown(false)}
+                        className="w-full text-left px-5 py-3 rounded-2xl font-semibold text-gray-700 bg-gray-50 hover:bg-lime-50 hover:border-lime-300 transition-all duration-300 flex items-center gap-3 border-2 border-transparent group"
+                      >
+                        <span className="text-2xl">⬆️</span>
+                        <span className="group-hover:text-lime-700">Price: High to Low</span>
+                      </button>
+                      <button
+                        onClick={() => setShowFilterDropdown(false)}
+                        className="w-full text-left px-5 py-3 rounded-2xl font-semibold text-gray-700 bg-gray-50 hover:bg-lime-50 hover:border-lime-300 transition-all duration-300 flex items-center gap-3 border-2 border-transparent group"
+                      >
+                        <span className="text-2xl">✨</span>
+                        <span className="group-hover:text-lime-700">Newest</span>
+                      </button>
+                      <button
+                        onClick={() => setShowFilterDropdown(false)}
+                        className="w-full text-left px-5 py-3 rounded-2xl font-semibold text-gray-700 bg-gray-50 hover:bg-lime-50 hover:border-lime-300 transition-all duration-300 flex items-center gap-3 border-2 border-transparent group"
+                      >
+                        <span className="text-2xl">🔥</span>
+                        <span className="group-hover:text-lime-700">Most Popular</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </>
             )}
           </div>
         </div>

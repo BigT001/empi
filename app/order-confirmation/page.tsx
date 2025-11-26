@@ -338,6 +338,14 @@ function OrderConfirmationContent() {
                 </button>
 
                 <Link
+                  href="/dashboard?tab=invoices"
+                  className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white font-semibold py-3 rounded-lg transition shadow-md hover:shadow-lg"
+                >
+                  <Package className="h-5 w-5" />
+                  View Invoices
+                </Link>
+
+                <Link
                   href="/cart"
                   className="w-full flex items-center justify-center gap-2 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-3 rounded-lg transition"
                 >
