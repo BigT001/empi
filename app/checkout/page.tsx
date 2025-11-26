@@ -260,21 +260,38 @@ export default function CheckoutPage() {
                       return;
                     }
                     
+                    if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
+                      setOrderError("Payment service is not configured. Please try again later.");
+                      console.error("❌ NEXT_PUBLIC_PAYSTACK_KEY is not set");
+                      return;
+                    }
+                    
                     setIsProcessing(true);
                     setOrderError(null);
                     console.log("💳 Initiating payment for:", buyer.email);
 
-                    // Initialize Paystack
-                    const initPaystack = () => {
-                      if (typeof window !== "undefined" && (window as any).PaystackPop) {
-                        console.log("✅ Paystack loaded");
+                    // Initialize Paystack with retry logic
+                    const initPaystack = (retries = 0) => {
+                      const maxRetries = 5;
+                      
+                      if (typeof window === "undefined") {
+                        console.error("❌ Window object not available");
+                        setIsProcessing(false);
+                        setOrderError("Failed to initialize payment. Please refresh and try again.");
+                        return;
+                      }
+
+                      // Check if Paystack is available
+                      if ((window as any).PaystackPop) {
+                        console.log("✅ Paystack loaded, initializing payment...");
 
                         const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                         console.log("📝 Reference generated:", ref);
 
                         try {
-                          const handler = (window as any).PaystackPop.setup({
-                            key: process.env.NEXT_PUBLIC_PAYSTACK_KEY || "",
+                          // Setup payment configuration
+                          const paymentConfig = {
+                            key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
                             email: buyer.email,
                             amount: Math.round(totalAmount * 100),
                             currency: "NGN",
@@ -283,70 +300,51 @@ export default function CheckoutPage() {
                             lastname: buyer.fullName.split(" ").slice(1).join(" ") || " ",
                             phone: buyer.phone,
                             onClose: () => {
-                              console.log("🔴 Modal closed - onClose callback fired!");
-                              console.log("🔴 Modal closed - verifying payment...");
-                              
-                              // Verify payment with our API
-                              fetch(`/api/verify-payment?reference=${ref}`)
-                                .then(async (res) => {
-                                  const data = await res.json();
-                                  console.log("📊 Verification data:", data);
-                                  
-                                  if (data.success) {
-                                    console.log("✅ Payment verified! Calling handlePaymentSuccess");
-                                    handlePaymentSuccess({ 
-                                      reference: data.reference,
-                                      ...data 
-                                    });
-                                  } else {
-                                    console.warn("⚠️ Payment verification returned false");
-                                    setIsProcessing(false);
-                                    setOrderError("Payment not confirmed. Please check your email or try again.");
-                                  }
-                                })
-                                .catch(err => {
-                                  console.error("❌ Verification error:", err);
-                                  setIsProcessing(false);
-                                  setOrderError("Could not verify payment. Please check your email or contact support.");
-                                });
+                              console.log("🔴 Payment modal closed");
+                              // Check payment status on close
+                              setTimeout(() => {
+                                verifyPaymentStatus(ref);
+                              }, 1000);
                             },
                             onSuccess: (response: any) => {
-                              console.log("🟢 onSuccess callback fired!");
-                              console.log("🟢 onSuccess fired with response:", response);
+                              console.log("🟢 Payment successful!");
+                              console.log("Response:", response);
                               handlePaymentSuccess(response);
                             },
-                            onError: (error: any) => {
-                              console.error("❌ onError callback fired!");
-                              console.error("❌ Payment error:", error);
-                              setIsProcessing(false);
-                              setOrderError("Payment failed. Please try again.");
-                            },
+                          };
+
+                          console.log("🔧 Paystack configuration:", {
+                            key: "***",
+                            email: paymentConfig.email,
+                            amount: paymentConfig.amount,
+                            ref: paymentConfig.ref,
                           });
 
-                          console.log("🔵 Opening iframe...");
-                          // Use pay() method which works better on mobile than openIframe()
-                          if (typeof (handler as any).pay === 'function') {
-                            console.log("📱 Using pay() method for better mobile support");
+                          const handler = (window as any).PaystackPop.setup(paymentConfig);
+                          
+                          if (!handler) {
+                            throw new Error("Failed to create Paystack handler");
+                          }
+
+                          console.log("📱 Opening payment interface...");
+                          
+                          // Try multiple methods to open payment
+                          if (typeof handler.openIframe === 'function') {
+                            console.log("✅ Using openIframe method");
+                            handler.openIframe();
+                          } else if (typeof handler.charge === 'function') {
+                            console.log("✅ Using charge method");
+                            handler.charge();
+                          } else if (typeof (handler as any).pay === 'function') {
+                            console.log("✅ Using pay method");
                             (handler as any).pay();
-                          } else if (typeof (handler as any).openIframe === 'function') {
-                            console.log("📱 Falling back to openIframe() method");
-                            (handler as any).openIframe();
-                            // Force display the iframe
-                            if (handler.iframe && (handler.iframe as any).style) {
-                              (handler.iframe as any).style.display = 'block';
-                              (handler.iframe as any).style.visibility = 'visible';
-                            }
                           } else {
-                            console.error("❌ Neither pay() nor openIframe() is available!");
-                            setIsProcessing(false);
-                            setOrderError("Failed to open payment modal");
-                            return;
+                            throw new Error("No valid payment method available on Paystack handler");
                           }
                           
-                          // WORKAROUND: Since callbacks don't always fire on mobile, 
-                          // poll for payment status every second for 120 seconds
+                          // Start polling for payment confirmation
                           let pollCount = 0;
-                          const maxPolls = 120;
+                          const maxPolls = 180; // 3 minutes
                           const pollInterval = setInterval(async () => {
                             pollCount++;
                             
@@ -355,31 +353,52 @@ export default function CheckoutPage() {
                               const verifyData = await verifyRes.json();
                               
                               if (verifyData.success && verifyData.status === 'success') {
-                                console.log("✅ PAYMENT DETECTED via polling!");
-                                console.log("📊 Verification data:", verifyData);
+                                console.log("✅ Payment verified via polling!");
                                 clearInterval(pollInterval);
                                 handlePaymentSuccess({ reference: ref, ...verifyData });
                                 return;
                               }
                             } catch (err) {
-                              // Silently fail - normal if not yet complete
+                              console.log("⏳ Still waiting for payment confirmation...");
                             }
                             
-                            // Stop polling after 120 seconds
                             if (pollCount >= maxPolls) {
-                              console.log("⏰ Polling stopped (120 second timeout)");
+                              console.log("⏰ Polling timeout reached");
                               clearInterval(pollInterval);
                               setIsProcessing(false);
                             }
                           }, 1000);
+
                         } catch (error) {
-                          console.error("❌ Setup error:", error);
+                          console.error("❌ Payment initialization error:", error);
                           setIsProcessing(false);
-                          setOrderError("Failed to open payment modal");
+                          setOrderError(`Payment error: ${error instanceof Error ? error.message : 'Unknown error'}. Please try again.`);
                         }
+                      } else if (retries < maxRetries) {
+                        // Paystack not loaded yet, retry
+                        console.log(`⏳ Paystack not ready, retrying... (${retries + 1}/${maxRetries})`);
+                        setTimeout(() => initPaystack(retries + 1), 500);
                       } else {
-                        console.log("⏳ Retrying Paystack load...");
-                        setTimeout(initPaystack, 500);
+                        console.error("❌ Paystack failed to load after retries");
+                        setIsProcessing(false);
+                        setOrderError("Payment service failed to load. Please check your internet connection and try again.");
+                      }
+                    };
+
+                    // Helper function to verify payment status
+                    const verifyPaymentStatus = async (ref: string) => {
+                      try {
+                        const res = await fetch(`/api/verify-payment?reference=${ref}`);
+                        const data = await res.json();
+                        
+                        if (data.success && data.status === 'success') {
+                          console.log("✅ Payment confirmed on close!");
+                          handlePaymentSuccess({ reference: ref, ...data });
+                        } else {
+                          console.log("⚠️ Payment not confirmed yet");
+                        }
+                      } catch (err) {
+                        console.error("❌ Verification failed:", err);
                       }
                     };
 
