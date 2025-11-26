@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
+import crypto from 'crypto';
+
+const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,11 +47,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Update last login
+    // Create secure session token
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const sessionExpiry = new Date(Date.now() + SESSION_EXPIRY);
+
+    // Update admin with session info
     admin.lastLogin = new Date();
+    admin.sessionToken = sessionToken;
+    admin.sessionExpiry = sessionExpiry;
     await admin.save();
 
-    console.log(`✅ Admin logged in: ${email}`);
+    console.log(`✅ Admin logged in with secure token: ${email}`);
 
     // Create response with admin data
     const response = NextResponse.json(
@@ -64,14 +73,15 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
 
-    // Set secure HTTP-only cookie
+    // Set secure HTTP-only cookie with token
     response.cookies.set({
       name: 'admin_session',
-      value: admin._id.toString(),
+      value: sessionToken,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60, // 7 days
+      maxAge: SESSION_EXPIRY / 1000, // Convert to seconds
+      path: '/',
     });
 
     return response;

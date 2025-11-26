@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
-import { isSessionInvalid } from '@/lib/invalidSessions';
 
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
 
-    // Get admin_session cookie
-    const adminId = request.cookies.get('admin_session')?.value;
+    // Get admin_session cookie with secure token
+    const sessionToken = request.cookies.get('admin_session')?.value;
     
     console.log('[Admin/Me API] GET /api/admin/me called');
-    console.log('[Admin/Me API] admin_session cookie value:', adminId || 'NOT FOUND');
+    console.log('[Admin/Me API] admin_session cookie value:', sessionToken ? 'present' : 'NOT FOUND');
 
-    if (!adminId) {
+    if (!sessionToken) {
       console.log('[Admin/Me API] ❌ No session cookie found - returning 401');
       return NextResponse.json(
         { error: 'Not authenticated' },
@@ -21,22 +20,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check if session has been invalidated
-    if (isSessionInvalid(adminId)) {
-      console.log('[Admin/Me API] ❌ Session has been invalidated (logged out) - returning 401');
-      return NextResponse.json(
-        { error: 'Session invalidated' },
-        { status: 401 }
-      );
-    }
-
-    // Find admin by ID
-    const admin = await Admin.findById(adminId);
+    // Find admin with valid session token
+    const admin = await Admin.findOne({
+      sessionToken,
+      sessionExpiry: { $gt: new Date() } // Session not expired
+    });
 
     if (!admin || !admin.isActive) {
-      console.log('[Admin/Me API] ❌ Admin not found or inactive - returning 401');
+      console.log('[Admin/Me API] ❌ Admin not found, session expired, or inactive - returning 401');
       return NextResponse.json(
-        { error: 'Admin not found or inactive' },
+        { error: 'Session expired or invalid' },
         { status: 401 }
       );
     }
