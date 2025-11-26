@@ -3,12 +3,23 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, amount, reference, firstname, lastname, phone } = body;
+    let { email, amount, reference, firstname, lastname, phone } = body;
+
+    // Validate and sanitize email
+    email = (email || '').trim().toLowerCase();
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      console.error("❌ Invalid email format:", email);
+      return NextResponse.json(
+        { error: 'Invalid email address provided' },
+        { status: 400 }
+      );
+    }
 
     // Validate required fields
-    if (!email || !amount || !reference) {
+    if (!amount || !reference) {
       return NextResponse.json(
-        { error: 'Missing required fields: email, amount, reference' },
+        { error: 'Missing required fields: amount, reference' },
         { status: 400 }
       );
     }
@@ -26,6 +37,8 @@ export async function POST(request: NextRequest) {
       email,
       amount,
       reference,
+      firstname,
+      lastname,
     });
 
     // Initialize transaction via Paystack API

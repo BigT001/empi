@@ -302,6 +302,15 @@ export default function CheckoutPage() {
                     
                     if (!buyer?.fullName || !buyer?.email || !buyer?.phone) {
                       setOrderError("Please ensure your profile has complete information");
+                      console.log("❌ Incomplete buyer info:", { fullName: buyer?.fullName, email: buyer?.email, phone: buyer?.phone });
+                      return;
+                    }
+                    
+                    // Validate email format
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(buyer.email)) {
+                      setOrderError("Please provide a valid email address");
+                      console.log("❌ Invalid email format:", buyer.email);
                       return;
                     }
                     
