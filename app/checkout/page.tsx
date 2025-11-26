@@ -365,20 +365,36 @@ export default function CheckoutPage() {
                         }
                       }
 
-                      // Fallback to redirect method
+                      // Fallback to backend initialization
                       if (!modalAttempted) {
-                        console.log("🔗 Using Paystack redirect method");
-                        const paystackUrl = new URL("https://checkout.paystack.com/api/standard/pay");
-                        paystackUrl.searchParams.set("key", process.env.NEXT_PUBLIC_PAYSTACK_KEY || "");
-                        paystackUrl.searchParams.set("email", buyer.email);
-                        paystackUrl.searchParams.set("amount", amountInKobo.toString());
-                        paystackUrl.searchParams.set("reference", ref);
-                        paystackUrl.searchParams.set("first_name", buyer.fullName.split(" ")[0] || "Customer");
-                        paystackUrl.searchParams.set("last_name", buyer.fullName.split(" ").slice(1).join(" ") || "");
-                        paystackUrl.searchParams.set("phone", buyer.phone);
-                        
-                        console.log("Redirect URL:", paystackUrl.toString());
-                        window.location.href = paystackUrl.toString();
+                        console.log("🔗 Using backend payment initialization");
+                        try {
+                          const initRes = await fetch('/api/initialize-payment', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              email: buyer.email,
+                              amount: amountInKobo,
+                              reference: ref,
+                              firstname: buyer.fullName.split(" ")[0] || "Customer",
+                              lastname: buyer.fullName.split(" ").slice(1).join(" ") || "",
+                              phone: buyer.phone,
+                            }),
+                          });
+
+                          const initData = await initRes.json();
+                          if (initRes.ok && initData.authorization_url) {
+                            console.log("✅ Payment initialized, redirecting to:", initData.authorization_url);
+                            window.location.href = initData.authorization_url;
+                          } else {
+                            setOrderError(initData.error || "Failed to initialize payment");
+                            setIsProcessing(false);
+                          }
+                        } catch (err) {
+                          console.error("Payment initialization error:", err);
+                          setOrderError("Failed to initialize payment. Please try again.");
+                          setIsProcessing(false);
+                        }
                       }
                     } catch (error) {
                       console.error("Payment error:", error);
