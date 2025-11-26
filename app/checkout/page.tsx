@@ -86,6 +86,7 @@ export default function CheckoutPage() {
         const invoiceData = {
           invoiceNumber: `INV-${response.reference}`,
           orderNumber: response.reference,
+          buyerId: buyer?.id, // Add buyerId to link invoice to user
           customerName: buyer?.fullName || "",
           customerEmail: buyer?.email || "",
           customerPhone: buyer?.phone || "",

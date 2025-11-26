@@ -50,11 +50,20 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
 
   // Save to localStorage whenever buyer changes
   useEffect(() => {
-    if (isHydrated && buyer) {
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(buyer));
-      } catch (error) {
-        console.error("Failed to save buyer profile to localStorage", error);
+    if (isHydrated) {
+      if (buyer) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(buyer));
+        } catch (error) {
+          console.error("Failed to save buyer profile to localStorage", error);
+        }
+      } else {
+        // Clear localStorage when buyer is null
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+        } catch (error) {
+          console.error("Failed to clear buyer profile from localStorage", error);
+        }
       }
     }
   }, [buyer, isHydrated]);
@@ -68,8 +77,8 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
   };
 
   const logout = () => {
+    console.log("🔐 BuyerContext logout called");
     setBuyer(null);
-    localStorage.removeItem(STORAGE_KEY);
   };
 
   const register = async (data: Omit<BuyerProfile, 'id' | 'createdAt' | 'lastLogin'>): Promise<BuyerProfile | null> => {

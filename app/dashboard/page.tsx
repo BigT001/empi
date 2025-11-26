@@ -13,7 +13,7 @@ import { Download, Printer, ShoppingBag, Check, Truck, MapPin, Eye, FileText, X,
 
 
 export default function BuyerDashboardPage() {
-  const { buyer, isHydrated } = useBuyer();
+  const { buyer, isHydrated, logout } = useBuyer();
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [activeTab, setActiveTab] = useState<"overview" | "invoices">("overview");
   const [selectedInvoice, setSelectedInvoice] = useState<StoredInvoice | null>(null);
@@ -21,8 +21,15 @@ export default function BuyerDashboardPage() {
 
   // Logout function
   const handleLogout = () => {
-    localStorage.removeItem("buyer");
+    console.log("🔐 Logging out user...");
+    // Call the logout function from context to clear buyer state and localStorage
+    logout();
+    // Additional cleanup
     localStorage.removeItem("buyerInvoices");
+    localStorage.removeItem("empi_shipping_option");
+    localStorage.removeItem("empi_pending_payment");
+    localStorage.removeItem("empi_cart");
+    // Redirect to auth page
     router.push("/auth");
   };
 
@@ -43,7 +50,8 @@ export default function BuyerDashboardPage() {
     if (buyer?.id) {
       const fetchInvoices = async () => {
         try {
-          const response = await fetch(`/api/invoices?type=automatic`);
+          // Fetch only this user's invoices by passing their buyerId
+          const response = await fetch(`/api/invoices?type=automatic&buyerId=${buyer.id}`);
           const data = await response.json();
           
           if (Array.isArray(data)) {

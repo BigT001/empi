@@ -14,6 +14,8 @@ export interface IBuyer extends Document {
   createdAt: Date;
   updatedAt: Date;
   lastLogin?: Date;
+  sessionToken?: string; // Secure session token
+  sessionExpiry?: Date;  // Session expiration time
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
@@ -29,6 +31,8 @@ const buyerSchema = new Schema<IBuyer>(
     postalCode: String,
     isAdmin: { type: Boolean, default: false },
     lastLogin: Date,
+    sessionToken: { type: String, default: null }, // Secure session token
+    sessionExpiry: { type: Date, default: null },  // When session expires
   },
   { timestamps: true }
 );

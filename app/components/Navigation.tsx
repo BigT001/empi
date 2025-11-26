@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings, LogOut } from "lucide-react";
 import { CURRENCY_RATES } from "./constants";
 import { useCart } from "./CartContext";
@@ -18,6 +18,7 @@ interface NavigationProps {
 
 export function Navigation({ category, onCategoryChange, currency, onCurrencyChange }: NavigationProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
   const [showFilterDropdown, setShowFilterDropdown] = useState(false);
   const [currencyButtonRef, setCurrencyButtonRef] = useState<HTMLButtonElement | null>(null);
@@ -234,8 +235,11 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                 <div className="p-2 border-t border-gray-200">
                   <button
                     onClick={() => {
+                      console.log("🔐 Logout clicked from Navigation");
                       logout();
                       setShowAccountMenu(false);
+                      // Redirect to home
+                      router.push("/");
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2 hover:bg-red-50 text-sm text-red-600 font-semibold rounded transition"
                   >
