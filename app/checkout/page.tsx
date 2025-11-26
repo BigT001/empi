@@ -324,47 +324,54 @@ export default function CheckoutPage() {
                           });
 
                           console.log("🔵 Opening iframe...");
-                          if (typeof (handler as any).openIframe === 'function') {
+                          // Use pay() method which works better on mobile than openIframe()
+                          if (typeof (handler as any).pay === 'function') {
+                            console.log("📱 Using pay() method for better mobile support");
+                            (handler as any).pay();
+                          } else if (typeof (handler as any).openIframe === 'function') {
+                            console.log("📱 Falling back to openIframe() method");
                             (handler as any).openIframe();
-                            console.log("📱 Iframe opened, waiting for callback...");
                             // Force display the iframe
                             if (handler.iframe && (handler.iframe as any).style) {
                               (handler.iframe as any).style.display = 'block';
                               (handler.iframe as any).style.visibility = 'visible';
                             }
-                            
-                            // WORKAROUND: Since callbacks don't fire in test mode, 
-                            // poll for payment status every second for 60 seconds
-                            let pollCount = 0;
-                            const maxPolls = 60;
-                            const pollInterval = setInterval(async () => {
-                              pollCount++;
-                              
-                              try {
-                                const verifyRes = await fetch(`/api/verify-payment?reference=${ref}`);
-                                const verifyData = await verifyRes.json();
-                                
-                                if (verifyData.success && verifyData.status === 'success') {
-                                  console.log("✅ PAYMENT DETECTED via polling!");
-                                  console.log("📊 Verification data:", verifyData);
-                                  clearInterval(pollInterval);
-                                  handlePaymentSuccess({ reference: ref, ...verifyData });
-                                  return;
-                                }
-                              } catch (err) {
-                                // Silently fail - normal if not yet complete
-                              }
-                              
-                              // Stop polling after 60 seconds
-                              if (pollCount >= maxPolls) {
-                                console.log("⏰ Polling stopped (60 second timeout)");
-                                clearInterval(pollInterval);
-                                setIsProcessing(false);
-                              }
-                            }, 1000);
                           } else {
-                            console.error("❌ openIframe is not a function!");
+                            console.error("❌ Neither pay() nor openIframe() is available!");
+                            setIsProcessing(false);
+                            setOrderError("Failed to open payment modal");
+                            return;
                           }
+                          
+                          // WORKAROUND: Since callbacks don't always fire on mobile, 
+                          // poll for payment status every second for 120 seconds
+                          let pollCount = 0;
+                          const maxPolls = 120;
+                          const pollInterval = setInterval(async () => {
+                            pollCount++;
+                            
+                            try {
+                              const verifyRes = await fetch(`/api/verify-payment?reference=${ref}`);
+                              const verifyData = await verifyRes.json();
+                              
+                              if (verifyData.success && verifyData.status === 'success') {
+                                console.log("✅ PAYMENT DETECTED via polling!");
+                                console.log("📊 Verification data:", verifyData);
+                                clearInterval(pollInterval);
+                                handlePaymentSuccess({ reference: ref, ...verifyData });
+                                return;
+                              }
+                            } catch (err) {
+                              // Silently fail - normal if not yet complete
+                            }
+                            
+                            // Stop polling after 120 seconds
+                            if (pollCount >= maxPolls) {
+                              console.log("⏰ Polling stopped (120 second timeout)");
+                              clearInterval(pollInterval);
+                              setIsProcessing(false);
+                            }
+                          }, 1000);
                         } catch (error) {
                           console.error("❌ Setup error:", error);
                           setIsProcessing(false);
