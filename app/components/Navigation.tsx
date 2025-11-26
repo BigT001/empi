@@ -322,8 +322,8 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         </Link>
 
         {/* Mobile Menu Toggle */}
-        <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-1.5 text-gray-700 hover:bg-gray-100 rounded-lg transition flex-shrink-0" data-menu-toggle>
-          <Menu className="h-4 w-4" />
+        <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2.5 mr-3 text-gray-700 hover:bg-gray-100 rounded-lg transition flex-shrink-0" data-menu-toggle>
+          <Menu className="h-6 w-6" />
         </button>
       </div>
 
