@@ -277,10 +277,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                   : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
               }`}
             >
-              <span className="flex items-center gap-1">
-                <span className="text-base">👔</span>
-                <span>Adults</span>
-              </span>
+              Adults
             </button>
             <button
               onClick={() => onCategoryChange("kids")}
@@ -290,10 +287,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                   : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
               }`}
             >
-              <span className="flex items-center gap-1">
-                <span className="text-base">👶</span>
-                <span>Kids</span>
-              </span>
+              Kids
             </button>
             <button
               onClick={() => onCategoryChange("custom")}
@@ -303,10 +297,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                   : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
               }`}
             >
-              <span className="flex items-center gap-1">
-                <span className="text-base">🎨</span>
-                <span>Custom</span>
-              </span>
+              Custom
             </button>
           </div>
         </div>
@@ -342,16 +333,14 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               </div>
 
-              {/* User Icon - Only show if logged in */}
-              {buyer && (
-                <Link 
-                  href="/dashboard" 
-                  className="flex items-center justify-center p-2 text-lime-600 hover:bg-lime-50 rounded-lg transition"
-                  title="Dashboard"
-                >
-                  <User className="h-4 w-4" />
-                </Link>
-              )}
+              {/* User Icon */}
+              <Link 
+                href="/dashboard" 
+                className="flex items-center justify-center p-2 text-lime-600 hover:bg-lime-50 rounded-lg transition"
+                title="Dashboard"
+              >
+                <User className="h-5 w-5" />
+              </Link>
 
               {/* Admin Icon - Only show if logged in admin */}
               {admin && (
@@ -360,7 +349,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                   className="flex items-center justify-center p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition"
                   title="Admin"
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-5 w-5" />
                 </Link>
               )}
             </div>
