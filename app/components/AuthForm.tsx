@@ -217,7 +217,10 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 md:p-10 w-full max-w-md">
+    <div 
+      className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 md:p-10 w-full max-w-md max-h-[90vh] overflow-y-auto"
+      onClick={(e) => e.stopPropagation()}
+    >
       {/* Tabs */}
       <div className="flex gap-3 mb-8">
         <button
