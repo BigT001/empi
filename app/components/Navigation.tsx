@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings, LogOut } from "lucide-react";
+import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings, LogOut, LogIn } from "lucide-react";
 import { CURRENCY_RATES } from "./constants";
 import { useCart } from "./CartContext";
 import { useBuyer } from "../context/BuyerContext";
@@ -192,11 +192,8 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
             </div>
           )}
         </div>
-        <button className="hidden p-2 text-gray-700 hover:text-lime-600 hover:bg-gray-100 rounded-lg transition md:flex">
-          <Heart className="h-5 w-5" />
-        </button>
         {admin ? (
-          <Link href="/admin" className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:border-lime-600 hover:text-lime-600 font-semibold transition">
+          <Link href="/admin" className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-orange-600 hover:border-orange-600 hover:bg-orange-100 font-semibold transition">
             <Settings className="h-4 w-4" />
             <span className="text-sm">Admin</span>
           </Link>
@@ -250,6 +247,13 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
               </div>
             )}
           </div>
+        )}
+
+        {!buyer && (
+          <Link href="/auth" className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
+            <User className="h-4 w-4" />
+            <span className="hidden sm:inline text-sm">Login</span>
+          </Link>
         )}
 
         <Link href="/cart" className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2 rounded-lg font-medium transition relative">
@@ -337,21 +341,13 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                 <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
               </div>
 
-              {/* User Icon */}
-              <Link 
-                href="/dashboard" 
-                className="flex items-center justify-center p-2 text-lime-600 hover:bg-lime-50 rounded-lg transition"
-                title="Dashboard"
-              >
-                <User className="h-5 w-5" />
-              </Link>
-
-              {/* Admin Icon - Only show if logged in admin */}
+              {/* Admin Icon - Only show if admin is logged in */}
               {admin && (
                 <Link 
                   href="/admin" 
                   className="flex items-center justify-center p-2 text-orange-600 hover:bg-orange-50 rounded-lg transition"
-                  title="Admin"
+                  title="Admin Dashboard"
+                  onClick={() => setShowMobileMenu(false)}
                 >
                   <Settings className="h-5 w-5" />
                 </Link>
@@ -405,16 +401,42 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                 <span className="text-xs font-semibold text-gray-700 group-hover:text-gray-900">About</span>
               </Link>
 
-              {/* Admin Button (if logged in) */}
+              {/* Profile Button (if logged in) */}
+              {buyer && (
+                <Link 
+                  href="/dashboard" 
+                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-lime-100 hover:bg-lime-200 transition duration-300 group"
+                  title="Profile"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  <span className="text-2xl mb-1">👤</span>
+                  <span className="text-xs font-semibold text-lime-700 group-hover:text-lime-900">Profile</span>
+                </Link>
+              )}
+
+              {/* Login Button (if NOT logged in) */}
+              {!buyer && (
+                <Link 
+                  href="/auth" 
+                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-blue-100 hover:bg-blue-200 transition duration-300 group"
+                  title="Login"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  <span className="text-2xl mb-1">🔐</span>
+                  <span className="text-xs font-semibold text-blue-700 group-hover:text-blue-900">Login</span>
+                </Link>
+              )}
+
+              {/* Admin Button (if admin logged in) */}
               {admin && (
                 <Link 
                   href="/admin" 
-                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-gray-100 hover:bg-gray-200 transition duration-300 group"
+                  className="flex flex-col items-center justify-center p-3 rounded-xl bg-orange-100 hover:bg-orange-200 transition duration-300 group"
                   title="Admin"
                   onClick={() => setShowMobileMenu(false)}
                 >
                   <span className="text-2xl mb-1">⚙️</span>
-                  <span className="text-xs font-semibold text-gray-700 group-hover:text-gray-900">Admin</span>
+                  <span className="text-xs font-semibold text-orange-700 group-hover:text-orange-900">Admin</span>
                 </Link>
               )}
             </div>

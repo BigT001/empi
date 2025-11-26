@@ -9,18 +9,25 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
   const lite = searchParams.get('lite'); // lightweight mode for product picker
+  const page = parseInt(searchParams.get('page') || '1');
+  const limit = parseInt(searchParams.get('limit') || '12'); // Default 12 items per page
 
   try {
     console.log("📥 GET /api/products - Fetching products from database...");
     console.log("🔍 Category filter:", category || "none");
     console.log("📦 Lite mode:", lite ? "yes" : "no");
+    console.log("📄 Pagination: page", page, "limit", limit);
 
     await connectDB();
 
     const query = category ? { category } : {};
+    const skip = (page - 1) * limit;
+    
+    // Get total count for pagination
+    const total = await Product.countDocuments(query);
     
     // For product picker (lite mode), only fetch essential fields
-    let query_builder = Product.find(query);
+    let query_builder = Product.find(query).skip(skip).limit(limit);
     if (lite) {
       query_builder = query_builder.select('_id name sellPrice imageUrl').lean();
     } else {
@@ -37,7 +44,16 @@ export async function GET(request: NextRequest) {
 
     console.log("✅ Products fetched successfully, count:", transformedProducts.length);
     
-    const response = NextResponse.json(transformedProducts);
+    const response = NextResponse.json({
+      data: transformedProducts,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+        hasMore: skip + limit < total,
+      }
+    });
     response.headers.set(
       "Cache-Control",
       "public, s-maxage=300, stale-while-revalidate=600"

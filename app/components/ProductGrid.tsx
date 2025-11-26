@@ -32,7 +32,7 @@ interface ProductGridProps {
 }
 
 export function ProductGrid({ currency, category, initialProducts }: ProductGridProps) {
-  const { products: cachedProducts, loading, error } = useProducts(category);
+  const { products: cachedProducts, loading, error, pagination, loadMore } = useProducts(category);
   const [dbProducts, setDbProducts] = useState<Product[]>(initialProducts ?? (cachedProducts as Product[]));
   const [showError, setShowError] = useState(false);
 
@@ -140,6 +140,19 @@ export function ProductGrid({ currency, category, initialProducts }: ProductGrid
               );
             })}
           </div>
+
+          {/* Load More Button */}
+          {pagination?.hasMore && (
+            <div className="mt-12 flex justify-center">
+              <button
+                onClick={loadMore}
+                disabled={loading}
+                className="px-8 py-3 bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition"
+              >
+                {loading ? "Loading..." : "Load More Products"}
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>

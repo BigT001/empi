@@ -150,7 +150,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         }
 
         const newBuyer = await response.json();
-        register({
+        const buyerProfile = {
+          id: newBuyer._id || newBuyer.id,
           email: newBuyer.email,
           fullName: newBuyer.fullName,
           phone: newBuyer.phone,
@@ -158,14 +159,16 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           city: newBuyer.city,
           state: newBuyer.state,
           postalCode: newBuyer.postalCode,
-        });
+          createdAt: newBuyer.createdAt,
+        };
+        login(buyerProfile);
 
         setSuccess("✅ Account created successfully! Redirecting...");
         setTimeout(() => {
           if (redirectToCheckout) {
             router.push("/checkout");
           } else if (onSuccessfulAuth) {
-            onSuccessfulAuth(newBuyer);
+            onSuccessfulAuth(buyerProfile);
           } else {
             router.push("/");
           }
@@ -196,13 +199,24 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         }
 
         const buyer = await response.json();
-        login(buyer);
+        const buyerProfile = {
+          id: buyer._id || buyer.id,
+          email: buyer.email,
+          fullName: buyer.fullName,
+          phone: buyer.phone,
+          address: buyer.address,
+          city: buyer.city,
+          state: buyer.state,
+          postalCode: buyer.postalCode,
+          createdAt: buyer.createdAt,
+        };
+        login(buyerProfile);
         setSuccess("✅ Logged in successfully! Redirecting...");
         setTimeout(() => {
           if (redirectToCheckout) {
             router.push("/checkout");
           } else if (onSuccessfulAuth) {
-            onSuccessfulAuth(buyer);
+            onSuccessfulAuth(buyerProfile);
           } else {
             router.push("/");
           }
