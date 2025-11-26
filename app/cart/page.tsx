@@ -25,6 +25,7 @@ export default function CartPage() {
   const [isHydrated, setIsHydrated] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showRentalPolicy, setShowRentalPolicy] = useState(false);
+  const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [category, setCategory] = useState("all");
   const [currency, setCurrency] = useState("NGN");
   const [shippingOption, setShippingOption] = useState<"empi" | "self">("empi");
@@ -131,8 +132,8 @@ export default function CartPage() {
 
               <div className="space-y-4">
                 {items.map((item) => (
-                  <div key={`${item.id}-${item.mode}`} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition p-6 flex gap-6">
-                    <div className="flex-shrink-0 w-28 h-28 relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
+                  <div key={`${item.id}-${item.mode}`} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition p-3 md:p-6 flex flex-col md:flex-row gap-3 md:gap-6">
+                    <div className="flex-shrink-0 w-24 h-24 md:w-28 md:h-28 relative rounded-lg overflow-hidden bg-gray-100 border border-gray-200">
                       {item.image ? <Image src={item.image} alt={item.name} fill className="object-contain p-2" /> : <div className="flex items-center justify-center w-full h-full"><ShoppingBag className="h-8 w-8 text-gray-400" /></div>}
                     </div>
                     <div className="flex-1">
@@ -153,11 +154,11 @@ export default function CartPage() {
                             )}
                           </div>
                         </div>
-                        <button onClick={() => removeItem(item.id, item.mode)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition">
+                        <button onClick={() => removeItem(item.id, item.mode)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition flex-shrink-0">
                           <Trash2 className="h-5 w-5" />
                         </button>
                       </div>
-                      <div className="flex items-center gap-4 mt-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 mt-4">
                         <div className="flex items-center border border-gray-300 rounded-lg">
                           <button onClick={() => updateQuantity(item.id, item.mode, Math.max(1, item.quantity - 1))} className="p-2 text-gray-600 hover:bg-gray-100">
                             <Minus className="h-4 w-4" />
@@ -175,7 +176,7 @@ export default function CartPage() {
               </div>
 
               {shippingOption === "empi" && (
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                   <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
                     <Truck className="h-5 w-5 text-lime-600" /> Real-Time Delivery
                   </h2>
@@ -240,7 +241,7 @@ export default function CartPage() {
                   </div>
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
                     <label className={`block p-4 rounded-lg border-2 mb-3 cursor-pointer ${shippingOption === "empi" ? "border-lime-600 bg-lime-50" : "border-gray-300"}`}>
-                      <input type="radio" name="shipping" value="empi" checked={shippingOption === "empi"} onChange={() => handleShippingChange("empi")} className="mt-1 w-4 h-4 accent-lime-600" />
+                      <input type="radio" name="shipping" value="empi" checked={shippingOption === "empi"} onChange={() => { handleShippingChange("empi"); setShowDeliveryModal(true); }} className="mt-1 w-4 h-4 accent-lime-600" />
                       <div className="font-semibold text-gray-900 flex items-center gap-2 mt-2">
                         <Truck className="h-4 w-4 text-lime-600" /> EMPI Delivery
                       </div>
@@ -269,6 +270,57 @@ export default function CartPage() {
       {showAuthModal && <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAuthModal(false)}>
         <AuthForm redirectToCheckout={true} onCancel={() => setShowAuthModal(false)} />
       </div>}
+      
+      {/* Mobile Delivery Modal */}
+      {showDeliveryModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-end z-50 lg:hidden">
+          <div className="w-full bg-white rounded-t-2xl shadow-2xl max-h-96 overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Truck className="h-5 w-5 text-lime-600" /> Real-Time Delivery
+              </h2>
+              <button onClick={() => setShowDeliveryModal(false)} className="text-gray-600 hover:text-gray-900 text-2xl leading-none">
+                ×
+              </button>
+            </div>
+            <div className="p-6">
+              {deliveryError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4 flex items-start gap-3">
+                  <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />
+                  <p className="text-red-800 text-sm">{deliveryError}</p>
+                </div>
+              )}
+              <EnhancedDeliverySelector 
+                items={deliveryItems}
+                onDeliveryChange={handleDeliveryChange}
+              />
+              {deliveryQuote && (
+                <div className="mt-6 p-4 bg-gradient-to-r from-lime-50 to-green-50 border border-lime-200 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-lime-600" />
+                      <span className="text-sm text-gray-600">Distance:</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">{(deliveryQuote.distance || 0).toFixed(1)} km</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4 text-lime-600" />
+                      <span className="text-sm text-gray-600">Estimated Time:</span>
+                    </div>
+                    <span className="font-semibold text-gray-900">{deliveryQuote.duration || 'Calculating...'}</span>
+                  </div>
+                  <div className="flex items-center justify-between pt-2 border-t border-lime-300">
+                    <span className="text-sm font-semibold text-gray-700">Delivery Fee:</span>
+                    <span className="font-bold text-lime-600">₦{(deliveryQuote.fee || 0).toLocaleString('en-NG')}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
       <RentalPolicyModal isOpen={showRentalPolicy} onClose={() => setShowRentalPolicy(false)} />
       <Footer />
     </div>
