@@ -369,14 +369,15 @@ export default function CheckoutPage() {
                       if (!modalAttempted) {
                         console.log("🔗 Using Paystack redirect method");
                         const paystackUrl = new URL("https://checkout.paystack.com/api/standard/pay");
-                        paystackUrl.searchParams.set("key", process.env.NEXT_PUBLIC_PAYSTACK_KEY);
+                        paystackUrl.searchParams.set("key", process.env.NEXT_PUBLIC_PAYSTACK_KEY || "");
                         paystackUrl.searchParams.set("email", buyer.email);
                         paystackUrl.searchParams.set("amount", amountInKobo.toString());
-                        paystackUrl.searchParams.set("ref", ref);
+                        paystackUrl.searchParams.set("reference", ref);
                         paystackUrl.searchParams.set("first_name", buyer.fullName.split(" ")[0] || "Customer");
                         paystackUrl.searchParams.set("last_name", buyer.fullName.split(" ").slice(1).join(" ") || "");
                         paystackUrl.searchParams.set("phone", buyer.phone);
                         
+                        console.log("Redirect URL:", paystackUrl.toString());
                         window.location.href = paystackUrl.toString();
                       }
                     } catch (error) {
