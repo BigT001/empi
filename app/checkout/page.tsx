@@ -8,6 +8,7 @@ import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
 import PaymentSuccessModal from "../components/PaymentSuccessModal";
+import AuthModal from "../components/AuthModal";
 import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin } from "lucide-react";
 
 const SHIPPING_OPTIONS = {
@@ -26,13 +27,22 @@ export default function CheckoutPage() {
   const [successReference, setSuccessReference] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   useEffect(() => {
     setIsHydrated(true);
     // Load shipping preference from localStorage
     const saved = localStorage.getItem("empi_shipping_option");
     if (saved) setShippingOption(saved as "empi" | "self");
-  }, []);
+    
+    // Check if user is logged in on mobile - show auth modal if not
+    if (!buyer && typeof window !== "undefined") {
+      const isMobile = window.innerWidth < 768; // md breakpoint
+      if (isMobile) {
+        setAuthModalOpen(true);
+      }
+    }
+  }, [buyer]);
 
   // Handle payment success - save order and invoice
   const handlePaymentSuccess = async (response: any) => {
@@ -464,6 +474,16 @@ export default function CheckoutPage() {
         }}
         orderReference={successReference}
         total={totalAmount}
+      />
+
+      {/* Auth Modal - Mobile Login/Signup */}
+      <AuthModal
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        onAuthSuccess={(buyer) => {
+          console.log("✅ User authenticated:", buyer);
+          setAuthModalOpen(false);
+        }}
       />
 
       <Footer />
