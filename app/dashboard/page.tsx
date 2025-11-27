@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
+import { InvoiceModal } from "../components/InvoiceModal";
 import { useBuyer } from "../context/BuyerContext";
 import { getBuyerInvoices, StoredInvoice } from "@/lib/invoiceStorage";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { formatDate } from "@/lib/utils";
-import { Download, Printer, ShoppingBag, Check, Truck, MapPin, Eye, FileText, X, Calendar, Package, DollarSign, MessageCircle, Share2, ArrowLeft, LogOut, ChevronRight, Edit3, Save } from "lucide-react";
+import { Download, ShoppingBag, Check, Truck, MapPin, Eye, FileText, Calendar, Package, DollarSign, MessageCircle, Share2, ArrowLeft, LogOut, ChevronRight, Edit3, Save } from "lucide-react";
 
 
 export default function BuyerDashboardPage() {
@@ -17,6 +18,7 @@ export default function BuyerDashboardPage() {
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [activeTab, setActiveTab] = useState<"invoices" | "profile">("invoices");
   const [selectedInvoice, setSelectedInvoice] = useState<StoredInvoice | null>(null);
+  const [shareMenuOpen, setShareMenuOpen] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editFormData, setEditFormData] = useState({
     fullName: "",
@@ -28,6 +30,26 @@ export default function BuyerDashboardPage() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (selectedInvoice) {
+      // Calculate actual scrollbar width
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      // Prevent scroll on html element
+      const originalOverflow = document.documentElement.style.overflow;
+      const originalPaddingRight = document.documentElement.style.paddingRight;
+      
+      document.documentElement.style.overflow = 'hidden';
+      if (scrollbarWidth > 0) {
+        document.documentElement.style.paddingRight = `${scrollbarWidth}px`;
+      }
+      
+      return () => {
+        document.documentElement.style.overflow = originalOverflow;
+        document.documentElement.style.paddingRight = originalPaddingRight;
+      };
+    }
+  }, [selectedInvoice]);
 
   // Logout function
   const handleLogout = () => {
@@ -183,6 +205,8 @@ export default function BuyerDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
+      <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
+
       <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
         <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-between">
           <Header />
@@ -260,18 +284,21 @@ export default function BuyerDashboardPage() {
               <div className="space-y-6">
                 {/* Premium Invoice Table */}
                 <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="overflow-x-auto">
+                  <div className="relative overflow-x-auto group">
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 md:hidden opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <span className="inline-block text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full mr-4">→ Scroll right</span>
+                    </div>
                     <table className="w-full">
-                      <thead>
-                        <tr className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-slate-200">
-                          <th className="px-8 py-4 text-left font-black text-slate-900 uppercase text-xs tracking-wider">Invoice #</th>
-                          <th className="px-8 py-4 text-left font-black text-slate-900 uppercase text-xs tracking-wider">Date</th>
-                          <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Items</th>
-                          <th className="px-8 py-4 text-right font-black text-slate-900 uppercase text-xs tracking-wider">Amount</th>
-                          <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Status</th>
-                          <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Action</th>
-                        </tr>
-                      </thead>
+                        <thead>
+                          <tr className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-slate-200">
+                            <th className="px-8 py-4 text-left font-black text-slate-900 uppercase text-xs tracking-wider">Invoice #</th>
+                            <th className="px-8 py-4 text-left font-black text-slate-900 uppercase text-xs tracking-wider">Date</th>
+                            <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Items</th>
+                            <th className="px-8 py-4 text-right font-black text-slate-900 uppercase text-xs tracking-wider">Amount</th>
+                            <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Status</th>
+                            <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Action</th>
+                          </tr>
+                        </thead>
                       <tbody>
                         {invoices.map((invoice, index) => (
                           <tr
@@ -305,11 +332,12 @@ export default function BuyerDashboardPage() {
                             </td>
                             <td className="px-8 py-5 text-center">
                               <button
-                                onClick={() => setSelectedInvoice(invoice)}
-                                className="inline-flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-lg font-semibold transition shadow-md hover:shadow-lg group-hover:scale-105"
+                                onClick={() => setShareMenuOpen(shareMenuOpen === invoice.invoiceNumber ? null : invoice.invoiceNumber)}
+                                className="inline-flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-semibold transition shadow-md hover:shadow-lg"
+                                title="Share invoice"
                               >
-                                <Eye className="h-4 w-4" />
-                                View
+                                <Share2 className="h-4 w-4" />
+                                Share
                               </button>
                             </td>
                           </tr>
@@ -321,6 +349,68 @@ export default function BuyerDashboardPage() {
               </div>
             )}
           </div>
+        )}
+
+        {/* SHARE MENU MODAL */}
+        {shareMenuOpen && (
+          <>
+            <div 
+              className="fixed inset-0 bg-black/50 z-[9998]"
+              onClick={() => setShareMenuOpen(null)}
+            ></div>
+            <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-2xl border border-gray-200 z-[9999] w-56">
+              <div className="p-3 space-y-1">
+                {invoices.find(inv => inv.invoiceNumber === shareMenuOpen) && (() => {
+                  const invoice = invoices.find(inv => inv.invoiceNumber === shareMenuOpen)!;
+                  return <>
+                    {/* View Invoice */}
+                    <button
+                      onClick={() => {
+                        setSelectedInvoice(invoice);
+                        setShareMenuOpen(null);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-lg transition text-left text-gray-700 font-semibold"
+                    >
+                      <Eye className="h-5 w-5 text-blue-600" />
+                      <span>View</span>
+                    </button>
+                    {/* WhatsApp */}
+                    <button
+                      onClick={() => {
+                        const text = `Check out my invoice: ${invoice.invoiceNumber} from EMPI - Amount: ₦${invoice.totalAmount?.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
+                        const encodedMessage = encodeURIComponent(text);
+                        const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+                        window.open(whatsappUrl, "_blank");
+                        setShareMenuOpen(null);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-lg transition text-left text-gray-700 font-semibold"
+                    >
+                      <MessageCircle className="h-5 w-5 text-green-600" />
+                      <span>WhatsApp</span>
+                    </button>
+                    {/* Download */}
+                    <button
+                      onClick={() => {
+                        const html = generateProfessionalInvoiceHTML(invoice);
+                        const blob = new Blob([html], { type: "text/html" });
+                        const url = URL.createObjectURL(blob);
+                        const link = document.createElement("a");
+                        link.href = url;
+                        link.download = `Invoice-${invoice.invoiceNumber}.html`;
+                        link.click();
+                        URL.revokeObjectURL(url);
+                        setShareMenuOpen(null);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-100 rounded-lg transition text-left text-gray-700 font-semibold"
+                    >
+                      <Download className="h-5 w-5 text-green-600" />
+                      <span>Download</span>
+                    </button>
+                  </>;
+                })()}
+              </div>
+            </div>
+          </>
         )}
 
         {/* PROFILE TAB */}
@@ -469,179 +559,6 @@ export default function BuyerDashboardPage() {
           </div>
         )}
       </main>
-
-      {/* INVOICE MODAL - CLEAN & PROFESSIONAL */}
-      {selectedInvoice && (
-        <div className="fixed inset-0 bg-transparent backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl shadow-2xl max-w-4xl w-full max-h-[95vh] overflow-y-auto border border-gray-200">
-            {/* HEADER */}
-            <div className="bg-gradient-to-r from-lime-600 via-green-600 to-emerald-600 text-white p-8 sticky top-0 z-10 flex items-center justify-between rounded-t-3xl shadow-lg">
-              <div className="flex items-center gap-4">
-                <img 
-                  src="/logo/EMPI-2k24-LOGO-1.PNG" 
-                  alt="EMPI Logo" 
-                  className="h-14 w-auto object-contain"
-                />
-                <div>
-                  <p className="text-lime-100 text-sm font-bold uppercase tracking-wider">Order Details</p>
-                  <p className="text-white mt-1 text-base font-semibold">Order #{selectedInvoice.orderNumber}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setSelectedInvoice(null)}
-                className="text-white hover:bg-white hover:bg-opacity-20 p-3 rounded-full transition hover:scale-110"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            {/* CONTENT */}
-            <div className="p-8 space-y-6">
-              {/* INFO CARDS */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-6 bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl">
-                <div className="bg-white rounded-2xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition">
-                  <p className="text-xs font-bold text-blue-600 uppercase mb-2 tracking-wider">📅 Date</p>
-                  <p className="text-lg font-bold text-gray-900">{formatDate(selectedInvoice.invoiceDate)}</p>
-                </div>
-                <div className="bg-white rounded-2xl p-5 border border-purple-200 shadow-sm hover:shadow-md transition">
-                  <p className="text-xs font-bold text-purple-600 uppercase mb-2 tracking-wider">📦 Items</p>
-                  <p className="text-lg font-bold text-gray-900">{selectedInvoice.items.length}</p>
-                </div>
-                <div className="bg-white rounded-2xl p-5 border border-green-200 shadow-sm hover:shadow-md transition">
-                  <p className="text-xs font-bold text-green-600 uppercase mb-2 tracking-wider">✅ Status</p>
-                  <p className="text-lg font-bold text-green-600 flex items-center gap-1">
-                    <Check className="h-5 w-5" /> Paid
-                  </p>
-                </div>
-                <div className="bg-gradient-to-br from-lime-100 to-green-100 rounded-2xl p-5 border border-lime-300 shadow-sm">
-                  <p className="text-xs font-bold text-lime-700 uppercase mb-2 tracking-wider">💰 Total</p>
-                  <p className="text-xl font-black text-lime-700">{selectedInvoice.currencySymbol}{selectedInvoice.totalAmount.toLocaleString("en-NG", { maximumFractionDigits: 0 })}</p>
-                </div>
-              </div>
-
-              {/* CUSTOMER INFO */}
-              <div>
-                <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-purple-600 to-pink-600 rounded-lg flex items-center justify-center text-white text-sm">👤</div>
-                  Customer Information
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border border-purple-200 shadow-sm hover:shadow-md transition">
-                    <p className="text-xs font-bold text-purple-700 uppercase mb-2 tracking-wider">Name</p>
-                    <p className="text-base font-bold text-gray-900">{selectedInvoice.customerName}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl p-5 border border-blue-200 shadow-sm hover:shadow-md transition">
-                    <p className="text-xs font-bold text-blue-700 uppercase mb-2 tracking-wider">Email</p>
-                    <p className="text-sm font-semibold text-gray-900 break-all">{selectedInvoice.customerEmail}</p>
-                  </div>
-                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl p-5 border border-green-200 shadow-sm hover:shadow-md transition">
-                    <p className="text-xs font-bold text-green-700 uppercase mb-2 tracking-wider">Phone</p>
-                    <p className="text-base font-bold text-gray-900">{selectedInvoice.customerPhone}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* ITEMS TABLE */}
-              <div>
-                <h3 className="text-lg font-black text-gray-900 mb-4 flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-cyan-600 rounded-lg flex items-center justify-center text-white text-sm">📋</div>
-                  Order Items
-                </h3>
-                <div className="border border-gray-200 rounded-2xl overflow-hidden shadow-sm">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-gradient-to-r from-gray-900 to-gray-800 text-white">
-                        <th className="text-left px-6 py-4 font-black text-sm">Product</th>
-                        <th className="text-center px-6 py-4 font-black text-sm">Qty</th>
-                        <th className="text-right px-6 py-4 font-black text-sm">Price</th>
-                        <th className="text-right px-6 py-4 font-black text-sm">Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {selectedInvoice.items.map((item, idx) => (
-                        <tr key={`${selectedInvoice.invoiceNumber}-item-${idx}`} className="border-t border-gray-200 hover:bg-gradient-to-r hover:from-lime-50 hover:to-green-50 transition">
-                          <td className="px-6 py-4 text-gray-900 font-semibold">{item.name}</td>
-                          <td className="text-center px-6 py-4 text-gray-900 font-bold">{item.quantity}</td>
-                          <td className="text-right px-6 py-4 text-gray-900 font-semibold">{selectedInvoice.currencySymbol}{(item.price).toLocaleString("en-NG", { maximumFractionDigits: 2 })}</td>
-                          <td className="text-right px-6 py-4 font-black text-lime-600">{selectedInvoice.currencySymbol}{(item.quantity * item.price).toLocaleString("en-NG", { maximumFractionDigits: 2 })}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* PRICE BREAKDOWN */}
-              <div className="max-w-sm ml-auto">
-                <div className="bg-gradient-to-br from-lime-50 to-green-50 rounded-2xl p-6 border border-lime-300 shadow-md space-y-4">
-                  <h4 className="font-black text-gray-900 mb-4 text-sm uppercase tracking-wider">💰 Price Breakdown</h4>
-                  
-                  <div className="flex justify-between items-center pb-3 border-b border-lime-200">
-                    <span className="text-gray-700 font-semibold">Subtotal</span>
-                    <span className="font-bold text-gray-900">{selectedInvoice.currencySymbol}{selectedInvoice.subtotal.toLocaleString("en-NG", { maximumFractionDigits: 2 })}</span>
-                  </div>
-                  
-                  {selectedInvoice.taxAmount > 0 && (
-                    <div className="flex justify-between items-center pb-3 border-b border-lime-200">
-                      <span className="text-gray-700 font-semibold">Tax</span>
-                      <span className="font-bold text-gray-900">{selectedInvoice.currencySymbol}{selectedInvoice.taxAmount.toLocaleString("en-NG", { maximumFractionDigits: 2 })}</span>
-                    </div>
-                  )}
-                  
-                  {selectedInvoice.shippingCost && selectedInvoice.shippingCost > 0 && (
-                    <div className="flex justify-between items-center pb-3 border-b border-lime-200">
-                      <span className="text-gray-700 font-semibold">Shipping</span>
-                      <span className="font-bold text-gray-900">{selectedInvoice.currencySymbol}{selectedInvoice.shippingCost.toLocaleString("en-NG", { maximumFractionDigits: 2 })}</span>
-                    </div>
-                  )}
-
-                  <div className="pt-3 border-t-2 border-lime-300 flex justify-between items-center bg-white rounded-xl p-3">
-                    <span className="font-black text-gray-900">TOTAL</span>
-                    <span className="text-3xl font-black bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">{selectedInvoice.currencySymbol}{selectedInvoice.totalAmount.toLocaleString("en-NG", { maximumFractionDigits: 0 })}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* ACTION BUTTONS */}
-              <div className="flex flex-col sm:flex-row gap-3 pt-6 border-t border-gray-200">
-                <button
-                  onClick={() => {
-                    const message = `Invoice #${selectedInvoice.invoiceNumber}\nOrder #${selectedInvoice.orderNumber}\nTotal: ${selectedInvoice.currencySymbol}${selectedInvoice.totalAmount.toLocaleString("en-NG", { maximumFractionDigits: 0 })}\n\nView your invoice for details.`;
-                    const encodedMessage = encodeURIComponent(message);
-                    const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-                    window.open(whatsappUrl, '_blank');
-                  }}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white px-6 py-3 rounded-xl font-bold transition flex-1 shadow-md hover:shadow-lg hover:scale-105"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  WhatsApp
-                </button>
-                <button
-                  onClick={() => handleDownloadInvoice(selectedInvoice)}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white px-6 py-3 rounded-xl font-bold transition flex-1 shadow-md hover:shadow-lg hover:scale-105"
-                >
-                  <Download className="h-5 w-5" />
-                  Download
-                </button>
-                <button
-                  onClick={() => handlePrintInvoice(selectedInvoice)}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white px-6 py-3 rounded-xl font-bold transition flex-1 shadow-md hover:shadow-lg hover:scale-105"
-                >
-                  <Printer className="h-5 w-5" />
-                  Print
-                </button>
-                <button
-                  onClick={() => setSelectedInvoice(null)}
-                  className="flex items-center justify-center gap-2 bg-gradient-to-r from-gray-400 to-gray-500 hover:from-gray-500 hover:to-gray-600 text-white px-6 py-3 rounded-xl font-bold transition flex-1 shadow-md hover:shadow-lg hover:scale-105"
-                >
-                  <X className="h-5 w-5" />
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       <Footer />
     </div>

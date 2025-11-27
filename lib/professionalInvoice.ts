@@ -295,11 +295,11 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       line-height: 1.5;
     }
     .totals-box { 
-      background: linear-gradient(135deg, #fef3c7 0%, #fef08a 100%);
-      border: 2px solid #fcd34d;
+      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+      border: 2px solid #10b981;
       border-radius: 12px;
       padding: 16px;
-      box-shadow: 0 4px 16px rgba(251, 191, 36, 0.1);
+      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);
     }
     .totals-row { 
       display: flex;
@@ -314,19 +314,19 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       font-size: 16px;
       font-weight: 800;
       color: #10b981;
-      border-top: 2px solid #fcd34d;
+      border-top: 2px solid #10b981;
       border-bottom: none;
       padding-top: 8px;
       margin-top: 4px;
       padding-bottom: 0;
     }
     .totals-row span:first-child { 
-      color: #78350f; 
+      color: #047857; 
       font-weight: 600;
     }
     .totals-row span:last-child { 
       font-weight: 700; 
-      color: #78350f;
+      color: #047857;
     }
     
     /* FOOTER */
@@ -444,16 +444,24 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
         print-color-adjust: exact !important;
         color-adjust: exact !important;
       }
+      @page {
+        size: A4;
+        margin: 10mm;
+      }
       html, body { 
         background: white !important; 
         padding: 0 !important;
         margin: 0 !important;
+        width: 210mm;
+        height: 297mm;
       }
       .invoice-container { 
         box-shadow: none !important; 
         border-radius: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
+        width: 210mm;
+        height: auto;
       }
       .invoice-header { 
         page-break-after: avoid;
