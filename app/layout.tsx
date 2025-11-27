@@ -29,6 +29,9 @@ export const metadata: Metadata = {
   description: "EMPI is Lagos's leading costume maker offering premium adult and kids costumes for rent and sale. High-quality party, event, and themed costumes in Lagos, Nigeria.",
   keywords: ["costume maker Lagos", "costume rental Lagos", "party costumes Nigeria", "themed costumes", "costume shop Lagos", "adult costumes", "kids costumes"],
   robots: "index, follow",
+  icons: {
+    icon: "/favicon.ico",
+  },
   openGraph: {
     type: "website",
     locale: "en_NG",
@@ -50,9 +53,6 @@ export const metadata: Metadata = {
     title: "EMPI - Premium Costume Rentals & Sales in Lagos",
     description: "Professional costume maker in Lagos offering quality adult and kids costumes",
     images: ["/logo/EMPI-2k24-LOGO-1.PNG"]
-  },
-  icons: {
-    icon: "/logo/EMPI-2k24-LOGO-1.PNG",
   }
 };
 
@@ -64,6 +64,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/favicon.ico" />
         {/* Paystack Payment Gateway Script */}
         <script src="https://js.paystack.co/v1/inline.js" async></script>
       </head>
