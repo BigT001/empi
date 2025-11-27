@@ -156,55 +156,128 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       word-break: break-word;
     }
     
-    /* ITEMS TABLE - MOBILE CARD STYLE */
+    /* ITEMS TABLE - SCROLLABLE ROWS */
     .items-section { 
       margin-bottom: 20px;
     }
-    .items-table { 
-      width: 100%; 
-      border-collapse: collapse;
-      margin-top: 8px;
-    }
-    .items-table thead { 
-      display: none;
-    }
-    .items-table tbody tr { 
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 0;
-      background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+    .items-wrapper {
+      position: relative;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
       border: 1px solid #e5e7eb;
       border-radius: 12px;
-      margin-bottom: 10px;
-      padding: 0;
-      overflow: hidden;
+      background: white;
+    }
+    .items-wrapper::after {
+      content: '→ Scroll right';
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 10px;
+      color: #10b981;
+      font-weight: 700;
+      background: white;
+      padding: 2px 6px;
+      border-radius: 4px;
+      pointer-events: none;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .items-table { 
+      width: 100%;
+      min-width: 600px;
+      border-collapse: collapse;
+      margin: 0;
+    }
+    .items-table thead { 
+      background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 100%);
+      border-bottom: 2px solid #10b981;
+      display: table-header-group;
+    }
+    .items-table thead th { 
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: #374151;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      border-right: 1px solid #d1d5db;
+    }
+    .items-table thead th:last-child {
+      border-right: none;
+    }
+    .items-table tbody { 
+      display: table-row-group;
+    }
+    .items-table tbody tr { 
+      border-bottom: 1px solid #f0f0f0;
+      display: table-row;
+      background: none;
+      border: none;
+      margin-bottom: 0;
+    }
+    .items-table tbody tr:hover { 
+      background: linear-gradient(90deg, #f9fafb 0%, #ffffff 100%);
     }
     .items-table td { 
-      padding: 10px 12px;
+      padding: 14px 16px;
+      border-bottom: 1px solid #f0f0f0;
+      display: table-cell;
       font-size: 13px;
       color: #374151;
-      border-bottom: 1px solid #f0f0f0;
-      display: grid;
-      grid-template-columns: 80px 1fr;
-      gap: 8px;
-      align-items: center;
+      font-weight: 500;
+      border-right: 1px solid #f0f0f0;
+      white-space: nowrap;
     }
-    .items-table td:last-child { 
-      border-bottom: none;
-    }
-    .items-table td::before {
-      content: attr(data-label);
-      font-weight: 700;
-      font-size: 10px;
-      text-transform: uppercase;
-      color: #6b7280;
-      letter-spacing: 0.5px;
+    .items-table td:last-child {
+      border-right: none;
     }
     .item-name { 
       font-weight: 700; 
       color: #111827;
-      grid-column: 1 / -1;
-      padding: 8px 12px 0;
+      font-size: 13px;
+    }
+      background: white;
+    }
+    .items-table tbody tr:hover {
+      background: linear-gradient(90deg, #f9fafb 0%, #ffffff 100%);
+    }
+    .items-table td { 
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #374151;
+      border-right: 1px solid #e5e7eb;
+      display: table-cell;
+      white-space: nowrap;
+    }
+    .items-table td:last-child {
+      border-right: none;
+    }
+    .item-name { 
+      font-weight: 700; 
+      color: #111827;
+      white-space: normal;
+    }
+    .item-qty {
+      font-weight: 700;
+      color: #10b981;
+      text-align: center;
+    }
+    .item-price {
+      font-weight: 600;
+      color: #6b7280;
+      text-align: right;
+    }
+    .item-total {
+      font-weight: 800;
+      color: #10b981;
+      text-align: right;
     }
     
     /* TOTALS */
@@ -340,13 +413,21 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
         padding: 14px 12px;
         border-bottom: 1px solid #f0f0f0;
         display: table-cell;
-        grid-template-columns: none;
-        gap: 0;
       }
-      .items-table td::before { display: none; }
+      .items-wrapper::after { display: none; }
       .item-name { 
-        grid-column: unset;
         padding: 0;
+        font-size: 13px;
+      }
+      .item-qty,
+      .item-price,
+      .item-total {
+        font-size: 13px;
+      }
+      .item-total { 
+        border-top: none;
+        margin-top: 0;
+        padding-top: 14px;
       }
       .summary-section { 
         display: grid;
@@ -386,6 +467,10 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       .items-section { 
         page-break-inside: avoid;
       }
+      .items-wrapper {
+        overflow-x: visible;
+      }
+      .items-wrapper::after { display: none !important; }
       .summary-section {
         page-break-inside: avoid;
       }
@@ -419,10 +504,22 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       .info-grid { gap: 8px; margin-bottom: 12px; }
       .info-box { padding: 10px; }
       .totals-box { padding: 12px; }
-      .summary-section { gap: 12px; }
+      .summary-section { 
+        gap: 12px; 
+        display: flex;
+        flex-direction: column;
+      }
+      .payment-note {
+        order: 2;
+        margin-bottom: 0;
+      }
+      .totals-box {
+        order: 1;
+      }
       .footer-divider { gap: 4px; }
       .info-label { font-size: 8px; }
       .info-value { font-size: 12px; }
+      .items-table { min-width: 600px; }
     }
   </style>
 </head>
@@ -483,34 +580,32 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       <!-- ITEMS -->
       <div class="items-section">
         <div class="section-title">Items Ordered</div>
-        <table class="items-table">
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Qty</th>
-              <th>Price</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${invoice.items.map((item) => `
+        <div class="items-wrapper">
+          <table class="items-table">
+            <thead>
               <tr>
-                <td data-label="Product"><span class="item-name">${item.name}</span></td>
-                <td data-label="Qty">${item.quantity}</td>
-                <td data-label="Price">${invoice.currencySymbol}${item.price.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</td>
-                <td data-label="Total"><strong>${invoice.currencySymbol}${(item.quantity * item.price).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</strong></td>
+                <th>Product</th>
+                <th>Qty</th>
+                <th>Price</th>
+                <th>Total</th>
               </tr>
-            `).join('')}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              ${invoice.items.map((item) => `
+                <tr>
+                  <td><span class="item-name">${item.name}</span></td>
+                  <td><span class="item-qty">${item.quantity}</span></td>
+                  <td><span class="item-price">${invoice.currencySymbol}${item.price.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
+                  <td><span class="item-total">${invoice.currencySymbol}${(item.quantity * item.price).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
       </div>
       
       <!-- SUMMARY -->
       <div class="summary-section">
-        <div class="payment-note">
-          ✓ Your payment has been received and processed successfully. Thank you for your purchase with EMPI!
-        </div>
-        
         <div class="totals-box">
           <div class="totals-row">
             <span>Subtotal</span>
@@ -522,6 +617,10 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
             <span>Total</span>
             <span>${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</span>
           </div>
+        </div>
+        
+        <div class="payment-note">
+          ✓ Your payment has been received and processed. Thank you for your purchase!
         </div>
       </div>
     </div>

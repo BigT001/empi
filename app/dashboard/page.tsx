@@ -151,42 +151,15 @@ export default function BuyerDashboardPage() {
     }
   }, [buyer?.id]);
 
-  const handleDownloadInvoice = async (invoice: StoredInvoice) => {
-    try {
-      // Dynamic import to avoid SSR issues
-      const html2pdf = (await import('html2pdf.js')).default;
-      
-      const html = generateProfessionalInvoiceHTML(invoice);
-      const element = document.createElement('div');
-      element.innerHTML = html;
-      
-      const opt = {
-        margin: 5,
-        filename: `Invoice-${invoice.invoiceNumber}.pdf`,
-        image: { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { 
-          orientation: 'portrait' as const, 
-          unit: 'mm' as const, 
-          format: 'a4' as const,
-          compress: true
-        },
-        pagebreak: { mode: 'avoid-all' as const, before: '.page-break' }
-      };
-      
-      html2pdf().set(opt).from(element).save();
-    } catch (error) {
-      console.error('PDF generation failed:', error);
-      // Fallback to HTML download
-      const html = generateProfessionalInvoiceHTML(invoice);
-      const blob = new Blob([html], { type: "text/html" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `Invoice-${invoice.invoiceNumber}.html`;
-      link.click();
-      URL.revokeObjectURL(url);
-    }
+  const handleDownloadInvoice = (invoice: StoredInvoice) => {
+    const html = generateProfessionalInvoiceHTML(invoice);
+    const blob = new Blob([html], { type: "text/html" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `Invoice-${invoice.invoiceNumber}.html`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handlePrintInvoice = (invoice: StoredInvoice) => {
