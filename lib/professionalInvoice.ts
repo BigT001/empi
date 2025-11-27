@@ -160,6 +160,24 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
     .items-section { 
       margin-bottom: 20px;
     }
+    .items-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .scroll-indicator {
+      font-size: 10px;
+      color: #10b981;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
     .items-wrapper {
       position: relative;
       overflow-x: auto;
@@ -167,25 +185,6 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       border: 1px solid #e5e7eb;
       border-radius: 12px;
       background: white;
-    }
-    .items-wrapper::after {
-      content: '→ Scroll right';
-      position: absolute;
-      right: 10px;
-      top: 50%;
-      transform: translateY(-50%);
-      font-size: 10px;
-      color: #10b981;
-      font-weight: 700;
-      background: white;
-      padding: 2px 6px;
-      border-radius: 4px;
-      pointer-events: none;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
     }
     .items-table { 
       width: 100%;
@@ -414,7 +413,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
         border-bottom: 1px solid #f0f0f0;
         display: table-cell;
       }
-      .items-wrapper::after { display: none; }
+      .scroll-indicator { display: none; }
       .item-name { 
         padding: 0;
         font-size: 13px;
@@ -501,7 +500,29 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       .invoice-header { padding: 12px; }
       .invoice-content { padding: 12px; }
       .header-info { grid-template-columns: 1fr; gap: 8px; }
-      .info-grid { gap: 8px; margin-bottom: 12px; }
+      .info-grid { 
+        gap: 8px; 
+        margin-bottom: 12px;
+        grid-template-columns: 1fr 1fr;
+      }
+      .info-grid .info-box:nth-child(1) {
+        grid-column: 1 / -1;
+      }
+      .info-grid .info-box:nth-child(3) {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        border: 2px solid #047857;
+        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+      }
+      .info-grid .info-box:nth-child(3) h4 {
+        color: rgba(255, 255, 255, 0.8);
+      }
+      .info-grid .info-box:nth-child(3) strong {
+        color: white;
+        font-size: 18px;
+      }
+      .info-grid .info-box:nth-child(3) p {
+        color: rgba(255, 255, 255, 0.8);
+      }
       .info-box { padding: 10px; }
       .totals-box { padding: 12px; }
       .summary-section { 
@@ -579,7 +600,10 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       
       <!-- ITEMS -->
       <div class="items-section">
-        <div class="section-title">Items Ordered</div>
+        <div class="items-header">
+          <div class="section-title">Items Ordered</div>
+          <div class="scroll-indicator">→ Scroll right</div>
+        </div>
         <div class="items-wrapper">
           <table class="items-table">
             <thead>
