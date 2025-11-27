@@ -82,10 +82,13 @@ export default function CheckoutPage() {
       if (res.ok) {
         console.log("✅ Order saved");
         
-        // Generate invoice
+        // Generate invoice - create a shorter unique reference
+        const shortRef = Math.random().toString(36).substring(2, 10).toUpperCase();
+        const invoiceNumber = `INV-${shortRef}`;
+        
         const invoiceData = {
-          invoiceNumber: `INV-${response.reference}`,
-          orderNumber: response.reference,
+          invoiceNumber: invoiceNumber,
+          orderNumber: invoiceNumber,  // Use same number to avoid duplication
           buyerId: buyer?.id, // Add buyerId to link invoice to user
           customerName: buyer?.fullName || "",
           customerEmail: buyer?.email || "",

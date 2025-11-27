@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     // Create new invoice
     const invoice = new Invoice({
       invoiceNumber,
-      orderNumber: orderNumber || `MAN-${Date.now()}`,
+      orderNumber: orderNumber || invoiceNumber,  // Use invoice number as order number
       buyerId: buyerId || null,
       customerName,
       customerEmail,

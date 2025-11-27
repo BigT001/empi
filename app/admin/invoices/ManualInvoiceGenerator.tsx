@@ -27,8 +27,13 @@ const CURRENCIES = [
 ];
 
 export function ManualInvoiceGenerator() {
+  // Generate short invoice number
+  const generateShortInvoiceNumber = () => {
+    return `INV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+  };
+
   const [formData, setFormData] = useState({
-    invoiceNumber: `INV-${Date.now()}`,
+    invoiceNumber: generateShortInvoiceNumber(),
     customerName: "",
     customerEmail: "",
     customerPhone: "",

@@ -151,23 +151,55 @@ export default function BuyerDashboardPage() {
     }
   }, [buyer?.id]);
 
-  const handleDownloadInvoice = (invoice: StoredInvoice) => {
-    const html = generateProfessionalInvoiceHTML(invoice);
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `Invoice-${invoice.invoiceNumber}.html`;
-    link.click();
-    URL.revokeObjectURL(url);
+  const handleDownloadInvoice = async (invoice: StoredInvoice) => {
+    try {
+      // Dynamic import to avoid SSR issues
+      const html2pdf = (await import('html2pdf.js')).default;
+      
+      const html = generateProfessionalInvoiceHTML(invoice);
+      const element = document.createElement('div');
+      element.innerHTML = html;
+      
+      const opt = {
+        margin: 5,
+        filename: `Invoice-${invoice.invoiceNumber}.pdf`,
+        image: { type: 'jpeg' as const, quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { 
+          orientation: 'portrait' as const, 
+          unit: 'mm' as const, 
+          format: 'a4' as const,
+          compress: true
+        },
+        pagebreak: { mode: 'avoid-all' as const, before: '.page-break' }
+      };
+      
+      html2pdf().set(opt).from(element).save();
+    } catch (error) {
+      console.error('PDF generation failed:', error);
+      // Fallback to HTML download
+      const html = generateProfessionalInvoiceHTML(invoice);
+      const blob = new Blob([html], { type: "text/html" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Invoice-${invoice.invoiceNumber}.html`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
   };
 
   const handlePrintInvoice = (invoice: StoredInvoice) => {
     const html = generateProfessionalInvoiceHTML(invoice);
-    const printWindow = window.open("", "", "width=1000,height=600");
+    const printWindow = window.open("", "", "");
     if (printWindow) {
       printWindow.document.write(html);
       printWindow.document.close();
+      printWindow.focus();
+      // Add slight delay to ensure content loads before printing
+      setTimeout(() => {
+        printWindow.print();
+      }, 250);
     }
   };
 
@@ -188,13 +220,8 @@ export default function BuyerDashboardPage() {
         {/* Welcome Header with Logo */}
         <div className="mb-12 flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <img 
-              src="/logo/EMPI-2k24-LOGO-1.PNG" 
-              alt="EMPI Logo" 
-              className="h-16 w-auto object-contain"
-            />
             <div>
-              <h1 className="text-4xl md:text-5xl font-black text-gray-900">
+              <h1 className="text-2xl md:text-2xl font-black text-gray-900">
                 Welcome back, {buyer.fullName}! 👋
               </h1>
               <p className="text-gray-600 text-base">Your invoice management dashboard</p>
@@ -237,9 +264,6 @@ export default function BuyerDashboardPage() {
               <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-5 rounded-full -ml-48 -mb-48"></div>
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-2xl flex items-center justify-center">
-                    <FileText className="h-8 w-8 text-white" />
-                  </div>
                   <div>
                     <p className="text-blue-200 font-bold uppercase text-sm tracking-wider">📋 Invoice Management</p>
                   </div>
@@ -268,7 +292,6 @@ export default function BuyerDashboardPage() {
                       <thead>
                         <tr className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-slate-200">
                           <th className="px-8 py-4 text-left font-black text-slate-900 uppercase text-xs tracking-wider">Invoice #</th>
-                          <th className="px-8 py-4 text-left font-black text-slate-900 uppercase text-xs tracking-wider">Order #</th>
                           <th className="px-8 py-4 text-left font-black text-slate-900 uppercase text-xs tracking-wider">Date</th>
                           <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Items</th>
                           <th className="px-8 py-4 text-right font-black text-slate-900 uppercase text-xs tracking-wider">Amount</th>
@@ -289,9 +312,6 @@ export default function BuyerDashboardPage() {
                                 </div>
                                 <span className="font-black text-gray-900 group-hover:text-lime-700 transition">{invoice.invoiceNumber}</span>
                               </div>
-                            </td>
-                            <td className="px-8 py-5">
-                              <span className="font-semibold text-gray-700">{invoice.orderNumber}</span>
                             </td>
                             <td className="px-8 py-5">
                               <span className="text-gray-600 font-medium">{formatDate(invoice.invoiceDate)}</span>
