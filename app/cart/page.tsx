@@ -245,7 +245,7 @@ export default function CartPage() {
                   ) : (
                     <div className="flex justify-between text-sm"><span className="text-gray-600">Pickup</span><span className="font-semibold text-green-600">FREE</span></div>
                   )}
-                  <div className="flex justify-between text-sm"><span className="text-gray-600">Tax (7.5%)</span><span>{formatPrice(parseFloat(taxEstimate))}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-gray-600">VAT (7.5%)</span><span>{formatPrice(parseFloat(taxEstimate))}</span></div>
                 </div>
                 <div className="flex justify-between items-center mb-6 text-xl">
                   <span className="font-semibold">Total</span><span className="font-bold text-lime-600">{formatPrice(totalAmount)}</span>

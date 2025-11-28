@@ -56,6 +56,7 @@ export default function CheckoutPage() {
 
       const orderData = {
         reference: response.reference,
+        buyerId: buyer?.id || undefined, // Add buyerId if user is logged in (registered), undefined for guest
         customer: {
           name: buyer?.fullName || "",
           email: buyer?.email || "",
@@ -261,7 +262,7 @@ export default function CheckoutPage() {
                   <span>{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Tax (7.5%)</span>
+                  <span>VAT (7.5%)</span>
                   <span>₦{taxEstimate.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-3 border-t-2 border-gray-200">
@@ -452,7 +453,7 @@ export default function CheckoutPage() {
                   <p className="font-semibold text-gray-900">{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</p>
                 </div>
                 <div className="pb-4 border-b border-gray-200">
-                  <p className="text-gray-600 mb-1">Tax</p>
+                  <p className="text-gray-600 mb-1">VAT</p>
                   <p className="font-semibold text-gray-900">₦{taxEstimate.toLocaleString()}</p>
                 </div>
                 <div className="pt-4">

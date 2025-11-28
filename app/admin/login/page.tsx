@@ -3,16 +3,17 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAdmin } from '@/app/context/AdminContext';
-import { LogIn, Eye, EyeOff } from 'lucide-react';
+import { LogIn, Eye, EyeOff, AlertCircle } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const { login, admin, isLoading } = useAdmin();
+  const { login, admin, isLoading, sessionError } = useAdmin();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
 
   // Redirect to dashboard if already logged in
   useEffect(() => {
@@ -20,6 +21,10 @@ export default function AdminLoginPage() {
       router.push('/admin');
     }
   }, [admin, isLoading, router]);
+
+  // Note: We don't display sessionError on login page because it shows
+  // "Session expired" on initial load (before any login attempt), which is confusing.
+  // Only show errors from actual login attempts via the setError state.
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,10 +39,22 @@ export default function AdminLoginPage() {
         throw new Error('Password is required');
       }
 
+      // Email validation
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        throw new Error('Please enter a valid email address');
+      }
+
       await login(email, password);
       router.push('/admin');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMessage);
+      
+      // Extract remaining attempts from error message if present
+      const attemptsMatch = errorMessage.match(/\((\d+)\s+attempts?\s+remaining\)/);
+      if (attemptsMatch) {
+        setRemainingAttempts(parseInt(attemptsMatch[1]));
+      }
     } finally {
       setSubmitting(false);
     }
@@ -73,13 +90,33 @@ export default function AdminLoginPage() {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Error Messages */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm flex items-start gap-2">
-              <span className="mt-0.5">⚠️</span>
-              <span>{error}</span>
+            <div className={`p-4 rounded-lg flex items-start gap-3 ${
+              error.includes('rate limit') || error.includes('locked') || error.includes('Too many')
+                ? 'bg-red-50 border border-red-200 text-red-700'
+                : error.includes('disabled')
+                ? 'bg-orange-50 border border-orange-200 text-orange-700'
+                : 'bg-red-50 border border-red-200 text-red-700'
+            }`}>
+              <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+              <div className="text-sm flex-1">
+                <p className="font-semibold mb-1">{
+                  error.includes('rate limit') || error.includes('Too many') ? 'Account Temporarily Locked' :
+                  error.includes('disabled') ? 'Account Disabled' :
+                  'Login Failed'
+                }</p>
+                <p>{error}</p>
+                {remainingAttempts !== null && remainingAttempts > 0 && (
+                  <p className="mt-2 text-xs opacity-90">
+                    ⚠️ {remainingAttempts} attempt{remainingAttempts !== 1 ? 's' : ''} remaining
+                  </p>
+                )}
+              </div>
             </div>
           )}
 
+          {/* Email Field */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Email Address
@@ -91,9 +128,11 @@ export default function AdminLoginPage() {
               placeholder="admin@example.com"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 transition"
               disabled={submitting}
+              autoComplete="email"
             />
           </div>
 
+          {/* Password Field */}
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
               Password
@@ -106,11 +145,13 @@ export default function AdminLoginPage() {
                 placeholder="Enter your password"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 transition pr-10"
                 disabled={submitting}
+                autoComplete="current-password"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute right-3 top-3.5 text-gray-600 hover:text-gray-900"
+                title={showPassword ? 'Hide password' : 'Show password'}
               >
                 {showPassword ? (
                   <EyeOff className="h-5 w-5" />
@@ -121,6 +162,7 @@ export default function AdminLoginPage() {
             </div>
           </div>
 
+          {/* Submit Button */}
           <button
             type="submit"
             disabled={submitting}
@@ -134,6 +176,9 @@ export default function AdminLoginPage() {
         <div className="mt-6 pt-6 border-t border-gray-200">
           <p className="text-xs text-gray-600 text-center">
             This page is for authorized administrators only.
+          </p>
+          <p className="text-xs text-gray-500 text-center mt-2">
+            🔒 Your credentials are secure and encrypted
           </p>
         </div>
       </div>

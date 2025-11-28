@@ -644,7 +644,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
             <span>${invoice.currencySymbol}${invoice.subtotal.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
           </div>
           ${invoice.shippingCost > 0 ? `<div class="totals-row"><span>Shipping</span><span>${invoice.currencySymbol}${invoice.shippingCost.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
-          ${invoice.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${invoice.currencySymbol}${invoice.taxAmount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
+          ${invoice.taxAmount > 0 ? `<div class="totals-row"><span>VAT</span><span>${invoice.currencySymbol}${invoice.taxAmount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
           <div class="totals-row total-row">
             <span>Total</span>
             <span>${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</span>

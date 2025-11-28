@@ -376,7 +376,7 @@ export function generateInvoiceHTML(invoice: InvoiceData): string {
         <div class="totals-amount">${formatCurrency(invoice.shippingCost, invoice.currencySymbol)}</div>
       </div>
       <div class="totals-row">
-        <div class="totals-label">Tax (7.5%):</div>
+        <div class="totals-label">VAT (7.5%):</div>
         <div class="totals-amount">${formatCurrency(invoice.taxAmount, invoice.currencySymbol)}</div>
       </div>
       <div class="totals-row total-final">
@@ -456,7 +456,7 @@ ${itemsText}
 
                                                 Subtotal: ${formatCurrency(invoice.subtotal, invoice.currencySymbol).padStart(20)}
                                                 Shipping: ${formatCurrency(invoice.shippingCost, invoice.currencySymbol).padStart(20)}
-                                              Tax (7.5%): ${formatCurrency(invoice.taxAmount, invoice.currencySymbol).padStart(20)}
+                                              VAT (7.5%): ${formatCurrency(invoice.taxAmount, invoice.currencySymbol).padStart(20)}
                                          ─────────────────────
                                         TOTAL AMOUNT: ${formatCurrency(invoice.totalAmount, invoice.currencySymbol).padStart(20)}
 

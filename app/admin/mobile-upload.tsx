@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { Upload, X, Plus, Trash2, Check } from "lucide-react";
+import { Upload, X, AlertCircle, CheckCircle2, Camera, Info } from "lucide-react";
 
 interface ProductForm {
   name: string;
@@ -18,6 +18,18 @@ interface ProductForm {
   careInstructions: string;
   imageFiles: File[];
   imagePreviews: string[];
+}
+
+interface FormErrors {
+  name?: string;
+  description?: string;
+  sellPrice?: string;
+  rentPrice?: string;
+  sizes?: string;
+  color?: string;
+  material?: string;
+  careInstructions?: string;
+  images?: string;
 }
 
 export default function MobileAdminUpload() {
@@ -41,6 +53,8 @@ export default function MobileAdminUpload() {
   const [submitMessage, setSubmitMessage] = useState("");
   const [uploadProgress, setUploadProgress] = useState<string>("");
   const [activeTab, setActiveTab] = useState<"images" | "details">("images");
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
 
   const compressImage = (base64: string, mimeType: string): Promise<string> => {
     return new Promise((resolve) => {

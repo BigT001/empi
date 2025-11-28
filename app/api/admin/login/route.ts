@@ -2,17 +2,46 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
 import crypto from 'crypto';
+import { isRateLimited, recordFailedAttempt, clearRateLimit, getRemainingAttempts, getLockoutRemainingTime } from '@/lib/rate-limit';
 
 const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
 
+/**
+ * Extract client IP address from request
+ */
+function getClientIP(request: NextRequest): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  const real = request.headers.get('x-real-ip');
+  const ip = forwarded ? forwarded.split(',')[0].trim() : real || 'unknown';
+  return ip;
+}
+
 export async function POST(request: NextRequest) {
   try {
+    // Get client IP for rate limiting
+    const clientIP = getClientIP(request);
+    console.log(`[Admin Login] Login attempt from IP: ${clientIP}`);
+
+    // Check if IP is rate limited
+    if (isRateLimited(clientIP)) {
+      const remainingMinutes = Math.ceil(getLockoutRemainingTime(clientIP) / 60000);
+      console.log(`[Admin Login] ⚠️ Rate limit exceeded for IP: ${clientIP}`);
+      return NextResponse.json(
+        {
+          error: `Too many failed login attempts. Please try again in ${remainingMinutes} minutes.`,
+          remainingMinutes,
+        },
+        { status: 429 }
+      );
+    }
+
     await connectDB();
     const body = await request.json();
     const { email, password } = body;
 
     // Validation
     if (!email || !password) {
+      recordFailedAttempt(clientIP);
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
@@ -23,6 +52,8 @@ export async function POST(request: NextRequest) {
     const admin = await Admin.findOne({ email: email.toLowerCase() });
 
     if (!admin) {
+      recordFailedAttempt(clientIP);
+      console.log(`[Admin Login] ❌ Admin not found: ${email}`);
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
@@ -31,6 +62,8 @@ export async function POST(request: NextRequest) {
 
     // Check if admin is active
     if (!admin.isActive) {
+      recordFailedAttempt(clientIP);
+      console.log(`[Admin Login] ❌ Admin account disabled: ${email}`);
       return NextResponse.json(
         { error: 'This admin account has been disabled' },
         { status: 403 }
@@ -41,11 +74,20 @@ export async function POST(request: NextRequest) {
     const isPasswordValid = await admin.comparePassword(password);
 
     if (!isPasswordValid) {
+      recordFailedAttempt(clientIP);
+      const remainingAttempts = getRemainingAttempts(clientIP);
+      console.log(`[Admin Login] ❌ Invalid password for ${email} (${remainingAttempts} attempts left)`);
       return NextResponse.json(
-        { error: 'Invalid email or password' },
+        {
+          error: `Invalid email or password (${remainingAttempts} attempts remaining)`,
+          remainingAttempts,
+        },
         { status: 401 }
       );
     }
+
+    // Password is valid - clear rate limit
+    clearRateLimit(clientIP);
 
     // Create secure session token
     const sessionToken = crypto.randomBytes(32).toString('hex');
@@ -57,7 +99,7 @@ export async function POST(request: NextRequest) {
     admin.sessionExpiry = sessionExpiry;
     await admin.save();
 
-    console.log(`✅ Admin logged in with secure token: ${email}`);
+    console.log(`✅ Admin logged in with secure token: ${email} from IP: ${clientIP}`);
 
     // Create response with admin data
     const response = NextResponse.json(

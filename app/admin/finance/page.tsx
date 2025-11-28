@@ -2,16 +2,98 @@
 
 import { useState, useEffect } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { ArrowLeft, TrendingUp, DollarSign, ShoppingCart, BarChart3 } from "lucide-react";
+import {
+  TrendingUp,
+  DollarSign,
+  ShoppingCart,
+  BarChart3,
+  AlertCircle,
+  Calendar,
+  TrendingDown,
+  MoreVertical,
+  ArrowUp,
+  Plus,
+} from "lucide-react";
 
 // Mobile components
-const MobileFinancePage = dynamic(() => import("../mobile-finance"), { ssr: false });
+const MobileFinancePage = dynamic(() => import("../mobile-finance"), {
+  ssr: false,
+});
 import MobileAdminLayout from "../mobile-layout";
+import VATTab from "../vat-tab";
+import OfflineOrderForm from "../offline-order-form";
+import TransactionHistory from "../transaction-history";
+
+interface FinanceMetrics {
+  totalRevenue: number;
+  totalIncome: number;
+  totalExpenses: number;
+  pendingAmount: number;
+  completedAmount: number;
+  annualTurnover: number;
+  businessSize: 'small' | 'medium' | 'large';
+  taxBreakdown: TaxBreakdown;
+  monthlyTax: MonthlyTaxBreakdown;
+  weeklyProjection: WeeklyData[];
+  transactionBreakdown: TransactionBreakdown;
+  profitMargin: number;
+  averageOrderValue: number;
+  conversionMetrics: ConversionMetrics;
+}
+
+interface TaxBreakdown {
+  vat: VATBreakdown;
+  corporateIncomeTax: number;
+  educationTax: number;
+  totalAnnualTax: number;
+}
+
+interface VATBreakdown {
+  rate: number;
+  totalSalesExVAT: number;
+  outputVAT: number;
+  inputVAT: number;
+  vatPayable: number;
+}
+
+interface MonthlyTaxBreakdown {
+  estimatedMonthlyVAT: number;
+  estimatedMonthlyCIT: number;
+  estimatedMonthlyEducationTax: number;
+  estimatedMonthlyTotal: number;
+}
+
+interface WeeklyData {
+  week: string;
+  revenue: number;
+  orders: number;
+  avgOrderValue: number;
+}
+
+interface TransactionBreakdown {
+  sales: number;
+  rentals: number;
+  customOrders: number;
+  returns: number;
+  refunds: number;
+}
+
+interface ConversionMetrics {
+  totalTransactions: number;
+  completedTransactions: number;
+  pendingTransactions: number;
+  cancelledTransactions: number;
+  conversionRate: number;
+}
 
 export default function FinancePage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"vat" | "overview" | "analytics" | "transactions">("overview");
+  const [showOfflineOrderForm, setShowOfflineOrderForm] = useState(false);
 
   // Detect mobile device
   useEffect(() => {
@@ -23,6 +105,29 @@ export default function FinancePage() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Fetch finance metrics
+  useEffect(() => {
+    const fetchMetrics = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/api/admin/finance");
+        
+        if (!response.ok) throw new Error("Failed to fetch metrics");
+        const financeData = await response.json();
+        setMetrics(financeData.metrics);
+      } catch (err) {
+        console.error("Error fetching finance metrics:", err);
+        setError(err instanceof Error ? err.message : "An error occurred");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (isMounted && !isMobile) {
+      fetchMetrics();
+    }
+  }, [isMounted, isMobile]);
 
   // Show mobile view on small screens
   if (!isMounted) {
@@ -37,135 +142,547 @@ export default function FinancePage() {
     );
   }
 
-  const financialData = [
-    { label: "Total Revenue", value: "$12,450.50", icon: DollarSign, color: "text-green-600", bg: "bg-green-50" },
-    { label: "Total Sales", value: "156", icon: ShoppingCart, color: "text-blue-600", bg: "bg-blue-50" },
-    { label: "Rental Income", value: "$3,240.75", icon: TrendingUp, color: "text-lime-600", bg: "bg-lime-50" },
-    { label: "Pending Payouts", value: "$2,100.00", icon: BarChart3, color: "text-orange-600", bg: "bg-orange-50" },
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-gray-300 border-t-lime-600"></div>
+          <p className="mt-4 text-gray-600">Loading financial data...</p>
+        </div>
+      </div>
+    );
+  }
 
-  const recentTransactions = [
-    { id: 1, type: "Sale", product: "Classic Vampire Cape", amount: "$49.00", date: "Nov 14, 2024", status: "Completed" },
-    { id: 2, type: "Rental", product: "Witch Hat Deluxe", amount: "$6.99", date: "Nov 14, 2024", status: "Active" },
-    { id: 3, type: "Sale", product: "Medieval Knight Armor", amount: "$199.00", date: "Nov 13, 2024", status: "Completed" },
-    { id: 4, type: "Rental", product: "Fairy Costume Set", amount: "$11.99", date: "Nov 13, 2024", status: "Completed" },
-    { id: 5, type: "Sale", product: "Pirate Captain Outfit", amount: "$79.00", date: "Nov 12, 2024", status: "Completed" },
-  ];
+  if (error || !metrics) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+        <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+          <div className="mx-auto max-w-7xl px-6 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Finance Dashboard</h1>
+            <p className="text-sm text-gray-600">
+              Track your revenue, expenses, and tax calculations
+            </p>
+          </div>
+        </header>
+        <main className="mx-auto max-w-7xl px-6 py-12">
+          <div className="bg-red-50 border border-red-200 rounded-lg p-6">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="h-6 w-6 text-red-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h3 className="font-semibold text-red-900">Error Loading Data</h3>
+                <p className="text-red-700 text-sm mt-1">
+                  {error || "Failed to load financial metrics"}
+                </p>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-          <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">Finance Dashboard</h1>
-              <p className="text-sm text-gray-600">Track your revenue and transactions</p>
+        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Finance Dashboard</h1>
+            <p className="text-sm text-gray-600">
+              Track your revenue, expenses, and tax calculations
+            </p>
+          </div>
+          <button
+            onClick={() => setShowOfflineOrderForm(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-lime-600 text-white rounded-lg hover:bg-lime-700 transition font-medium"
+          >
+            <Plus className="h-4 w-4" />
+            Add Offline Order
+          </button>
+        </div>
+      </header>
+
+      {/* Tab Navigation */}
+      <div className="bg-white border-b border-gray-200 sticky top-16 z-30">
+        <div className="mx-auto max-w-7xl px-6">
+          <div className="flex gap-8">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`py-4 px-2 font-medium border-b-2 transition ${
+                activeTab === "overview"
+                  ? "border-lime-600 text-lime-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" />
+                Financial Overview
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("vat")}
+              className={`py-4 px-2 font-medium border-b-2 transition ${
+                activeTab === "vat"
+                  ? "border-lime-600 text-lime-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" />
+                VAT Management
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("analytics")}
+              className={`py-4 px-2 font-medium border-b-2 transition ${
+                activeTab === "analytics"
+                  ? "border-lime-600 text-lime-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <BarChart3 className="h-5 w-5" />
+                Analytics
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("transactions")}
+              className={`py-4 px-2 font-medium border-b-2 transition ${
+                activeTab === "transactions"
+                  ? "border-lime-600 text-lime-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                Transaction History
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <main className="mx-auto max-w-7xl px-6 py-12 w-full">
+        {activeTab === "vat" && <VATTab />}
+        
+        {activeTab === "overview" && (
+          <>
+        {/* Top KPI Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Total Revenue */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+              <DollarSign className="h-5 w-5 text-green-600" />
             </div>
+            <p className="text-3xl font-bold text-gray-900">
+              ₦{metrics.totalRevenue.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              {metrics.conversionMetrics.totalTransactions} total transactions
+            </p>
           </div>
-        </header>
 
-        {/* Content */}
-        <main className="flex-1 mx-auto max-w-7xl px-6 py-12 w-full">
-          {/* Financial Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-            {financialData.map((item, index) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={index}
-                  className={`${item.bg} rounded-2xl p-6 border border-gray-200 shadow-sm`}
-                >
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-gray-600 font-medium">{item.label}</p>
-                      <p className="text-3xl font-bold text-gray-900 mt-2">{item.value}</p>
-                    </div>
-                    <Icon className={`h-12 w-12 ${item.color} opacity-20`} />
-                  </div>
+          {/* Completed Income */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-gray-600">Completed Income</p>
+              <TrendingUp className="h-5 w-5 text-green-600" />
+            </div>
+            <p className="text-3xl font-bold text-green-600">
+              ₦{metrics.totalIncome.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              {metrics.conversionMetrics.completedTransactions} completed
+            </p>
+          </div>
+
+          {/* Pending Amount */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-gray-600">Pending Amount</p>
+              <Calendar className="h-5 w-5 text-orange-600" />
+            </div>
+            <p className="text-3xl font-bold text-orange-600">
+              ₦{metrics.pendingAmount.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              {metrics.conversionMetrics.pendingTransactions} pending
+            </p>
+          </div>
+
+          {/* Monthly Tax */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-gray-600">Est. Monthly Tax</p>
+              <TrendingDown className="h-5 w-5 text-red-600" />
+            </div>
+            <p className="text-3xl font-bold text-red-600">
+              ₦{metrics.monthlyTax.estimatedMonthlyTotal.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              {metrics.businessSize === 'small' && 'Small Business (VAT only)'}
+              {metrics.businessSize === 'medium' && 'Medium Business (VAT + CIT)'}
+              {metrics.businessSize === 'large' && 'Large Business (VAT + CIT + EDT)'}
+            </p>
+          </div>
+        </div>
+
+        {/* Financial Overview Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+          {/* Revenue vs Expenses */}
+          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              Financial Overview
+            </h2>
+            <div className="space-y-6">
+              {/* Total Revenue */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
+                  <p className="font-bold text-gray-900">
+                    ₦{metrics.totalRevenue.toLocaleString("en-NG")}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className="bg-green-600 h-3 rounded-full"
+                    style={{ width: "100%" }}
+                  ></div>
+                </div>
+              </div>
 
-          {/* Charts & Transactions */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Revenue Chart */}
-            <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Revenue Overview</h2>
-              <div className="h-64 bg-gradient-to-br from-lime-50 to-gray-50 rounded-xl flex items-center justify-center">
-                <p className="text-gray-500 text-center">
-                  📊 Chart visualization coming soon
-                  <br />
-                  <span className="text-sm">Integration with chart library required</span>
+              {/* Total Expenses */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <p className="text-sm font-medium text-gray-600">Est. Expenses</p>
+                  <p className="font-bold text-gray-900">
+                    ₦{metrics.totalExpenses.toLocaleString("en-NG")}
+                  </p>
+                </div>
+                <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div
+                    className="bg-red-600 h-3 rounded-full"
+                    style={{
+                      width: `${(metrics.totalExpenses / metrics.totalRevenue) * 100}%`,
+                    }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Gross Profit */}
+              <div className="bg-gradient-to-r from-lime-50 to-green-50 rounded-lg p-4 border border-lime-200">
+                <div className="flex justify-between items-center">
+                  <p className="font-medium text-gray-900">Gross Profit</p>
+                  <p className="text-2xl font-bold text-green-600">
+                    ₦
+                    {(metrics.totalRevenue - metrics.totalExpenses).toLocaleString(
+                      "en-NG",
+                      { minimumFractionDigits: 2 }
+                    )}
+                  </p>
+                </div>
+                <p className="text-xs text-gray-600 mt-2">
+                  Profit Margin: {metrics.profitMargin}%
                 </p>
               </div>
             </div>
+          </div>
 
-            {/* Quick Stats */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-6">Quick Stats</h2>
-              <div className="space-y-4">
-                <div className="pb-4 border-b border-gray-200">
-                  <p className="text-sm text-gray-600">Avg Order Value</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">$79.50</p>
+          {/* Key Metrics */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">Key Metrics</h2>
+            <div className="space-y-4">
+              <div className="pb-4 border-b border-gray-200">
+                <p className="text-sm text-gray-600">Average Order Value</p>
+                <p className="text-2xl font-bold text-gray-900 mt-2">
+                  ₦{metrics.averageOrderValue.toLocaleString("en-NG")}
+                </p>
+              </div>
+              <div className="pb-4 border-b border-gray-200">
+                <p className="text-sm text-gray-600">Conversion Rate</p>
+                <p className="text-2xl font-bold text-lime-600 mt-2">
+                  {metrics.conversionMetrics.conversionRate}%
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total Transactions</p>
+                <p className="text-2xl font-bold text-gray-900 mt-2">
+                  {metrics.conversionMetrics.totalTransactions}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Weekly Projection Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-6">
+            Weekly Revenue Projection
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {metrics.weeklyProjection.map((week, index) => (
+              <div
+                key={index}
+                className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 hover:border-lime-400 transition"
+              >
+                <p className="text-xs font-semibold text-gray-600 uppercase mb-3">
+                  {week.week}
+                </p>
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-gray-600">Revenue</p>
+                    <p className="text-lg font-bold text-green-600">
+                      ₦{week.revenue.toLocaleString("en-NG")}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Orders</p>
+                    <p className="text-lg font-bold text-gray-900">{week.orders}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Avg Order Value</p>
+                    <p className="text-sm font-bold text-gray-900">
+                      ₦{week.avgOrderValue.toLocaleString("en-NG")}
+                    </p>
+                  </div>
                 </div>
-                <div className="pb-4 border-b border-gray-200">
-                  <p className="text-sm text-gray-600">Conversion Rate</p>
-                  <p className="text-2xl font-bold text-lime-600 mt-1">3.2%</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Transaction Breakdown Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Transaction Types */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              Transaction Breakdown
+            </h2>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="h-3 w-3 rounded-full bg-green-600"></div>
+                  <p className="text-sm font-medium text-gray-700">Direct Sales</p>
                 </div>
-                <div>
-                  <p className="text-sm text-gray-600">Customer Count</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-1">124</p>
+                <p className="font-bold text-gray-900">
+                  {metrics.transactionBreakdown.sales}
+                </p>
+              </div>
+              <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="h-3 w-3 rounded-full bg-blue-600"></div>
+                  <p className="text-sm font-medium text-gray-700">Rentals</p>
                 </div>
+                <p className="font-bold text-gray-900">
+                  {metrics.transactionBreakdown.rentals}
+                </p>
+              </div>
+              <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="h-3 w-3 rounded-full bg-purple-600"></div>
+                  <p className="text-sm font-medium text-gray-700">Custom Orders</p>
+                </div>
+                <p className="font-bold text-gray-900">
+                  {metrics.transactionBreakdown.customOrders}
+                </p>
+              </div>
+              <div className="flex items-center justify-between pb-4 border-b border-gray-200">
+                <div className="flex items-center gap-3">
+                  <div className="h-3 w-3 rounded-full bg-orange-600"></div>
+                  <p className="text-sm font-medium text-gray-700">Returns</p>
+                </div>
+                <p className="font-bold text-gray-900">
+                  {metrics.transactionBreakdown.returns}
+                </p>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-3 w-3 rounded-full bg-red-600"></div>
+                  <p className="text-sm font-medium text-gray-700">Refunds</p>
+                </div>
+                <p className="font-bold text-gray-900">
+                  {metrics.transactionBreakdown.refunds}
+                </p>
               </div>
             </div>
           </div>
 
-          {/* Recent Transactions */}
-          <div className="mt-12 bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Recent Transactions</h2>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-gray-200">
-                    <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Type</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Product</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Amount</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Date</th>
-                    <th className="text-left px-4 py-3 font-semibold text-gray-900 text-sm">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentTransactions.map((transaction) => (
-                    <tr key={transaction.id} className="border-b border-gray-100 hover:bg-gray-50 transition">
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                          transaction.type === "Sale"
-                            ? "bg-green-50 text-green-700"
-                            : "bg-blue-50 text-blue-700"
-                        }`}>
-                          {transaction.type}
-                        </span>
-                      </td>
-                      <td className="px-4 py-3 text-sm text-gray-900 font-medium">{transaction.product}</td>
-                      <td className="px-4 py-3 text-sm font-bold text-gray-900">{transaction.amount}</td>
-                      <td className="px-4 py-3 text-sm text-gray-600">{transaction.date}</td>
-                      <td className="px-4 py-3 text-sm">
-                        <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                          transaction.status === "Completed"
-                            ? "bg-green-50 text-green-700"
-                            : "bg-yellow-50 text-yellow-700"
-                        }`}>
-                          {transaction.status}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          {/* Conversion Metrics */}
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-6">
+              Conversion Metrics
+            </h2>
+            <div className="space-y-4">
+              <div className="bg-gradient-to-r from-green-50 to-lime-50 rounded-lg p-4 border border-green-200">
+                <p className="text-sm text-gray-600">Completed Transactions</p>
+                <p className="text-3xl font-bold text-green-600 mt-2">
+                  {metrics.conversionMetrics.completedTransactions}
+                </p>
+                <p className="text-xs text-gray-600 mt-2">
+                  {(
+                    (metrics.conversionMetrics.completedTransactions /
+                      metrics.conversionMetrics.totalTransactions) *
+                    100
+                  ).toFixed(1)}
+                  % of total
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg p-4 border border-orange-200">
+                <p className="text-sm text-gray-600">Pending Transactions</p>
+                <p className="text-3xl font-bold text-orange-600 mt-2">
+                  {metrics.conversionMetrics.pendingTransactions}
+                </p>
+                <p className="text-xs text-gray-600 mt-2">
+                  {(
+                    (metrics.conversionMetrics.pendingTransactions /
+                      metrics.conversionMetrics.totalTransactions) *
+                    100
+                  ).toFixed(1)}
+                  % of total
+                </p>
+              </div>
+
+              <div className="bg-gradient-to-r from-red-50 to-pink-50 rounded-lg p-4 border border-red-200">
+                <p className="text-sm text-gray-600">Cancelled Transactions</p>
+                <p className="text-3xl font-bold text-red-600 mt-2">
+                  {metrics.conversionMetrics.cancelledTransactions}
+                </p>
+                <p className="text-xs text-gray-600 mt-2">
+                  {(
+                    (metrics.conversionMetrics.cancelledTransactions /
+                      metrics.conversionMetrics.totalTransactions) *
+                    100
+                  ).toFixed(1)}
+                  % of total
+                </p>
+              </div>
             </div>
           </div>
-        </main>
+        </div>
+
+        {/* Tax Information */}
+        <div className="mt-8 bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl border-2 border-red-200 p-8">
+          <div className="flex items-start gap-4">
+            <AlertCircle className="h-6 w-6 text-red-600 mt-1 flex-shrink-0" />
+            <div className="w-full">
+              <h3 className="text-lg font-bold text-gray-900">
+                Nigerian Tax Breakdown
+              </h3>
+              
+              {/* Annual Summary */}
+              <div className="mt-4 p-4 bg-white rounded-lg border border-red-200">
+                <p className="text-sm font-semibold text-gray-900">Annual Summary</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                  <div>
+                    <p className="text-xs text-gray-600">Annual Turnover</p>
+                    <p className="font-bold text-gray-900">₦{metrics.annualTurnover.toLocaleString("en-NG")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Business Size</p>
+                    <p className="font-bold text-gray-900 capitalize">{metrics.businessSize}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Annual VAT</p>
+                    <p className="font-bold text-green-600">₦{metrics.taxBreakdown.vat.vatPayable.toLocaleString("en-NG")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Total Annual Tax</p>
+                    <p className="font-bold text-red-600">₦{metrics.taxBreakdown.totalAnnualTax.toLocaleString("en-NG")}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Monthly Breakdown */}
+              <div className="mt-4 p-4 bg-white rounded-lg border border-red-200">
+                <p className="text-sm font-semibold text-gray-900">Monthly Estimates</p>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                  <div>
+                    <p className="text-xs text-gray-600">VAT</p>
+                    <p className="font-bold text-green-600">₦{metrics.monthlyTax.estimatedMonthlyVAT.toLocaleString("en-NG")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">CIT</p>
+                    <p className="font-bold text-blue-600">₦{metrics.monthlyTax.estimatedMonthlyCIT.toLocaleString("en-NG")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">EDT</p>
+                    <p className="font-bold text-orange-600">₦{metrics.monthlyTax.estimatedMonthlyEducationTax.toLocaleString("en-NG")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Total</p>
+                    <p className="font-bold text-red-600 text-lg">₦{metrics.monthlyTax.estimatedMonthlyTotal.toLocaleString("en-NG")}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* VAT Details */}
+              <div className="mt-4 p-4 bg-white rounded-lg border border-red-200">
+                <p className="text-sm font-semibold text-gray-900">VAT Details (7.5%)</p>
+                <div className="grid grid-cols-3 gap-4 mt-3">
+                  <div>
+                    <p className="text-xs text-gray-600">Output VAT</p>
+                    <p className="text-sm font-bold text-gray-900">₦{metrics.taxBreakdown.vat.outputVAT.toLocaleString("en-NG")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">Input VAT</p>
+                    <p className="text-sm font-bold text-gray-900">₦{metrics.taxBreakdown.vat.inputVAT.toLocaleString("en-NG")}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-600">VAT Payable</p>
+                    <p className="text-sm font-bold text-green-600">₦{metrics.taxBreakdown.vat.vatPayable.toLocaleString("en-NG")}</p>
+                  </div>
+                </div>
+              </div>
+
+              <p className="text-sm text-gray-600 mt-4">
+                <strong>Note:</strong> This is an automated estimate. Please consult with your accountant for accurate tax calculations and ensure all expenses are properly documented for deduction purposes. Tax remittance deadline: 21st of next month.
+              </p>
+            </div>
+          </div>
+        </div>
+          </>
+        )}
+
+        {activeTab === "analytics" && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
+            <p className="text-gray-600 text-lg">Analytics dashboard coming soon...</p>
+          </div>
+        )}
+
+        {activeTab === "transactions" && <TransactionHistory metrics={metrics} />}
+      </main>
+
+      {/* Offline Order Modal */}
+      {showOfflineOrderForm && (
+        <OfflineOrderForm
+          onClose={() => setShowOfflineOrderForm(false)}
+          onSuccess={() => {
+            // Refresh metrics after successful offline order
+            const fetchMetrics = async () => {
+              try {
+                const response = await fetch("/api/admin/finance");
+                if (!response.ok) throw new Error("Failed to fetch metrics");
+                const financeData = await response.json();
+                setMetrics(financeData.metrics);
+              } catch (err) {
+                console.error("Error refreshing metrics:", err);
+              }
+            };
+            fetchMetrics();
+          }}
+        />
+      )}
     </div>
   );
 }

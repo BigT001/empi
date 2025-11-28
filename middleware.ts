@@ -12,6 +12,7 @@ export function middleware(request: NextRequest) {
     '/admin/finance',
     '/admin/invoices',
     '/admin/settings',
+    '/admin/custom-orders',
   ];
 
   // Check if current path requires admin authentication
@@ -19,6 +20,7 @@ export function middleware(request: NextRequest) {
 
   // Allow login page without authentication
   if (pathname === '/admin/login') {
+    console.log('[Middleware] ✅ Allowing access to /admin/login');
     return NextResponse.next();
   }
 
@@ -26,10 +28,13 @@ export function middleware(request: NextRequest) {
   if (isProtectedPath) {
     const adminSession = request.cookies.get('admin_session');
 
-    if (!adminSession) {
-      // Redirect to admin login
+    if (!adminSession || !adminSession.value) {
+      // No valid session - redirect to admin login
+      console.log('[Middleware] ❌ No admin session found, redirecting to /admin/login');
       return NextResponse.redirect(new URL('/admin/login', request.url));
     }
+
+    console.log('[Middleware] ✅ Valid admin session found, allowing access to:', pathname);
   }
 
   return NextResponse.next();

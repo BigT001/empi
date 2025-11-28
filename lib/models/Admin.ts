@@ -9,6 +9,7 @@ export interface IAdmin extends Document {
   permissions: string[];
   isActive: boolean;
   lastLogin?: Date;
+  lastLogout?: Date;
   sessionToken?: string;    // Secure session token
   sessionExpiry?: Date;     // Session expiration time
   createdAt: Date;
@@ -28,6 +29,7 @@ const adminSchema = new Schema<IAdmin>(
     },
     isActive: { type: Boolean, default: true },
     lastLogin: Date,
+    lastLogout: Date,
     sessionToken: { type: String, default: null },   // Secure session token
     sessionExpiry: { type: Date, default: null },    // When session expires
   },

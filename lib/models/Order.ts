@@ -28,10 +28,13 @@ export interface IOrder extends Document {
   shippingType: string;
   shippingCost: number;
   subtotal: number;
+  vat: number; // VAT amount (7.5% of subtotal)
+  vatRate: number; // VAT rate percentage (7.5)
   total: number;
   paymentMethod: string;
   status: string;
   items: IOrderItem[];
+  isOffline?: boolean; // Mark as offline/manual order
   // Delivery fields
   deliveryState?: string;
   deliveryFee?: number;
@@ -69,10 +72,13 @@ const orderSchema = new Schema<IOrder>(
     shippingType: { type: String, required: true },
     shippingCost: { type: Number, default: 0 },
     subtotal: { type: Number, required: true },
+    vat: { type: Number, default: 0 }, // VAT amount (7.5% of subtotal)
+    vatRate: { type: Number, default: 7.5 }, // VAT rate percentage
     total: { type: Number, required: true },
     paymentMethod: { type: String, required: true },
     status: { type: String, default: 'confirmed' },
     items: [orderItemSchema],
+    isOffline: { type: Boolean, default: false }, // Mark as offline/manual order
     // Delivery fields
     deliveryState: String,
     deliveryFee: { type: Number, default: 0 },

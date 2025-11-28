@@ -24,8 +24,14 @@ export async function POST(request: NextRequest) {
       rentalDays: item.rentalDays || 0,
     }));
 
+    // Calculate VAT (7.5% of subtotal)
+    const subtotal = body.pricing?.subtotal || body.subtotal || 0;
+    const vatRate = 7.5;
+    const vat = subtotal * (vatRate / 100);
+
     const order = new Order({
       // Customer info
+      buyerId: body.buyerId || undefined, // Set if user is logged in (registered customer)
       firstName: firstName || 'Customer',
       lastName: lastName,
       email: body.customer?.email || body.email || '',
@@ -34,7 +40,9 @@ export async function POST(request: NextRequest) {
       // Order info
       orderNumber: body.reference || `ORD-${Date.now()}`,
       items: processedItems,
-      subtotal: body.pricing?.subtotal || body.subtotal || 0,
+      subtotal: subtotal,
+      vat: Math.round(vat * 100) / 100, // Round to 2 decimal places
+      vatRate: vatRate,
       shippingCost: body.pricing?.shipping || body.shippingCost || 0,
       total: body.pricing?.total || body.total || 0,
       
@@ -80,6 +88,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const ref = searchParams.get('ref');
+    const limit = parseInt(searchParams.get('limit') || '100');
 
     if (ref) {
       // Lookup by Paystack reference
@@ -106,7 +115,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, order: serializeDoc(order) });
     }
 
-    const orders = await Order.find().sort({ createdAt: -1 });
+    // Get all orders with limit
+    const orders = await Order.find().sort({ createdAt: -1 }).limit(limit);
+    console.log(`[Orders API] Fetched ${orders.length} orders (limit: ${limit})`);
     return NextResponse.json({ success: true, orders: serializeDocs(orders) });
   } catch (error) {
     console.error('Error fetching orders:', error);
