@@ -9,6 +9,9 @@ interface FinanceMetrics {
   totalExpenses: number;
   pendingAmount: number;
   completedAmount: number;
+  totalSalesAmount: number;
+  totalRentalsAmount: number;
+  completedOutgoing: number;
   annualTurnover: number;
   businessSize: 'small' | 'medium' | 'large';
   taxBreakdown: TaxBreakdown;
@@ -290,6 +293,32 @@ export async function GET(request: NextRequest) {
       allCustomOrders
     );
 
+    // Calculate total sales and rentals amounts
+    const totalSalesAmount = allOrders.reduce((sum: number, order: any) => {
+      const salesTotal = order.items?.reduce((itemSum: number, item: any) => {
+        return item.mode === 'buy' ? itemSum + (item.price * item.quantity || 0) : itemSum;
+      }, 0) || 0;
+      return sum + salesTotal;
+    }, 0);
+
+    const totalRentalsAmount = allOrders.reduce((sum: number, order: any) => {
+      const rentalsTotal = order.items?.reduce((itemSum: number, item: any) => {
+        return item.mode === 'rent' ? itemSum + (item.price * item.quantity || 0) : itemSum;
+      }, 0) || 0;
+      return sum + rentalsTotal;
+    }, 0);
+
+    // Calculate completed outgoing (refunds + returns)
+    const refundedOrders = allOrders.filter(
+      (order: any) => order.status === 'refunded'
+    );
+    const returnedOrders = allOrders.filter(
+      (order: any) => order.status === 'returned'
+    );
+    const completedOutgoing = 
+      refundedOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0) +
+      returnedOrders.reduce((sum: number, order: any) => sum + (order.total || 0), 0);
+
     // Profit margin
     const profitMargin =
       totalRevenue > 0 ? ((grossProfit / totalRevenue) * 100).toFixed(2) : '0';
@@ -323,6 +352,9 @@ export async function GET(request: NextRequest) {
       totalExpenses,
       pendingAmount: totalPendingRevenue,
       completedAmount: totalCompletedRevenue,
+      totalSalesAmount: Math.round(totalSalesAmount * 100) / 100,
+      totalRentalsAmount: Math.round(totalRentalsAmount * 100) / 100,
+      completedOutgoing: Math.round(completedOutgoing * 100) / 100,
       annualTurnover: Math.round(annualTurnover * 100) / 100,
       businessSize,
       taxBreakdown,
@@ -393,27 +425,37 @@ function calculateTransactionBreakdown(
   orders: any[],
   customOrders: any[]
 ): TransactionBreakdown {
-  const salesOrders = orders.filter((order: any) =>
-    order.items?.some((item: any) => item.mode === 'buy')
-  );
+  let salesCount = 0;
+  let rentalsCount = 0;
+  let returnsCount = 0;
+  let refundsCount = 0;
 
-  const rentalOrders = orders.filter((order: any) =>
-    order.items?.some((item: any) => item.mode === 'rent')
-  );
-
-  const refundedOrders = orders.filter(
-    (order: any) => order.status === 'refunded'
-  );
-
-  const returnedOrders = orders.filter(
-    (order: any) => order.status === 'returned'
-  );
+  // Count items by mode
+  orders.forEach((order: any) => {
+    if (order.items) {
+      order.items.forEach((item: any) => {
+        if (item.mode === 'buy') {
+          salesCount++;
+        } else if (item.mode === 'rent') {
+          rentalsCount++;
+        }
+      });
+    }
+    
+    // Count returns and refunds
+    if (order.status === 'returned') {
+      returnsCount++;
+    }
+    if (order.status === 'refunded') {
+      refundsCount++;
+    }
+  });
 
   return {
-    sales: salesOrders.length,
-    rentals: rentalOrders.length,
+    sales: salesCount,
+    rentals: rentalsCount,
     customOrders: customOrders.length,
-    returns: returnedOrders.length,
-    refunds: refundedOrders.length,
+    returns: returnsCount,
+    refunds: refundsCount,
   };
 }

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Order from '@/lib/models/Order';
 import Expense from '@/lib/models/Expense';
+import VATHistory from '@/lib/models/VATHistory';
 import connectDB from '@/lib/mongodb';
+import { getCurrentMonthVAT } from '@/lib/utils/vatCalculations';
 
 interface MonthlyVATData {
   month: string;
@@ -18,9 +20,22 @@ interface MonthlyVATData {
   daysRemaining?: number;
 }
 
+interface CurrentMonthVATData {
+  month: number;
+  year: number;
+  currentMonthVAT: number;
+  totalOutputVAT: number;
+  totalInputVAT: number;
+  annualVATTotal: number;
+  vatRate: number;
+  totalSalesAmount: number;
+  deductibleExpensesAmount: number;
+  status: string;
+}
+
 interface VATAnalyticsResponse {
   monthlyBreakdown: MonthlyVATData[];
-  currentMonthVAT: MonthlyVATData | null;
+  currentMonthVAT: CurrentMonthVATData | null;
   annualVATTotal: number;
   averageMonthlyVAT: number;
   totalInputVATAvailable: number;  // Real, actual Input VAT
@@ -34,11 +49,14 @@ export async function GET(request: NextRequest) {
     const currentYear = now.getFullYear();
     const currentMonth = now.getMonth();
 
-    // Fetch all orders AND all expenses
-    const allOrders = await Order.find({}).lean(); // Includes both online and offline orders
+    // Get current month VAT from new system
+    const currentMonthVATData = await getCurrentMonthVAT();
+
+    // Fetch all orders AND all expenses for historical breakdown
+    const allOrders = await Order.find({}).lean();
     const allExpenses = await Expense.find({}).lean();
 
-    // Calculate monthly breakdown
+    // Calculate monthly breakdown for visualization
     const monthlyVATData: MonthlyVATData[] = [];
     const monthNames = [
       'January', 'February', 'March', 'April', 'May', 'June',
@@ -109,8 +127,21 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Current month data
-    const currentMonthData = monthlyVATData[currentMonth];
+    // Current month data - now using new system
+    const currentMonthForResponse: CurrentMonthVATData | null = currentMonthVATData
+      ? {
+          month: currentMonthVATData.month,
+          year: currentMonthVATData.year,
+          currentMonthVAT: currentMonthVATData.currentMonthVAT,
+          totalOutputVAT: currentMonthVATData.totalOutputVAT,
+          totalInputVAT: currentMonthVATData.totalInputVAT,
+          annualVATTotal: currentMonthVATData.annualVATTotal,
+          vatRate: currentMonthVATData.vatRate,
+          totalSalesAmount: currentMonthVATData.totalSalesAmount,
+          deductibleExpensesAmount: currentMonthVATData.deductibleExpensesAmount,
+          status: currentMonthVATData.status,
+        }
+      : null;
 
     // Calculate annual totals
     const annualVATTotal = monthlyVATData.reduce(
@@ -127,19 +158,12 @@ export async function GET(request: NextRequest) {
       ? annualVATTotal / monthlyVATData.length
       : 0;
 
-    // Add days remaining for current month
-    if (currentMonthData) {
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-      const daysRemaining = daysInMonth - now.getDate();
-      currentMonthData.daysRemaining = daysRemaining;
-    }
-
     const response: VATAnalyticsResponse = {
       monthlyBreakdown: monthlyVATData,
-      currentMonthVAT: currentMonthData || null,
-      annualVATTotal: Math.round(annualVATTotal * 100) / 100,
+      currentMonthVAT: currentMonthForResponse,
+      annualVATTotal: currentMonthVATData?.annualVATTotal || Math.round(annualVATTotal * 100) / 100,
       averageMonthlyVAT: Math.round(averageMonthlyVAT * 100) / 100,
-      totalInputVATAvailable: Math.round(totalInputVATAvailable * 100) / 100,
+      totalInputVATAvailable: currentMonthVATData?.totalInputVAT || Math.round(totalInputVATAvailable * 100) / 100,
     };
 
     return NextResponse.json(

@@ -22,7 +22,9 @@ const MobileFinancePage = dynamic(() => import("../mobile-finance"), {
 import MobileAdminLayout from "../mobile-layout";
 import VATTab from "../vat-tab";
 import OfflineOrderForm from "../offline-order-form";
+import OfflineExpenseForm from "../offline-expense-form";
 import TransactionHistory from "../transaction-history";
+import DailyExpenses from "../daily-expenses";
 
 interface FinanceMetrics {
   totalRevenue: number;
@@ -30,6 +32,9 @@ interface FinanceMetrics {
   totalExpenses: number;
   pendingAmount: number;
   completedAmount: number;
+  totalSalesAmount: number;
+  totalRentalsAmount: number;
+  completedOutgoing: number;
   annualTurnover: number;
   businessSize: 'small' | 'medium' | 'large';
   taxBreakdown: TaxBreakdown;
@@ -92,8 +97,9 @@ export default function FinancePage() {
   const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"vat" | "overview" | "analytics" | "transactions">("overview");
+  const [activeTab, setActiveTab] = useState<"vat" | "overview" | "analytics" | "transactions" | "expenses">("overview");
   const [showOfflineOrderForm, setShowOfflineOrderForm] = useState(false);
+  const [showOfflineExpenseForm, setShowOfflineExpenseForm] = useState(false);
 
   // Detect mobile device
   useEffect(() => {
@@ -192,13 +198,6 @@ export default function FinancePage() {
               Track your revenue, expenses, and tax calculations
             </p>
           </div>
-          <button
-            onClick={() => setShowOfflineOrderForm(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-lime-600 text-white rounded-lg hover:bg-lime-700 transition font-medium"
-          >
-            <Plus className="h-4 w-4" />
-            Add Offline Order
-          </button>
         </div>
       </header>
 
@@ -216,7 +215,20 @@ export default function FinancePage() {
             >
               <div className="flex items-center gap-2">
                 <DollarSign className="h-5 w-5" />
-                Financial Overview
+                Project Overview
+              </div>
+            </button>
+            <button
+              onClick={() => setActiveTab("transactions")}
+              className={`py-4 px-2 font-medium border-b-2 transition ${
+                activeTab === "transactions"
+                  ? "border-lime-600 text-lime-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                Transaction History
               </div>
             </button>
             <button
@@ -246,16 +258,16 @@ export default function FinancePage() {
               </div>
             </button>
             <button
-              onClick={() => setActiveTab("transactions")}
+              onClick={() => setActiveTab("expenses")}
               className={`py-4 px-2 font-medium border-b-2 transition ${
-                activeTab === "transactions"
+                activeTab === "expenses"
                   ? "border-lime-600 text-lime-600"
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
               <div className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                Transaction History
+                <TrendingDown className="h-5 w-5" />
+                Daily Expenses
               </div>
             </button>
           </div>
@@ -302,6 +314,22 @@ export default function FinancePage() {
             </p>
           </div>
 
+          {/* Completed Outgoing */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-gray-600">Completed Outgoing</p>
+              <TrendingDown className="h-5 w-5 text-red-600" />
+            </div>
+            <p className="text-3xl font-bold text-red-600">
+              ₦{metrics.completedOutgoing.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              Refunds & Returns
+            </p>
+          </div>
+
           {/* Pending Amount */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-4">
@@ -317,74 +345,37 @@ export default function FinancePage() {
               {metrics.conversionMetrics.pendingTransactions} pending
             </p>
           </div>
-        </div>
 
-        {/* Financial Overview Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-          {/* Revenue vs Expenses */}
-          <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">
-              Financial Overview
-            </h2>
-            <div className="space-y-6">
-              {/* Total Revenue */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-                  <p className="font-bold text-gray-900">
-                    ₦{metrics.totalRevenue.toLocaleString("en-NG")}
-                  </p>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-green-600 h-3 rounded-full"
-                    style={{ width: "100%" }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* Gross Profit */}
-              <div className="bg-gradient-to-r from-lime-50 to-green-50 rounded-lg p-4 border border-lime-200">
-                <div className="flex justify-between items-center">
-                  <p className="font-medium text-gray-900">Gross Profit</p>
-                  <p className="text-2xl font-bold text-green-600">
-                    ₦
-                    {(metrics.totalRevenue - metrics.totalExpenses).toLocaleString(
-                      "en-NG",
-                      { minimumFractionDigits: 2 }
-                    )}
-                  </p>
-                </div>
-                <p className="text-xs text-gray-600 mt-2">
-                  Profit Margin: {metrics.profitMargin}%
-                </p>
-              </div>
+          {/* Total Sales Amount */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-gray-600">Total Sales Amount</p>
+              <ShoppingCart className="h-5 w-5 text-blue-600" />
             </div>
+            <p className="text-3xl font-bold text-blue-600">
+              ₦{metrics.totalSalesAmount.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              {metrics.transactionBreakdown.sales} items sold
+            </p>
           </div>
 
-          {/* Key Metrics */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Key Metrics</h2>
-            <div className="space-y-4">
-              <div className="pb-4 border-b border-gray-200">
-                <p className="text-sm text-gray-600">Average Order Value</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
-                  ₦{metrics.averageOrderValue.toLocaleString("en-NG")}
-                </p>
-              </div>
-              <div className="pb-4 border-b border-gray-200">
-                <p className="text-sm text-gray-600">Conversion Rate</p>
-                <p className="text-2xl font-bold text-lime-600 mt-2">
-                  {metrics.conversionMetrics.conversionRate}%
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-600">Total Transactions</p>
-                <p className="text-2xl font-bold text-gray-900 mt-2">
-                  {metrics.conversionMetrics.totalTransactions}
-                </p>
-              </div>
+          {/* Total Rentals Amount */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-gray-600">Total Rentals Amount</p>
+              <Calendar className="h-5 w-5 text-purple-600" />
             </div>
+            <p className="text-3xl font-bold text-purple-600">
+              ₦{metrics.totalRentalsAmount.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            <p className="text-xs text-gray-500 mt-2">
+              {metrics.transactionBreakdown.rentals} items rented
+            </p>
           </div>
         </div>
 
@@ -506,6 +497,10 @@ export default function FinancePage() {
         )}
 
         {activeTab === "transactions" && <TransactionHistory metrics={metrics} />}
+
+        {activeTab === "expenses" && (
+          <DailyExpenses onAddExpenseClick={() => setShowOfflineExpenseForm(true)} />
+        )}
       </main>
 
       {/* Offline Order Modal */}
@@ -514,6 +509,27 @@ export default function FinancePage() {
           onClose={() => setShowOfflineOrderForm(false)}
           onSuccess={() => {
             // Refresh metrics after successful offline order
+            const fetchMetrics = async () => {
+              try {
+                const response = await fetch("/api/admin/finance");
+                if (!response.ok) throw new Error("Failed to fetch metrics");
+                const financeData = await response.json();
+                setMetrics(financeData.metrics);
+              } catch (err) {
+                console.error("Error refreshing metrics:", err);
+              }
+            };
+            fetchMetrics();
+          }}
+        />
+      )}
+
+      {/* Offline Expense Modal */}
+      {showOfflineExpenseForm && (
+        <OfflineExpenseForm
+          onClose={() => setShowOfflineExpenseForm(false)}
+          onSuccess={() => {
+            // Refresh metrics after successful offline expense
             const fetchMetrics = async () => {
               try {
                 const response = await fetch("/api/admin/finance");

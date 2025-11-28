@@ -9,7 +9,7 @@ export function serializeDoc(doc: any): any {
   const obj = doc.toObject?.() || doc;
   
   // Recursively convert ObjectIds to strings and Dates to ISO strings
-  const serialize = (val: any): any => {
+  const serialize = (val: any, depth = 0): any => {
     if (!val) return val;
     
     // Handle Date objects - convert to ISO string
@@ -17,22 +17,22 @@ export function serializeDoc(doc: any): any {
       return val.toISOString();
     }
     
-    // Handle ObjectId
-    if (val._bsontype === 'ObjectId' || (val.constructor?.name === 'ObjectId')) {
+    // Handle ObjectId - multiple ways to detect it
+    if (val._bsontype === 'ObjectId' || (val.constructor?.name === 'ObjectId') || typeof val.toHexString === 'function') {
       return val.toString();
     }
     
     // Handle arrays
     if (Array.isArray(val)) {
-      return val.map(serialize);
+      return val.map(item => serialize(item, depth + 1));
     }
     
     // Handle nested objects
-    if (typeof val === 'object' && val !== null) {
+    if (typeof val === 'object' && val !== null && depth < 10) {
       const result: any = {};
       for (const key in val) {
         if (Object.prototype.hasOwnProperty.call(val, key)) {
-          result[key] = serialize(val[key]);
+          result[key] = serialize(val[key], depth + 1);
         }
       }
       return result;
@@ -48,5 +48,7 @@ export function serializeDoc(doc: any): any {
  * Serialize an array of MongoDB documents
  */
 export function serializeDocs(docs: any[]): any[] {
-  return docs.map(serializeDoc);
+  const serialized = docs.map(serializeDoc);
+  console.log("✅ Serialized docs count:", serialized.length, "First doc:", serialized[0]);
+  return serialized;
 }

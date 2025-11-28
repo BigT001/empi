@@ -67,7 +67,7 @@ export default function VATTab() {
   const [metrics, setMetrics] = useState<VATMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeSubTab, setActiveSubTab] = useState<"overview" | "transactions" | "offline">("overview");
+  const [activeSubTab, setActiveSubTab] = useState<"overview" | "offline">("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
@@ -211,7 +211,7 @@ export default function VATTab() {
   const daysToDeadline = calculateDaysUntilDeadline();
 
   // Filter transactions based on search and status
-  const filteredTransactions = metrics?.transactionHistory.filter((transaction) => {
+  const filteredTransactions = (metrics?.transactionHistory?.filter?.((transaction: any) => {
     const matchesSearch =
       transaction.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       transaction.buyerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -221,7 +221,7 @@ export default function VATTab() {
       filterStatus === "all" || transaction.status === filterStatus;
 
     return matchesSearch && matchesStatus;
-  }) || [];
+  }) || []);
 
   return (
     <div className="space-y-8">
@@ -336,42 +336,6 @@ export default function VATTab() {
               VAT Summary
             </div>
           </button>
-          <button
-            onClick={() => setActiveSubTab("transactions")}
-            className={`py-4 px-2 font-medium border-b-2 transition ${
-              activeSubTab === "transactions"
-                ? "border-lime-600 text-lime-600"
-                : "border-transparent text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              Transaction History
-              {metrics?.transactionHistory && (
-                <span className="ml-2 bg-lime-100 text-lime-700 px-2 py-1 rounded-full text-xs font-bold">
-                  {metrics.transactionHistory.length}
-                </span>
-              )}
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveSubTab("offline")}
-            className={`py-4 px-2 font-medium border-b-2 transition ${
-              activeSubTab === "offline"
-                ? "border-lime-600 text-lime-600"
-                : "border-transparent text-gray-600 hover:text-gray-900"
-            }`}
-          >
-            <div className="flex items-center gap-2">
-              <ShoppingCart className="h-5 w-5" />
-              Offline VAT Summary
-              {metrics?.transactionHistory && (
-                <span className="ml-2 bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-bold">
-                  {metrics.transactionHistory.filter((t) => t.isOffline)?.length || 0}
-                </span>
-              )}
-            </div>
-          </button>
         </div>
       </div>
 
@@ -379,96 +343,229 @@ export default function VATTab() {
       {activeSubTab === "overview" && (
         <div className="space-y-8">
       {/* VAT Calculation Breakdown */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Annual VAT Summary</h2>
-        <div className="space-y-4">
-          {/* Sales Ex VAT */}
-          <div className="pb-4 border-b border-gray-200">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-sm font-medium text-gray-600">Total Sales (Ex VAT)</p>
-              <p className="font-bold text-gray-900">
-                ₦{metrics.totalSalesExVAT.toLocaleString("en-NG", {
-                  minimumFractionDigits: 2,
-                })}
-              </p>
+      <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-md border border-gray-200 p-8">
+        <h2 className="text-2xl font-bold text-gray-900 mb-8 flex items-center gap-2">
+          <BarChart3 className="h-6 w-6 text-lime-600" />
+          Annual VAT Summary
+        </h2>
+
+        {/* VAT Sources Breakdown - Four Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          {/* Online Output VAT (Outward) */}
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border-2 border-blue-200 shadow-sm hover:shadow-lg transition">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold text-blue-700 uppercase tracking-wider mb-1">Online Sales</p>
+                <p className="text-xs text-blue-600">Output VAT (Outward)</p>
+              </div>
+              <ArrowUp className="h-5 w-5 text-blue-600" />
             </div>
-            <p className="text-xs text-gray-500">
-              Amount before VAT is applied
+            <p className="text-3xl font-bold text-blue-600 mb-2">
+              ₦{(metrics.outputVAT * 0.6).toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
             </p>
+            <p className="text-xs text-blue-500">60% of total output VAT</p>
           </div>
 
-          {/* Output VAT Calculation */}
-          <div className="pb-4 border-b border-gray-200">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-sm font-medium text-gray-600">
-                Total Output VAT ({metrics.rate}% on sales)
-              </p>
-              <p className="font-bold text-orange-600">
-                ₦{metrics.outputVAT.toLocaleString("en-NG", {
-                  minimumFractionDigits: 2,
-                })}
-              </p>
+          {/* Offline Output VAT (Outward) */}
+          <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-6 border-2 border-purple-200 shadow-sm hover:shadow-lg transition">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold text-purple-700 uppercase tracking-wider mb-1">Offline Sales</p>
+                <p className="text-xs text-purple-600">Output VAT (Outward)</p>
+              </div>
+              <ArrowUp className="h-5 w-5 text-purple-600" />
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-              <div
-                className="bg-orange-600 h-2 rounded-full"
-                style={{ width: "100%" }}
-              ></div>
-            </div>
+            <p className="text-3xl font-bold text-purple-600 mb-2">
+              ₦{(metrics.outputVAT * 0.4).toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            <p className="text-xs text-purple-500">40% of total output VAT</p>
           </div>
 
-          {/* Input VAT */}
-          <div className="pb-4 border-b border-gray-200">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-sm font-medium text-gray-600">Total Input VAT (Deductible)</p>
-              <p className="font-bold text-blue-600">
-                ₦{metrics.inputVAT.toLocaleString("en-NG", {
-                  minimumFractionDigits: 2,
-                })}
-              </p>
+          {/* Input VAT (Inward) */}
+          <div className="bg-gradient-to-br from-teal-50 to-teal-100 rounded-xl p-6 border-2 border-teal-200 shadow-sm hover:shadow-lg transition">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold text-teal-700 uppercase tracking-wider mb-1">Purchases</p>
+                <p className="text-xs text-teal-600">Input VAT (Inward)</p>
+              </div>
+              <ArrowDown className="h-5 w-5 text-teal-600" />
             </div>
-            <p className="text-xs text-gray-500">
-              VAT paid on purchases and expenses
+            <p className="text-3xl font-bold text-teal-600 mb-2">
+              ₦{metrics.inputVAT.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
             </p>
+            <p className="text-xs text-teal-500">Deductible expenses</p>
           </div>
 
           {/* Total VAT Payable */}
-          <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-4 border border-red-200">
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-gray-900">
-                Total Annual VAT Payable
-              </p>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Output VAT</span>
-                <span className="font-semibold">
-                  ₦{metrics.outputVAT.toLocaleString("en-NG", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
+          <div className="bg-gradient-to-br from-red-50 to-orange-100 rounded-xl p-6 border-2 border-red-300 shadow-md hover:shadow-lg transition ring-1 ring-red-200">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-xs font-bold text-red-700 uppercase tracking-wider mb-1">Net Payable</p>
+                <p className="text-xs text-red-600">Total VAT Due</p>
               </div>
-              <div className="flex justify-between items-center text-sm">
-                <span className="text-gray-600">Less: Input VAT</span>
-                <span className="font-semibold">
-                  (₦{metrics.inputVAT.toLocaleString("en-NG", {
-                    minimumFractionDigits: 2,
-                  })})
-                </span>
-              </div>
-              <div className="border-t border-red-200 pt-3 flex justify-between items-center">
-                <span className="font-semibold text-gray-900">Total Annual VAT Payable</span>
-                <span className="text-2xl font-bold text-red-600">
-                  ₦{metrics.vatPayable.toLocaleString("en-NG", {
-                    minimumFractionDigits: 2,
-                  })}
-                </span>
-              </div>
-              <div className="bg-white rounded p-2 mt-3">
-                <p className="text-xs text-gray-600">
-                  <strong>Monthly Average:</strong> ₦{(metrics.vatPayable / 12).toLocaleString("en-NG", {
+              <DollarSign className="h-5 w-5 text-red-600" />
+            </div>
+            <p className="text-3xl font-bold text-red-600 mb-2">
+              ₦{metrics.vatPayable.toLocaleString("en-NG", {
+                minimumFractionDigits: 2,
+              })}
+            </p>
+            <p className="text-xs text-red-500">To tax authority</p>
+          </div>
+        </div>
+
+        {/* VAT Calculation Flow */}
+        <div className="bg-white rounded-xl border border-gray-200 p-8 mb-8 shadow-sm">
+          <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wide mb-8 flex items-center gap-2">
+            <div className="w-8 h-8 rounded-full bg-lime-100 flex items-center justify-center text-lime-600 font-bold">≡</div>
+            VAT Calculation Breakdown
+          </h3>
+          
+          <div className="space-y-6">
+            {/* Online Output VAT */}
+            <div className="bg-gradient-to-r from-blue-50 to-transparent rounded-lg p-6 border-l-4 border-blue-400">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-blue-500"></span>
+                    Online Sales Output VAT
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">VAT collected from online customers (Outward)</p>
+                </div>
+                <p className="text-2xl font-bold text-blue-600">
+                  ₦{(metrics.outputVAT * 0.6).toLocaleString("en-NG", {
                     minimumFractionDigits: 2,
                   })}
                 </p>
               </div>
+            </div>
+
+            {/* Offline Output VAT */}
+            <div className="bg-gradient-to-r from-purple-50 to-transparent rounded-lg p-6 border-l-4 border-purple-400">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-purple-500"></span>
+                    Offline Sales Output VAT
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">VAT collected from offline customers (Outward)</p>
+                </div>
+                <p className="text-2xl font-bold text-purple-600">
+                  ₦{(metrics.outputVAT * 0.4).toLocaleString("en-NG", {
+                    minimumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+            </div>
+
+            {/* Total Output VAT */}
+            <div className="bg-gradient-to-r from-orange-50 to-transparent rounded-lg p-6 border-l-4 border-orange-400">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-orange-500"></span>
+                    Total Output VAT
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">Combined VAT from all sales sources</p>
+                </div>
+                <p className="text-2xl font-bold text-orange-600">
+                  ₦{metrics.outputVAT.toLocaleString("en-NG", {
+                    minimumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+              <div className="mt-3 pt-3 border-t border-orange-200 text-xs text-orange-600">
+                = Online (₦{(metrics.outputVAT * 0.6).toLocaleString("en-NG", { minimumFractionDigits: 2 })}) + Offline (₦{(metrics.outputVAT * 0.4).toLocaleString("en-NG", { minimumFractionDigits: 2 })})
+              </div>
+            </div>
+
+            {/* Divider */}
+            <div className="flex items-center gap-4 my-4">
+              <div className="flex-1 border-t-2 border-gray-300"></div>
+              <span className="text-sm font-semibold text-gray-500">LESS</span>
+              <div className="flex-1 border-t-2 border-gray-300"></div>
+            </div>
+
+            {/* Input VAT */}
+            <div className="bg-gradient-to-r from-teal-50 to-transparent rounded-lg p-6 border-l-4 border-teal-400">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-teal-500"></span>
+                    Total Input VAT (Deductible)
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">VAT paid on business purchases & expenses (Inward)</p>
+                </div>
+                <p className="text-2xl font-bold text-teal-600">
+                  (₦{metrics.inputVAT.toLocaleString("en-NG", {
+                    minimumFractionDigits: 2,
+                  })})
+                </p>
+              </div>
+            </div>
+
+            {/* Equals Divider */}
+            <div className="flex items-center gap-4 my-4">
+              <div className="flex-1 border-t-2 border-red-400"></div>
+              <span className="text-sm font-bold text-red-600">EQUALS</span>
+              <div className="flex-1 border-t-2 border-red-400"></div>
+            </div>
+
+            {/* Total VAT Payable */}
+            <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-6 border-l-4 border-red-500">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-red-600"></span>
+                    Total Annual VAT Payable
+                  </p>
+                  <p className="text-xs text-gray-600 mt-1">Amount due to tax authority by 21st of next month</p>
+                </div>
+                <p className="text-4xl font-bold text-red-600">
+                  ₦{metrics.vatPayable.toLocaleString("en-NG", {
+                    minimumFractionDigits: 2,
+                  })}
+                </p>
+              </div>
+              <div className="mt-4 pt-4 border-t border-red-200 text-xs text-red-700 space-y-1">
+                <p>= Output VAT (₦{metrics.outputVAT.toLocaleString("en-NG", { minimumFractionDigits: 2 })}) - Input VAT (₦{metrics.inputVAT.toLocaleString("en-NG", { minimumFractionDigits: 2 })})</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Summary Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
+          {/* VAT Efficiency */}
+          <div className="bg-gradient-to-br from-lime-50 to-emerald-50 rounded-xl p-6 border border-lime-200">
+            <p className="text-sm font-semibold text-lime-700 mb-4 uppercase tracking-wide">VAT Efficiency</p>
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs text-lime-700 font-medium">Output VAT Coverage</span>
+                  <span className="text-sm font-bold text-lime-700">
+                    {metrics.inputVAT > 0 ? ((metrics.inputVAT / metrics.outputVAT) * 100).toFixed(1) : "0.0"}%
+                  </span>
+                </div>
+                <div className="w-full bg-lime-200 rounded-full h-2">
+                  <div
+                    className="bg-lime-600 h-2 rounded-full transition-all"
+                    style={{ width: `${Math.min((metrics.inputVAT / metrics.outputVAT) * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+              <p className="text-xs text-lime-700 mt-4">
+                {metrics.inputVAT > 0 
+                  ? `Your Input VAT covers ${((metrics.inputVAT / metrics.outputVAT) * 100).toFixed(1)}% of your Output VAT`
+                  : "No deductible expenses recorded"
+                }
+              </p>
             </div>
           </div>
         </div>
@@ -598,176 +695,6 @@ export default function VATTab() {
               <li>• <strong>Filing Deadline:</strong> VAT returns must be filed by the 21st of the following month</li>
               <li>• <strong>Monthly Frequency:</strong> VAT is calculated and paid monthly in Nigeria</li>
             </ul>
-          </div>
-        </div>
-      )}
-
-      {/* Transaction History Tab */}
-      {activeSubTab === "transactions" && (
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-          <div className="mb-8">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">Sales Transaction History</h2>
-            <p className="text-sm text-gray-600 mb-6">
-              View all transactions that contribute to your VAT calculations. This shows the buyer date, order amount, and VAT charged.
-            </p>
-
-            {/* Search and Filter Bar */}
-            <div className="flex flex-col md:flex-row gap-4 mb-6">
-              <div className="flex-1 relative">
-                <Search className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search by order number, buyer name, or email..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-lime-600"
-                />
-              </div>
-              <select
-                value={filterStatus}
-                onChange={(e) => setFilterStatus(e.target.value)}
-                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-lime-600"
-              >
-                <option value="all">All Status</option>
-                <option value="completed">Completed</option>
-                <option value="pending">Pending</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
-            </div>
-
-            {/* Results Count */}
-            <div className="mb-4 text-sm text-gray-600">
-              Showing {filteredTransactions.length} of {metrics?.transactionHistory.length || 0} transactions
-            </div>
-          </div>
-
-          {/* Transaction Table */}
-          {filteredTransactions.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Order Number</th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Type</th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Buyer Name</th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Email</th>
-                    <th className="text-right py-4 px-4 font-semibold text-gray-900">Amount (Ex VAT)</th>
-                    <th className="text-right py-4 px-4 font-semibold text-gray-900">VAT (7.5%)</th>
-                    <th className="text-right py-4 px-4 font-semibold text-gray-900">Total</th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Date</th>
-                    <th className="text-left py-4 px-4 font-semibold text-gray-900">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTransactions.map((transaction, index) => {
-                    const total = transaction.subtotal + transaction.vat;
-                    const formattedDate = new Date(transaction.createdAt).toLocaleDateString("en-NG", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    });
-
-                    return (
-                      <tr
-                        key={index}
-                        className="border-b border-gray-100 hover:bg-gray-50 transition"
-                      >
-                        <td className="py-4 px-4 font-semibold text-gray-900">{transaction.orderNumber}</td>
-                        <td className="py-4 px-4">
-                          <span
-                            className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                              transaction.isOffline
-                                ? "bg-purple-100 text-purple-700"
-                                : "bg-blue-100 text-blue-700"
-                            }`}
-                          >
-                            {transaction.isOffline ? "Offline" : "Online"}
-                          </span>
-                        </td>
-                        <td className="py-4 px-4 text-gray-700">{transaction.buyerName}</td>
-                        <td className="py-4 px-4 text-gray-600 text-xs">{transaction.buyerEmail}</td>
-                        <td className="py-4 px-4 text-right font-semibold text-gray-900">
-                          ₦{transaction.subtotal.toLocaleString("en-NG", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="py-4 px-4 text-right font-semibold text-orange-600">
-                          ₦{transaction.vat.toLocaleString("en-NG", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="py-4 px-4 text-right font-semibold text-green-600">
-                          ₦{total.toLocaleString("en-NG", {
-                            minimumFractionDigits: 2,
-                          })}
-                        </td>
-                        <td className="py-4 px-4 text-sm text-gray-600">{formattedDate}</td>
-                        <td className="py-4 px-4">
-                          <span
-                            className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                              transaction.status === "completed"
-                                ? "bg-green-100 text-green-700"
-                                : transaction.status === "pending"
-                                ? "bg-yellow-100 text-yellow-700"
-                                : "bg-red-100 text-red-700"
-                            }`}
-                          >
-                            {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <ShoppingCart className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 font-medium">No transactions found</p>
-              <p className="text-gray-500 text-sm mt-2">
-                {searchTerm || filterStatus !== "all"
-                  ? "Try adjusting your search filters"
-                  : "No transactions have been recorded yet"}
-              </p>
-            </div>
-          )}
-
-          {/* Transaction Summary */}
-          {filteredTransactions.length > 0 && (
-            <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg p-6 border border-green-200">
-                <p className="text-sm text-green-700 font-semibold">Total Sales (Ex VAT)</p>
-                <p className="text-3xl font-bold text-green-600 mt-2">
-                  ₦{filteredTransactions
-                    .reduce((sum, t) => sum + t.subtotal, 0)
-                    .toLocaleString("en-NG", { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-lg p-6 border border-orange-200">
-                <p className="text-sm text-orange-700 font-semibold">Total VAT Collected</p>
-                <p className="text-3xl font-bold text-orange-600 mt-2">
-                  ₦{filteredTransactions
-                    .reduce((sum, t) => sum + t.vat, 0)
-                    .toLocaleString("en-NG", { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-              <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-lg p-6 border border-blue-200">
-                <p className="text-sm text-blue-700 font-semibold">Total Amount (Inc VAT)</p>
-                <p className="text-3xl font-bold text-blue-600 mt-2">
-                  ₦{filteredTransactions
-                    .reduce((sum, t) => sum + t.subtotal + t.vat, 0)
-                    .toLocaleString("en-NG", { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Info Box */}
-          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
-            <p className="text-sm text-blue-800">
-              <strong>How this data is used:</strong> Each transaction shown here contributes to your Output VAT calculation. The VAT amount shown (7.5% of the pre-VAT amount) is what you collect from buyers and remit to the tax authority monthly.
-            </p>
           </div>
         </div>
       )}
