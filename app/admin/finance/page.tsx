@@ -269,7 +269,7 @@ export default function FinancePage() {
         {activeTab === "overview" && (
           <>
         {/* Top KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           {/* Total Revenue */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-4">
@@ -317,24 +317,6 @@ export default function FinancePage() {
               {metrics.conversionMetrics.pendingTransactions} pending
             </p>
           </div>
-
-          {/* Monthly Tax */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">Est. Monthly Tax</p>
-              <TrendingDown className="h-5 w-5 text-red-600" />
-            </div>
-            <p className="text-3xl font-bold text-red-600">
-              ₦{metrics.monthlyTax.estimatedMonthlyTotal.toLocaleString("en-NG", {
-                minimumFractionDigits: 2,
-              })}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              {metrics.businessSize === 'small' && 'Small Business (VAT only)'}
-              {metrics.businessSize === 'medium' && 'Medium Business (VAT + CIT)'}
-              {metrics.businessSize === 'large' && 'Large Business (VAT + CIT + EDT)'}
-            </p>
-          </div>
         </div>
 
         {/* Financial Overview Section */}
@@ -357,24 +339,6 @@ export default function FinancePage() {
                   <div
                     className="bg-green-600 h-3 rounded-full"
                     style={{ width: "100%" }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* Total Expenses */}
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <p className="text-sm font-medium text-gray-600">Est. Expenses</p>
-                  <p className="font-bold text-gray-900">
-                    ₦{metrics.totalExpenses.toLocaleString("en-NG")}
-                  </p>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div
-                    className="bg-red-600 h-3 rounded-full"
-                    style={{
-                      width: `${(metrics.totalExpenses / metrics.totalRevenue) * 100}%`,
-                    }}
                   ></div>
                 </div>
               </div>
@@ -424,44 +388,6 @@ export default function FinancePage() {
           </div>
         </div>
 
-        {/* Weekly Projection Section */}
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-6">
-            Weekly Revenue Projection
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {metrics.weeklyProjection.map((week, index) => (
-              <div
-                key={index}
-                className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-4 border border-gray-200 hover:border-lime-400 transition"
-              >
-                <p className="text-xs font-semibold text-gray-600 uppercase mb-3">
-                  {week.week}
-                </p>
-                <div className="space-y-3">
-                  <div>
-                    <p className="text-xs text-gray-600">Revenue</p>
-                    <p className="text-lg font-bold text-green-600">
-                      ₦{week.revenue.toLocaleString("en-NG")}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Orders</p>
-                    <p className="text-lg font-bold text-gray-900">{week.orders}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Avg Order Value</p>
-                    <p className="text-sm font-bold text-gray-900">
-                      ₦{week.avgOrderValue.toLocaleString("en-NG")}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Transaction Breakdown Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Transaction Types */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
@@ -567,87 +493,6 @@ export default function FinancePage() {
                   % of total
                 </p>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Tax Information */}
-        <div className="mt-8 bg-gradient-to-r from-red-50 to-orange-50 rounded-2xl border-2 border-red-200 p-8">
-          <div className="flex items-start gap-4">
-            <AlertCircle className="h-6 w-6 text-red-600 mt-1 flex-shrink-0" />
-            <div className="w-full">
-              <h3 className="text-lg font-bold text-gray-900">
-                Nigerian Tax Breakdown
-              </h3>
-              
-              {/* Annual Summary */}
-              <div className="mt-4 p-4 bg-white rounded-lg border border-red-200">
-                <p className="text-sm font-semibold text-gray-900">Annual Summary</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
-                  <div>
-                    <p className="text-xs text-gray-600">Annual Turnover</p>
-                    <p className="font-bold text-gray-900">₦{metrics.annualTurnover.toLocaleString("en-NG")}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Business Size</p>
-                    <p className="font-bold text-gray-900 capitalize">{metrics.businessSize}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Annual VAT</p>
-                    <p className="font-bold text-green-600">₦{metrics.taxBreakdown.vat.vatPayable.toLocaleString("en-NG")}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Total Annual Tax</p>
-                    <p className="font-bold text-red-600">₦{metrics.taxBreakdown.totalAnnualTax.toLocaleString("en-NG")}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Monthly Breakdown */}
-              <div className="mt-4 p-4 bg-white rounded-lg border border-red-200">
-                <p className="text-sm font-semibold text-gray-900">Monthly Estimates</p>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
-                  <div>
-                    <p className="text-xs text-gray-600">VAT</p>
-                    <p className="font-bold text-green-600">₦{metrics.monthlyTax.estimatedMonthlyVAT.toLocaleString("en-NG")}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">CIT</p>
-                    <p className="font-bold text-blue-600">₦{metrics.monthlyTax.estimatedMonthlyCIT.toLocaleString("en-NG")}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">EDT</p>
-                    <p className="font-bold text-orange-600">₦{metrics.monthlyTax.estimatedMonthlyEducationTax.toLocaleString("en-NG")}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Total</p>
-                    <p className="font-bold text-red-600 text-lg">₦{metrics.monthlyTax.estimatedMonthlyTotal.toLocaleString("en-NG")}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* VAT Details */}
-              <div className="mt-4 p-4 bg-white rounded-lg border border-red-200">
-                <p className="text-sm font-semibold text-gray-900">VAT Details (7.5%)</p>
-                <div className="grid grid-cols-3 gap-4 mt-3">
-                  <div>
-                    <p className="text-xs text-gray-600">Output VAT</p>
-                    <p className="text-sm font-bold text-gray-900">₦{metrics.taxBreakdown.vat.outputVAT.toLocaleString("en-NG")}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">Input VAT</p>
-                    <p className="text-sm font-bold text-gray-900">₦{metrics.taxBreakdown.vat.inputVAT.toLocaleString("en-NG")}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-600">VAT Payable</p>
-                    <p className="text-sm font-bold text-green-600">₦{metrics.taxBreakdown.vat.vatPayable.toLocaleString("en-NG")}</p>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-sm text-gray-600 mt-4">
-                <strong>Note:</strong> This is an automated estimate. Please consult with your accountant for accurate tax calculations and ensure all expenses are properly documented for deduction purposes. Tax remittance deadline: 21st of next month.
-              </p>
             </div>
           </div>
         </div>

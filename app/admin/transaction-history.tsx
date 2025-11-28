@@ -11,7 +11,6 @@ import {
   AlertCircle,
   TrendingUp,
   TrendingDown,
-  Wallet,
 } from "lucide-react";
 
 interface Transaction {
@@ -241,16 +240,19 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
           <p className="text-xs text-gray-500 mt-2">From all transactions</p>
         </div>
 
-        {/* Average Transaction */}
+        {/* Total Outgoing Transactions */}
         <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-600">Average Transaction</p>
-            <Wallet className="h-5 w-5 text-orange-600" />
+            <p className="text-sm font-medium text-gray-600">Total Outgoing</p>
+            <TrendingDown className="h-5 w-5 text-red-600" />
           </div>
-          <p className="text-3xl font-bold text-orange-600">
-            ₦{totalTransactions > 0 ? (totalIncome / totalTransactions).toLocaleString("en-NG", { minimumFractionDigits: 2 }) : "0"}
+          <p className="text-3xl font-bold text-red-600">
+            ₦{filteredTransactions
+              .filter((t) => t.status === "cancelled" || t.type === "expense")
+              .reduce((sum, t) => sum + t.amount, 0)
+              .toLocaleString("en-NG", { minimumFractionDigits: 2 })}
           </p>
-          <p className="text-xs text-gray-500 mt-2">Per transaction</p>
+          <p className="text-xs text-gray-500 mt-2">Expenses & refunds</p>
         </div>
       </div>
 
