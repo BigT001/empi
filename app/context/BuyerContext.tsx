@@ -15,6 +15,22 @@ export interface BuyerProfile {
   lastLogin?: string;
   isAdmin?: boolean;
   preferredCurrency?: string;
+  // Delivery details
+  deliveryDetails?: {
+    selectedState?: string;
+    vehicleType?: "bike" | "car" | "van";
+    deliveryAddress?: string;
+    pickupLocation?: {
+      id: string;
+      name: string;
+      address: string;
+    };
+    useGPS?: boolean;
+    manualAddress?: string;
+    rushDelivery?: boolean;
+    weekendDelivery?: boolean;
+    lastUpdated?: string;
+  };
 }
 
 interface BuyerContextType {

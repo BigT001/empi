@@ -44,7 +44,11 @@ export function useProducts(category?: string) {
 
     try {
       // Fetch fresh data from API (HTTP caching is handled by next.config)
-      const url = `/api/products${category ? `?category=${category}` : "?"}${category ? "&" : "?"}page=${pageNum}&limit=12`;
+      const params = new URLSearchParams();
+      if (category) params.append('category', category);
+      params.append('page', pageNum.toString());
+      params.append('limit', '12');
+      const url = `/api/products?${params.toString()}`;
       console.log(`🌐 Fetching products from ${url}`);
 
       const response = await fetch(url);

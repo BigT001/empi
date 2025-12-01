@@ -21,6 +21,8 @@ export interface IInvoice extends Document {
   customerState?: string;
   customerPostalCode?: string;
   subtotal: number;
+  cautionFee?: number;
+  subtotalWithCaution?: number;
   shippingCost: number;
   taxAmount: number;
   totalAmount: number;
@@ -58,6 +60,8 @@ const invoiceSchema = new Schema<IInvoice>(
     customerState: String,
     customerPostalCode: String,
     subtotal: { type: Number, required: true },
+    cautionFee: { type: Number },
+    subtotalWithCaution: { type: Number },
     shippingCost: { type: Number, required: true, default: 0 },
     taxAmount: { type: Number, required: true },
     totalAmount: { type: Number, required: true },

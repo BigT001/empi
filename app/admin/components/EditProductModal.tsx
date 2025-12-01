@@ -4,8 +4,9 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { X, AlertCircle } from 'lucide-react';
 
-interface Product {
+export interface Product {
   _id: string;
+  id?: string;
   name: string;
   description: string;
   imageUrl: string;
@@ -13,6 +14,7 @@ interface Product {
   sellPrice: number;
   rentPrice: number;
   category: string;
+  costumeType?: string;
   badge?: string | null;
   sizes?: string;
   color?: string;
@@ -224,7 +226,26 @@ export default function EditProductModal({
             </select>
           </div>
 
-          {/* Condition */}
+          {/* Costume Type */}
+          <div>
+            <label htmlFor="costumeType" className="block text-sm font-bold text-gray-700 mb-2">
+              Costume Type
+            </label>
+            <select
+              id="costumeType"
+              name="costumeType"
+              value={formData.costumeType || "Other"}
+              onChange={handleInputChange}
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+            >
+              <option value="Angel">👼 Angel</option>
+              <option value="Carnival">🎪 Carnival</option>
+              <option value="Superhero">🦸 Superhero</option>
+              <option value="Traditional">🥁 Traditional</option>
+              <option value="Cosplay">🎭 Cosplay</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
           <div>
             <label htmlFor="condition" className="block text-sm font-bold text-gray-700 mb-2">
               Condition *

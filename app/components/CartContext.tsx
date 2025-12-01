@@ -14,6 +14,8 @@ export interface CartItem {
   size?: ItemSize;
   weight?: number; // kg per unit
   fragile?: boolean;
+  // Rental metadata - store rental days for reference only
+  rentalDays?: number;
 }
 
 interface CartContextType {
@@ -28,16 +30,54 @@ interface CartContextType {
   setDeliveryState: (state: string | null) => void;
   deliveryDistance: number;
   setDeliveryDistance: (distance: number) => void;
+  // Delivery quote - persisted for display on cart
+  deliveryQuote: any | null;
+  setDeliveryQuote: (quote: any | null) => void;
+  // Rental schedule - shared for ALL rental items
+  rentalSchedule: {
+    pickupDate: string; // ISO date string (YYYY-MM-DD)
+    pickupTime: string; // HH:MM format
+    returnDate: string; // ISO date string (YYYY-MM-DD)
+    pickupLocation: "iba" | "surulere"; // Which branch
+    rentalDays: number; // Number of days for ALL rentals
+  } | undefined;
+  setRentalSchedule: (schedule: {
+    pickupDate: string;
+    pickupTime: string;
+    returnDate: string;
+    pickupLocation: "iba" | "surulere";
+    rentalDays: number;
+  } | undefined) => void;
+  // Validation functions
+  validateRentalSchedule: () => { valid: boolean; message: string };
+  validateDeliveryInfo: (shippingOption: string) => { valid: boolean; message: string };
+  validateCheckoutRequirements: (shippingOption: string, buyer?: any) => { 
+    valid: boolean; 
+    message: string;
+    type: "rental_schedule" | "delivery_info" | "buyer_info" | "success";
+  };
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
 const STORAGE_KEY = "empi_cart_context";
+const RENTAL_SCHEDULE_KEY = "empi_rental_schedule";
+const DELIVERY_QUOTE_KEY = "empi_delivery_quote";
+const DELIVERY_STATE_KEY = "empi_delivery_state";
+const DELIVERY_DISTANCE_KEY = "empi_delivery_distance";
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isHydrated, setIsHydrated] = useState(false);
   const [deliveryState, setDeliveryState] = useState<string | null>(null);
   const [deliveryDistance, setDeliveryDistance] = useState(50);
+  const [deliveryQuote, setDeliveryQuoteState] = useState<any | null>(null);
+  const [rentalSchedule, setRentalScheduleState] = useState<{
+    pickupDate: string;
+    pickupTime: string;
+    returnDate: string;
+    pickupLocation: "iba" | "surulere";
+    rentalDays: number;
+  } | undefined>();
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -46,13 +86,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
       if (stored) {
         setItems(JSON.parse(stored));
       }
-      const savedState = localStorage.getItem("empi_delivery_state");
+      const savedState = localStorage.getItem(DELIVERY_STATE_KEY);
       if (savedState) {
         setDeliveryState(savedState);
       }
-      const savedDistance = localStorage.getItem("empi_delivery_distance");
+      const savedDistance = localStorage.getItem(DELIVERY_DISTANCE_KEY);
       if (savedDistance) {
         setDeliveryDistance(parseInt(savedDistance, 10));
+      }
+      // Load delivery quote
+      const savedQuote = localStorage.getItem(DELIVERY_QUOTE_KEY);
+      if (savedQuote) {
+        try {
+          setDeliveryQuoteState(JSON.parse(savedQuote));
+        } catch (e) {
+          console.error("Failed to parse delivery quote from localStorage", e);
+        }
+      }
+      // Load rental schedule
+      const savedSchedule = localStorage.getItem(RENTAL_SCHEDULE_KEY);
+      if (savedSchedule) {
+        setRentalScheduleState(JSON.parse(savedSchedule));
       }
     } catch (error) {
       console.error("Failed to load cart from localStorage", error);
@@ -78,16 +132,34 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Save delivery state
   useEffect(() => {
     if (deliveryState) {
-      localStorage.setItem("empi_delivery_state", deliveryState);
+      localStorage.setItem(DELIVERY_STATE_KEY, deliveryState);
     } else {
-      localStorage.removeItem("empi_delivery_state");
+      localStorage.removeItem(DELIVERY_STATE_KEY);
     }
   }, [deliveryState]);
 
   // Save delivery distance
   useEffect(() => {
-    localStorage.setItem("empi_delivery_distance", deliveryDistance.toString());
+    localStorage.setItem(DELIVERY_DISTANCE_KEY, deliveryDistance.toString());
   }, [deliveryDistance]);
+
+  // Save delivery quote to localStorage
+  useEffect(() => {
+    if (deliveryQuote) {
+      localStorage.setItem(DELIVERY_QUOTE_KEY, JSON.stringify(deliveryQuote));
+    } else {
+      localStorage.removeItem(DELIVERY_QUOTE_KEY);
+    }
+  }, [deliveryQuote]);
+
+  // Save rental schedule to localStorage
+  useEffect(() => {
+    if (rentalSchedule) {
+      localStorage.setItem(RENTAL_SCHEDULE_KEY, JSON.stringify(rentalSchedule));
+    } else {
+      localStorage.removeItem(RENTAL_SCHEDULE_KEY);
+    }
+  }, [rentalSchedule]);
 
   const addItem = (newItem: CartItem) => {
     setItems((prev) => {
@@ -120,13 +192,207 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   const clearCart = () => {
+    // Clear all cart state variables
     setItems([]);
+    setDeliveryState(null);
+    setDeliveryDistance(50); // Reset to default
+    setDeliveryQuoteState(null);
+    setRentalScheduleState(undefined);
+    
+    // Clear all localStorage data
+    localStorage.removeItem("empi_cart_context");
+    localStorage.removeItem("empi_rental_schedule");
+    localStorage.removeItem("empi_delivery_quote");
+    localStorage.removeItem("empi_shipping_option");
+    localStorage.removeItem("empi_delivery_state");
+    localStorage.removeItem("empi_delivery_distance");
+    localStorage.removeItem("empi_pending_payment");
   };
 
-  const total = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const setRentalSchedule = (schedule: {
+    pickupDate: string;
+    pickupTime: string;
+    returnDate: string;
+    pickupLocation: "iba" | "surulere";
+    rentalDays: number;
+  } | undefined) => {
+    setRentalScheduleState(schedule);
+  };
+
+  const setDeliveryQuote = (quote: any | null) => {
+    setDeliveryQuoteState(quote);
+  };
+
+  // Calculate total: sum of all item costs (buy items as-is, rental items base cost)
+  const total = items.reduce((sum, item) => {
+    return sum + item.price * item.quantity;
+  }, 0);
+
+  // ===== VALIDATION FUNCTIONS =====
+  
+  /**
+   * Validates if rental schedule is complete when rental items exist
+   * @returns { valid: boolean, message: string } validation result
+   */
+  const validateRentalSchedule = () => {
+    const hasRentalItems = items.some(item => item.mode === 'rent');
+    console.log("🔍 validateRentalSchedule called - hasRentalItems:", hasRentalItems);
+    console.log("🔍 items:", items);
+    
+    if (!hasRentalItems) {
+      console.log("✅ No rental items, validation passes");
+      return { valid: true, message: "" };
+    }
+
+    // Check if schedule exists and has all required fields
+    if (!rentalSchedule) {
+      console.log("❌ rentalSchedule is undefined/null");
+      return { 
+        valid: false, 
+        message: "⏰ Pickup schedule not filled. Please fill the Rental Schedule form to proceed." 
+      };
+    }
+
+    // Check each required field
+    if (!rentalSchedule.pickupDate) {
+      console.log("❌ pickupDate missing");
+      return { 
+        valid: false, 
+        message: "⏰ Pickup date is required. Please fill the Rental Schedule form." 
+      };
+    }
+
+    if (!rentalSchedule.pickupTime) {
+      console.log("❌ pickupTime missing");
+      return { 
+        valid: false, 
+        message: "⏰ Pickup time is required. Please fill the Rental Schedule form." 
+      };
+    }
+
+    if (!rentalSchedule.returnDate) {
+      console.log("❌ returnDate missing");
+      return { 
+        valid: false, 
+        message: "⏰ Return date is required. Please fill the Rental Schedule form." 
+      };
+    }
+
+    if (!rentalSchedule.pickupLocation) {
+      console.log("❌ pickupLocation missing");
+      return { 
+        valid: false, 
+        message: "⏰ Pickup location not selected. Please fill the Rental Schedule form." 
+      };
+    }
+
+    console.log("✅ All rental schedule fields are valid");
+    return { valid: true, message: "" };
+  };
+
+  /**
+   * Validates if delivery information is complete when EMPI delivery is selected
+   * @param shippingOption - Current shipping option selected
+   * @returns { valid: boolean, message: string } validation result
+   */
+  const validateDeliveryInfo = (shippingOption: string) => {
+    if (shippingOption !== "empi") {
+      return { valid: true, message: "" };
+    }
+
+    if (!deliveryQuote) {
+      return { 
+        valid: false, 
+        message: "🚚 Delivery address not filled. Please fill the EMPI Delivery form to proceed." 
+      };
+    }
+
+    if (!deliveryState) {
+      return { 
+        valid: false, 
+        message: "🚚 Delivery state not selected. Please fill the EMPI Delivery form." 
+      };
+    }
+
+    return { valid: true, message: "" };
+  };
+
+  /**
+   * Comprehensive checkout validation
+   * @param shippingOption - Current shipping option selected
+   * @param buyer - Buyer information (optional)
+   * @returns { valid: boolean, message: string, type: string } detailed validation result
+   */
+  const validateCheckoutRequirements = (shippingOption: string, buyer?: any): { valid: boolean; message: string; type: "rental_schedule" | "delivery_info" | "buyer_info" | "success" } => {
+    // Validate rental schedule first
+    const rentalValidation = validateRentalSchedule();
+    console.log("🔍 Rental validation result:", rentalValidation);
+    console.log("🔍 rentalSchedule state:", rentalSchedule);
+    console.log("🔍 hasRentalItems:", items.some(item => item.mode === 'rent'));
+    
+    if (!rentalValidation.valid) {
+      return { 
+        valid: false, 
+        message: rentalValidation.message,
+        type: "rental_schedule" as const
+      };
+    }
+
+    // Validate delivery info
+    const deliveryValidation = validateDeliveryInfo(shippingOption);
+    if (!deliveryValidation.valid) {
+      return { 
+        valid: false, 
+        message: deliveryValidation.message,
+        type: "delivery_info" as const
+      };
+    }
+
+    // Validate buyer information if provided
+    if (buyer) {
+      if (!buyer.fullName || buyer.fullName.trim() === "") {
+        return { 
+          valid: false, 
+          message: "👤 Full name is required in your profile.",
+          type: "buyer_info" as const
+        };
+      }
+
+      if (!buyer.email || buyer.email.trim() === "") {
+        return { 
+          valid: false, 
+          message: "📧 Email address is required in your profile.",
+          type: "buyer_info" as const
+        };
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(buyer.email)) {
+        return { 
+          valid: false, 
+          message: "📧 Please provide a valid email address.",
+          type: "buyer_info" as const
+        };
+      }
+
+      if (!buyer.phone || buyer.phone.trim() === "") {
+        return { 
+          valid: false, 
+          message: "📱 Phone number is required in your profile.",
+          type: "buyer_info" as const
+        };
+      }
+    }
+
+    return { 
+      valid: true, 
+      message: "",
+      type: "success" as const
+    };
+  };
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, deliveryState, setDeliveryState, deliveryDistance, setDeliveryDistance }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, deliveryState, setDeliveryState, deliveryDistance, setDeliveryDistance, deliveryQuote, setDeliveryQuote, rentalSchedule, setRentalSchedule, validateRentalSchedule, validateDeliveryInfo, validateCheckoutRequirements }}>
       {children}
     </CartContext.Provider>
   );

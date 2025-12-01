@@ -12,6 +12,14 @@ export interface IOrderItem {
   rentalDays: number;
 }
 
+export interface IRentalSchedule {
+  pickupDate: string; // ISO date (YYYY-MM-DD)
+  pickupTime: string; // HH:MM format
+  returnDate: string; // ISO date (YYYY-MM-DD)
+  pickupLocation: string; // "22 Ejire Street, Surulere"
+  rentalDays: number; // Number of days
+}
+
 export interface IOrder extends Document {
   buyerId?: string;
   orderNumber: string;
@@ -40,6 +48,9 @@ export interface IOrder extends Document {
   deliveryFee?: number;
   estimatedDeliveryDays?: { min: number; max: number };
   vehicleType?: string;
+  // Rental schedule (shared for all rental items)
+  rentalSchedule?: IRentalSchedule;
+  cautionFee?: number; // 50% of total rental amount
   createdAt: Date;
   updatedAt: Date;
 }
@@ -54,6 +65,14 @@ const orderItemSchema = new Schema<IOrderItem>({
   selectedSize: String,
   rentalDays: { type: Number, default: 0 },
 });
+
+const rentalScheduleSchema = new Schema<IRentalSchedule>({
+  pickupDate: { type: String, required: true },
+  pickupTime: { type: String, required: true },
+  returnDate: { type: String, required: true },
+  pickupLocation: { type: String, default: "22 Ejire Street, Surulere" },
+  rentalDays: { type: Number, required: true },
+}, { _id: false });
 
 const orderSchema = new Schema<IOrder>(
   {
@@ -87,6 +106,9 @@ const orderSchema = new Schema<IOrder>(
       max: Number,
     },
     vehicleType: String,
+    // Rental schedule (shared for all rental items)
+    rentalSchedule: rentalScheduleSchema,
+    cautionFee: { type: Number, default: 0 }, // 50% of total rental amount
   },
   { timestamps: true }
 );

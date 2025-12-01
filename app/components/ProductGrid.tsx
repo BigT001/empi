@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { products, CURRENCY_RATES } from "./constants";
 import { ProductCard } from "./ProductCard";
 import { useProducts } from "@/lib/useProducts";
+import { CostumeTypeFilter } from "./CostumeTypeFilter";
 
 interface Product {
   id?: string;
@@ -13,6 +14,7 @@ interface Product {
   sellPrice: number;
   rentPrice: number;
   category: string;
+  costumeType?: string;
   badge: string | null;
   imageUrl: string;
   imageUrls: string[];
@@ -37,6 +39,7 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
   const { products: cachedProducts, loading, error, pagination, loadMore } = useProducts(category);
   const [dbProducts, setDbProducts] = useState<Product[]>(initialProducts ?? (cachedProducts as Product[]));
   const [showError, setShowError] = useState(false);
+  const [selectedCostumeType, setSelectedCostumeType] = useState<string | null>(null);
 
   useEffect(() => {
     setDbProducts(cachedProducts as Product[]);
@@ -68,12 +71,27 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
     id: p.id || (p as any)._id || Math.random().toString(36).substr(2, 9)
   }));
   
-  // Filter by category only if not "all"
-  const filteredProducts = category === "all" 
-    ? displayProducts.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    : displayProducts
-        .filter((product) => product.category === category)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  // Filter by category and costume type
+  let filteredProducts = category === "all" 
+    ? displayProducts
+    : displayProducts.filter((product) => product.category === category);
+
+  // Apply costume type filter if selected
+  if (selectedCostumeType) {
+    filteredProducts = filteredProducts.filter(
+      (product) => product.costumeType === selectedCostumeType
+    );
+  }
+
+  // Sort by newest first
+  filteredProducts = filteredProducts.sort(
+    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
+  // Get unique costume types for the filter
+  // Always show all costume types, regardless of whether products exist
+  const COSTUME_TYPES = ["Angel", "Carnival", "Superhero", "Traditional", "Cosplay", "Other"];
+  const availableCostumeTypes = COSTUME_TYPES;
 
   return (
     <section className="flex-grow mx-auto w-full max-w-7xl px-6 py-12 animate-in fade-in duration-500">
@@ -90,6 +108,15 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
             : "Browse our complete collection of beautiful costumes"}
         </p>
       </div>
+
+      {/* Costume Type Filter - Only show on Adults page */}
+      {category === "adults" && (
+        <CostumeTypeFilter 
+          category={category}
+          onTypeChange={setSelectedCostumeType}
+          availableTypes={availableCostumeTypes.length > 0 ? availableCostumeTypes : undefined}
+        />
+      )}
 
       {/* Loading State */}
       {loading && dbProducts.length === 0 && (
@@ -109,7 +136,19 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
       {/* Empty State */}
       {!loading && filteredProducts.length === 0 && dbProducts.length > 0 && (
         <div className="text-center py-12 animate-in fade-in duration-300">
-          <p className="text-gray-500">No products available in this category</p>
+          <p className="text-gray-500">
+            {selectedCostumeType
+              ? `No ${selectedCostumeType} costumes available in this category`
+              : "No products available in this category"}
+          </p>
+          {selectedCostumeType && (
+            <button
+              onClick={() => setSelectedCostumeType(null)}
+              className="mt-4 px-4 py-2 bg-lime-600 hover:bg-lime-700 text-white rounded-lg font-medium transition"
+            >
+              View All Costumes
+            </button>
+          )}
         </div>
       )}
 

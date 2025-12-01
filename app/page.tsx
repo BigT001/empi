@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Header } from "./components/Header";
 import { Navigation } from "./components/Navigation";
@@ -13,13 +14,19 @@ import CustomCostumesPage from "./custom-costumes/page";
 
 export default function Home() {
   const { currency, setCurrency } = useCurrency();
+  const searchParams = useSearchParams();
   const [category, setCategory] = useState("adults");
   const { mode, setMode, isHydrated } = useHomeMode();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-  }, []);
+    // Read category from URL params
+    const categoryParam = searchParams.get("category");
+    if (categoryParam && (categoryParam === "adults" || categoryParam === "kids" || categoryParam === "custom")) {
+      setCategory(categoryParam);
+    }
+  }, [searchParams]);
 
   // If custom is selected, show the custom costumes page instead
   if (category === "custom") {

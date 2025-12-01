@@ -9,7 +9,8 @@ import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
 import PaymentSuccessModal from "../components/PaymentSuccessModal";
 import AuthModal from "../components/AuthModal";
-import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin } from "lucide-react";
+import { CheckoutValidationModal } from "../components/CheckoutValidationModal";
+import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin, Clock, Lock, CheckCircle2 } from "lucide-react";
 
 const SHIPPING_OPTIONS = {
   empi: { id: "empi", name: "EMPI Delivery", cost: 2500, estimatedDays: "2-5 business days" },
@@ -17,7 +18,7 @@ const SHIPPING_OPTIONS = {
 };
 
 export default function CheckoutPage() {
-  const { items, clearCart, total } = useCart();
+  const { items, clearCart, total, rentalSchedule, deliveryQuote, validateCheckoutRequirements } = useCart();
   const { buyer } = useBuyer();
   const router = useRouter();
 
@@ -28,6 +29,21 @@ export default function CheckoutPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"card" | "transfer">("card");
+  const [validationModalOpen, setValidationModalOpen] = useState(false);
+  const [validationType, setValidationType] = useState<"rental_schedule" | "delivery_info" | "buyer_info">("rental_schedule");
+  const [validationMessage, setValidationMessage] = useState("");
+
+  // Calculate caution fee (50% of rental items total)
+  const rentalTotal = items.reduce((sum, item) => {
+    if (item.mode === 'rent') {
+      const days = rentalSchedule?.rentalDays || 1;
+      return sum + (item.price * item.quantity * days);
+    }
+    return sum;
+  }, 0);
+  const cautionFee = rentalTotal * 0.5;
+  const subtotalWithCaution = total + cautionFee;
 
   useEffect(() => {
     setIsHydrated(true);
@@ -51,8 +67,8 @@ export default function CheckoutPage() {
 
     try {
       const shippingCost = shippingOption === "empi" ? 2500 : 0;
-      const taxEstimate = total * 0.075;
-      const totalAmount = total + shippingCost + taxEstimate;
+      const taxEstimate = subtotalWithCaution * 0.075;
+      const totalAmount = subtotalWithCaution + shippingCost + taxEstimate;
 
       const orderData = {
         reference: response.reference,
@@ -65,10 +81,13 @@ export default function CheckoutPage() {
         items,
         pricing: {
           subtotal: total,
+          cautionFee: cautionFee > 0 ? cautionFee : undefined,
+          subtotalWithCaution,
           tax: taxEstimate,
           shipping: shippingCost,
           total: totalAmount,
         },
+        rentalSchedule: rentalSchedule || undefined, // Add rental schedule if rentals exist
         status: "completed",
         createdAt: new Date().toISOString(),
       };
@@ -95,6 +114,8 @@ export default function CheckoutPage() {
           customerEmail: buyer?.email || "",
           customerPhone: buyer?.phone || "",
           subtotal: total,
+          cautionFee: cautionFee > 0 ? cautionFee : undefined,
+          subtotalWithCaution,
           shippingCost,
           taxAmount: taxEstimate,
           totalAmount,
@@ -220,250 +241,402 @@ export default function CheckoutPage() {
   }
 
   // ===== CALCULATE TOTALS =====
+  const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
+  const SHIPPING_OPTIONS: Record<string, { name: string; estimatedDays: string; cost: number }> = {
+    empi: { name: "EMPI Delivery", estimatedDays: "1-2 days", cost: 2500 },
+    self: { name: "Self Pickup", estimatedDays: "Same day", cost: 0 },
+  };
   const shippingCost = SHIPPING_OPTIONS[shippingOption].cost;
-  const taxEstimate = total * 0.075;
-  const totalAmount = total + shippingCost + taxEstimate;
-
-  // ===== CHECKOUT FORM =====
+  const taxEstimate = subtotalWithCaution * 0.075;
+  const totalAmount = subtotalWithCaution + shippingCost + taxEstimate;
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <Header />
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
+      <main className="flex-1 max-w-6xl mx-auto px-4 py-8 md:py-12 w-full">
+        {/* Page Header */}
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-3">
+              <CreditCard className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                Order Review
+              </h1>
+              <p className="text-gray-600">Step 2 of 2 - Review and Pay</p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Payment Form */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Order Items */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 hover:shadow-md transition-shadow duration-300">
               <div className="flex items-center gap-3 mb-6">
-                <CreditCard className="h-6 w-6 text-purple-600" />
-                <h1 className="text-3xl font-bold">Order Summary</h1>
+                <div className="bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg p-3">
+                  <ShoppingBag className="h-5 w-5 text-blue-600" />
+                </div>
+                <h2 className="text-xl font-bold text-gray-900">Order Items ({itemCount})</h2>
               </div>
-
-              {/* Order Summary */}
-              <div className="bg-gray-50 rounded-lg p-6 mb-8">
-                <h2 className="font-bold text-gray-900 mb-4">Items in Cart</h2>
-                <div className="space-y-3">
-                  {items.map((item) => (
-                    <div key={`${item.id}-${item.mode}`} className="flex justify-between">
-                      <span>{item.name} (x{item.quantity})</span>
-                      <span className="font-semibold">₦{(item.price * item.quantity).toLocaleString()}</span>
+              
+              <div className="space-y-3">
+                {items.map((item) => (
+                  <div 
+                    key={`${item.id}-${item.mode}`} 
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-xl border border-gray-100 hover:border-blue-200 transition-all duration-200"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
+                          item.mode === 'rent' 
+                            ? 'bg-purple-100 text-purple-700' 
+                            : 'bg-green-100 text-green-700'
+                        }`}>
+                          {item.mode === 'rent' ? '🔄 Rental' : '🛍️ Buy'}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900">{item.name}</p>
+                          <p className="text-xs text-gray-500">Quantity: {item.quantity}</p>
+                        </div>
+                      </div>
                     </div>
-                  ))}
+                    <div className="text-right ml-4">
+                      {item.mode === 'rent' ? (
+                        <>
+                          <p className="font-bold text-gray-900">₦{(item.price * item.quantity * (rentalSchedule?.rentalDays || 1)).toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">₦{item.price.toLocaleString()} × {item.quantity} qty × {rentalSchedule?.rentalDays || 1} days</p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="font-bold text-gray-900">₦{(item.price * item.quantity).toLocaleString()}</p>
+                          <p className="text-xs text-gray-500">₦{item.price.toLocaleString()} each</p>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Rental Schedule (if applicable) */}
+            {rentalSchedule && items.some(i => i.mode === 'rent') && (
+              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-sm border border-purple-200 p-6 hover:shadow-md transition-shadow duration-300">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-purple-100 rounded-lg p-3">
+                    <Clock className="h-5 w-5 text-purple-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Rental Schedule</h3>
+                </div>
+                <div className="grid md:grid-cols-2 gap-6">
+                  <div className="bg-white/60 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Pickup</p>
+                    <p className="font-bold text-gray-900">{rentalSchedule.pickupDate}</p>
+                    <p className="text-sm text-gray-700 font-semibold">at {rentalSchedule.pickupTime}</p>
+                  </div>
+                  <div className="bg-white/60 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Return</p>
+                    <p className="font-bold text-gray-900">{rentalSchedule.returnDate}</p>
+                    <p className="text-sm text-gray-700 font-semibold">{rentalSchedule.rentalDays} {rentalSchedule.rentalDays === 1 ? 'day' : 'days'}</p>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Pricing */}
-              <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8 space-y-3">
-                <div className="flex justify-between text-sm">
-                  <span>Subtotal</span>
-                  <span>₦{total.toLocaleString()}</span>
+            {/* Delivery Information (if EMPI delivery) */}
+            {shippingOption === "empi" && deliveryQuote && (
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-sm border border-green-200 p-6 hover:shadow-md transition-shadow duration-300">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="bg-green-100 rounded-lg p-3">
+                    <Truck className="h-5 w-5 text-green-600" />
+                  </div>
+                  <h3 className="text-lg font-bold text-gray-900">Delivery Details</h3>
                 </div>
-                <div className="flex justify-between text-sm">
-                  <span>Shipping ({shippingOption === "empi" ? "EMPI" : "Pickup"})</span>
-                  <span>{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span>VAT (7.5%)</span>
-                  <span>₦{taxEstimate.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-lg font-bold pt-3 border-t-2 border-gray-200">
-                  <span>Total Amount</span>
-                  <span className="text-purple-600">₦{totalAmount.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {/* Customer Info */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <p className="text-xs font-semibold text-blue-900 mb-3 uppercase">Billing Information</p>
-                <div className="text-sm text-blue-800 space-y-1">
-                  <p><span className="font-semibold">Name:</span> {buyer?.fullName || "Guest Customer"}</p>
-                  <p><span className="font-semibold">Email:</span> {buyer?.email || "Not provided"}</p>
-                  <p><span className="font-semibold">Phone:</span> {buyer?.phone || "Not provided"}</p>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="bg-white/60 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Distance</p>
+                    <p className="font-bold text-gray-900 text-lg">{deliveryQuote.distance?.toFixed(1) || 'N/A'} km</p>
+                  </div>
+                  <div className="bg-white/60 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Estimated Time</p>
+                    <p className="font-bold text-gray-900 text-lg">{deliveryQuote.duration || 'N/A'}</p>
+                  </div>
+                  <div className="md:col-span-2 bg-white/60 rounded-lg p-4">
+                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Delivery Address</p>
+                    <p className="font-semibold text-gray-900">{deliveryQuote.deliveryPoint?.address || 'Not specified'}</p>
+                  </div>
                 </div>
               </div>
+            )}
 
-              {/* Shipping Method */}
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-8">
-                <p className="text-xs font-semibold text-green-900 mb-3 flex items-center gap-2">
-                  {shippingOption === "empi" ? <Truck className="h-4 w-4" /> : <MapPin className="h-4 w-4" />}
-                  Delivery Method
-                </p>
-                <div className="text-sm text-green-800 space-y-1">
-                  <p><span className="font-semibold">Method:</span> {SHIPPING_OPTIONS[shippingOption].name}</p>
-                  <p><span className="font-semibold">Est. Delivery:</span> {SHIPPING_OPTIONS[shippingOption].estimatedDays}</p>
-                  <p><span className="font-semibold">Cost:</span> {shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</p>
+            {/* Billing Information */}
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-300">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="bg-blue-100 rounded-lg p-3">
+                  <Lock className="h-5 w-5 text-blue-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Billing Information</h3>
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-lg border border-gray-100">
+                  <span className="text-sm font-medium text-gray-600">Name</span>
+                  <span className="font-semibold text-gray-900">{buyer?.fullName || "Guest Customer"}</span>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-lg border border-gray-100">
+                  <span className="text-sm font-medium text-gray-600">Email</span>
+                  <span className="font-semibold text-gray-900 text-sm">{buyer?.email || "Not provided"}</span>
+                </div>
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-lg border border-gray-100">
+                  <span className="text-sm font-medium text-gray-600">Phone</span>
+                  <span className="font-semibold text-gray-900">{buyer?.phone || "Not provided"}</span>
                 </div>
               </div>
+            </div>
 
-              {/* Payment Notice */}
-              {orderError && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-red-800">
-                    <strong>❌ Error:</strong> {orderError}
-                  </p>
+            {/* Error Message */}
+            {orderError && (
+              <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 flex items-start gap-3">
+                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold text-red-900">Payment Error</p>
+                  <p className="text-red-800 text-sm">{orderError}</p>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-3">
-                <Link
-                  href="/cart"
-                  className="flex-1 inline-block text-center bg-gray-600 hover:bg-gray-700 text-white font-semibold px-6 py-3 rounded-lg transition"
-                >
-                  ← Back to Cart
-                </Link>
-                <button
-                  onClick={async () => {
-                    console.log("🖱️ Pay button clicked");
-                    
-                    if (!buyer?.fullName || !buyer?.email || !buyer?.phone) {
-                      setOrderError("Please ensure your profile has complete information");
-                      console.log("❌ Incomplete buyer info:", { fullName: buyer?.fullName, email: buyer?.email, phone: buyer?.phone });
-                      return;
-                    }
-                    
-                    // Validate email format
-                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-                    if (!emailRegex.test(buyer.email)) {
-                      setOrderError("Please provide a valid email address");
-                      console.log("❌ Invalid email format:", buyer.email);
-                      return;
-                    }
-                    
-                    if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
-                      setOrderError("Payment service is not configured");
-                      return;
-                    }
-                    
-                    setIsProcessing(true);
-                    setOrderError(null);
+            {/* Action Buttons */}
+            <div className="flex gap-3 pt-4">
+              <Link
+                href="/cart"
+                className="flex-1 inline-block text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-4 rounded-xl transition duration-200 flex items-center justify-center gap-2"
+              >
+                ← Back to Cart
+              </Link>
+              <button
+                onClick={async () => {
+                  console.log("🔍 Pay button clicked");
+                  console.log("🔍 Current state:");
+                  console.log("  - items:", items);
+                  console.log("  - rentalSchedule:", rentalSchedule);
+                  console.log("  - shippingOption:", shippingOption);
+                  console.log("  - deliveryQuote:", deliveryQuote);
+                  console.log("  - buyer:", buyer);
+                  
+                  // Use comprehensive validation function
+                  const validation = validateCheckoutRequirements(shippingOption, buyer);
+                  console.log("🔍 Validation result:", validation);
+                  
+                  if (!validation.valid) {
+                    console.log("❌ Validation failed, showing modal");
+                    // Show validation modal
+                    setValidationType(validation.type as any);
+                    setValidationMessage(validation.message);
+                    setValidationModalOpen(true);
+                    return;
+                  }
+                  
+                  if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
+                    setOrderError("Payment service is not configured");
+                    return;
+                  }
+                  
+                  setIsProcessing(true);
+                  setOrderError(null);
 
-                    try {
-                      const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                      const shippingCost = shippingOption === "empi" ? 2500 : 0;
-                      const taxEstimate = total * 0.075;
-                      const orderTotal = total + shippingCost + taxEstimate;
-                      const amountInKobo = Math.round(orderTotal * 100);
+                  try {
+                    const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                    const shippingCost = shippingOption === "empi" ? 2500 : 0;
+                    const taxEstimate = subtotalWithCaution * 0.075;
+                    const orderTotal = subtotalWithCaution + shippingCost + taxEstimate;
+                    const amountInKobo = Math.round(orderTotal * 100);
 
-                      console.log("💳 Payment Details:", { ref, amount: orderTotal, email: buyer.email });
+                    localStorage.setItem('empi_pending_payment', JSON.stringify({
+                      reference: ref,
+                      email: buyer!.email,
+                      amount: amountInKobo,
+                      timestamp: Date.now()
+                    }));
 
-                      // Store payment info in localStorage
-                      localStorage.setItem('empi_pending_payment', JSON.stringify({
-                        reference: ref,
-                        email: buyer.email,
-                        amount: amountInKobo,
-                        timestamp: Date.now()
-                      }));
+                    let modalAttempted = false;
+                    if (typeof window !== "undefined" && (window as any).PaystackPop) {
+                      try {
+                        const handler = (window as any).PaystackPop.setup({
+                          key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
+                          email: buyer!.email,
+                          amount: amountInKobo,
+                          currency: "NGN",
+                          ref: ref,
+                          firstname: buyer!.fullName.split(" ")[0] || "Customer",
+                          lastname: buyer!.fullName.split(" ").slice(1).join(" ") || "",
+                          phone: buyer!.phone,
+                          onClose: () => {
+                            verifyAndProcessPayment(ref);
+                          },
+                          onSuccess: (response: any) => {
+                            handlePaymentSuccess(response);
+                          },
+                        });
 
-                      // Attempt modal first if Paystack is available
-                      let modalAttempted = false;
-                      if (typeof window !== "undefined" && (window as any).PaystackPop) {
-                        try {
-                          console.log("📱 Attempting Paystack modal...");
-                          const handler = (window as any).PaystackPop.setup({
-                            key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
-                            email: buyer.email,
-                            amount: amountInKobo,
-                            currency: "NGN",
-                            ref: ref,
-                            firstname: buyer.fullName.split(" ")[0] || "Customer",
-                            lastname: buyer.fullName.split(" ").slice(1).join(" ") || "",
-                            phone: buyer.phone,
-                            onClose: () => {
-                              console.log("Modal closed");
-                              verifyAndProcessPayment(ref);
-                            },
-                            onSuccess: (response: any) => {
-                              console.log("Payment successful");
-                              handlePaymentSuccess(response);
-                            },
-                          });
-
-                          if (handler?.openIframe) {
-                            handler.openIframe();
-                            modalAttempted = true;
-                            pollForPayment(ref);
-                            return;
-                          }
-                        } catch (err) {
-                          console.warn("Modal failed, using redirect:", err);
+                        if (handler?.openIframe) {
+                          handler.openIframe();
+                          modalAttempted = true;
+                          pollForPayment(ref);
+                          return;
                         }
+                      } catch (err) {
+                        console.warn("Modal failed, using redirect:", err);
                       }
+                    }
 
-                      // Fallback to backend initialization
-                      if (!modalAttempted) {
-                        console.log("🔗 Using backend payment initialization");
-                        try {
-                          const initRes = await fetch('/api/initialize-payment', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                              email: buyer.email,
-                              amount: amountInKobo,
-                              reference: ref,
-                              firstname: buyer.fullName.split(" ")[0] || "Customer",
-                              lastname: buyer.fullName.split(" ").slice(1).join(" ") || "",
-                              phone: buyer.phone,
-                            }),
-                          });
+                    if (!modalAttempted) {
+                      try {
+                        const initRes = await fetch('/api/initialize-payment', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            email: buyer!.email,
+                            amount: amountInKobo,
+                            reference: ref,
+                            firstname: buyer!.fullName.split(" ")[0] || "Customer",
+                            lastname: buyer!.fullName.split(" ").slice(1).join(" ") || "",
+                            phone: buyer!.phone,
+                          }),
+                        });
 
-                          const initData = await initRes.json();
-                          if (initRes.ok && initData.authorization_url) {
-                            console.log("✅ Payment initialized, redirecting to:", initData.authorization_url);
-                            window.location.href = initData.authorization_url;
-                          } else {
-                            setOrderError(initData.error || "Failed to initialize payment");
-                            setIsProcessing(false);
-                          }
-                        } catch (err) {
-                          console.error("Payment initialization error:", err);
-                          setOrderError("Failed to initialize payment. Please try again.");
+                        const initData = await initRes.json();
+                        if (initRes.ok && initData.authorization_url) {
+                          window.location.href = initData.authorization_url;
+                        } else {
+                          setOrderError(initData.error || "Failed to initialize payment");
                           setIsProcessing(false);
                         }
+                      } catch (err) {
+                        console.error("Payment initialization error:", err);
+                        setOrderError("Failed to initialize payment. Please try again.");
+                        setIsProcessing(false);
                       }
-                    } catch (error) {
-                      console.error("Payment error:", error);
-                      setIsProcessing(false);
-                      setOrderError("Failed to initialize payment. Please try again.");
                     }
-                  }}
-                  disabled={isProcessing}
-                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg transition"
-                >
-                  {isProcessing ? "Processing..." : `Pay ₦${totalAmount.toLocaleString()}`}
-                </button>
-              </div>
+                  } catch (error) {
+                    console.error("Payment error:", error);
+                    setIsProcessing(false);
+                    setOrderError("Failed to initialize payment. Please try again.");
+                  }
+                }}
+                disabled={isProcessing}
+                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold px-6 py-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+              >
+                {isProcessing ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4" />
+                    Pay ₦{totalAmount.toLocaleString()}
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
-          {/* Order Sidebar */}
+          {/* Sidebar */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 sticky top-24">
-              <h3 className="font-bold text-gray-900 mb-4">Order Summary</h3>
-              <div className="space-y-4 text-sm">
-                <div className="pb-4 border-b border-gray-200">
-                  <p className="text-gray-600 mb-1">Items Count</p>
-                  <p className="font-semibold text-gray-900">{items.reduce((sum, i) => sum + i.quantity, 0)} items</p>
+            <div className="sticky top-24 space-y-6">
+              {/* Order Summary Sidebar */}
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-300">
+                <h3 className="font-bold text-gray-900 mb-6 text-lg">Order Summary</h3>
+                
+                <div className="space-y-4">
+                  {/* Item Breakdown */}
+                  <div className="pb-4 border-b border-gray-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Items Breakdown</p>
+                    <div className="space-y-3">
+                      {items.map((item) => (
+                        <div key={`${item.id}-${item.mode}`} className="text-sm bg-gray-50 p-3 rounded-lg">
+                          <div className="flex justify-between mb-1">
+                            <span className="text-gray-700 font-medium">{item.name}</span>
+                            <span className="font-semibold text-gray-900">
+                              {item.mode === 'rent' 
+                                ? `₦${(item.price * item.quantity * (rentalSchedule?.rentalDays || 1)).toLocaleString()}`
+                                : `₦${(item.price * item.quantity).toLocaleString()}`
+                              }
+                            </span>
+                          </div>
+                          {item.mode === 'rent' ? (
+                            <div className="text-xs text-gray-600 mt-2 space-y-1">
+                              <div>Qty: {item.quantity} × Price: ₦{item.price.toLocaleString()} × Days: {rentalSchedule?.rentalDays || 1}</div>
+                              <div className="text-purple-700 font-semibold">= ₦{(item.price * item.quantity * (rentalSchedule?.rentalDays || 1)).toLocaleString()}</div>
+                            </div>
+                          ) : (
+                            <div className="text-xs text-gray-600 mt-2">
+                              Qty: {item.quantity} × ₦{item.price.toLocaleString()}
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Subtotal */}
+                  <div className="pb-4 border-b border-gray-200">
+                    <p className="text-sm text-gray-600 mb-1">Subtotal</p>
+                    <p className="font-bold text-gray-900 text-lg">₦{total.toLocaleString()}</p>
+                  </div>
+
+                  {/* Caution Fee (if applicable) */}
+                  {cautionFee > 0 && (
+                    <div className="pb-4 border-b border-gray-200">
+                      <p className="text-sm text-amber-700 font-semibold mb-1 flex items-center gap-2">
+                        🛡️ Caution Fee (50%)
+                      </p>
+                      <p className="font-bold text-amber-700 text-lg">₦{cautionFee.toLocaleString()}</p>
+                      <p className="text-xs text-amber-600 mt-1">Applied on rental items</p>
+                    </div>
+                  )}
+
+                  {/* Shipping */}
+                  <div className="pb-4 border-b border-gray-200">
+                    <p className="text-sm text-gray-600 mb-1">Shipping</p>
+                    <div className="flex justify-between items-center">
+                      <span className="font-semibold text-gray-900">{SHIPPING_OPTIONS[shippingOption].name}</span>
+                      <span className="font-bold text-gray-900">{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</span>
+                    </div>
+                  </div>
+
+                  {/* VAT */}
+                  <div className="pb-4 border-b border-gray-200">
+                    <p className="text-sm text-gray-600 mb-1">VAT (7.5%)</p>
+                    <p className="font-bold text-gray-900">₦{taxEstimate.toLocaleString()}</p>
+                  </div>
+
+                  {/* Total */}
+                  <div className="pt-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-4">
+                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Total Amount</p>
+                    <p className="font-black text-3xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                      ₦{totalAmount.toLocaleString()}
+                    </p>
+                  </div>
+
+                  {/* Status */}
+                  <div className="pt-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Status</p>
+                    </div>
+                    <p className="text-sm text-green-700 font-semibold">✅ Ready for Payment</p>
+                  </div>
                 </div>
-                <div className="pb-4 border-b border-gray-200">
-                  <p className="text-gray-600 mb-1">Subtotal</p>
-                  <p className="font-semibold text-gray-900">₦{total.toLocaleString()}</p>
+              </div>
+
+              {/* Security Badge */}
+              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Lock className="h-4 w-4 text-green-600" />
+                  <p className="text-xs font-bold text-green-900 uppercase tracking-wide">Secure Payment</p>
                 </div>
-                <div className="pb-4 border-b border-gray-200">
-                  <p className="text-gray-600 mb-1">Shipping</p>
-                  <p className="font-semibold text-gray-900">{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</p>
-                </div>
-                <div className="pb-4 border-b border-gray-200">
-                  <p className="text-gray-600 mb-1">VAT</p>
-                  <p className="font-semibold text-gray-900">₦{taxEstimate.toLocaleString()}</p>
-                </div>
-                <div className="pt-4">
-                  <p className="text-gray-600 text-xs mb-2">Total</p>
-                  <p className="font-bold text-gray-900 text-xl">₦{totalAmount.toLocaleString()}</p>
-                </div>
-                <div className="pt-4">
-                  <p className="text-gray-600 text-xs mb-2">Status</p>
-                  <p className="text-xs text-yellow-600 font-semibold">🟡 Payment Setup In Progress</p>
-                </div>
+                <p className="text-xs text-green-800">Your payment information is encrypted and secure. Powered by Paystack.</p>
               </div>
             </div>
           </div>
@@ -479,6 +652,14 @@ export default function CheckoutPage() {
         }}
         orderReference={successReference}
         total={totalAmount}
+      />
+
+      {/* Validation Modal - Checkout Requirements */}
+      <CheckoutValidationModal
+        isOpen={validationModalOpen}
+        onClose={() => setValidationModalOpen(false)}
+        validationType={validationType}
+        message={validationMessage}
       />
 
       {/* Auth Modal - Mobile Login/Signup */}

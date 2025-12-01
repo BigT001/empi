@@ -617,6 +617,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
             <thead>
               <tr>
                 <th>Product</th>
+                <th>Type</th>
                 <th>Qty</th>
                 <th>Price</th>
                 <th>Total</th>
@@ -626,6 +627,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
               ${invoice.items.map((item) => `
                 <tr>
                   <td><span class="item-name">${item.name}</span></td>
+                  <td><span class="item-mode" style="font-weight: 600; ${item.mode === 'rent' ? 'color: #a855f7;' : 'color: #059669;'}">${item.mode === 'rent' ? '🔄 Rental' : '🛍️ Buy'}</span></td>
                   <td><span class="item-qty">${item.quantity}</span></td>
                   <td><span class="item-price">${invoice.currencySymbol}${item.price.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
                   <td><span class="item-total">${invoice.currencySymbol}${(item.quantity * item.price).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
@@ -643,6 +645,8 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
             <span>Subtotal</span>
             <span>${invoice.currencySymbol}${invoice.subtotal.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
           </div>
+          ${invoice.cautionFee && invoice.cautionFee > 0 ? `<div class="totals-row"><span>🔄 Caution Fee (Rentals)</span><span>${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
+          ${invoice.subtotalWithCaution && invoice.cautionFee && invoice.cautionFee > 0 ? `<div class="totals-row"><span style="font-weight: 700;">Subtotal + Caution</span><span style="font-weight: 700;">${invoice.currencySymbol}${invoice.subtotalWithCaution.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
           ${invoice.shippingCost > 0 ? `<div class="totals-row"><span>Shipping</span><span>${invoice.currencySymbol}${invoice.shippingCost.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
           ${invoice.taxAmount > 0 ? `<div class="totals-row"><span>VAT</span><span>${invoice.currencySymbol}${invoice.taxAmount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
           <div class="totals-row total-row">

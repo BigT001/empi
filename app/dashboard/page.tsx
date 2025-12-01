@@ -154,6 +154,8 @@ export default function BuyerDashboardPage() {
                 customerEmail: inv.customerEmail,
                 customerPhone: inv.customerPhone,
                 subtotal: inv.subtotal || 0,
+                cautionFee: inv.cautionFee,
+                subtotalWithCaution: inv.subtotalWithCaution,
                 shippingCost: inv.shippingCost || 0,
                 taxAmount: inv.taxAmount || 0,
                 totalAmount: inv.totalAmount || 0,

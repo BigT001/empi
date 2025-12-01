@@ -29,6 +29,15 @@ export async function POST(request: NextRequest) {
     const vatRate = 7.5;
     const vat = subtotal * (vatRate / 100);
 
+    // Calculate caution fee for rentals (50% of total rental cost)
+    let cautionFee = 0;
+    const rentalTotal = processedItems
+      .filter((item: any) => item.mode === 'rent')
+      .reduce((sum: number, item: any) => sum + (item.price * item.quantity * (item.rentalDays || 1)), 0);
+    if (rentalTotal > 0) {
+      cautionFee = rentalTotal * 0.5;
+    }
+
     const order = new Order({
       // Customer info
       buyerId: body.buyerId || undefined, // Set if user is logged in (registered customer)
@@ -57,6 +66,10 @@ export async function POST(request: NextRequest) {
       state: body.state || null,
       zipCode: body.zipCode || null,
       country: body.country || 'Nigeria',
+      
+      // Rental schedule (if provided)
+      rentalSchedule: body.rentalSchedule || undefined,
+      cautionFee: cautionFee > 0 ? cautionFee : undefined,
       
       paymentMethod: body.paymentMethod || 'card',
       status: body.status || 'confirmed',

@@ -10,6 +10,7 @@ interface ProductForm {
   sellPrice: string;
   rentPrice: string;
   category: "adults" | "kids";
+  costumeType: string;
   badge: string;
   sizes: string;
   color: string;
@@ -39,6 +40,7 @@ export default function MobileAdminUpload() {
     sellPrice: "",
     rentPrice: "",
     category: "adults",
+    costumeType: "Other",
     badge: "",
     sizes: "",
     color: "",
@@ -338,6 +340,7 @@ export default function MobileAdminUpload() {
         sellPrice: parseFloat(form.sellPrice),
         rentPrice: parseFloat(form.rentPrice),
         category: form.category,
+        costumeType: form.costumeType,
         badge: form.badge?.trim() || null,
         imageUrl: mainImage,
         imageUrls: cloudinaryUrls,
@@ -404,6 +407,7 @@ export default function MobileAdminUpload() {
         sellPrice: "",
         rentPrice: "",
         category: "adults",
+        costumeType: "Other",
         badge: "",
         sizes: "",
         color: "",
@@ -730,7 +734,7 @@ export default function MobileAdminUpload() {
             <div className="bg-white rounded-2xl p-6 border border-gray-200 space-y-5">
               <div className="flex items-center gap-3 pb-4 border-b border-gray-200">
                 <span className="text-lg">🏷️</span>
-                <h2 className="font-bold text-gray-900">Category & Condition</h2>
+                <h2 className="font-bold text-gray-900">Category & Type</h2>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {renderFormField(
@@ -739,10 +743,26 @@ export default function MobileAdminUpload() {
                   "select",
                   "",
                   [
-                    { value: "adults", label: "Adults" },
-                    { value: "kids", label: "Kids" },
+                    { value: "adults", label: "👔 Adults" },
+                    { value: "kids", label: "👶 Kids" },
                   ]
                 )}
+                {renderFormField(
+                  "costumeType",
+                  "Costume Type",
+                  "select",
+                  "",
+                  [
+                    { value: "Angel", label: "👼 Angel" },
+                    { value: "Carnival", label: "🎪 Carnival" },
+                    { value: "Superhero", label: "🦸 Superhero" },
+                    { value: "Traditional", label: "🥁 Traditional" },
+                    { value: "Cosplay", label: "🎭 Cosplay" },
+                    { value: "Other", label: "Other" },
+                  ]
+                )}
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {renderFormField(
                   "condition",
                   "Condition",

@@ -38,6 +38,16 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
 
   const handleAddToCart = () => {
     const price = cardMode === "rent" ? product.rentPrice : product.sellPrice;
+    
+    // For rental items, default to 1 day when adding from card
+    let rentalMetadata = {};
+    if (cardMode === "rent") {
+      const rentalDays = 1; // Default to 1 day when adding from card
+      rentalMetadata = {
+        rentalDays,
+      };
+    }
+    
     addItem({
       id: productId,
       name: product.name,
@@ -45,6 +55,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
       image: product.imageUrl,
       mode: cardMode as "buy" | "rent",
       quantity: 1,
+      ...rentalMetadata,
     });
     // Optional: Show a brief success message
     console.log(`✅ Added ${product.name} (${cardMode}) to cart`);
@@ -74,8 +85,8 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
     <article 
       className="group h-full flex flex-col border border-gray-200 rounded-lg md:rounded-xl overflow-hidden hover:border-gray-400 hover:shadow-lg transition"
     >
-      {/* Main Image Section */}
-      <div className="relative w-full aspect-[4/5] overflow-hidden flex-shrink-0 bg-gray-50">
+      {/* Main Image Section - Clickable */}
+      <Link href={`/product/${productId}?mode=${cardMode}`} className="relative w-full aspect-[4/5] overflow-hidden flex-shrink-0 bg-gray-50 cursor-pointer">
         {product.badge && (
           <div className="absolute top-2 md:top-3 right-2 md:right-3 z-10 bg-lime-600 text-white text-xs font-bold px-2 md:px-3 py-1 rounded-full">
             {product.badge}
@@ -87,7 +98,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
           fill 
           className="object-contain group-hover:scale-105 transition duration-300 p-1 md:p-2"
         />
-      </div>
+      </Link>
 
       {/* Thumbnail Images Grid - Only show if multiple images */}
       {allImages.length > 1 && (

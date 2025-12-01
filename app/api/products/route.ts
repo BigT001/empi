@@ -11,16 +11,36 @@ export async function GET(request: NextRequest) {
   const lite = searchParams.get('lite'); // lightweight mode for product picker
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '12'); // Default 12 items per page
+  const search = searchParams.get('search'); // New: search query
 
   try {
     console.log("📥 GET /api/products - Fetching products from database...");
     console.log("🔍 Category filter:", category || "none");
-    console.log("📦 Lite mode:", lite ? "yes" : "no");
+    console.log("� Search query:", search || "none");
+    console.log("�📦 Lite mode:", lite ? "yes" : "no");
     console.log("📄 Pagination: page", page, "limit", limit);
 
     await connectDB();
 
-    const query = category ? { category } : {};
+    // Build query object
+    let query: any = {};
+    
+    if (category) {
+      query.category = category;
+    }
+    
+    if (search) {
+      // Search in name, description, costumeType, color, material
+      const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
+      query.$or = [
+        { name: searchRegex },
+        { description: searchRegex },
+        { costumeType: searchRegex },
+        { color: searchRegex },
+        { material: searchRegex },
+      ];
+    }
+
     const skip = (page - 1) * limit;
     
     // Get total count for pagination
@@ -113,6 +133,7 @@ export async function POST(request: NextRequest) {
       sellPrice: body.sellPrice,
       rentPrice: body.rentPrice || 0,
       category: body.category,
+      costumeType: body.costumeType || 'Other',
       badge: body.badge || null,
       imageUrl: body.imageUrl,
       imageUrls: body.imageUrls || [],

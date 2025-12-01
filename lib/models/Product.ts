@@ -6,6 +6,7 @@ export interface IProduct extends Document {
   sellPrice: number;
   rentPrice: number;
   category: string;
+  costumeType?: string; // Sub-category: Angel, Carnival, Superhero, Traditional, Cosplay, etc.
   badge?: string;
   imageUrl: string;
   imageUrls: string[];
@@ -29,6 +30,11 @@ const productSchema = new Schema<IProduct>(
     sellPrice: { type: Number, required: true },
     rentPrice: { type: Number, default: 0 },
     category: { type: String, required: true },
+    costumeType: { 
+      type: String, 
+      enum: ['Angel', 'Carnival', 'Superhero', 'Traditional', 'Cosplay', 'Other'],
+      default: 'Other'
+    },
     badge: String,
     imageUrl: { type: String, required: true },
     imageUrls: [String],
@@ -47,6 +53,8 @@ const productSchema = new Schema<IProduct>(
 
 // Indexes for faster queries
 productSchema.index({ category: 1 });
+productSchema.index({ costumeType: 1 });
+productSchema.index({ category: 1, costumeType: 1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ name: 'text' }); // text search index
 

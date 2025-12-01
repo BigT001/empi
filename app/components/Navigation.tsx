@@ -28,9 +28,25 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   const [currencyModalPos, setCurrencyModalPos] = useState({ top: 0, left: 0 });
   const [filterModalPos, setFilterModalPos] = useState({ top: 0, left: 0 });
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const { items } = useCart();
   const { buyer, logout } = useBuyer();
   const { admin } = useAdmin();
+
+  // Handle category navigation
+  const handleCategoryChange = (newCategory: string) => {
+    onCategoryChange(newCategory);
+    
+    // Navigate based on category
+    if (newCategory === "custom") {
+      router.push("/?category=custom");
+    } else if (newCategory === "adults" || newCategory === "kids") {
+      router.push("/?category=" + newCategory);
+    }
+    
+    // Close mobile menu after selection
+    setShowMobileMenu(false);
+  };
 
   // Log admin state changes for debugging
   useEffect(() => {
@@ -84,6 +100,21 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      const params = new URLSearchParams();
+      params.append('q', searchQuery);
+      if (category && category !== 'all') {
+        params.append('category', category);
+      }
+      params.append('currency', currency);
+      router.push(`/search?${params.toString()}`);
+      setSearchQuery("");
+      setShowMobileMenu(false);
+    }
+  };
+
   return (
     <>
       {/* Desktop Navigation */}
@@ -94,7 +125,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         <div className="flex items-center gap-2">
           {/* Adults Button */}
           <button
-            onClick={() => onCategoryChange("adults")}
+            onClick={() => handleCategoryChange("adults")}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
               category === "adults"
                 ? "bg-gray-900 text-white border-gray-900 shadow-lg"
@@ -109,7 +140,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
 
           {/* Kids Button */}
           <button
-            onClick={() => onCategoryChange("kids")}
+            onClick={() => handleCategoryChange("kids")}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
               category === "kids"
                 ? "bg-gray-900 text-white border-gray-900 shadow-lg"
@@ -124,7 +155,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
 
           {/* Custom Button */}
           <button
-            onClick={() => onCategoryChange("custom")}
+            onClick={() => handleCategoryChange("custom")}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
               category === "custom"
                 ? "bg-gray-900 text-white border-gray-900 shadow-lg"
@@ -152,14 +183,16 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
 
       {/* Search */}
       <div className="hidden flex-1 items-center max-w-xs lg:flex">
-        <div className="relative w-full">
+        <form onSubmit={handleSearch} className="relative w-full">
           <input
             aria-label="Search products"
             placeholder="Search costumes..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition"
           />
-          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-        </div>
+          <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+        </form>
       </div>
 
       {/* Actions */}
@@ -242,7 +275,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
           {/* Modern Button Group - Mobile */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
             <button
-              onClick={() => onCategoryChange("adults")}
+              onClick={() => handleCategoryChange("adults")}
               className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all duration-300 border-2 ${
                 category === "adults"
                   ? "bg-gray-900 text-white border-gray-900 shadow-md"
@@ -252,7 +285,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
               Adults
             </button>
             <button
-              onClick={() => onCategoryChange("kids")}
+              onClick={() => handleCategoryChange("kids")}
               className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all duration-300 border-2 ${
                 category === "kids"
                   ? "bg-gray-900 text-white border-gray-900 shadow-md"
@@ -262,7 +295,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
               Kids
             </button>
             <button
-              onClick={() => onCategoryChange("custom")}
+              onClick={() => handleCategoryChange("custom")}
               className={`px-3 py-1.5 rounded-lg font-semibold text-xs transition-all duration-300 border-2 ${
                 category === "custom"
                   ? "bg-gray-900 text-white border-gray-900 shadow-md"
@@ -296,14 +329,16 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
           <div className="p-4 space-y-4 max-h-96 overflow-y-auto">
               {/* Search Bar for Mobile */}
             <div className="relative w-full flex gap-2 items-center">
-              <div className="relative flex-1">
+              <form onSubmit={handleSearch} className="relative flex-1">
                 <input
                   aria-label="Search products"
                   placeholder="Search costumes..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 focus:bg-white transition"
                 />
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
-              </div>
+                <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+              </form>
             </div>            {/* Icon Grid Menu */}
             <div className="grid grid-cols-4 gap-3">
               {/* Currency Button */}

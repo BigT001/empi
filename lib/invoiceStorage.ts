@@ -32,6 +32,8 @@ export interface StoredInvoice {
   
   // Pricing
   subtotal: number;
+  cautionFee?: number;
+  subtotalWithCaution?: number;
   shippingCost: number;
   taxAmount: number;
   totalAmount: number;
