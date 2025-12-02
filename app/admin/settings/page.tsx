@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useAdmin } from "@/app/context/AdminContext";
-import { Save, Bell, Lock, User, Shield, Users } from "lucide-react";
+import { Save, Bell, Lock, User, Shield, Users, Trash2, AlertTriangle } from "lucide-react";
 
 // Mobile components
 const MobileSettingsPage = dynamic(() => import("../mobile-settings"), { ssr: false });
@@ -26,6 +26,9 @@ export default function SettingsPage() {
   const [autoRentalsReminder, setAutoRentalsReminder] = useState(true);
   const [lowStockAlert, setLowStockAlert] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetMessage, setResetMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   // Detect mobile device
   useEffect(() => {
@@ -54,6 +57,47 @@ export default function SettingsPage() {
   const handleSave = () => {
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 3000);
+  };
+
+  const handleDatabaseReset = async () => {
+    setResetLoading(true);
+    setResetMessage(null);
+
+    try {
+      const response = await fetch('/api/admin/reset-database', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ADMIN_RESET_SECRET || ''}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          confirmationToken: process.env.NEXT_PUBLIC_RESET_CONFIRMATION_TOKEN || ''
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setResetMessage({
+          type: 'success',
+          text: `Database reset successful! Deleted ${data.deletedCounts.buyers} users and ${data.deletedCounts.invoices} transactions.`
+        });
+        setShowResetModal(false);
+        setTimeout(() => setResetMessage(null), 5000);
+      } else {
+        setResetMessage({
+          type: 'error',
+          text: data.error || 'Failed to reset database'
+        });
+      }
+    } catch (error) {
+      setResetMessage({
+        type: 'error',
+        text: 'Error resetting database: ' + String(error)
+      });
+    } finally {
+      setResetLoading(false);
+    }
   };
 
   return (
@@ -272,10 +316,83 @@ export default function SettingsPage() {
                   <span className="text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded">Super Admin</span>
                 </Link>
               )}
+
+              {/* Database Management Section */}
+              <div className="mt-8 pt-8 border-t border-gray-200">
+                <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                  Database Management
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">Dangerous actions - use with caution</p>
+                
+                {admin?.role === 'super_admin' && (
+                  <button
+                    onClick={() => setShowResetModal(true)}
+                    className="w-full px-4 py-4 border-2 border-red-300 rounded-lg text-red-700 font-semibold hover:bg-red-50 transition flex items-center justify-center gap-2"
+                  >
+                    <AlertTriangle className="h-5 w-5" />
+                    Reset Database (Delete All Users & Transactions)
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
       </main>
+
+      {/* Database Reset Confirmation Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-fadeIn">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-12 w-12 bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="h-6 w-6 text-red-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900">Reset Database?</h2>
+            </div>
+
+            <p className="text-gray-700 mb-2 font-semibold">This action cannot be undone!</p>
+            <p className="text-sm text-gray-600 mb-6">
+              This will permanently delete:
+            </p>
+            <ul className="text-sm text-gray-600 mb-6 space-y-1 bg-red-50 p-3 rounded-lg border border-red-200">
+              <li>✗ All user accounts</li>
+              <li>✗ All transaction histories</li>
+              <li>✗ All invoices</li>
+            </ul>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowResetModal(false)}
+                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-900 font-semibold hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDatabaseReset}
+                disabled={resetLoading}
+                className="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg font-semibold transition flex items-center justify-center gap-2"
+              >
+                {resetLoading ? 'Resetting...' : 'Yes, Reset Database'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Message Alert */}
+      {resetMessage && (
+        <div className={`fixed top-6 right-6 max-w-md px-6 py-4 rounded-lg shadow-lg z-50 flex items-center gap-3 ${
+          resetMessage.type === 'success' 
+            ? 'bg-green-50 border border-green-200' 
+            : 'bg-red-50 border border-red-200'
+        }`}>
+          <div className={`h-2 w-2 rounded-full ${resetMessage.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}></div>
+          <p className={`font-semibold ${resetMessage.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+            {resetMessage.text}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
