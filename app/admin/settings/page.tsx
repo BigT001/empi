@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useAdmin } from "@/app/context/AdminContext";
@@ -13,6 +14,7 @@ import MobileAdminLayout from "../mobile-layout";
 export default function SettingsPage() {
   // HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
   const { admin } = useAdmin();
+  const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<"store" | "notifications" | "security">("store");
@@ -64,36 +66,59 @@ export default function SettingsPage() {
     setResetMessage(null);
 
     try {
+      // Call the reset API with the tokens
       const response = await fetch('/api/admin/reset-database', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ADMIN_RESET_SECRET || ''}`,
+          'Authorization': `Bearer ${process.env.NEXT_PUBLIC_ADMIN_RESET_SECRET}`,
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          confirmationToken: process.env.NEXT_PUBLIC_RESET_CONFIRMATION_TOKEN || ''
+          confirmationToken: process.env.NEXT_PUBLIC_RESET_CONFIRMATION_TOKEN
         })
       });
+
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        setResetMessage({
+          type: 'error',
+          text: 'Invalid response from server. Check if endpoint exists and is responding correctly.'
+        });
+        setResetLoading(false);
+        return;
+      }
 
       const data = await response.json();
 
       if (response.ok) {
         setResetMessage({
           type: 'success',
-          text: `Database reset successful! Deleted ${data.deletedCounts.buyers} users and ${data.deletedCounts.invoices} transactions.`
+          text: `Database reset successful! Deleted ${data.deletedCounts.buyers} users, ${data.deletedCounts.invoices} transactions, and ${data.deletedCounts.orders} orders. Logging out all users...`
         });
         setShowResetModal(false);
-        setTimeout(() => setResetMessage(null), 5000);
+
+        // Clear all session cookies to logout all users
+        await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+
+        // Wait a moment then redirect to login
+        setTimeout(() => {
+          // Clear local storage
+          localStorage.clear();
+          // Redirect to home/login
+          window.location.href = '/';
+        }, 2000);
       } else {
         setResetMessage({
           type: 'error',
-          text: data.error || 'Failed to reset database'
+          text: data.error || 'Failed to reset database. Status: ' + response.status
         });
       }
     } catch (error) {
+      console.error('Reset database error:', error);
       setResetMessage({
         type: 'error',
-        text: 'Error resetting database: ' + String(error)
+        text: 'Error: ' + (error instanceof Error ? error.message : String(error))
       });
     } finally {
       setResetLoading(false);
@@ -331,7 +356,7 @@ export default function SettingsPage() {
                     className="w-full px-4 py-4 border-2 border-red-300 rounded-lg text-red-700 font-semibold hover:bg-red-50 transition flex items-center justify-center gap-2"
                   >
                     <AlertTriangle className="h-5 w-5" />
-                    Reset Database (Delete All Users & Transactions)
+                    Reset Database (Delete All Users, Orders & Transactions)
                   </button>
                 )}
               </div>
@@ -357,8 +382,10 @@ export default function SettingsPage() {
             </p>
             <ul className="text-sm text-gray-600 mb-6 space-y-1 bg-red-50 p-3 rounded-lg border border-red-200">
               <li>✗ All user accounts</li>
+              <li>✗ All orders</li>
               <li>✗ All transaction histories</li>
               <li>✗ All invoices</li>
+              <li>✗ Log out all active users</li>
             </ul>
 
             <div className="flex gap-3">

@@ -15,6 +15,9 @@ export interface IProduct extends Document {
   material?: string;
   condition?: string;
   careInstructions?: string;
+  // Availability flags
+  availableForBuy?: boolean; // Can be purchased
+  availableForRent?: boolean; // Can be rented
   // Delivery metadata
   deliverySize?: 'SMALL' | 'MEDIUM' | 'LARGE';
   weight?: number; // in kg
@@ -43,6 +46,9 @@ const productSchema = new Schema<IProduct>(
     material: String,
     condition: String,
     careInstructions: String,
+    // Availability flags
+    availableForBuy: { type: Boolean, default: true },
+    availableForRent: { type: Boolean, default: true },
     // Delivery metadata
     deliverySize: { type: String, enum: ['SMALL', 'MEDIUM', 'LARGE'], default: 'MEDIUM' },
     weight: { type: Number, default: 0.5 }, // in kg

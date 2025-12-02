@@ -61,13 +61,14 @@ export function ModeProvider({ children }: { children: ReactNode }) {
   );
 }
 
-export function useMode(productId: string) {
+export function useMode(productId: string, initialMode?: "buy" | "rent") {
   const context = useContext(ModeContext);
   if (!context) {
     throw new Error("useMode must be used within a ModeProvider");
   }
   
-  const mode = context.getMode(productId);
+  const storedMode = context.getMode(productId);
+  const mode = storedMode || initialMode || "buy";
   const setMode = (newMode: "buy" | "rent") => context.setMode(productId, newMode);
   
   return { mode, setMode, isHydrated: context.isHydrated };

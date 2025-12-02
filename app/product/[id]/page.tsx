@@ -22,8 +22,21 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       .lean<any[]>();
 
     // Serialize MongoDB documents to plain objects
-    const product = serializeDoc(productRaw);
-    const allProducts = serializeDocs(allProductsRaw);
+    let product = serializeDoc(productRaw);
+    let allProducts = serializeDocs(allProductsRaw);
+
+    // Add default availability flags for backward compatibility
+    product = {
+      ...product,
+      availableForBuy: product.availableForBuy !== false ? true : false,
+      availableForRent: product.availableForRent !== false ? true : false,
+    };
+    
+    allProducts = allProducts.map((p: any) => ({
+      ...p,
+      availableForBuy: p.availableForBuy !== false ? true : false,
+      availableForRent: p.availableForRent !== false ? true : false,
+    }));
 
     return <ProductDetailClient product={product} allProducts={allProducts} />;
   } catch (error) {

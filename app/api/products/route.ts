@@ -8,6 +8,7 @@ import { revalidatePath } from 'next/cache';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
+  const mode = searchParams.get('mode'); // NEW: filter by mode ('buy' or 'rent')
   const lite = searchParams.get('lite'); // lightweight mode for product picker
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '12'); // Default 12 items per page
@@ -16,8 +17,9 @@ export async function GET(request: NextRequest) {
   try {
     console.log("📥 GET /api/products - Fetching products from database...");
     console.log("🔍 Category filter:", category || "none");
-    console.log("� Search query:", search || "none");
-    console.log("�📦 Lite mode:", lite ? "yes" : "no");
+    console.log("🎬 Mode filter:", mode || "none");
+    console.log("🔎 Search query:", search || "none");
+    console.log("🪶 Lite mode:", lite ? "yes" : "no");
     console.log("📄 Pagination: page", page, "limit", limit);
 
     await connectDB();
@@ -27,6 +29,13 @@ export async function GET(request: NextRequest) {
     
     if (category) {
       query.category = category;
+    }
+    
+    // NEW: Filter by availability based on mode
+    if (mode === 'buy') {
+      query.availableForBuy = true;
+    } else if (mode === 'rent') {
+      query.availableForRent = true;
     }
     
     if (search) {
@@ -60,6 +69,9 @@ export async function GET(request: NextRequest) {
     const transformedProducts = serializeDocs(products).map((p: any) => ({
       ...p,
       id: p._id || p.id,
+      // Ensure availability fields have defaults for backward compatibility
+      availableForBuy: p.availableForBuy !== false ? true : false,
+      availableForRent: p.availableForRent !== false ? true : false,
     }));
 
     console.log("✅ Products fetched successfully, count:", transformedProducts.length);
@@ -142,6 +154,9 @@ export async function POST(request: NextRequest) {
       material: body.material || null,
       condition: body.condition || null,
       careInstructions: body.careInstructions || null,
+      // Availability flags
+      availableForBuy: body.availableForBuy !== false ? true : false,
+      availableForRent: body.availableForRent !== false ? true : false,
       // Delivery metadata
       deliverySize: body.deliverySize || 'MEDIUM',
       weight: body.weight || 0.5,

@@ -31,9 +31,8 @@ export default function CustomCostumesPage({
     address: "",
     city: "",
     state: "",
-    costumeType: "traditional",
+    costumeType: "",
     description: "",
-    budget: "",
     deliveryDate: "",
   });
 
@@ -82,6 +81,13 @@ export default function CustomCostumesPage({
     setSubmitStatus("idle");
     setErrorMessage("");
 
+    // Validate that at least one image is uploaded
+    if (!selectedFile) {
+      setErrorMessage("Please upload at least one design image before submitting your order.");
+      setIsLoading(false);
+      return;
+    }
+
     try {
       // Prepare FormData for multipart upload
       const uploadFormData = new FormData();
@@ -93,12 +99,10 @@ export default function CustomCostumesPage({
       uploadFormData.append("state", formData.state);
       uploadFormData.append("costumeType", formData.costumeType);
       uploadFormData.append("description", formData.description);
-      uploadFormData.append("budget", formData.budget);
       uploadFormData.append("deliveryDate", formData.deliveryDate);
 
-      if (selectedFile) {
-        uploadFormData.append("file", selectedFile);
-      }
+      // selectedFile is now guaranteed to exist due to validation above
+      uploadFormData.append("file", selectedFile);
 
       const response = await fetch("/api/custom-orders", {
         method: "POST",
@@ -118,9 +122,8 @@ export default function CustomCostumesPage({
         address: "",
         city: "",
         state: "",
-        costumeType: "traditional",
+        costumeType: "",
         description: "",
-        budget: "",
         deliveryDate: "",
       });
       setSelectedFile(null);
@@ -303,7 +306,7 @@ export default function CustomCostumesPage({
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="costumeType" className="block text-sm font-medium text-gray-700 mb-1">
-                      Costume Type <span className="text-red-600">*</span>
+                      Costume Type
                     </label>
                     <select
                       id="costumeType"
@@ -312,6 +315,7 @@ export default function CustomCostumesPage({
                       onChange={handleInputChange}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600"
                     >
+                      <option value="">Select a costume type (optional)</option>
                       <option value="traditional">Traditional (e.g., Yoruba, Igbo, Hausa)</option>
                       <option value="modern">Modern Casual</option>
                       <option value="themed">Themed (Movie, TV, Fantasy)</option>
@@ -338,46 +342,23 @@ export default function CustomCostumesPage({
 
                 <div className="mt-4">
                   <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                    Describe Your Costume <span className="text-red-600">*</span>
+                    Describe Your Costume
                   </label>
                   <textarea
                     id="description"
                     name="description"
                     value={formData.description}
                     onChange={handleInputChange}
-                    required
                     rows={5}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600"
                     placeholder="Describe your custom costume in detail: colors, materials, style, size, special features, etc. The more details, the better we can understand your vision!"
                   />
                 </div>
-
-                <div className="mt-4">
-                  <label htmlFor="budget" className="block text-sm font-medium text-gray-700 mb-1">
-                    Budget Range (NGN)
-                  </label>
-                  <div className="flex gap-2">
-                    <select
-                      id="budget"
-                      name="budget"
-                      value={formData.budget}
-                      onChange={handleInputChange}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600"
-                    >
-                      <option value="">Select a budget range</option>
-                      <option value="10000-25000">₦10,000 - ₦25,000</option>
-                      <option value="25000-50000">₦25,000 - ₦50,000</option>
-                      <option value="50000-100000">₦50,000 - ₦100,000</option>
-                      <option value="100000-200000">₦100,000 - ₦200,000</option>
-                      <option value="200000+">₦200,000+</option>
-                    </select>
-                  </div>
-                </div>
               </div>
 
               {/* Design Upload */}
               <div>
-                <h3 className="font-semibold text-gray-900 mb-4">Upload Design (Optional)</h3>
+                <h3 className="font-semibold text-gray-900 mb-4">Upload Design <span className="text-red-600">*</span></h3>
                 <p className="text-sm text-gray-600 mb-4">Upload a photo of a design you like, a sketch, or reference image</p>
                 
                 <div
@@ -422,7 +403,7 @@ export default function CustomCostumesPage({
                     Submitting...
                   </>
                 ) : (
-                  "Submit Custom Order Request"
+                  "Get a Quote"
                 )}
               </button>
 

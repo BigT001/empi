@@ -17,6 +17,8 @@ interface ProductForm {
   material: string;
   condition: string;
   careInstructions: string;
+  availableForBuy: boolean;
+  availableForRent: boolean;
   imageFiles: File[];
   imagePreviews: string[];
 }
@@ -49,6 +51,8 @@ export default function MobileAdminUpload() {
     material: "",
     condition: "new",
     careInstructions: "",
+    availableForBuy: true,
+    availableForRent: true,
     imageFiles: [],
     imagePreviews: [],
   });
@@ -283,6 +287,8 @@ export default function MobileAdminUpload() {
         material: form.material,
         condition: form.condition,
         careInstructions: form.careInstructions,
+        availableForBuy: form.availableForBuy,
+        availableForRent: form.availableForRent,
       };
 
       console.log("📤 Creating product...");
@@ -354,6 +360,8 @@ export default function MobileAdminUpload() {
         material: "",
         condition: "new",
         careInstructions: "",
+        availableForBuy: true,
+        availableForRent: true,
         imageFiles: [],
         imagePreviews: [],
       });
@@ -750,10 +758,59 @@ export default function MobileAdminUpload() {
             />
             <p className="text-xs text-gray-500 mt-1">Optional badge to highlight this product on the store</p>
           </div>
+
+          {/* Availability Options */}
+          <div>
+            <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
+              <span className="text-lg">📦</span>
+              Availability
+            </h4>
+            <div className="space-y-3">
+              {/* Available for Buy */}
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-lime-300 cursor-pointer transition">
+                <input
+                  type="checkbox"
+                  checked={form.availableForBuy}
+                  onChange={(e) =>
+                    setForm({ ...form, availableForBuy: e.target.checked })
+                  }
+                  disabled={isSubmitting}
+                  className="w-5 h-5 accent-lime-600 cursor-pointer rounded"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">🛒 Available for Purchase</p>
+                  <p className="text-xs text-gray-500">Customers can buy this product</p>
+                </div>
+              </label>
+
+              {/* Available for Rent */}
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-lime-300 cursor-pointer transition">
+                <input
+                  type="checkbox"
+                  checked={form.availableForRent}
+                  onChange={(e) =>
+                    setForm({ ...form, availableForRent: e.target.checked })
+                  }
+                  disabled={isSubmitting}
+                  className="w-5 h-5 accent-lime-600 cursor-pointer rounded"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">🎪 Available for Rental</p>
+                  <p className="text-xs text-gray-500">Customers can rent this product</p>
+                </div>
+              </label>
+
+              {!form.availableForBuy && !form.availableForRent && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
+                  <p className="text-xs text-red-700 font-semibold">⚠️ Warning: Product not available for anything. Check at least one option above.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Submit Button */}
-        <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white to-transparent p-4 border-t border-gray-200">
+        <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent p-4 border-t border-gray-200 z-40">
           <button
             type="submit"
             disabled={isSubmitting || form.imagePreviews.length === 0}

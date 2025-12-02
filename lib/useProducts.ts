@@ -17,6 +17,8 @@ export interface Product {
   material?: string;
   condition?: string;
   careInstructions?: string;
+  availableForBuy?: boolean;
+  availableForRent?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

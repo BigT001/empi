@@ -26,6 +26,8 @@ interface Product {
   material?: string | null;
   condition?: string | null;
   careInstructions?: string | null;
+  availableForBuy?: boolean;
+  availableForRent?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -208,17 +210,19 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
               {/* Buy/Rent Mode Toggle */}
               <div className="flex gap-3 mb-6">
-                <button
-                  onClick={() => setMode("buy")}
-                  className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${
-                    mode === "buy"
-                      ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl scale-105"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                >
-                  💳 Buy
-                </button>
-                {product.rentPrice > 0 && (
+                {product.availableForBuy !== false && (
+                  <button
+                    onClick={() => setMode("buy")}
+                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${
+                      mode === "buy"
+                        ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl scale-105"
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    }`}
+                  >
+                    💳 Buy
+                  </button>
+                )}
+                {product.availableForRent !== false && product.rentPrice > 0 && (
                   <button
                     onClick={() => setMode("rent")}
                     className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${
@@ -227,8 +231,23 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
-                    🎭 Rent
+                    � Rent
                   </button>
+                )}
+                {product.availableForBuy === false && product.availableForRent !== false && (
+                  <div className="flex-1 px-4 py-3 rounded-xl bg-blue-100 text-blue-800 font-bold text-center text-sm md:text-base border-2 border-blue-300 flex items-center justify-center gap-2">
+                    <span>🎪</span> Rental Only
+                  </div>
+                )}
+                {product.availableForRent === false && product.availableForBuy !== false && (
+                  <div className="flex-1 px-4 py-3 rounded-xl bg-green-100 text-green-800 font-bold text-center text-sm md:text-base border-2 border-green-300 flex items-center justify-center gap-2">
+                    <span>🛒</span> For Sale Only
+                  </div>
+                )}
+                {product.availableForBuy === false && product.availableForRent === false && (
+                  <div className="flex-1 px-4 py-3 rounded-xl bg-red-100 text-red-800 font-bold text-center text-sm md:text-base border-2 border-red-300 flex items-center justify-center gap-2">
+                    <span>⚠️</span> Unavailable
+                  </div>
                 )}
               </div>
 
@@ -349,24 +368,31 @@ export default function ProductDetailClient({ product, allProducts, currency = "
               </div>
 
               {/* Add to Cart Button */}
-              <button 
-                onClick={handleAddToCart} 
-                className={`w-full py-4 px-6 rounded-xl font-black text-lg transition duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl transform hover:scale-105 active:scale-95 ${
-                  addedToCart
-                    ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
-                    : 'bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white'
-                }`}
-              >
-                {addedToCart ? (
-                  <>
-                    <Check className="h-6 w-6 animate-bounce" /> Added to Cart!
-                  </>
-                ) : (
-                  <>
-                    <ShoppingCart className="h-6 w-6" /> Add to Cart
-                  </>
-                )}
-              </button>
+              {(mode === 'buy' && product.availableForBuy !== false) || (mode === 'rent' && product.availableForRent !== false) ? (
+                <button 
+                  onClick={handleAddToCart} 
+                  className={`w-full py-4 px-6 rounded-xl font-black text-lg transition duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl transform hover:scale-105 active:scale-95 ${
+                    addedToCart
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
+                      : 'bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white'
+                  }`}
+                >
+                  {addedToCart ? (
+                    <>
+                      <Check className="h-6 w-6 animate-bounce" /> Added to Cart!
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="h-6 w-6" /> Add to Cart
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div className="w-full py-4 px-6 rounded-xl bg-gray-200 text-gray-600 font-black text-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-60">
+                  <AlertCircle className="h-6 w-6" />
+                  {mode === 'buy' ? 'Not Available for Purchase' : 'Not Available for Rental'}
+                </div>
+              )}
             </div>
           </div>
         </div>

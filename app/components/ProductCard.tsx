@@ -19,6 +19,8 @@ interface Product {
   badge: string | null;
   description?: string;
   category: string;
+  availableForBuy?: boolean;
+  availableForRent?: boolean;
 }
 
 interface ProductCardProps {
@@ -33,7 +35,15 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
   // Get safe product ID (handle both id and _id from MongoDB)
   const productId = product.id || (product as any)._id || '';
   
-  const { mode: cardMode, setMode: setCardMode, isHydrated } = useMode(productId);
+  // Determine availability
+  const availableForBuy = product.availableForBuy !== false; // Default true
+  const availableForRent = product.availableForRent !== false; // Default true
+  const isRentalOnly = availableForRent && !availableForBuy;
+  const isSaleOnly = availableForBuy && !availableForRent;
+  
+  // Set initial mode based on availability
+  const initialMode = !availableForBuy ? "rent" : !availableForRent ? "buy" : "buy";
+  const { mode: cardMode, setMode: setCardMode, isHydrated } = useMode(productId, initialMode as any);
   const [mainImageIndex, setMainImageIndex] = useState(0);
 
   const handleAddToCart = () => {
@@ -131,27 +141,88 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
         <h3 className="font-semibold text-gray-900 text-xs md:text-sm line-clamp-2 flex-grow">{product.name}</h3>
         <p className="mt-2 md:mt-3 text-base md:text-lg font-bold text-gray-900">{displayPrice}</p>
         
-        {/* Buy/Rent Toggle */}
-        <div className="mt-2 md:mt-4 relative inline-flex items-center bg-gray-100 rounded-lg p-0.5 md:p-1 border border-gray-200 w-full">
-          <button
-            onClick={() => setCardMode("buy")}
-            className={`flex-1 px-2 md:px-3 py-1.5 md:py-2 rounded font-semibold text-xs md:text-sm transition-all ${cardMode === "buy" ? "bg-lime-600 text-white" : "text-gray-600 hover:text-gray-900"}`}
-          >
-            Buy
-          </button>
-          <button
-            onClick={() => setCardMode("rent")}
-            className={`flex-1 px-2 md:px-3 py-1.5 md:py-2 rounded font-semibold text-xs md:text-sm transition-all ${cardMode === "rent" ? "bg-lime-600 text-white" : "text-gray-600 hover:text-gray-900"}`}
-          >
-            Rent
-          </button>
+        {/* Availability Badge */}
+        {(isRentalOnly || isSaleOnly) && (
+          <div className="mt-2 inline-flex">
+            {isRentalOnly && (
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-blue-100 text-blue-700">
+                🎪 Rental Only
+              </span>
+            )}
+            {isSaleOnly && (
+              <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+                🛒 For Sale Only
+              </span>
+            )}
+          </div>
+        )}
+        
+        {/* Buy/Rent Toggle - Always show both options, but disable unavailable ones */}
+        <div className="mt-2 md:mt-4 w-full space-y-1.5">
+          <div className="relative inline-flex items-center bg-gray-100 rounded-lg p-0.5 md:p-1 border border-gray-200 w-full">
+            {/* Buy Button */}
+            <button
+              onClick={() => availableForBuy && setCardMode("buy")}
+              disabled={!availableForBuy}
+              className={`flex-1 px-2 md:px-3 py-1.5 md:py-2 rounded font-semibold text-xs md:text-sm transition-all ${
+                availableForBuy
+                  ? cardMode === "buy" 
+                    ? "bg-lime-600 text-white cursor-pointer" 
+                    : "text-gray-600 hover:text-gray-900 cursor-pointer"
+                  : "text-gray-400 cursor-not-allowed opacity-50"
+              }`}
+              title={!availableForBuy ? "Not available for purchase" : ""}
+            >
+              🛒 Buy
+            </button>
+            {/* Rent Button */}
+            <button
+              onClick={() => availableForRent && setCardMode("rent")}
+              disabled={!availableForRent}
+              className={`flex-1 px-2 md:px-3 py-1.5 md:py-2 rounded font-semibold text-xs md:text-sm transition-all ${
+                availableForRent
+                  ? cardMode === "rent" 
+                    ? "bg-lime-600 text-white cursor-pointer" 
+                    : "text-gray-600 hover:text-gray-900 cursor-pointer"
+                  : "text-gray-400 cursor-not-allowed opacity-50"
+              }`}
+              title={!availableForRent ? "Not available for rental" : ""}
+            >
+              🎪 Rent
+            </button>
+          </div>
+          
+          {/* Availability Message */}
+          {!availableForBuy && (
+            <p className="text-xs text-blue-700 bg-blue-50 px-2 py-1 rounded border border-blue-200 font-medium">
+              ✨ Rental Only - Not available for purchase
+            </p>
+          )}
+          {!availableForRent && (
+            <p className="text-xs text-green-700 bg-green-50 px-2 py-1 rounded border border-green-200 font-medium">
+              ✨ For Sale Only - Not available for rental
+            </p>
+          )}
         </div>
 
         {/* Buttons Section */}
         <div className="mt-2 md:mt-3 flex flex-col md:flex-row gap-2 md:gap-3 w-full">
           <button 
             onClick={handleAddToCart}
-            className="flex-1 rounded-lg bg-lime-600 hover:bg-lime-700 text-white px-2 md:px-4 py-1.5 md:py-2 font-semibold transition flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm w-full">
+            disabled={
+              (cardMode === "buy" && !availableForBuy) || 
+              (cardMode === "rent" && !availableForRent)
+            }
+            className={`flex-1 rounded-lg px-2 md:px-4 py-1.5 md:py-2 font-semibold transition flex items-center justify-center gap-1 md:gap-2 text-xs md:text-sm w-full ${
+              (cardMode === "buy" && !availableForBuy) || (cardMode === "rent" && !availableForRent)
+                ? "bg-gray-300 text-gray-500 cursor-not-allowed opacity-60"
+                : "bg-lime-600 hover:bg-lime-700 text-white cursor-pointer"
+            }`}
+            title={
+              (cardMode === "buy" && !availableForBuy) ? "Not available for purchase" :
+              (cardMode === "rent" && !availableForRent) ? "Not available for rental" : ""
+            }
+          >
             <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" />
             <span>Add to cart</span>
           </button>
