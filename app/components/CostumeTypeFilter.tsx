@@ -41,7 +41,7 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
         {/* Scroll Indicator Label - Compact */}
         {showScrollHint && (
           <div className="flex justify-end mb-1">
-            <div className="flex items-center gap-1 text-xs text-teal-600 font-medium">
+            <div className="flex items-center gap-1 text-xs text-lime-600 font-medium">
               <span>scroll right</span>
               <ChevronRight className="w-3 h-3 animate-bounce" />
             </div>
@@ -59,7 +59,7 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
             onClick={() => handleTypeSelect(null)}
             className={`flex-shrink-0 px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 whitespace-nowrap ${
               selectedType === null
-                ? "bg-teal-600 text-white shadow-md"
+                ? "bg-lime-600 text-white shadow-md"
                 : "bg-gray-200 text-gray-700"
             }`}
           >
@@ -73,7 +73,7 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
               onClick={() => handleTypeSelect(type)}
               className={`flex-shrink-0 px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 whitespace-nowrap ${
                 selectedType === type
-                  ? "bg-teal-600 text-white shadow-md"
+                  ? "bg-lime-600 text-white shadow-md"
                   : "bg-gray-200 text-gray-700"
               }`}
             >
@@ -90,7 +90,7 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
           onClick={() => handleTypeSelect(null)}
           className={`px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 ${
             selectedType === null
-              ? "bg-teal-600 text-white shadow-md hover:shadow-lg"
+              ? "bg-lime-600 text-white shadow-md hover:shadow-lg"
               : "bg-gray-200 text-gray-700 hover:bg-gray-300"
           }`}
         >
@@ -104,7 +104,7 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
             onClick={() => handleTypeSelect(type)}
             className={`px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 ${
               selectedType === type
-                ? "bg-teal-600 text-white shadow-md hover:shadow-lg"
+                ? "bg-lime-600 text-white shadow-md hover:shadow-lg"
                 : "bg-gray-200 text-gray-700 hover:bg-gray-300"
             }`}
           >

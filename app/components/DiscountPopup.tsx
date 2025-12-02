@@ -59,89 +59,89 @@ export function DiscountPopup({ intervalMinutes = 7 }: DiscountPopupProps) {
       />
 
       {/* Popup Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full animate-in zoom-in-95 duration-300">
+      <div className="relative bg-white rounded-xl shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-300">
         {/* Close Button */}
         <button
           onClick={handleClose}
-          className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full transition-colors z-10"
+          className="absolute top-3 right-3 p-1.5 hover:bg-gray-100 rounded-full transition-colors z-10"
         >
-          <X className="w-5 h-5 text-gray-500 hover:text-gray-700" />
+          <X className="w-4 h-4 text-gray-500 hover:text-gray-700" />
         </button>
 
         {/* Header */}
-        <div className="bg-gradient-to-r from-lime-500 to-lime-600 px-6 pt-8 pb-6 text-white">
-          <h2 className="text-2xl font-bold mb-2">🎉 Special Bulk Discounts!</h2>
-          <p className="text-lime-50 text-sm">Order multiple sets and save big!</p>
+        <div className="bg-gradient-to-r from-lime-500 to-lime-600 px-5 pt-5 pb-4 text-white rounded-t-xl">
+          <h2 className="text-lg font-bold mb-1">🎉 Special Bulk Discounts!</h2>
+          <p className="text-lime-50 text-xs">Order multiple sets and save big!</p>
         </div>
 
         {/* Content */}
-        <div className="px-6 py-8">
+        <div className="px-5 py-5">
           {/* Discount Tiers */}
-          <div className="space-y-4 mb-8">
+          <div className="space-y-2.5 mb-5">
             {/* Tier 1 */}
-            <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-blue-50 to-transparent rounded-lg border border-blue-100">
+            <div className="flex items-start gap-3 p-2.5 bg-gradient-to-r from-blue-50 to-transparent rounded-lg border border-blue-100">
               <div className="flex-shrink-0">
-                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-blue-500 text-white font-bold text-sm">
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-500 text-white font-bold text-xs">
                   5%
                 </div>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">3-5 Sets</p>
-                <p className="text-sm text-gray-600">5% discount on your entire order</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 text-sm">3-5 Sets</p>
+                <p className="text-xs text-gray-600">5% discount on entire order</p>
               </div>
             </div>
 
             {/* Tier 2 */}
-            <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-purple-50 to-transparent rounded-lg border border-purple-100">
+            <div className="flex items-start gap-3 p-2.5 bg-gradient-to-r from-purple-50 to-transparent rounded-lg border border-purple-100">
               <div className="flex-shrink-0">
-                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-purple-500 text-white font-bold text-sm">
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-purple-500 text-white font-bold text-xs">
                   7%
                 </div>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">6-9 Sets</p>
-                <p className="text-sm text-gray-600">7% discount on your entire order</p>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 text-sm">6-9 Sets</p>
+                <p className="text-xs text-gray-600">7% discount on entire order</p>
               </div>
             </div>
 
             {/* Tier 3 */}
-            <div className="flex items-start gap-4 p-4 bg-gradient-to-r from-green-50 to-transparent rounded-lg border-2 border-green-400 shadow-md">
+            <div className="flex items-start gap-3 p-2.5 bg-gradient-to-r from-green-50 to-transparent rounded-lg border-2 border-green-400 shadow-sm">
               <div className="flex-shrink-0">
-                <div className="flex items-center justify-center h-10 w-10 rounded-full bg-green-500 text-white font-bold text-sm">
+                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-500 text-white font-bold text-xs">
                   10%
                 </div>
               </div>
-              <div className="flex-1">
-                <p className="font-semibold text-gray-900">10+ Sets</p>
-                <p className="text-sm text-gray-600">
-                  🏆 10% discount on your entire order
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-900 text-sm">10+ Sets</p>
+                <p className="text-xs text-gray-600">
+                  🏆 10% discount on entire order
                 </p>
               </div>
             </div>
           </div>
 
           {/* CTA Text */}
-          <div className="text-center">
-            <p className="text-sm text-gray-600 mb-4">
-              Stock your events with our premium costumes at unbeatable prices!
+          <div className="text-center border-t border-gray-200 pt-3">
+            <p className="text-xs text-gray-600 mb-2">
+              Stock your events at unbeatable prices!
             </p>
             <p className="text-xs text-gray-500">
-              Discounts apply automatically at checkout
+              Discounts apply at checkout
             </p>
           </div>
         </div>
 
         {/* Footer Buttons */}
-        <div className="bg-gray-50 px-6 py-4 rounded-b-2xl flex gap-3">
+        <div className="bg-gray-50 px-5 py-3 rounded-b-xl flex gap-2">
           <button
             onClick={handleClose}
-            className="flex-1 px-4 py-2 text-gray-700 font-semibold border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
+            className="flex-1 px-3 py-2 text-gray-700 font-semibold text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
           >
             Maybe Later
           </button>
           <button
             onClick={handleClose}
-            className="flex-1 px-4 py-2 bg-lime-600 hover:bg-lime-700 text-white font-semibold rounded-lg transition-colors"
+            className="flex-1 px-3 py-2 bg-lime-600 hover:bg-lime-700 text-white font-semibold text-sm rounded-lg transition-colors"
           >
             Got It! 👍
           </button>

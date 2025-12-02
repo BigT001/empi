@@ -32,6 +32,9 @@ export interface StoredInvoice {
   
   // Pricing
   subtotal: number;
+  bulkDiscountPercentage?: number;
+  bulkDiscountAmount?: number;
+  subtotalAfterDiscount?: number;
   cautionFee?: number;
   subtotalWithCaution?: number;
   shippingCost: number;

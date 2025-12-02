@@ -21,6 +21,9 @@ export interface IInvoice extends Document {
   customerState?: string;
   customerPostalCode?: string;
   subtotal: number;
+  bulkDiscountPercentage?: number;
+  bulkDiscountAmount?: number;
+  subtotalAfterDiscount?: number;
   cautionFee?: number;
   subtotalWithCaution?: number;
   shippingCost: number;
@@ -60,6 +63,9 @@ const invoiceSchema = new Schema<IInvoice>(
     customerState: String,
     customerPostalCode: String,
     subtotal: { type: Number, required: true },
+    bulkDiscountPercentage: { type: Number },
+    bulkDiscountAmount: { type: Number },
+    subtotalAfterDiscount: { type: Number },
     cautionFee: { type: Number },
     subtotalWithCaution: { type: Number },
     shippingCost: { type: Number, required: true, default: 0 },

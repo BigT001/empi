@@ -43,7 +43,38 @@ export default function CheckoutPage() {
     return sum;
   }, 0);
   const cautionFee = rentalTotal * 0.5;
-  const subtotalWithCaution = total + cautionFee;
+
+  // Calculate bulk discount - Only for BUY items (not rentals)
+  const buyItems = items.filter(item => item.mode === 'buy');
+  const totalBuyQuantity = buyItems.reduce((sum, item) => sum + item.quantity, 0);
+  
+  // Discount tiers
+  let discountPercentage = 0;
+  if (totalBuyQuantity >= 10) {
+    discountPercentage = 10; // 10% for 10+ sets
+  } else if (totalBuyQuantity >= 6) {
+    discountPercentage = 7; // 7% for 6-9 sets
+  } else if (totalBuyQuantity >= 3) {
+    discountPercentage = 5; // 5% for 3-5 sets
+  }
+
+  // Calculate buy subtotal (before discount)
+  const buySubtotal = items.reduce((sum, item) => {
+    if (item.mode === 'buy') {
+      return sum + (item.price * item.quantity);
+    }
+    return sum;
+  }, 0);
+
+  // Apply discount to buy items only
+  const discountAmount = buySubtotal * (discountPercentage / 100);
+  const buySubtotalAfterDiscount = buySubtotal - discountAmount;
+
+  // Subtotal for VAT = goods/services only (buy with discount + rent, NO caution fee)
+  const subtotalForVAT = buySubtotalAfterDiscount + rentalTotal;
+  
+  // Total with caution fee (for order summary display)
+  const subtotalWithCaution = subtotalForVAT + cautionFee;
 
   useEffect(() => {
     setIsHydrated(true);
@@ -67,7 +98,8 @@ export default function CheckoutPage() {
 
     try {
       const shippingCost = shippingOption === "empi" ? 2500 : 0;
-      const taxEstimate = subtotalWithCaution * 0.075;
+      // VAT is only on goods/services (NOT on caution fee)
+      const taxEstimate = subtotalForVAT * 0.075;
       const totalAmount = subtotalWithCaution + shippingCost + taxEstimate;
 
       const orderData = {
@@ -81,6 +113,9 @@ export default function CheckoutPage() {
         items,
         pricing: {
           subtotal: total,
+          bulkDiscountPercentage: discountPercentage,
+          bulkDiscountAmount: discountAmount > 0 ? discountAmount : undefined,
+          subtotalAfterDiscount: buySubtotalAfterDiscount,
           cautionFee: cautionFee > 0 ? cautionFee : undefined,
           subtotalWithCaution,
           tax: taxEstimate,
@@ -114,6 +149,9 @@ export default function CheckoutPage() {
           customerEmail: buyer?.email || "",
           customerPhone: buyer?.phone || "",
           subtotal: total,
+          bulkDiscountPercentage: discountPercentage,
+          bulkDiscountAmount: discountAmount > 0 ? discountAmount : undefined,
+          subtotalAfterDiscount: buySubtotalAfterDiscount,
           cautionFee: cautionFee > 0 ? cautionFee : undefined,
           subtotalWithCaution,
           shippingCost,
@@ -247,7 +285,8 @@ export default function CheckoutPage() {
     self: { name: "Self Pickup", estimatedDays: "Same day", cost: 0 },
   };
   const shippingCost = SHIPPING_OPTIONS[shippingOption].cost;
-  const taxEstimate = subtotalWithCaution * 0.075;
+  // VAT is only on goods/services (NOT on caution fee)
+  const taxEstimate = subtotalForVAT * 0.075;
   const totalAmount = subtotalWithCaution + shippingCost + taxEstimate;
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-50">
@@ -447,7 +486,8 @@ export default function CheckoutPage() {
                   try {
                     const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
                     const shippingCost = shippingOption === "empi" ? 2500 : 0;
-                    const taxEstimate = subtotalWithCaution * 0.075;
+                    // VAT is only on goods/services (NOT on caution fee)
+                    const taxEstimate = subtotalForVAT * 0.075;
                     const orderTotal = subtotalWithCaution + shippingCost + taxEstimate;
                     const amountInKobo = Math.round(orderTotal * 100);
 
@@ -581,8 +621,27 @@ export default function CheckoutPage() {
 
                   {/* Subtotal */}
                   <div className="pb-4 border-b border-gray-200">
-                    <p className="text-sm text-gray-600 mb-1">Subtotal</p>
-                    <p className="font-bold text-gray-900 text-lg">₦{total.toLocaleString()}</p>
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-sm text-gray-600">Subtotal</p>
+                      <p className="font-bold text-gray-900">₦{total.toLocaleString()}</p>
+                    </div>
+                    
+                    {/* Bulk Discount (if applicable) */}
+                    {discountPercentage > 0 && (
+                      <div className="mt-3 pt-3 border-t border-green-200 bg-green-50 p-3 rounded-lg space-y-2">
+                        <div className="flex justify-between items-center">
+                          <p className="text-xs font-semibold text-green-700">🎉 Bulk Discount ({discountPercentage}%)</p>
+                          <p className="font-bold text-green-700">-₦{discountAmount.toLocaleString()}</p>
+                        </div>
+                        <p className="text-xs text-green-600">Applied on {totalBuyQuantity} buy items</p>
+                        
+                        {/* Subtotal after discount */}
+                        <div className="border-t border-green-300 pt-2 flex justify-between items-center">
+                          <p className="text-xs font-semibold text-green-800">After Discount</p>
+                          <p className="font-bold text-green-800">₦{buySubtotalAfterDiscount.toLocaleString()}</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Caution Fee (if applicable) */}

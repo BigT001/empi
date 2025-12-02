@@ -116,9 +116,39 @@ export default function CartPage() {
     };
   }, [items, rentalSchedule]);
 
+  // Calculate bulk discount - Only for BUY items
+  const buyItems = items.filter(item => item.mode === 'buy');
+  const totalBuyQuantity = buyItems.reduce((sum, item) => sum + item.quantity, 0);
+
+  let discountPercentage = 0;
+  if (totalBuyQuantity >= 10) {
+    discountPercentage = 10;
+  } else if (totalBuyQuantity >= 6) {
+    discountPercentage = 7;
+  } else if (totalBuyQuantity >= 3) {
+    discountPercentage = 5;
+  }
+
+  const buySubtotal = items.reduce((sum, item) => {
+    if (item.mode === 'buy') {
+      return sum + (item.price * item.quantity);
+    }
+    return sum;
+  }, 0);
+
+  const discountAmount = buySubtotal * (discountPercentage / 100);
+  const buySubtotalAfterDiscount = buySubtotal - discountAmount;
+  
+  // Subtotal for VAT calculation = goods/services only (buy + rental, NO caution fee)
+  const subtotalForVAT = buySubtotalAfterDiscount + costBreakdown.rentalTotal;
+  
+  // Subtotal with caution fee for final total
+  const subtotalWithDiscount = subtotalForVAT + costBreakdown.cautionFee;
+
   const shippingCost = shippingOption === "empi" && deliveryQuote ? deliveryQuote.fee : 0;
-  const taxEstimate = costBreakdown.subtotalWithCaution > 0 ? (costBreakdown.subtotalWithCaution * 0.075).toFixed(2) : "0.00";
-  const totalAmount = costBreakdown.subtotalWithCaution + shippingCost + parseFloat(taxEstimate);
+  // VAT is only on goods/services (NOT on caution fee)
+  const taxEstimate = subtotalForVAT > 0 ? (subtotalForVAT * 0.075).toFixed(2) : "0.00";
+  const totalAmount = subtotalWithDiscount + shippingCost + parseFloat(taxEstimate);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
   const formatPrice = (price: number | string) => {
@@ -365,18 +395,37 @@ export default function CartPage() {
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 sticky top-32">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 px-4 md:p-8 py-6 md:py-8 sticky top-32">
                 <h2 className="text-2xl font-bold mb-6">Order Summary</h2>
                 <div className="space-y-4 mb-6 pb-6 border-b border-gray-200">
                   {/* Buy Items Total */}
                   {costBreakdown.buyTotal > 0 && (
-                    <div className="bg-green-50 rounded-lg p-3 border border-green-200">
-                      <div className="flex justify-between mb-1">
-                        <span className="text-green-700 font-semibold flex items-center gap-2">
-                          🛍️ Buy Items
-                        </span>
-                        <span className="text-green-700 font-bold">{formatPrice(costBreakdown.buyTotal)}</span>
+                    <div className="space-y-2">
+                      <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                        <div className="flex justify-between mb-1">
+                          <span className="text-green-700 font-semibold flex items-center gap-2">
+                            🛍️ Buy Items
+                          </span>
+                          <span className="text-green-700 font-bold">{formatPrice(costBreakdown.buyTotal)}</span>
+                        </div>
                       </div>
+                      
+                      {/* Bulk Discount (if applicable) - Under Buy Items */}
+                      {discountPercentage > 0 && (
+                        <div className="bg-green-100 rounded-lg p-2 border border-green-300 ml-3 space-y-2">
+                          <div className="flex justify-between items-center">
+                            <p className="text-xs font-semibold text-green-700">🎉 Bulk Discount ({discountPercentage}%)</p>
+                            <p className="font-bold text-green-700 text-sm">-₦{discountAmount.toLocaleString()}</p>
+                          </div>
+                          <p className="text-xs text-green-600">{totalBuyQuantity} buy items</p>
+                          
+                          {/* Subtotal after discount */}
+                          <div className="border-t border-green-300 pt-2 flex justify-between items-center">
+                            <p className="text-xs font-semibold text-green-800">After Discount</p>
+                            <p className="font-bold text-green-800">₦{buySubtotalAfterDiscount.toLocaleString()}</p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                   
@@ -453,7 +502,7 @@ export default function CartPage() {
                   {/* Subtotal with Caution */}
                   <div className="flex justify-between pt-2 font-semibold text-gray-900 text-lg border-t border-gray-300">
                     <span>Subtotal</span>
-                    <span>{formatPrice(costBreakdown.subtotalWithCaution)}</span>
+                    <span>{formatPrice(subtotalWithDiscount)}</span>
                   </div>
                   
                   {/* Shipping */}
