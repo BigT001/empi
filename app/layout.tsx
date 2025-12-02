@@ -7,6 +7,7 @@ import { AdminProvider } from "./context/AdminContext";
 import { ModeProvider } from "./context/ModeContext";
 import { HomeModeProvider } from "./context/HomeModeContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
+import { ScrollToTop } from "./components/ScrollToTop";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -72,6 +73,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <ScrollToTop />
         <BuyerProvider>
           <CurrencyProvider>
             <HomeModeProvider>
