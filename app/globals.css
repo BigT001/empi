@@ -118,6 +118,46 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Prevent auto-zoom on mobile input focus (16px+ font size prevents zoom) */
+  input,
+  textarea,
+  select,
+  button {
+    font-size: 16px;
+  }
+  
+  /* Prevent zoom on input focus for iOS */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  input[type="tel"],
+  input[type="url"],
+  input[type="date"],
+  input[type="time"],
+  input[type="datetime-local"],
+  input[type="number"],
+  textarea {
+    font-size: 16px;
+    @apply outline-none;
+  }
+  
+  /* Disable zoom on user interaction */
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    touch-action: manipulation;
+  }
+  
+  /* Prevent zoom on double-tap for interactive elements */
+  input,
+  button,
+  select,
+  textarea {
+    -webkit-touch-callout: none;
+    touch-action: manipulation;
+  }
 }
 
 /* Sidebar text visibility when collapsed */
@@ -216,6 +256,25 @@
   to {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Prevent viewport zoom and scrolling issues on modals */
+@media (max-width: 768px) {
+  /* Prevent body zoom when modal is open */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-user-scalable: no;
+  }
+  
+  /* Ensure modals don't cause zoom on input focus */
+  .fixed[class*="z-50"] input,
+  .fixed[class*="z-50"] textarea,
+  .fixed[class*="z-50"] select {
+    font-size: 16px;
+    -webkit-user-select: text;
+    user-select: text;
   }
 }
 
