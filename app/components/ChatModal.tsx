@@ -62,6 +62,8 @@ export function ChatModal({
   const [quotePrice, setQuotePrice] = useState<string>('');
   const [isFinalPrice, setIsFinalPrice] = useState(false);
   const [showQuoteForm, setShowQuoteForm] = useState(false);
+  const [orderStatus, setOrderStatus] = useState<string | null>(null);
+  const [isPaymentDone, setIsPaymentDone] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
@@ -72,6 +74,28 @@ export function ChatModal({
     const quantity = order.quantity || 1;
     const quoteData = calculateQuote(basePrice, quantity);
     return quoteData;
+  };
+
+  // Fetch order status to check if payment is done
+  const fetchOrderStatus = async () => {
+    try {
+      const res = await fetch(`/api/custom-orders/${order._id}`);
+      if (res.ok) {
+        const data = await res.json();
+        const status = data.data?.status || data.status;
+        setOrderStatus(status);
+        
+        // If status is approved or higher, payment is done
+        const paymentDone = ['approved', 'in-progress', 'ready', 'completed'].includes(status);
+        setIsPaymentDone(paymentDone);
+        
+        if (paymentDone) {
+          console.log('[ChatModal] ✅ Payment detected, disabling Pay Now button');
+        }
+      }
+    } catch (error) {
+      console.error('[ChatModal] Error fetching order status:', error);
+    }
   };
 
   // Handle Pay Now click
@@ -112,8 +136,12 @@ export function ChatModal({
 
     console.log('[ChatModal] Modal opened, fetching messages for order:', order._id);
     fetchMessages();
+    fetchOrderStatus();
 
-    const interval = setInterval(fetchMessages, 1500);
+    const interval = setInterval(() => {
+      fetchMessages();
+      fetchOrderStatus();
+    }, 1500);
     return () => {
       console.log('[ChatModal] Cleaning up polling interval');
       clearInterval(interval);
@@ -361,10 +389,16 @@ export function ChatModal({
                                   {msg.senderType === 'admin' && !isAdmin && (
                                     <button
                                       onClick={() => handlePayNow(msg)}
-                                      className="w-full bg-lime-600 hover:bg-lime-700 text-white font-bold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 text-sm"
+                                      disabled={isPaymentDone}
+                                      className={`w-full font-bold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 text-sm ${
+                                        isPaymentDone
+                                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                          : 'bg-lime-600 hover:bg-lime-700 text-white'
+                                      }`}
+                                      title={isPaymentDone ? 'Payment already completed' : 'Click to proceed to checkout'}
                                     >
                                       <DollarSign className="h-4 w-4" />
-                                      Pay Now
+                                      {isPaymentDone ? 'Payment Completed ✓' : 'Pay Now'}
                                     </button>
                                   )}
                                   {msg.senderType !== 'admin' && (

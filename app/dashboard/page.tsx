@@ -656,7 +656,7 @@ export default function BuyerDashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+              <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
                 {customOrders.map((order) => {
                   const messageCount = messageCountPerOrder[order._id] || { total: 0, unread: 0 };
                   const isExpanded = expandedCustomOrder === order._id;
@@ -680,7 +680,7 @@ export default function BuyerDashboardPage() {
                   };
                   
                   return (
-                    <div key={order._id} id={`order-${order._id}`} className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition transform hover:-translate-y-1 flex flex-col self-start">
+                    <div key={order._id} id={`order-${order._id}`} className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition transform hover:-translate-y-1 flex flex-col break-inside-avoid">
                       {/* Message Badge */}
                       {messageCount.unread > 0 && (
                         <div className="bg-red-500 text-white text-xs font-bold px-4 py-2 flex items-center justify-between">

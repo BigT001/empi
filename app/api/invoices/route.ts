@@ -93,6 +93,13 @@ export async function POST(request: NextRequest) {
       status,
     });
 
+    console.log("💾 Saving invoice to database...", {
+      invoiceNumber,
+      customerName,
+      customerEmail,
+      totalAmount
+    });
+    
     await invoice.save();
     console.log(`✅ Invoice saved: ${invoiceNumber} (${type}) for buyer: ${buyerId || "guest"}`);
 
@@ -108,10 +115,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const errorStack = error instanceof Error ? error.stack : "";
-    console.error("❌ Error in invoice endpoint:", {
+    console.error("❌ CRITICAL Error in invoice endpoint:", {
       message: errorMessage,
       stack: errorStack,
-      error: error
+      fullError: error
     });
     return NextResponse.json(
       { 

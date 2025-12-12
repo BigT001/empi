@@ -165,37 +165,46 @@ export default function CheckoutPage() {
       if (isFromQuote && customOrderQuote) {
         console.log("💬 Processing custom order quote payment...");
         
-        // Update custom order with payment confirmation
-        const customOrderUpdateData = {
-          orderId: customOrderQuote.orderId,
-          paymentStatus: "paid",
-          paymentReference: response.reference,
-          paidAmount: customOrderQuote.quotedTotal,
-          paidAt: new Date().toISOString(),
-        };
+        // Update custom order status from pending to approved after payment
+        console.log("📮 Updating custom order status to approved...");
+        try {
+          const updateRes = await fetch(`/api/custom-orders/${customOrderQuote.orderId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              status: "approved",
+              paymentReference: response.reference,
+            }),
+          });
 
-        console.log("📮 Updating custom order status...");
-        const updateRes = await fetch("/api/custom-orders/update-payment", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(customOrderUpdateData),
-        });
-
-        if (updateRes.ok) {
-          console.log("✅ Custom order payment status updated");
-        } else {
-          console.warn("⚠️ Custom order update failed, but continuing with payment");
+          if (updateRes.ok) {
+            console.log("✅ Custom order status updated to approved");
+          } else {
+            const error = await updateRes.json();
+            console.warn("⚠️ Custom order status update failed:", error);
+          }
+        } catch (error) {
+          console.warn("⚠️ Error updating custom order status:", error);
         }
 
         // Generate invoice for quote order
         const shortRef = Math.random().toString(36).substring(2, 10).toUpperCase();
         const invoiceNumber = `INV-${shortRef}`;
         
+        // Validate buyer data exists
+        if (!buyer?.email || !buyer?.phone) {
+          console.error("❌ Missing buyer data - cannot generate invoice:", {
+            email: buyer?.email,
+            phone: buyer?.phone,
+            name: buyer?.fullName
+          });
+        }
+        
         const quoteInvoiceData = {
           invoiceNumber: invoiceNumber,
           orderNumber: customOrderQuote.orderNumber,
           buyerId: buyer?.id,
-          customerName: buyer?.fullName || "",
+          customerName: buyer?.fullName || "Guest Customer",
           customerEmail: buyer?.email || "",
           customerPhone: buyer?.phone || "",
           customOrderId: customOrderQuote.orderId,
@@ -237,7 +246,8 @@ export default function CheckoutPage() {
             status: invoiceRes.status,
             statusText: invoiceRes.statusText,
             response: invoiceResData,
-            details: invoiceResData?.details || "No additional details",
+            error: invoiceResData?.error,
+            details: invoiceResData?.details || "No additional details provided",
             stack: invoiceResData?.stack
           });
           // Don't fail the payment, but log it for debugging
@@ -796,10 +806,20 @@ export default function CheckoutPage() {
 
                   try {
                     const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                    const shippingCost = shippingOption === "empi" ? 2500 : 0;
-                    // VAT is only on goods/services (NOT on caution fee)
-                    const taxEstimate = subtotalForVAT * 0.075;
-                    const orderTotal = subtotalWithCaution + shippingCost + taxEstimate;
+                    
+                    // For quote orders, use the quoted amount; for regular orders, calculate the total
+                    let orderTotal: number;
+                    if (isFromQuote && customOrderQuote) {
+                      orderTotal = customOrderQuote.quotedTotal;
+                      console.log("💬 Using quote total for payment:", orderTotal);
+                    } else {
+                      const shippingCost = shippingOption === "empi" ? 2500 : 0;
+                      // VAT is only on goods/services (NOT on caution fee)
+                      const taxEstimate = subtotalForVAT * 0.075;
+                      orderTotal = subtotalWithCaution + shippingCost + taxEstimate;
+                      console.log("🛒 Using regular checkout total for payment:", orderTotal);
+                    }
+                    
                     const amountInKobo = Math.round(orderTotal * 100);
 
                     localStorage.setItem('empi_pending_payment', JSON.stringify({
