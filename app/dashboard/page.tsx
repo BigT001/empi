@@ -6,20 +6,54 @@ import { useRouter } from "next/navigation";
 import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { InvoiceModal } from "../components/InvoiceModal";
+import { ChatModal } from "../components/ChatModal";
+import { CountdownTimer } from "../components/CountdownTimer";
 import { useBuyer } from "../context/BuyerContext";
 import { getBuyerInvoices, StoredInvoice } from "@/lib/invoiceStorage";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { formatDate } from "@/lib/utils";
-import { Download, ShoppingBag, Check, Truck, MapPin, Eye, FileText, Calendar, Package, DollarSign, MessageCircle, Share2, ArrowLeft, LogOut, ChevronRight, Edit3, Save } from "lucide-react";
+import { Download, ShoppingBag, Check, Truck, MapPin, Eye, FileText, Calendar, Package, DollarSign, MessageCircle, Share2, ArrowLeft, LogOut, ChevronRight, Edit3, Save, Palette, Clock, AlertCircle } from "lucide-react";
 
+interface CustomOrder {
+  _id: string;
+  orderNumber: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  address?: string;
+  city: string;
+  state?: string;
+  description: string;
+  designUrl?: string;
+  designUrls?: string[];
+  quantity?: number;
+  deliveryDate?: string;
+  status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
+  notes?: string;
+  quotedPrice?: number;
+  // Timer fields
+  deadlineDate?: string;
+  timerStartedAt?: string;
+  timerDurationDays?: number;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export default function BuyerDashboardPage() {
   const { buyer, isHydrated, logout, updateProfile } = useBuyer();
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
-  const [activeTab, setActiveTab] = useState<"invoices" | "profile">("invoices");
+  const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
+  const [activeTab, setActiveTab] = useState<"invoices" | "custom-orders" | "profile">("invoices");
   const [selectedInvoice, setSelectedInvoice] = useState<StoredInvoice | null>(null);
   const [shareMenuOpen, setShareMenuOpen] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
+  const [customOrderImageIndexes, setCustomOrderImageIndexes] = useState<Record<string, number>>({});
+  const [expandedCustomOrder, setExpandedCustomOrder] = useState<string | null>(null);
+  const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
+  const [messageCountPerOrder, setMessageCountPerOrder] = useState<Record<string, { total: number; unread: number }>>({});
   const [editFormData, setEditFormData] = useState({
     fullName: "",
     phone: "",
@@ -35,21 +69,50 @@ export default function BuyerDashboardPage() {
     if (selectedInvoice) {
       // Calculate actual scrollbar width
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-      // Prevent scroll on html element
-      const originalOverflow = document.documentElement.style.overflow;
-      const originalPaddingRight = document.documentElement.style.paddingRight;
+      // Prevent scroll on body and html
+      const htmlElement = document.documentElement;
+      const bodyElement = document.body;
       
-      document.documentElement.style.overflow = 'hidden';
+      const originalHtmlOverflow = htmlElement.style.overflow;
+      const originalBodyOverflow = bodyElement.style.overflow;
+      const originalHtmlPaddingRight = htmlElement.style.paddingRight;
+      const originalBodyPaddingRight = bodyElement.style.paddingRight;
+      
+      htmlElement.style.overflow = 'hidden';
+      bodyElement.style.overflow = 'hidden';
       if (scrollbarWidth > 0) {
-        document.documentElement.style.paddingRight = `${scrollbarWidth}px`;
+        htmlElement.style.paddingRight = `${scrollbarWidth}px`;
+        bodyElement.style.paddingRight = `${scrollbarWidth}px`;
       }
       
       return () => {
-        document.documentElement.style.overflow = originalOverflow;
-        document.documentElement.style.paddingRight = originalPaddingRight;
+        htmlElement.style.overflow = originalHtmlOverflow;
+        bodyElement.style.overflow = originalBodyOverflow;
+        htmlElement.style.paddingRight = originalHtmlPaddingRight;
+        bodyElement.style.paddingRight = originalBodyPaddingRight;
       };
     }
   }, [selectedInvoice]);
+
+  // Scroll listener for header hide/show
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      if (currentScrollY > lastScrollY) {
+        // Scrolling down - hide header
+        setHeaderVisible(false);
+      } else {
+        // Scrolling up - show header
+        setHeaderVisible(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   // Logout function
   const handleLogout = () => {
@@ -178,6 +241,137 @@ export default function BuyerDashboardPage() {
     }
   }, [buyer?.id]);
 
+  // Fetch custom orders for this customer
+  // Function to fetch message counts for all orders
+  const fetchMessageCounts = async (orders: CustomOrder[]) => {
+    console.log('[Dashboard] Fetching message counts for', orders.length, 'orders');
+    const messageCounts: Record<string, { total: number; unread: number }> = {};
+    for (const order of orders) {
+      try {
+        const messagesResponse = await fetch(`/api/messages?orderId=${order._id}`);
+        const messagesData = await messagesResponse.json();
+        if (messagesData.messages && Array.isArray(messagesData.messages)) {
+          const adminMessages = messagesData.messages.filter((msg: any) => msg.senderType === 'admin');
+          const unreadAdminMessages = adminMessages.filter((msg: any) => !msg.isRead);
+          messageCounts[order._id] = {
+            total: adminMessages.length,
+            unread: unreadAdminMessages.length
+          };
+          console.log(`[Dashboard] Order ${order._id}: ${unreadAdminMessages.length} unread messages`);
+        }
+      } catch (error) {
+        console.error(`Error fetching messages for order ${order._id}:`, error);
+        messageCounts[order._id] = { total: 0, unread: 0 };
+      }
+    }
+    setMessageCountPerOrder(messageCounts);
+  };
+
+  // Poll ONLY message counts (without re-fetching orders)
+  const pollMessageCounts = async () => {
+    if (customOrders.length === 0) return;
+    console.log('[Dashboard] Polling message counts only...');
+    fetchMessageCounts(customOrders);
+  };
+
+  // Fetch custom orders (full refresh - only on initial load)
+  const fetchCustomOrders = async () => {
+    try {
+      if (!buyer?.email) return;
+      
+      console.log('[Dashboard] Fetching custom orders for:', buyer.email);
+      const response = await fetch(`/api/custom-orders?email=${encodeURIComponent(buyer.email)}`);
+      const data = await response.json();
+      
+      if (data.orders && Array.isArray(data.orders)) {
+        // Filter to only show orders from this customer
+        const customerOrders = data.orders.filter((order: CustomOrder) => order.email === buyer.email);
+        console.log('[Dashboard] Got', customerOrders.length, 'orders, fetching message counts...');
+        setCustomOrders(customerOrders);
+
+        // Fetch message counts for each order
+        fetchMessageCounts(customerOrders);
+      }
+    } catch (error) {
+      console.error("[Dashboard] Error fetching custom orders:", error);
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    if (buyer?.email) {
+      console.log('[Dashboard] Initial load - fetching custom orders');
+      const fetchAndProcess = async () => {
+        const response = await fetch(`/api/custom-orders?email=${encodeURIComponent(buyer.email)}`);
+        const data = await response.json();
+        
+        if (data.orders && Array.isArray(data.orders)) {
+          const customerOrders = data.orders.filter((order: CustomOrder) => order.email === buyer.email);
+          setCustomOrders(customerOrders);
+          fetchMessageCounts(customerOrders);
+
+          // Check if there's an order query parameter (e.g., from email link)
+          const params = new URLSearchParams(window.location.search);
+          const orderNumber = params.get("order");
+          
+          if (orderNumber) {
+            // Only navigate and scroll if there's a specific order in the URL
+            setActiveTab("custom-orders");
+            
+            const matchingOrder = customerOrders.find((o: CustomOrder) => o.orderNumber === orderNumber);
+            if (matchingOrder) {
+              // Delay scroll to ensure DOM is updated
+              setTimeout(() => {
+                const orderElement = document.getElementById(`order-${matchingOrder._id}`);
+                if (orderElement) {
+                  orderElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+              }, 300);
+            }
+          }
+          // If no order in URL, stay at top - don't auto-scroll
+        }
+      };
+      
+      fetchAndProcess();
+    }
+  }, [buyer?.email]);
+
+  // Polling for real-time message updates
+  useEffect(() => {
+    if (!buyer?.email) return;
+    
+    console.log('[Dashboard] Setting up message polling');
+    
+    // Handle page visibility - stop polling when tab is inactive
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        console.log('[Dashboard] Tab hidden - pausing polling');
+      } else {
+        console.log('[Dashboard] Tab visible - resuming polling');
+        // Only poll for message counts, don't refetch orders (to avoid scroll jump)
+        pollMessageCounts();
+      }
+    };
+
+    // Add visibility change listener
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    const pollingInterval = setInterval(() => {
+      // Only poll when tab is visible
+      if (!document.hidden) {
+        console.log('[Dashboard] Polling for message updates...');
+        pollMessageCounts();
+      }
+    }, 3000); // Poll every 3 seconds when tab is visible
+
+    return () => {
+      console.log('[Dashboard] Cleaning up polling interval');
+      clearInterval(pollingInterval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [buyer?.email]);
+
   const handleDownloadInvoice = (invoice: StoredInvoice) => {
     const html = generateProfessionalInvoiceHTML(invoice);
     const blob = new Blob([html], { type: "text/html" });
@@ -212,7 +406,9 @@ export default function BuyerDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
       <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
 
-      <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
+      <header className={`border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm transition-all duration-300 ${
+        headerVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
+      }`}>
         <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-between">
           <Header />
         </div>
@@ -220,19 +416,21 @@ export default function BuyerDashboardPage() {
 
       <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
         {/* Welcome Header with Logo */}
-        <div className="mb-12 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div>
-              <h1 className="text-2xl md:text-2xl font-black text-gray-900">
-                Welcome back, {buyer.fullName}! 👋
-              </h1>
-              <p className="text-gray-600 text-base">Your invoice management dashboard</p>
-            </div>
+        <div className="mb-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-xl sm:text-2xl font-black text-gray-900">
+              Welcome back, {buyer.fullName}! 👋
+            </h1>
+            <p className="text-gray-600 text-sm sm:text-base">Your invoice management dashboard</p>
           </div>
+          <Link href="/" className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-lime-600 hover:bg-lime-700 text-white font-semibold transition shadow-md hover:shadow-lg whitespace-nowrap">
+            <ShoppingBag className="h-5 w-5" />
+            <span>Continue Shopping</span>
+          </Link>
         </div>
 
         {/* Tab Navigation - Modern Pills */}
-        <div className="flex gap-4 mb-12">
+        <div className="flex gap-4 mb-12 flex-wrap">
           <button
             onClick={() => setActiveTab("invoices")}
             className={`px-6 py-3 font-bold transition rounded-full flex items-center gap-2 ${
@@ -243,6 +441,17 @@ export default function BuyerDashboardPage() {
           >
             <FileText className="h-5 w-5" />
             Invoices ({invoices.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("custom-orders")}
+            className={`px-6 py-3 font-bold transition rounded-full flex items-center gap-2 ${
+              activeTab === "custom-orders"
+                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg"
+                : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300"
+            }`}
+          >
+            <Palette className="h-5 w-5" />
+            Custom Orders ({customOrders.length})
           </button>
           <button
             onClick={() => setActiveTab("profile")}
@@ -418,6 +627,209 @@ export default function BuyerDashboardPage() {
           </>
         )}
 
+        {/* CUSTOM ORDERS TAB */}
+        {activeTab === "custom-orders" && (
+          <div className="space-y-8">
+            {/* Premium Header Section */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl p-12 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full -mr-48 -mt-48"></div>
+              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-5 rounded-full -ml-48 -mb-48"></div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-4">
+                  <div>
+                    <p className="text-purple-200 font-bold uppercase text-sm tracking-wider">🎨 Custom Orders</p>
+                  </div>
+                </div>
+                <p className="text-slate-300 text-lg mt-2">Track your custom costume orders and view design references</p>
+              </div>
+            </div>
+
+            {customOrders.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-12 text-center">
+                <Palette className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg mb-6">You haven't placed any custom orders yet.</p>
+                <Link
+                  href="/custom-costumes"
+                  className="inline-block bg-lime-600 hover:bg-lime-700 text-white px-8 py-3 rounded-lg font-semibold transition"
+                >
+                  Order a Custom Costume
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
+                {customOrders.map((order) => {
+                  const messageCount = messageCountPerOrder[order._id] || { total: 0, unread: 0 };
+                  const isExpanded = expandedCustomOrder === order._id;
+                  
+                  // Debug logging
+                  if (isExpanded) {
+                    console.log('Expanded card:', order.orderNumber, 'ID:', order._id, 'expandedCustomOrder state:', expandedCustomOrder);
+                  }
+                  
+                  const handleCardToggle = () => {
+                    console.log('[Card Toggle] Current expanded:', expandedCustomOrder, 'Clicked order:', order._id, 'Currently expanded?:', isExpanded);
+                    if (isExpanded) {
+                      // Close this card
+                      setExpandedCustomOrder(null);
+                      console.log('[Card Toggle] Closing card:', order._id);
+                    } else {
+                      // Close any previously expanded card and open this one
+                      setExpandedCustomOrder(order._id);
+                      console.log('[Card Toggle] Opening card:', order._id);
+                    }
+                  };
+                  
+                  return (
+                    <div key={order._id} id={`order-${order._id}`} className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition transform hover:-translate-y-1 flex flex-col self-start">
+                      {/* Message Badge */}
+                      {messageCount.unread > 0 && (
+                        <div className="bg-red-500 text-white text-xs font-bold px-4 py-2 flex items-center justify-between">
+                          <span className="flex items-center gap-2">
+                            <MessageCircle className="h-4 w-4" />
+                            {messageCount.unread} new message{messageCount.unread !== 1 ? 's' : ''}
+                          </span>
+                        </div>
+                      )}
+
+                      {/* Card Header */}
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleCardToggle();
+                        }}
+                        className="w-full p-5 flex flex-col gap-3 hover:bg-gray-50 transition text-left"
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <h3 className="text-lg font-bold text-gray-900 truncate">{order.orderNumber}</h3>
+                            <p className="text-xs text-gray-600 mt-1">{new Date(order.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          <ChevronRight className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                        </div>
+
+                        {/* Status Badge and Countdown Timer */}
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold w-fit ${
+                            order.status === "pending" ? "bg-yellow-100 text-yellow-800" :
+                            order.status === "approved" ? "bg-blue-100 text-blue-800" :
+                            order.status === "in-progress" ? "bg-purple-100 text-purple-800" :
+                            order.status === "ready" ? "bg-green-100 text-green-800" :
+                            order.status === "completed" ? "bg-gray-100 text-gray-800" :
+                            "bg-red-100 text-red-800"
+                          }`}>
+                            {order.status === "pending" && <Clock className="h-3 w-3" />}
+                            {order.status === "completed" && <Check className="h-3 w-3" />}
+                            {order.status === "rejected" && <AlertCircle className="h-3 w-3" />}
+                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                          </span>
+
+                          {/* Compact Countdown Timer */}
+                          {order.timerStartedAt && order.deadlineDate && (
+                            <CountdownTimer
+                              timerStartedAt={order.timerStartedAt}
+                              deadlineDate={order.deadlineDate}
+                              status={order.status}
+                              compact={true}
+                            />
+                          )}
+                        </div>
+
+                        {/* Quantity and Price Summary */}
+                        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
+                          <div>
+                            <p className="text-xs text-gray-600 mb-1">Quantity</p>
+                            <p className="text-sm font-bold text-gray-900">{order.quantity || 1} unit{(order.quantity || 1) !== 1 ? 's' : ''}</p>
+                          </div>
+                          {order.quotedPrice && (
+                            <div className="text-right">
+                              <p className="text-xs text-gray-600 mb-1">Quote</p>
+                              <p className="text-sm font-bold text-lime-600">₦{order.quotedPrice.toLocaleString()}</p>
+                            </div>
+                          )}
+                        </div>
+                      </button>
+
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <>
+                          <div className="border-t border-gray-200"></div>
+                          <div className="p-5 space-y-5 bg-gray-50 flex-1 overflow-y-auto max-h-96">
+                            {/* Description */}
+                            <div>
+                              <h4 className="font-semibold text-gray-900 mb-2 text-sm">Description</h4>
+                              <p className="text-xs text-gray-700 bg-white rounded-lg p-3 border border-gray-200 line-clamp-3">{order.description}</p>
+                            </div>
+
+                            {/* Countdown Timer */}
+                            {order.timerStartedAt && order.deadlineDate && (
+                              <CountdownTimer
+                                timerStartedAt={order.timerStartedAt}
+                                deadlineDate={order.deadlineDate}
+                                status={order.status}
+                                compact={false}
+                              />
+                            )}
+
+                            {/* Design References */}
+                            {(order.designUrls && order.designUrls.length > 0) || order.designUrl ? (
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setImageModalOpen({ orderId: order._id, index: 0 });
+                                }}
+                                className="w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold py-2 px-3 rounded-lg transition text-sm flex items-center justify-center gap-2"
+                              >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                View Images ({(order.designUrls?.length || 1)})
+                              </button>
+                            ) : null}
+
+                            {/* Additional Details */}
+                            <div className="space-y-3 text-xs">
+                              <div className="flex justify-between">
+                                <dt className="text-gray-600">Needed By:</dt>
+                                <dd className="font-medium text-gray-900">{order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'N/A'}</dd>
+                              </div>
+                              {order.notes && (
+                                <div>
+                                  <dt className="text-gray-600 mb-1">Admin Notes:</dt>
+                                  <dd className="text-gray-700 bg-blue-50 p-2 rounded border border-blue-200 text-xs line-clamp-2">{order.notes}</dd>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Chat Button */}
+                          {buyer && (
+                            <div className="border-t border-gray-200 p-5 bg-white">
+                              <button
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  setChatModalOpen(order._id);
+                                }}
+                                className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 text-sm"
+                              >
+                                <MessageCircle className="h-4 w-4" />
+                                {messageCount.total > 0 ? `Chat (${messageCount.total})` : 'Open Chat'}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* PROFILE TAB */}
         {activeTab === "profile" && (
           <div className="space-y-6 md:space-y-8">
@@ -564,6 +976,135 @@ export default function BuyerDashboardPage() {
           </div>
         )}
       </main>
+
+      {/* Image Modal */}
+      {imageModalOpen && customOrders && (() => {
+        const order = customOrders.find(o => o._id === imageModalOpen.orderId);
+        if (!order) return null;
+        
+        const images = (order.designUrls && order.designUrls.length > 0) 
+          ? order.designUrls 
+          : order.designUrl ? [order.designUrl] : [];
+        
+        const currentImage = images[imageModalOpen.index];
+
+        return (
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-0 md:p-4"
+              onClick={() => setImageModalOpen(null)}
+            >
+              {/* Modal Content */}
+              <div
+                className="w-full h-full md:w-auto md:h-auto md:max-w-4xl md:max-h-[90vh] bg-black rounded-none md:rounded-xl flex flex-col relative"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {/* Close Button */}
+                <button
+                  onClick={() => setImageModalOpen(null)}
+                  className="absolute top-4 right-4 z-10 bg-white/80 hover:bg-white text-gray-900 rounded-full p-2 transition"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                {/* Main Image */}
+                <div className="flex-1 flex items-center justify-center p-4 md:p-0 overflow-hidden">
+                  <img
+                    src={currentImage}
+                    alt={`Design ${imageModalOpen.index + 1}`}
+                    className="max-w-full max-h-full object-contain w-full h-full md:w-auto md:h-auto"
+                  />
+                </div>
+
+                {/* Image Info and Navigation */}
+                {images.length > 1 && (
+                  <div className="bg-black/90 backdrop-blur px-4 py-3 md:px-6 md:py-4 flex items-center justify-between border-t border-gray-700">
+                    <div className="text-white text-sm md:text-base">
+                      {imageModalOpen.index + 1} / {images.length}
+                    </div>
+                    
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setImageModalOpen({
+                          orderId: imageModalOpen.orderId,
+                          index: imageModalOpen.index === 0 ? images.length - 1 : imageModalOpen.index - 1
+                        })}
+                        className="bg-lime-600 hover:bg-lime-700 text-white p-2 rounded-lg transition"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setImageModalOpen({
+                          orderId: imageModalOpen.orderId,
+                          index: imageModalOpen.index === images.length - 1 ? 0 : imageModalOpen.index + 1
+                        })}
+                        className="bg-lime-600 hover:bg-lime-700 text-white p-2 rounded-lg transition"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    </div>
+
+                    {/* Thumbnail Strip */}
+                    <div className="hidden md:flex gap-2 overflow-x-auto max-w-xs">
+                      {images.map((url, index) => (
+                        <button
+                          key={index}
+                          onClick={() => setImageModalOpen({ orderId: imageModalOpen.orderId, index })}
+                          className={`flex-shrink-0 rounded-lg overflow-hidden border-2 transition ${
+                            imageModalOpen.index === index
+                              ? "border-lime-600 ring-2 ring-lime-600"
+                              : "border-gray-600 hover:border-gray-500"
+                          }`}
+                        >
+                          <img
+                            src={url}
+                            alt={`Thumbnail ${index + 1}`}
+                            className="h-12 w-12 object-cover"
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
+      {/* Chat Modal */}
+      {customOrders && chatModalOpen && buyer && (
+        <ChatModal
+          isOpen={!!chatModalOpen}
+          onClose={() => {
+            setChatModalOpen(null);
+            // Refresh message counts when modal closes
+            const order = customOrders.find(o => o._id === chatModalOpen);
+            if (order) {
+              fetchMessageCounts([order]);
+            }
+          }}
+          onMessageSent={() => {
+            // Refresh message counts when message is sent
+            const order = customOrders.find(o => o._id === chatModalOpen);
+            if (order) {
+              fetchMessageCounts([order]);
+            }
+          }}
+          order={customOrders.find(o => o._id === chatModalOpen)!}
+          userEmail={buyer.email}
+          userName={buyer.fullName}
+          isAdmin={false}
+          adminName="Empi Costumes"
+        />
+      )}
 
       <Footer />
     </div>

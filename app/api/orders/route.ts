@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
+import Buyer from '@/lib/models/Buyer';
 import { serializeDoc, serializeDocs } from '@/lib/serializer';
 
 // POST create/save order from Paystack
@@ -13,6 +14,9 @@ export async function POST(request: NextRequest) {
     const customerName = body.customer?.name || '';
     const [firstName, ...lastNameParts] = customerName.split(' ');
     const lastName = lastNameParts.join(' ') || 'Customer';
+    const fullName = customerName || `${firstName} ${lastName}`.trim();
+    const email = body.customer?.email || body.email || '';
+    const phone = body.customer?.phone || body.phone || null;
 
     // Process items - add productId if missing
     const processedItems = (body.items || []).map((item: any) => ({
@@ -43,8 +47,8 @@ export async function POST(request: NextRequest) {
       buyerId: body.buyerId || undefined, // Set if user is logged in (registered customer)
       firstName: firstName || 'Customer',
       lastName: lastName,
-      email: body.customer?.email || body.email || '',
-      phone: body.customer?.phone || body.phone || null,
+      email: email,
+      phone: phone,
       
       // Order info
       orderNumber: body.reference || `ORD-${Date.now()}`,
@@ -77,7 +81,38 @@ export async function POST(request: NextRequest) {
 
     await order.save();
     
-    console.log(`✅ Order created: ${order.orderNumber} for ${order.email}`);
+    // If guest checkout (no buyerId), create or update guest Buyer record
+    if (!body.buyerId && email) {
+      try {
+        // Check if guest user already exists
+        const existingBuyer = await Buyer.findOne({ email: email.toLowerCase() });
+        
+        if (!existingBuyer) {
+          // Create new guest buyer record (with a temporary password)
+          const guestBuyer = new Buyer({
+            email: email.toLowerCase(),
+            fullName: fullName,
+            phone: phone || '',
+            password: `guest_${Date.now()}`, // Temporary password
+            isAdmin: false,
+          });
+          await guestBuyer.save();
+          console.log(`✅ Guest buyer created: ${email}`);
+        } else {
+          // Update existing guest buyer with latest info if needed
+          if (existingBuyer.phone !== phone && phone) {
+            existingBuyer.phone = phone;
+            await existingBuyer.save();
+          }
+          console.log(`✅ Guest buyer already exists: ${email}`);
+        }
+      } catch (buyerErr) {
+        console.error(`⚠️ Warning: Failed to create guest buyer record: ${email}`, buyerErr);
+        // Don't fail the order if guest buyer creation fails
+      }
+    }
+    
+    console.log(`✅ Order created: ${order.orderNumber} for ${email || 'Unknown'}`);
     
     return NextResponse.json({
       success: true,

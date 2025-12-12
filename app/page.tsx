@@ -96,6 +96,33 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Premium Banner Card - Polished, Compact */}
+      <section className="mx-auto w-full max-w-7xl px-4 md:px-6 py-6 md:py-8">
+        <div className="bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 border border-lime-200 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
+          <div className="relative px-6 md:px-10 py-8 md:py-10">
+            {/* Background decorative elements */}
+            <div className="absolute top-0 right-0 w-32 h-32 bg-lime-200 opacity-10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-green-200 opacity-10 rounded-full -ml-16 -mb-16 blur-3xl"></div>
+            
+            {/* Content */}
+            <div className="relative z-10">
+              <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 bg-white/60 backdrop-blur-sm rounded-full border border-lime-300/40">
+                <span className="text-base">🎭</span>
+                <span className="text-xs font-bold text-lime-700 uppercase tracking-wide">Premium Costumes</span>
+              </div>
+              
+              <h2 className="text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 mb-3 leading-tight">
+                Costume Makers in <span className="bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">Lagos</span>
+              </h2>
+              
+              <p className="text-sm md:text-base text-gray-700 leading-relaxed max-w-2xl">
+                Premium quality costumes for rent and sale. Fast delivery and affordable prices for every occasion.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Custom Costumes CTA Section */}
       {/* Main Content */}
       <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} />

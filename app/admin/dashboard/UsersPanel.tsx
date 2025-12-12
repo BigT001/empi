@@ -191,118 +191,126 @@ export function UsersPanel() {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+    <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-purple-600 to-purple-700 p-6 text-white">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-2xl font-bold">Registered Users</h2>
-            <p className="text-purple-100 mt-1">{buyers.length} total customers</p>
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 md:p-8 text-white relative overflow-hidden shadow-lg">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-purple-600 opacity-10 rounded-full -mr-24 -mt-24"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-600 opacity-5 rounded-full -ml-24 -mb-24"></div>
+        <div className="relative z-10">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-black">Registered Users</h2>
+              <p className="text-slate-300 text-base mt-2">{buyers.length} total customers in your store</p>
+            </div>
+            <button
+              onClick={loadData}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition"
+            >
+              Refresh
+            </button>
           </div>
-        </div>
 
-        {/* Search Bar */}
-        <div className="relative">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-purple-200" />
-          <input
-            type="text"
-            placeholder="Search by name, email, or phone..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-purple-500 placeholder-purple-200 text-white outline-none focus:ring-2 focus:ring-white focus:bg-purple-600 transition"
-          />
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Search by name, email, or phone..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-3 rounded-lg bg-slate-700 placeholder-slate-400 text-white outline-none focus:ring-2 focus:ring-purple-500 focus:bg-slate-600 transition"
+            />
+          </div>
         </div>
       </div>
 
-      {/* Content */}
-      <div className="p-6">
-        {/* Error State */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-red-900">Error loading users</p>
-              <p className="text-sm text-red-700">{error}</p>
-              <button
-                onClick={loadData}
-                className="mt-2 text-sm font-semibold text-red-700 hover:text-red-900 underline"
+      {/* Error State */}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-xl flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-semibold text-red-900">Error loading users</p>
+            <p className="text-sm text-red-700">{error}</p>
+            <button
+              onClick={loadData}
+              className="mt-2 text-sm font-semibold text-red-700 hover:text-red-900 underline"
+            >
+              Try again
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-16">
+          <div className="space-y-3 text-center">
+            <div className="h-12 w-12 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto" />
+            <p className="text-gray-600 text-base font-medium">Loading users...</p>
+          </div>
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && !error && buyers.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16">
+          <div className="bg-gray-50 rounded-2xl p-12 text-center max-w-sm">
+            <div className="mx-auto w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mb-6">
+              <Mail className="h-8 w-8 text-purple-600" />
+            </div>
+            <p className="font-black text-gray-900 text-lg">No Registered Users Yet</p>
+            <p className="text-gray-600 text-sm mt-2">Users who sign up for an account will appear here</p>
+          </div>
+        </div>
+      )}
+
+      {/* Users List */}
+      {!loading && !error && buyers.length > 0 && (
+        <div className="space-y-4">
+          {/* Sort Controls */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-black text-gray-700 uppercase">Sort:</span>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 hover:border-gray-400 transition"
               >
-                Try again
+                <option value="joined">Joined Date</option>
+                <option value="name">Name (A-Z)</option>
+                <option value="email">Email</option>
+                <option value="orders">Orders Count</option>
+              </select>
+              <button
+                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-semibold"
+                title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
+              >
+                {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
             </div>
+            {searchQuery && (
+              <span className="text-sm text-gray-600 px-3 py-2 bg-gray-100 rounded-lg font-semibold">
+                Found {filteredAndSortedBuyers.length} of {buyers.length} users
+              </span>
+            )}
           </div>
-        )}
 
-        {/* Loading State */}
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="space-y-3">
-              <div className="h-8 w-8 border-4 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto" />
-              <p className="text-gray-600 text-sm">Loading users...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && buyers.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                <Mail className="h-6 w-6 text-gray-400" />
-              </div>
-              <p className="font-semibold text-gray-900">No registered users yet</p>
-              <p className="text-gray-600 text-sm mt-1">Users who sign up will appear here</p>
-            </div>
-          </div>
-        )}
-
-        {/* Users List */}
-        {!loading && !error && buyers.length > 0 && (
-          <div className="space-y-3">
-            {/* Sort Controls */}
-            <div className="flex flex-wrap gap-2 mb-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-gray-700">Sort by:</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-600"
-                >
-                  <option value="joined">Joined Date</option>
-                  <option value="name">Name</option>
-                  <option value="email">Email</option>
-                  <option value="orders">Orders Count</option>
-                </select>
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                  title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-                >
-                  {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-              </div>
-              {searchQuery && (
-                <span className="text-sm text-gray-600">
-                  Found {filteredAndSortedBuyers.length} of {buyers.length}
-                </span>
-              )}
-            </div>
-
-            {/* Users Table */}
-            <div className="border border-gray-200 rounded-lg overflow-hidden">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50 border-b border-gray-200">
-                    <tr className="text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
-                      <th className="px-4 py-3">User</th>
-                      <th className="px-4 py-3">Contact</th>
-                      <th className="px-4 py-3">Orders</th>
-                      <th className="px-4 py-3">Member Since</th>
-                      <th className="px-4 py-3">Last Active</th>
-                      <th className="px-4 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200">
+          {/* Users Table */}
+          <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200">
+                  <tr className="text-left text-xs font-black text-gray-700 uppercase tracking-widest">
+                    <th className="px-6 py-4">User</th>
+                    <th className="px-6 py-4">Contact</th>
+                    <th className="px-6 py-4">Orders</th>
+                    <th className="px-6 py-4">Member Since</th>
+                    <th className="px-6 py-4">Last Active</th>
+                    <th className="px-6 py-4">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
                     {filteredAndSortedBuyers.map((buyer) => {
                       const userOrders = orders.filter((o: any) => String(o.buyerId) === String(buyer._id));
                       const isExpanded = expanded === buyer._id;
@@ -310,17 +318,17 @@ export function UsersPanel() {
                       return (
                         <Fragment key={buyer._id}>
                           {/* Main Row */}
-                          <tr className="hover:bg-gray-50 transition">
+                          <tr className="hover:bg-purple-50 transition border-b border-gray-200">
                             {/* User Info */}
-                            <td className="px-4 py-3">
+                            <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-semibold text-sm ${getAvatarColor(buyer._id)}`}>
+                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base ${getAvatarColor(buyer._id)} shadow-sm`}>
                                   {getInitials(buyer.fullName)}
                                 </div>
                                 <div>
-                                  <p className="font-semibold text-gray-900">{buyer.fullName}</p>
+                                  <p className="font-bold text-gray-900">{buyer.fullName}</p>
                                   {buyer.isAdmin && (
-                                    <span className="inline-block mt-1 px-2 py-0.5 bg-purple-100 text-purple-700 text-xs font-semibold rounded">
+                                    <span className="inline-block mt-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs font-black rounded-full">
                                       Admin
                                     </span>
                                   )}
@@ -329,11 +337,11 @@ export function UsersPanel() {
                             </td>
 
                             {/* Contact */}
-                            <td className="px-4 py-3">
-                              <div className="space-y-1">
-                                <div className="flex items-center gap-2 text-sm text-gray-700">
+                            <td className="px-6 py-4">
+                              <div className="space-y-2">
+                                <div className="flex items-center gap-2 text-sm text-gray-700 font-medium">
                                   <Mail className="h-4 w-4 text-gray-400" />
-                                  {buyer.email}
+                                  <span className="truncate">{buyer.email}</span>
                                 </div>
                                 {buyer.phone && (
                                   <div className="flex items-center gap-2 text-sm text-gray-600">
@@ -345,29 +353,29 @@ export function UsersPanel() {
                             </td>
 
                             {/* Orders */}
-                            <td className="px-4 py-3">
+                            <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
-                                <ShoppingBag className="h-4 w-4 text-gray-400" />
-                                <span className="font-semibold text-gray-900">{buyer.orderCount}</span>
+                                <ShoppingBag className="h-4 w-4 text-purple-600" />
+                                <span className="font-black text-gray-900 text-lg">{buyer.orderCount}</span>
                               </div>
                             </td>
 
                             {/* Joined */}
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2 text-sm text-gray-600">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-2 text-sm text-gray-600 font-medium">
                                 <Calendar className="h-4 w-4 text-gray-400" />
                                 {formatDate(buyer.createdAt)}
                               </div>
                             </td>
 
                             {/* Last Active */}
-                            <td className="px-4 py-3">
+                            <td className="px-6 py-4">
                               {buyer.lastLogin ? (
-                                <span className="inline-block px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                                <span className="inline-block px-3 py-1.5 bg-green-100 text-green-700 text-xs font-black rounded-full">
                                   {formatDate(buyer.lastLogin)}
                                 </span>
                               ) : (
-                                <span className="text-sm text-gray-500">Never</span>
+                                <span className="text-sm text-gray-500 font-medium">Never</span>
                               )}
                             </td>
 
@@ -472,7 +480,6 @@ export function UsersPanel() {
             )}
           </div>
         )}
-      </div>
 
       {/* Confirm Modal */}
       <ConfirmModal

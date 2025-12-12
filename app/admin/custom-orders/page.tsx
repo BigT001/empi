@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AdminSidebar } from "@/app/components/AdminSidebar";
 import { FileText, Clock, CheckCircle, AlertCircle, Eye, Download, Trash2, Edit, Phone, Mail, DollarSign, Calendar } from "lucide-react";
 
 interface CustomOrder {
@@ -18,6 +17,7 @@ interface CustomOrder {
   costumeType: string;
   description: string;
   designUrl?: string;
+  designUrls?: string[];
   budget?: number;
   deliveryDate?: string;
   status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
@@ -99,12 +99,9 @@ export default function AdminCustomOrdersPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
-      {/* Sidebar */}
-      <AdminSidebar />
-
+    <div className="min-h-screen bg-gray-50">
       {/* Main Content */}
-      <main className="flex-1 md:ml-64 p-4 md:p-8">
+      <main className="p-4 md:p-8">
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex justify-between items-center mb-8">
@@ -255,13 +252,21 @@ export default function AdminCustomOrdersPage() {
                         <p className="text-sm text-gray-700 bg-white rounded p-3 border border-gray-300">{order.description}</p>
                       </div>
 
-                      {/* Design Image */}
-                      {order.designUrl && (
+                      {/* Design Images - Show all uploaded pictures */}
+                      {(order.designUrls && order.designUrls.length > 0) || order.designUrl ? (
                         <div className="mt-6">
-                          <h3 className="font-semibold text-gray-900 mb-2">Design Reference</h3>
-                          <img src={order.designUrl} alt="Design" className="h-40 rounded-lg object-cover border border-gray-300" />
+                          <h3 className="font-semibold text-gray-900 mb-2">Design References ({(order.designUrls?.length || 0) || (order.designUrl ? 1 : 0)})</h3>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                            {order.designUrls && order.designUrls.length > 0 ? (
+                              order.designUrls.map((url, index) => (
+                                <img key={index} src={url} alt={`Design ${index + 1}`} className="h-40 rounded-lg object-cover border border-gray-300 hover:border-gray-400 transition" />
+                              ))
+                            ) : order.designUrl ? (
+                              <img src={order.designUrl} alt="Design" className="h-40 rounded-lg object-cover border border-gray-300 hover:border-gray-400 transition" />
+                            ) : null}
+                          </div>
                         </div>
-                      )}
+                      ) : null}
 
                       {/* Admin Actions */}
                       <div className="mt-6 pt-6 border-t border-gray-200 space-y-4">

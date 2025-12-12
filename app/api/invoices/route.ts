@@ -106,9 +106,19 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("Error in invoice endpoint:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : "";
+    console.error("❌ Error in invoice endpoint:", {
+      message: errorMessage,
+      stack: errorStack,
+      error: error
+    });
     return NextResponse.json(
-      { error: "Failed to process invoice" },
+      { 
+        error: "Failed to process invoice",
+        details: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined
+      },
       { status: 500 }
     );
   }

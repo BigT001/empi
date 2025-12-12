@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronRight } from "lucide-react";
 
 interface CostumeTypeFilterProps {
   category: string; // "adults" or "kids"
@@ -11,9 +10,19 @@ interface CostumeTypeFilterProps {
 
 const COSTUME_TYPE_OPTIONS = ["Angel", "Carnival", "Superhero", "Traditional", "Cosplay", "Other"];
 
+// Icon mapping for each costume type
+const COSTUME_ICONS: Record<string, string> = {
+  "All Styles": "✨",
+  "Angel": "👼",
+  "Carnival": "🎪",
+  "Superhero": "🦸",
+  "Traditional": "🥁",
+  "Cosplay": "🎭",
+  "Other": "🎨",
+};
+
 export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: CostumeTypeFilterProps) {
   const [selectedType, setSelectedType] = useState<string | null>(null);
-  const [showScrollHint, setShowScrollHint] = useState(true);
 
   // Only show filter for adult and kids categories
   if (category !== "adults" && category !== "kids") {
@@ -23,12 +32,13 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
   const handleTypeSelect = (type: string | null) => {
     setSelectedType(type);
     onTypeChange(type);
-    // Hide scroll hint after first interaction
-    setShowScrollHint(false);
-  };
-
-  const handleScroll = () => {
-    setShowScrollHint(false);
+    // Scroll down to products
+    setTimeout(() => {
+      const productsSection = document.querySelector('[data-products-section]');
+      if (productsSection) {
+        productsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 100);
   };
 
   // Use available types from props, fallback to all options
@@ -36,34 +46,24 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
 
   return (
     <div className="mb-8 animate-in slide-in-from-top-4 fade-in duration-500">
-      {/* Mobile - Horizontal Scroll with Indicator */}
-      <div className="md:hidden relative">
-        {/* Scroll Indicator Label - Compact */}
-        {showScrollHint && (
-          <div className="flex justify-end mb-1">
-            <div className="flex items-center gap-1 text-xs text-lime-600 font-medium">
-              <span>scroll right</span>
-              <ChevronRight className="w-3 h-3 animate-bounce" />
-            </div>
-          </div>
-        )}
-
-        {/* Scroll Container */}
-        <div 
-          className="flex gap-2.5 overflow-x-auto pb-2 scrollbar-hide"
-          style={{ scrollBehavior: "smooth" }}
-          onScroll={handleScroll}
-        >
-          {/* "All Types" Button */}
+      <div className="mb-4">
+        <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">✨ Filter by Types</p>
+      </div>
+      
+      {/* Mobile - Grid Layout (5 per row) */}
+      <div className="md:hidden">
+        <div className="grid grid-cols-5 gap-2">
+          {/* All Styles Button */}
           <button
             onClick={() => handleTypeSelect(null)}
-            className={`flex-shrink-0 px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 whitespace-nowrap ${
+            className={`flex flex-col items-center justify-center py-3 px-1 rounded-lg font-semibold text-xs transition-all duration-200 border-2 ${ 
               selectedType === null
-                ? "bg-lime-600 text-white shadow-md"
-                : "bg-gray-200 text-gray-700"
+                ? "bg-lime-600 text-white border-lime-600 shadow-md"
+                : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
             }`}
           >
-            All Types
+            <span className="text-xl mb-1">{COSTUME_ICONS["All Styles"]}</span>
+            <span className="line-clamp-1 text-center leading-tight text-xs">All</span>
           </button>
 
           {/* Costume Type Buttons */}
@@ -71,30 +71,33 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
             <button
               key={type}
               onClick={() => handleTypeSelect(type)}
-              className={`flex-shrink-0 px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 whitespace-nowrap ${
+              className={`flex flex-col items-center justify-center py-3 px-1 rounded-lg font-semibold text-xs transition-all duration-200 border-2 ${
                 selectedType === type
-                  ? "bg-lime-600 text-white shadow-md"
-                  : "bg-gray-200 text-gray-700"
+                  ? "bg-lime-600 text-white border-lime-600 shadow-md"
+                  : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
               }`}
+              title={type}
             >
-              {type}
+              <span className="text-xl mb-1">{COSTUME_ICONS[type] || "🎭"}</span>
+              <span className="line-clamp-1 text-center leading-tight text-xs">{type}</span>
             </button>
           ))}
         </div>
       </div>
 
       {/* Desktop - Flex Layout */}
-      <div className="hidden md:flex gap-2.5 flex-wrap">
-        {/* "All Types" Button */}
+      <div className="hidden md:flex gap-2 flex-wrap">
+        {/* "All Styles" Button */}
         <button
           onClick={() => handleTypeSelect(null)}
-          className={`px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 ${
+          className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 border-2 flex items-center gap-2 ${
             selectedType === null
-              ? "bg-lime-600 text-white shadow-md hover:shadow-lg"
-              : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+              ? "bg-lime-600 text-white border-lime-600 shadow-md hover:shadow-lg"
+              : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
           }`}
         >
-          All Types
+          <span className="text-lg">{COSTUME_ICONS["All Styles"]}</span>
+          All Styles
         </button>
 
         {/* Costume Type Buttons */}
@@ -102,27 +105,17 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
           <button
             key={type}
             onClick={() => handleTypeSelect(type)}
-            className={`px-4 py-2 rounded-full font-semibold text-sm transition-all duration-200 ${
+            className={`px-4 py-2.5 rounded-lg font-semibold text-sm transition-all duration-200 border-2 flex items-center gap-2 ${
               selectedType === type
-                ? "bg-lime-600 text-white shadow-md hover:shadow-lg"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                ? "bg-lime-600 text-white border-lime-600 shadow-md hover:shadow-lg"
+                : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
             }`}
           >
+            <span className="text-lg">{COSTUME_ICONS[type] || "🎭"}</span>
             {type}
           </button>
         ))}
       </div>
-
-      {/* Tailwind Scrollbar Hide Class */}
-      <style>{`
-        .scrollbar-hide::-webkit-scrollbar {
-          display: none;
-        }
-        .scrollbar-hide {
-          -ms-overflow-style: none;
-          scrollbar-width: none;
-        }
-      `}</style>
     </div>
   );
 }

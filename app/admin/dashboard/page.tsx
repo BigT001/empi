@@ -8,7 +8,7 @@ import { MobileBottomSidebar } from "./MobileBottomSidebar";
 import { useAdmin } from "@/app/context/AdminContext";
 import { useSessionExpiry } from "@/lib/hooks/useSessionExpiry";
 import MobileAdminDashboardSkeleton from "../mobile-dashboard";
-import { Users, ShoppingCart, Palette, Package, Clock, BarChart3, AlertTriangle } from "lucide-react";
+import { Users, ShoppingCart, Palette, Package, Clock, BarChart3, AlertTriangle, Palette as Paintbrush } from "lucide-react";
 
 // ⚡ LAZY LOAD panels with code splitting - dramatically reduces initial bundle size
 const UsersPanel = dynamic(() => import("./UsersPanel").then(mod => ({ default: mod.UsersPanel })), {
@@ -21,17 +21,17 @@ const OrdersPanel = dynamic(() => import("./OrdersPanel").then(mod => ({ default
   ssr: false
 });
 
-const CustomOrdersPanel = dynamic(() => import("./CustomOrdersPanel").then(mod => ({ default: mod.CustomOrdersPanel })), {
-  loading: () => <PanelSkeleton />,
-  ssr: false
-});
-
 const ProductsPanel = dynamic(() => import("./ProductsPanel").then(mod => ({ default: mod.ProductsPanel })), {
   loading: () => <PanelSkeleton />,
   ssr: false
 });
 
 const PendingPanel = dynamic(() => import("./PendingPanel").then(mod => ({ default: mod.PendingPanel })), {
+  loading: () => <PanelSkeleton />,
+  ssr: false
+});
+
+const CustomOrdersPanel = dynamic(() => import("./CustomOrdersPanel").then(mod => ({ default: mod.CustomOrdersPanel })), {
   loading: () => <PanelSkeleton />,
   ssr: false
 });
@@ -51,9 +51,9 @@ function PanelSkeleton() {
 const TABS = [
   { id: 'overview', label: 'Overview', icon: BarChart3, color: 'text-blue-600' },
   { id: 'users', label: 'Users', icon: Users, color: 'text-purple-600' },
-  { id: 'orders', label: 'Orders', icon: ShoppingCart, color: 'text-orange-600' },
-  { id: 'custom-orders', label: 'Custom Orders', icon: Palette, color: 'text-pink-600' },
   { id: 'products', label: 'Products', icon: Package, color: 'text-green-600' },
+  { id: 'orders', label: 'Orders', icon: ShoppingCart, color: 'text-orange-600' },
+  { id: 'custom', label: 'Custom Orders', icon: Paintbrush, color: 'text-indigo-600' },
   { id: 'pending', label: 'Pending', icon: Clock, color: 'text-red-600' },
 ] as const;
 
@@ -61,7 +61,7 @@ export default function AdminDashboardPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'users' | 'orders' | 'custom-orders' | 'products' | 'pending'
+    'overview' | 'users' | 'orders' | 'products' | 'custom' | 'pending'
   >('overview');
   // ⚡ Track loaded tabs to prevent re-fetching
   const [loadedTabs, setLoadedTabs] = useState(new Set(['overview']));
@@ -156,17 +156,17 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Custom Orders Tab - ⚡ Only loaded/rendered when clicked */}
-        {activeTab === 'custom-orders' && loadedTabs.has('custom-orders') && (
-          <div className="animate-fadeIn">
-            <CustomOrdersPanel />
-          </div>
-        )}
-
         {/* Products Tab - ⚡ Only loaded/rendered when clicked */}
         {activeTab === 'products' && loadedTabs.has('products') && (
           <div className="animate-fadeIn">
             <ProductsPanel />
+          </div>
+        )}
+
+        {/* Custom Orders Tab - ⚡ Only loaded/rendered when clicked */}
+        {activeTab === 'custom' && loadedTabs.has('custom') && (
+          <div className="animate-fadeIn">
+            <CustomOrdersPanel />
           </div>
         )}
 

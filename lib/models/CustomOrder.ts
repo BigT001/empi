@@ -8,14 +8,19 @@ export interface ICustomOrder extends Document {
   address?: string;
   city: string;
   state?: string;
-  costumeType: string;
+  costumeType?: string; // Optional - kept for backwards compatibility
   description: string;
   designUrl?: string;
-  budget?: number;
+  designUrls?: string[]; // Multiple design images
+  quantity: number;
   deliveryDate?: Date;
   status: 'pending' | 'approved' | 'in-progress' | 'ready' | 'completed' | 'rejected';
   notes?: string;
   quotedPrice?: number;
+  // Countdown timer fields
+  deadlineDate?: Date; // When the costume must be delivered
+  timerStartedAt?: Date; // When the countdown timer was started (after payment)
+  timerDurationDays?: number; // Duration in days (0-30 typically)
   createdAt: Date;
   updatedAt: Date;
 }
@@ -47,16 +52,19 @@ const customOrderSchema = new Schema(
       required: true,
     },
     state: String,
-    costumeType: {
-      type: String,
-      required: true,
-    },
+    costumeType: String,
     description: {
       type: String,
       required: true,
     },
     designUrl: String,
-    budget: Number,
+    designUrls: [String], // Array of design image URLs
+    quantity: {
+      type: Number,
+      required: true,
+      default: 1,
+      min: 1,
+    },
     deliveryDate: Date,
     status: {
       type: String,
@@ -66,6 +74,10 @@ const customOrderSchema = new Schema(
     },
     notes: String,
     quotedPrice: Number,
+    // Countdown timer fields
+    deadlineDate: Date,
+    timerStartedAt: Date,
+    timerDurationDays: Number,
   },
   {
     timestamps: true,

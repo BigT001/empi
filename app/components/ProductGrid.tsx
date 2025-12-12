@@ -96,19 +96,23 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
   const availableCostumeTypes = COSTUME_TYPES;
 
   return (
-    <section className="flex-grow mx-auto w-full max-w-7xl px-6 py-12 animate-in fade-in duration-500">
+    <section className="flex-grow mx-auto w-full max-w-7xl px-6 py-12 animate-in fade-in duration-500" data-products-section>
       {/* Products Grid Header */}
       <div className="mb-8 animate-in slide-in-from-top-4 fade-in duration-500">
-        <h1 className="text-3xl font-bold text-gray-900">
-          {category === "kids" ? "Kids' Costumes" : category === "adults" ? "Adult Costumes" : "All Costumes"}
-        </h1>
-        <p className="text-gray-600 mt-2">
-          {category === "kids"
-            ? "Fun and magical costumes perfect for children"
-            : category === "adults"
-            ? "Discover our collection of handcrafted costumes"
-            : "Browse our complete collection of beautiful costumes"}
-        </p>
+        <div className="flex items-start justify-between gap-4">
+          <div className="flex-1">
+            <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">
+              {category === "kids" ? "Kids' Collection" : category === "adults" ? "Adult Collection" : "All Costumes"}
+            </h1>
+            <p className="text-gray-700 font-medium text-sm md:text-base">
+              {category === "kids"
+                ? "Magical and enchanting costumes designed for kids. From superheroes to fairy tales, every costume tells a story."
+                : category === "adults"
+                ? "Curated selection of premium costumes for every style."
+                : "Explore our complete range of beautifully crafted costumes for all ages and occasions."}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Costume Type Filter - Only show on Adults page */}

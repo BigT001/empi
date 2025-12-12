@@ -19,7 +19,8 @@ interface DashboardStats {
   registeredCustomers: number;
   guestCustomers: number;
   averageOrderValue: number;
-  growthRate: number;
+  completionRate: number;
+  timestamp: string;
 }
 
 export default function MobileDashboard() {
@@ -40,136 +41,49 @@ export default function MobileDashboard() {
       setIsLoading(true);
       setError("");
 
-      console.log('[Dashboard] Loading data from APIs...');
+      console.log('[Dashboard] Loading accurate real data from API...');
 
-      // Fetch all necessary data in parallel
-      const [ordersResponse, productsResponse] = await Promise.all([
-        fetch("/api/orders").catch(err => {
-          console.error('[Dashboard] Orders fetch error:', err);
-          return null;
-        }),
-        fetch("/api/products").catch(err => {
-          console.error('[Dashboard] Products fetch error:', err);
-          return null;
-        }),
-      ]);
-
-      // Handle null responses (network errors)
-      if (!ordersResponse) {
-        console.warn('[Dashboard] Orders API unavailable, using empty data');
-        throw new Error('Failed to fetch orders data');
-      }
-
-      let orders = [];
-      let products = [];
-
-      // Parse orders response
-      if (ordersResponse?.ok) {
-        try {
-          const ordersData = await ordersResponse.json();
-          console.log('[Dashboard] Orders response:', ordersData);
-          orders = ordersData.orders || [];
-        } catch (e) {
-          console.error('[Dashboard] Failed to parse orders:', e);
-          throw new Error('Invalid orders data format');
-        }
-      } else {
-        throw new Error('Failed to fetch orders: ' + ordersResponse?.status);
-      }
-
-      // Parse products response
-      if (productsResponse?.ok) {
-        try {
-          const productsData = await productsResponse.json();
-          console.log('[Dashboard] Products response:', productsData);
-          products = productsData.products || [];
-        } catch (e) {
-          console.error('[Dashboard] Failed to parse products:', e);
-        }
-      }
-
-      console.log('[Dashboard] Loaded - Orders:', orders.length, 'Products:', products.length);
-
-      // Calculate comprehensive stats
-      let totalRevenue = 0;
-      let totalRents = 0;
-      let totalSales = 0;
-      let pendingInvoices = 0;
-      let completedOrders = 0;
-      let registeredCustomersCount = 0;
-      let guestCustomersCount = 0;
-      const uniqueRegisteredEmails = new Set<string>();
-      const uniqueGuestEmails = new Set<string>();
-
-      orders.forEach((order: any) => {
-        const amount = order.total || order.totalAmount || 0;
-        totalRevenue += amount;
-
-        // Track registered vs guest customers by buyerId
-        // If buyerId exists = registered customer (signed up and logged in)
-        // If no buyerId = guest customer (checkout without signup)
-        if (order.buyerId) {
-          // Registered user - has signed up
-          if (order.email) {
-            uniqueRegisteredEmails.add(order.email);
-          }
-        } else {
-          // Guest user - bought without signing up
-          if (order.email) {
-            uniqueGuestEmails.add(order.email);
-          }
-        }
-
-        // Categorize by type
-        if (order.items && Array.isArray(order.items)) {
-          order.items.forEach((item: any) => {
-            if (item.mode === "rent" || item.rentalDays) {
-              totalRents += (item.price || 0) * (item.quantity || 1);
-            } else {
-              totalSales += (item.price || 0) * (item.quantity || 1);
-            }
-          });
-        }
-
-        // Track status
-        if (order.status === "pending" || order.status === "unpaid") {
-          pendingInvoices += 1;
-        } else if (order.status === "completed" || order.status === "delivered") {
-          completedOrders += 1;
-        }
+      // Fetch dashboard data from dedicated API endpoint
+      const response = await fetch("/api/admin/dashboard", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
 
-      // Get unique counts
-      const registeredCount = uniqueRegisteredEmails.size;
-      const guestCount = uniqueGuestEmails.size;
-      const totalCustomersCount = registeredCount + guestCount; // Total = Registered + Guest
+      if (!response.ok) {
+        throw new Error(`Failed to fetch dashboard data: ${response.status}`);
+      }
 
-      const averageOrderValue = orders.length > 0 ? totalRevenue / orders.length : 0;
+      const apiData = await response.json();
+      console.log('[Dashboard] Received stats:', apiData);
 
-      // Calculate growth rate (simple: completed vs pending ratio)
-      const growthRate = orders.length > 0 ? (completedOrders / orders.length) * 100 : 0;
+      // Ensure all fields are present with defaults
+      const stats: DashboardStats = {
+        totalRevenue: apiData.totalRevenue ?? 0,
+        totalOrders: apiData.totalOrders ?? 0,
+        totalProducts: apiData.totalProducts ?? 0,
+        pendingInvoices: apiData.pendingInvoices ?? 0,
+        totalRents: apiData.totalRents ?? 0,
+        totalSales: apiData.totalSales ?? 0,
+        completedOrders: apiData.completedOrders ?? 0,
+        totalCustomers: apiData.totalCustomers ?? 0,
+        registeredCustomers: apiData.registeredCustomers ?? 0,
+        guestCustomers: apiData.guestCustomers ?? 0,
+        averageOrderValue: apiData.averageOrderValue ?? 0,
+        completionRate: apiData.completionRate ?? 0,
+        timestamp: apiData.timestamp ?? new Date().toISOString(),
+      };
 
-      console.log('[Dashboard] Customer breakdown:', {
-        registered: registeredCount,
-        guest: guestCount,
-        total: totalCustomersCount
+      console.log('[Dashboard] Normalized stats:', {
+        totalRevenue: stats.totalRevenue,
+        totalOrders: stats.totalOrders,
+        completionRate: stats.completionRate,
+        registeredCustomers: stats.registeredCustomers,
+        guestCustomers: stats.guestCustomers,
       });
 
-      setStats({
-        totalRevenue,
-        totalOrders: orders.length,
-        totalProducts: products.length,
-        pendingInvoices,
-        totalRents,
-        totalSales,
-        completedOrders,
-        totalCustomers: totalCustomersCount,
-        registeredCustomers: registeredCount,
-        guestCustomers: guestCount,
-        averageOrderValue,
-        growthRate,
-      });
-
+      setStats(stats);
       setLastUpdated(new Date());
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Failed to load dashboard";
@@ -245,19 +159,19 @@ export default function MobileDashboard() {
   }
 
   return (
-    <div className="p-4 space-y-4 pb-24">
+    <div className="p-4 space-y-6 pb-24">
       {/* Header with Refresh */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-xs text-gray-500 mt-1">
+          <h1 className="text-3xl font-black text-gray-900">Dashboard</h1>
+          <p className="text-sm text-gray-500 mt-1">
             Last updated: {lastUpdated ? formatTime(lastUpdated) : "Loading..."}
           </p>
         </div>
         <button
           onClick={loadDashboardData}
           disabled={isLoading}
-          className={`p-2 rounded-lg transition ${
+          className={`p-2.5 rounded-lg transition ${
             isLoading 
               ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
               : "bg-lime-100 text-lime-600 hover:bg-lime-200"
@@ -268,27 +182,31 @@ export default function MobileDashboard() {
         </button>
       </div>
 
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-lime-600 to-lime-700 rounded-lg p-4 text-white">
-        <h2 className="text-xl font-bold mb-1">Welcome Back! 👋</h2>
-        <p className="text-lime-100 text-sm">Here's your store's performance overview</p>
+      {/* Premium Welcome Banner */}
+      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white relative overflow-hidden shadow-lg">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-lime-600 opacity-10 rounded-full -mr-24 -mt-24"></div>
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-lime-600 opacity-5 rounded-full -ml-24 -mb-24"></div>
+        <div className="relative z-10">
+          <h2 className="text-2xl md:text-3xl font-black mb-2">Welcome Back! 👋</h2>
+          <p className="text-slate-300 text-base md:text-lg">Here's your store's real-time performance overview</p>
+        </div>
       </div>
 
       {/* Primary Metrics - 2x2 Grid */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-4">
         {/* Total Revenue */}
         <MetricCard
-          icon={<DollarSign className="h-5 w-5" />}
+          icon={<DollarSign className="h-6 w-6" />}
           label="REVENUE"
           value={formatCurrency(stats.totalRevenue)}
-          subtext="Total all-time"
+          subtext="All-time earnings"
           trend={stats.totalSales > stats.totalRents ? "up" : "down"}
           color="lime"
         />
 
         {/* Total Orders */}
         <MetricCard
-          icon={<ShoppingBag className="h-5 w-5" />}
+          icon={<ShoppingBag className="h-6 w-6" />}
           label="ORDERS"
           value={formatNumber(stats.totalOrders)}
           subtext={`${stats.completedOrders} completed`}
@@ -298,150 +216,139 @@ export default function MobileDashboard() {
 
         {/* Total Products */}
         <MetricCard
-          icon={<Package className="h-5 w-5" />}
+          icon={<Package className="h-6 w-6" />}
           label="PRODUCTS"
           value={formatNumber(stats.totalProducts)}
-          subtext="In catalog"
+          subtext="Active in catalog"
           trend="neutral"
           color="purple"
         />
 
         {/* Total Customers */}
         <MetricCard
-          icon={<Users className="h-5 w-5" />}
+          icon={<Users className="h-6 w-6" />}
           label="CUSTOMERS"
           value={formatNumber(stats.totalCustomers)}
-          subtext="Total unique"
+          subtext="Unique buyers"
           trend="up"
           color="orange"
         />
       </div>
 
-      {/* Customer Breakdown - Registered vs Guest */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Registered Customers */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
+      {/* Revenue Breakdown */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Sales Revenue */}
+        <div className="bg-gradient-to-br from-green-50 to-green-100 border border-green-200 rounded-xl p-4 shadow-sm hover:shadow-md transition">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-blue-700 uppercase">Registered</span>
+            <span className="text-xs font-black text-green-700 uppercase tracking-wider">Sales</span>
+            <ShoppingBag className="h-5 w-5 text-green-600" />
+          </div>
+          <p className="text-2xl font-black text-green-900">{formatCurrency(stats.totalSales)}</p>
+          <p className="text-xs text-green-600 mt-2 font-semibold">
+            {stats.totalRevenue > 0 
+              ? ((stats.totalSales / stats.totalRevenue) * 100).toFixed(0) 
+              : "0"}% of revenue
+          </p>
+        </div>
+
+        {/* Rental Revenue */}
+        <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 border border-cyan-200 rounded-xl p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-black text-cyan-700 uppercase tracking-wider">Rentals</span>
+            <Clock className="h-5 w-5 text-cyan-600" />
+          </div>
+          <p className="text-2xl font-black text-cyan-900">{formatCurrency(stats.totalRents)}</p>
+          <p className="text-xs text-cyan-600 mt-2 font-semibold">
+            {stats.totalRevenue > 0 
+              ? ((stats.totalRents / stats.totalRevenue) * 100).toFixed(0) 
+              : "0"}% of revenue
+          </p>
+        </div>
+      </div>
+
+      {/* Customer Breakdown - Registered vs Guest */}
+      <div className="grid grid-cols-2 gap-4">
+        {/* Registered Customers */}
+        <div className="bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 rounded-xl p-4 shadow-sm hover:shadow-md transition">
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-xs font-black text-blue-700 uppercase tracking-wider">Registered</span>
             <UserCheck className="h-5 w-5 text-blue-600" />
           </div>
-          <p className="text-2xl font-bold text-blue-900">{stats.registeredCustomers}</p>
-          <p className="text-xs text-blue-600 mt-1">
+          <p className="text-3xl font-black text-blue-900">{stats.registeredCustomers}</p>
+          <p className="text-xs text-blue-600 mt-2 font-semibold">
             {stats.totalCustomers > 0 
               ? ((stats.registeredCustomers / stats.totalCustomers) * 100).toFixed(0) 
-              : "0"}% of total
+              : "0"}% of customers
           </p>
         </div>
 
         {/* Guest Customers */}
-        <div className="bg-gradient-to-br from-orange-50 to-orange-100 border border-orange-200 rounded-lg p-4">
+        <div className="bg-gradient-to-br from-pink-50 to-pink-100 border border-pink-200 rounded-xl p-4 shadow-sm hover:shadow-md transition">
           <div className="flex items-center justify-between mb-3">
-            <span className="text-xs font-semibold text-orange-700 uppercase">Guest</span>
-            <UserPlus className="h-5 w-5 text-orange-600" />
+            <span className="text-xs font-black text-pink-700 uppercase tracking-wider">Guest</span>
+            <UserPlus className="h-5 w-5 text-pink-600" />
           </div>
-          <p className="text-2xl font-bold text-orange-900">{stats.guestCustomers}</p>
-          <p className="text-xs text-orange-600 mt-1">
+          <p className="text-3xl font-black text-pink-900">{stats.guestCustomers}</p>
+          <p className="text-xs text-pink-600 mt-2 font-semibold">
             {stats.totalCustomers > 0 
               ? ((stats.guestCustomers / stats.totalCustomers) * 100).toFixed(0) 
-              : "0"}% of total
+              : "0"}% of customers
           </p>
         </div>
       </div>
 
-      {/* Key Performance Indicators - 3 Column */}
-      <div className="grid grid-cols-3 gap-2">
-        {/* Average Order Value */}
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <p className="text-xs text-gray-600 font-semibold mb-1">AVG ORDER</p>
-          <p className="text-sm font-bold text-gray-900">
-            {formatCurrency(stats.averageOrderValue)}
-          </p>
-        </div>
-
-        {/* Pending Orders */}
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <p className="text-xs text-gray-600 font-semibold mb-1">PENDING</p>
-          <p className="text-sm font-bold text-orange-600">{stats.pendingInvoices}</p>
-        </div>
-
-        {/* Completion Rate */}
-        <div className="bg-white border border-gray-200 rounded-lg p-3">
-          <p className="text-xs text-gray-600 font-semibold mb-1">COMPLETION</p>
-          <p className="text-sm font-bold text-green-600">{stats.growthRate.toFixed(0)}%</p>
-        </div>
-      </div>
-
-      {/* Revenue Breakdown - Pie Chart */}
-      <div className="bg-white border border-gray-200 rounded-lg p-4">
-        <h2 className="font-bold text-gray-900 mb-4">Revenue Breakdown</h2>
-        <div className="flex items-center justify-center mb-6">
-          <PieChart 
-            salesRevenue={stats.totalSales} 
-            rentalRevenue={stats.totalRents}
-          />
-        </div>
-        
-        {/* Legend and Details */}
-        <div className="space-y-3 border-t border-gray-200 pt-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-blue-500 to-blue-600"></div>
-              <span className="text-sm text-gray-600">Sales (Buy)</span>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-gray-900">
-                {formatCurrency(stats.totalSales)}
-              </p>
-              <p className="text-xs text-gray-500">
-                {stats.totalRevenue > 0
-                  ? ((stats.totalSales / stats.totalRevenue) * 100).toFixed(1)
-                  : "0"}%
-              </p>
-            </div>
+      {/* Key Performance Indicators - Premium Section */}
+      <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-6 shadow-sm">
+        <h3 className="text-lg font-black text-gray-900 mb-5">Key Metrics</h3>
+        <div className="grid grid-cols-3 gap-4">
+          {/* Average Order Value */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md transition">
+            <p className="text-xs font-black text-slate-600 uppercase mb-2 tracking-wider">Avg Order</p>
+            <p className="text-xl font-black text-slate-900">
+              {formatCurrency(stats.averageOrderValue)}
+            </p>
           </div>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-purple-500 to-purple-600"></div>
-              <span className="text-sm text-gray-600">Rentals</span>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-bold text-gray-900">
-                {formatCurrency(stats.totalRents)}
-              </p>
-              <p className="text-xs text-gray-500">
-                {stats.totalRevenue > 0
-                  ? ((stats.totalRents / stats.totalRevenue) * 100).toFixed(1)
-                  : "0"}%
-              </p>
-            </div>
+          {/* Pending Orders */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md transition">
+            <p className="text-xs font-black text-slate-600 uppercase mb-2 tracking-wider">Pending</p>
+            <p className="text-xl font-black text-orange-600">{stats.pendingInvoices}</p>
+          </div>
+
+          {/* Completion Rate */}
+          <div className="bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md transition">
+            <p className="text-xs font-black text-slate-600 uppercase mb-2 tracking-wider">Complete</p>
+            <p className="text-xl font-black text-green-600">
+              {typeof stats.completionRate === 'number' ? stats.completionRate.toFixed(0) : '0'}%
+            </p>
           </div>
         </div>
       </div>
 
-      {/* Empty State */}
-      {stats.totalOrders === 0 && (
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-8 text-center">
-          <ShoppingBag className="h-12 w-12 text-gray-400 mx-auto mb-3" />
-          <p className="text-gray-600 font-medium mb-2">No orders yet</p>
-          <p className="text-gray-500 text-sm">
-            Orders will appear here when customers start purchasing
-          </p>
+      {/* Status Banner */}
+      {stats.totalOrders > 0 && (
+        <div className="bg-gradient-to-r from-lime-600 to-green-600 rounded-2xl p-6 text-white shadow-lg">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-3 w-3 bg-white rounded-full animate-pulse"></div>
+              <div>
+                <p className="font-black text-lg">Store Active</p>
+                <p className="text-lime-100 text-sm">Processing orders & serving customers</p>
+              </div>
+            </div>
+            <TrendingUp className="h-8 w-8 text-lime-100" />
+          </div>
         </div>
       )}
 
-      {/* Activity Status */}
-      {stats.totalOrders > 0 && (
-        <div className="bg-lime-50 border border-lime-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <div className="h-3 w-3 bg-lime-600 rounded-full mt-1 flex-shrink-0"></div>
-            <div>
-              <p className="text-sm font-semibold text-lime-900">Store Active</p>
-              <p className="text-xs text-lime-700 mt-0.5">
-                Processing orders and serving customers successfully
-              </p>
-            </div>
-          </div>
+      {/* Empty State */}
+      {stats.totalOrders === 0 && (
+        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center">
+          <ShoppingBag className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+          <p className="text-slate-600 font-black text-lg mb-2">No Orders Yet</p>
+          <p className="text-slate-500 text-sm">
+            Orders will appear here when customers start purchasing
+          </p>
         </div>
       )}
     </div>
@@ -546,12 +453,38 @@ function MetricCard({
   trend = "neutral",
   color,
 }: MetricCardProps) {
-  const colorMap = {
-    lime: "text-lime-600",
-    blue: "text-blue-600",
-    purple: "text-purple-600",
-    orange: "text-orange-600",
+  const colorConfigs = {
+    lime: {
+      icon: "text-lime-600",
+      bg: "from-lime-50 to-lime-100",
+      border: "border-lime-200",
+      textColor: "text-lime-900",
+      subText: "text-lime-600",
+    },
+    blue: {
+      icon: "text-blue-600",
+      bg: "from-blue-50 to-blue-100",
+      border: "border-blue-200",
+      textColor: "text-blue-900",
+      subText: "text-blue-600",
+    },
+    purple: {
+      icon: "text-purple-600",
+      bg: "from-purple-50 to-purple-100",
+      border: "border-purple-200",
+      textColor: "text-purple-900",
+      subText: "text-purple-600",
+    },
+    orange: {
+      icon: "text-orange-600",
+      bg: "from-orange-50 to-orange-100",
+      border: "border-orange-200",
+      textColor: "text-orange-900",
+      subText: "text-orange-600",
+    },
   };
+
+  const config = colorConfigs[color];
 
   const trendIcon = trend === "up" ? (
     <ArrowUpRight className="h-4 w-4 text-green-600" />
@@ -560,14 +493,14 @@ function MetricCard({
   ) : null;
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-gray-600 text-xs font-semibold">{label}</span>
-        <span className={colorMap[color]}>{icon}</span>
+    <div className={`bg-gradient-to-br ${config.bg} border ${config.border} rounded-xl p-4 shadow-sm hover:shadow-md transition`}>
+      <div className="flex items-center justify-between mb-3">
+        <span className={`text-xs font-black uppercase tracking-wider ${config.subText}`}>{label}</span>
+        <span className={config.icon}>{icon}</span>
       </div>
-      <p className="text-lg font-bold text-gray-900">{value}</p>
-      <div className="flex items-center justify-between mt-1">
-        <p className="text-xs text-gray-500">{subtext}</p>
+      <p className={`text-2xl md:text-3xl font-black ${config.textColor}`}>{value}</p>
+      <div className="flex items-center justify-between mt-2">
+        <p className={`text-xs font-semibold ${config.subText}`}>{subtext}</p>
         {trendIcon && <div className="flex-shrink-0">{trendIcon}</div>}
       </div>
     </div>
