@@ -14,6 +14,9 @@ export interface ICustomOrder extends Document {
   designUrls?: string[]; // Multiple design images
   quantity: number;
   deliveryDate?: Date;
+  proposedDeliveryDate?: Date; // Admin's proposed production ready date
+  buyerAgreedToDate?: boolean; // Whether buyer agreed to the proposed date
+  productionStartedAt?: Date; // When production actually started
   status: 'pending' | 'approved' | 'in-progress' | 'ready' | 'completed' | 'rejected';
   notes?: string;
   quotedPrice?: number;
@@ -66,6 +69,12 @@ const customOrderSchema = new Schema(
       min: 1,
     },
     deliveryDate: Date,
+    proposedDeliveryDate: Date,
+    buyerAgreedToDate: {
+      type: Boolean,
+      default: false,
+    },
+    productionStartedAt: Date,
     status: {
       type: String,
       enum: ['pending', 'approved', 'in-progress', 'ready', 'completed', 'rejected'],

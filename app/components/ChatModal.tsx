@@ -15,6 +15,7 @@ interface Message {
   content: string;
   isFinalPrice?: boolean;
   quotedPrice?: number;
+  quotedDeliveryDate?: string; // Admin's proposed delivery date
   quotedVAT?: number;
   quotedTotal?: number;
   discountPercentage?: number;
@@ -31,6 +32,7 @@ interface CustomOrder {
   fullName: string;
   quantity?: number;
   quotedPrice?: number;
+  buyerAgreedToDate?: boolean; // Whether buyer agreed to proposed delivery date
 }
 
 interface ChatModalProps {
@@ -60,6 +62,7 @@ export function ChatModal({
   const [messageText, setMessageText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [quotePrice, setQuotePrice] = useState<string>('');
+  const [quotedDeliveryDate, setQuotedDeliveryDate] = useState<string>('');
   const [isFinalPrice, setIsFinalPrice] = useState(false);
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
@@ -68,6 +71,7 @@ export function ChatModal({
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
+  const [agreedToDateMessageId, setAgreedToDateMessageId] = useState<string | null>(null);
 
   const calculateQuoteDetails = () => {
     const basePrice = parseFloat(quotePrice) || 0;
@@ -241,6 +245,9 @@ export function ChatModal({
       if (isAdmin && (messageType === 'quote' || messageType === 'negotiation')) {
         payload.isFinalPrice = isFinalPrice;
         payload.quotedPrice = parseFloat(quotePrice);
+        if (quotedDeliveryDate) {
+          payload.quotedDeliveryDate = quotedDeliveryDate;
+        }
       }
 
       const response = await fetch('/api/messages', {
@@ -284,11 +291,154 @@ export function ChatModal({
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${showQuoteForm ? 'pointer-events-none' : ''}`}
         onClick={onClose}
       />
 
-      {/* Modal - Full Screen on Mobile, Centered on Desktop */}
+      {/* Quote Form Modal Overlay (Admin Only) */}
+      {isAdmin && showQuoteForm && (
+        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-2 md:p-4 pointer-events-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-4 md:p-6 space-y-4 md:space-y-6 max-h-[90vh] overflow-y-auto">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg md:text-xl font-bold text-gray-900">Send Quote</h3>
+                <p className="text-xs md:text-sm text-gray-600 mt-1">Order #{order.orderNumber}</p>
+              </div>
+              <button
+                onClick={() => setShowQuoteForm(false)}
+                className="text-gray-600 hover:text-gray-900 p-2 rounded-lg transition"
+              >
+                <X className="h-5 w-5 md:h-6 md:w-6" />
+              </button>
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+              {/* Price Card */}
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 md:p-6 space-y-4 border-2 border-blue-300">
+                <div>
+                  <h4 className="font-semibold text-gray-900 text-sm md:text-base mb-3">💰 Price Details</h4>
+                  
+                  {/* Discount Info */}
+                  {order.quantity && order.quantity >= 3 && (
+                    <div className="bg-white border border-green-200 rounded-lg p-3 mb-4">
+                      <p className="text-xs md:text-sm font-semibold text-green-700">
+                        💡 {order.quantity >= 10 ? '10%' : order.quantity >= 6 ? '7%' : '5%'} discount for {order.quantity} units
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Price Input */}
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Unit Price (₦)</label>
+                  <input
+                    type="number"
+                    value={quotePrice}
+                    onChange={(e) => setQuotePrice(e.target.value)}
+                    placeholder="Enter price"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm"
+                  />
+                </div>
+
+                {/* Quote Preview */}
+                {quotePrice && (
+                  <div className="bg-white border border-gray-200 p-3 md:p-4 rounded-lg space-y-2 text-xs md:text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Unit Price:</span>
+                      <span className="font-semibold">₦{parseFloat(quotePrice).toLocaleString()}</span>
+                    </div>
+                    {calculateQuoteDetails().discountPercentage > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount ({calculateQuoteDetails().discountPercentage}%):</span>
+                        <span>-₦{calculateQuoteDetails().discountAmount.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">VAT (7.5%):</span>
+                      <span className="font-semibold">₦{calculateQuoteDetails().vat.toLocaleString()}</span>
+                    </div>
+                    <div className="border-t border-gray-200 pt-2 flex justify-between font-bold text-blue-600">
+                      <span>Total:</span>
+                      <span>₦{calculateQuoteDetails().total.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Final Price Checkbox */}
+                <label className="flex items-center gap-2 cursor-pointer pt-2">
+                  <input
+                    type="checkbox"
+                    checked={isFinalPrice}
+                    onChange={(e) => setIsFinalPrice(e.target.checked)}
+                    className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600"
+                  />
+                  <span className="text-xs md:text-sm text-gray-700 font-medium">Mark as final price</span>
+                </label>
+              </div>
+
+              {/* Delivery Date Card */}
+              <div className="bg-gradient-to-br from-orange-50 to-amber-100 rounded-xl p-4 md:p-6 space-y-4 border-2 border-orange-300">
+                <div>
+                  <h4 className="font-semibold text-gray-900 text-sm md:text-base mb-3">📅 Delivery Schedule</h4>
+                  
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Proposed Delivery Date</label>
+                  <input
+                    type="date"
+                    value={quotedDeliveryDate}
+                    onChange={(e) => setQuotedDeliveryDate(e.target.value)}
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border-2 border-orange-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-transparent text-sm bg-white font-medium"
+                  />
+                  
+                  {quotedDeliveryDate && (
+                    <div className="bg-white border border-orange-200 p-3 md:p-4 rounded-lg mt-4 space-y-2">
+                      <p className="text-xs text-gray-600">📌 Scheduled for:</p>
+                      <p className="text-sm md:text-base font-bold text-orange-700">
+                        {new Date(quotedDeliveryDate).toLocaleDateString('en-NG', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                        })}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Note */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 md:p-4">
+              <p className="text-xs md:text-sm text-gray-700">
+                <strong>Note:</strong> Buyer will see this quote and must agree to both the price and delivery date before payment becomes available.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 md:gap-3 pt-4">
+              <button
+                onClick={() => setShowQuoteForm(false)}
+                className="flex-1 py-2 md:py-3 px-4 rounded-lg font-semibold text-sm md:text-base border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={(e) => {
+                  sendMessage(e, 'quote');
+                  setShowQuoteForm(false);
+                  setQuotedDeliveryDate('');
+                }}
+                disabled={isSubmitting || !quotePrice}
+                className="flex-1 py-2 md:py-3 px-4 rounded-lg font-semibold text-sm md:text-base bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white transition flex items-center justify-center gap-2"
+              >
+                <DollarSign className="h-4 w-4" />
+                Send Quote
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Chat Modal - Full Screen on Mobile, Centered on Desktop */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4">
         <div className="bg-white rounded-none md:rounded-2xl shadow-2xl w-full md:max-w-2xl h-full md:max-h-[90vh] flex flex-col">
           
@@ -377,6 +527,28 @@ export function ChatModal({
                                 <span>Total:</span>
                                 <span>₦{(msg.quotedTotal || (msg.quotedPrice + (msg.quotedVAT || msg.quotedPrice * 0.075))).toLocaleString()}</span>
                               </div>
+
+                              {/* Delivery Date Section (if present) */}
+                              {msg.quotedDeliveryDate && (
+                                <div className={`border-t pt-2 md:pt-3 ${
+                                  msg.senderType === 'customer' ? 'border-white/30' : 'border-gray-300'
+                                }`}>
+                                  <div className="bg-gradient-to-r from-orange-100/50 to-amber-100/50 rounded-lg p-2 md:p-3 border border-orange-200">
+                                    <p className="text-xs text-gray-700 font-semibold mb-1">📅 Proposed Delivery Date:</p>
+                                    <p className={`text-sm md:text-base font-bold ${
+                                      msg.senderType === 'customer' ? 'text-white' : 'text-orange-700'
+                                    }`}>
+                                      {new Date(msg.quotedDeliveryDate).toLocaleDateString('en-NG', {
+                                        weekday: 'short',
+                                        year: 'numeric',
+                                        month: 'short',
+                                        day: 'numeric',
+                                      })}
+                                    </p>
+                                  </div>
+                                </div>
+                              )}
+
                               {(msg.isFinalPrice || (msg.messageType === 'quote' && msg.quotedTotal)) && (
                                 <div className="space-y-2 mt-3">
                                   {msg.isFinalPrice && (
@@ -387,19 +559,62 @@ export function ChatModal({
                                     </div>
                                   )}
                                   {msg.senderType === 'admin' && !isAdmin && (
-                                    <button
-                                      onClick={() => handlePayNow(msg)}
-                                      disabled={isPaymentDone}
-                                      className={`w-full font-bold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 text-sm ${
-                                        isPaymentDone
-                                          ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                                          : 'bg-lime-600 hover:bg-lime-700 text-white'
-                                      }`}
-                                      title={isPaymentDone ? 'Payment already completed' : 'Click to proceed to checkout'}
-                                    >
-                                      <DollarSign className="h-4 w-4" />
-                                      {isPaymentDone ? 'Payment Completed ✓' : 'Pay Now'}
-                                    </button>
+                                    <>
+                                      {/* Check if there's a proposed delivery date that needs agreement */}
+                                      {msg.quotedDeliveryDate && agreedToDateMessageId !== msg._id && !order.buyerAgreedToDate ? (
+                                        <div className="space-y-2">
+                                          <label className="flex items-start gap-2 cursor-pointer bg-blue-50 p-2 md:p-3 rounded-lg border border-blue-200">
+                                            <input
+                                              type="checkbox"
+                                              id={`agree-date-${msg._id}`}
+                                              onChange={async (e) => {
+                                                if (e.target.checked) {
+                                                  try {
+                                                    const response = await fetch(`/api/custom-orders/${order._id}`, {
+                                                      method: 'PUT',
+                                                      headers: { 'Content-Type': 'application/json' },
+                                                      body: JSON.stringify({ buyerAgreedToDate: true }),
+                                                    });
+                                                    if (response.ok) {
+                                                      console.log('✅ Buyer agreed to delivery date');
+                                                      setAgreedToDateMessageId(msg._id);
+                                                    }
+                                                  } catch (error) {
+                                                    console.error('Error updating agreement:', error);
+                                                  }
+                                                }
+                                              }}
+                                              className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-600 mt-0.5 flex-shrink-0 cursor-pointer"
+                                            />
+                                            <span className="text-xs md:text-sm text-gray-700 flex-1">
+                                              I agree to the proposed delivery date above
+                                            </span>
+                                          </label>
+                                          <button
+                                            disabled={true}
+                                            className="w-full font-bold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 text-sm bg-gray-300 text-gray-600 cursor-not-allowed"
+                                            title="Please check the agreement checkbox first"
+                                          >
+                                            <DollarSign className="h-4 w-4" />
+                                            Agree to Date First
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button
+                                          onClick={() => handlePayNow(msg)}
+                                          disabled={isPaymentDone}
+                                          className={`w-full font-bold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 text-sm ${
+                                            isPaymentDone
+                                              ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
+                                              : 'bg-lime-600 hover:bg-lime-700 text-white'
+                                          }`}
+                                          title={isPaymentDone ? 'Payment already completed' : 'Click to proceed to checkout'}
+                                        >
+                                          <DollarSign className="h-4 w-4" />
+                                          {isPaymentDone ? 'Payment Completed ✓' : 'Pay Now'}
+                                        </button>
+                                      )}
+                                    </>
                                   )}
                                   {msg.senderType !== 'admin' && (
                                     <div className="text-xs text-gray-500 italic">
@@ -440,86 +655,12 @@ export function ChatModal({
               {/* Quote Form Toggle (Admin Only) */}
               {isAdmin && (
                 <button
-                  onClick={() => setShowQuoteForm(!showQuoteForm)}
-                  className={`w-full py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 ${
-                    showQuoteForm
-                      ? 'bg-lime-600 text-white'
-                      : 'bg-gray-100 hover:bg-gray-200 text-gray-900'
-                  }`}
+                  onClick={() => setShowQuoteForm(true)}
+                  className="w-full py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900"
                 >
                   <DollarSign className="h-4 w-4" />
-                  {showQuoteForm ? 'Cancel' : '+ Send Quote'}
+                  + Send Quote
                 </button>
-              )}
-
-              {/* Quote Form (Admin Only) - Compact */}
-              {isAdmin && showQuoteForm && (
-                <div className="bg-gray-50 p-3 md:p-4 rounded-lg space-y-3 border border-gray-200">
-                  {/* Discount Info */}
-                  {order.quantity && order.quantity >= 3 && (
-                    <div className="bg-green-50 border border-green-200 rounded-lg p-2 md:p-3">
-                      <p className="text-xs md:text-sm font-semibold text-green-700">
-                        💡 {order.quantity >= 10 ? '10%' : order.quantity >= 6 ? '7%' : '5%'} discount for {order.quantity} units
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Price Input */}
-                  <div>
-                    <label className="block text-xs md:text-sm font-medium text-gray-700 mb-1">Unit Price (₦)</label>
-                    <input
-                      type="number"
-                      value={quotePrice}
-                      onChange={(e) => setQuotePrice(e.target.value)}
-                      placeholder="Enter price"
-                      className="w-full px-3 md:px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 focus:border-transparent text-sm"
-                    />
-                  </div>
-
-                  {/* Quote Preview - Compact */}
-                  {quotePrice && (
-                    <div className="bg-white border border-gray-200 p-2 md:p-3 rounded-lg space-y-1 md:space-y-2 text-xs md:text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Unit Price:</span>
-                        <span className="font-semibold">₦{parseFloat(quotePrice).toLocaleString()}</span>
-                      </div>
-                      {calculateQuoteDetails().discountPercentage > 0 && (
-                        <div className="flex justify-between text-green-600">
-                          <span>Discount ({calculateQuoteDetails().discountPercentage}%):</span>
-                          <span>-₦{calculateQuoteDetails().discountAmount.toLocaleString()}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">VAT (7.5%):</span>
-                        <span className="font-semibold">₦{calculateQuoteDetails().vat.toLocaleString()}</span>
-                      </div>
-                      <div className="border-t border-gray-200 pt-1 flex justify-between font-semibold text-green-600">
-                        <span>Total:</span>
-                        <span>₦{calculateQuoteDetails().total.toLocaleString()}</span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Final Price Checkbox */}
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={isFinalPrice}
-                      onChange={(e) => setIsFinalPrice(e.target.checked)}
-                      className="w-4 h-4 rounded border-gray-300 text-lime-600 focus:ring-lime-600"
-                    />
-                    <span className="text-xs md:text-sm text-gray-700">Mark as final price</span>
-                  </label>
-
-                  {/* Send Quote Button */}
-                  <button
-                    onClick={(e) => sendMessage(e, 'quote')}
-                    disabled={isSubmitting || !quotePrice}
-                    className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white font-semibold py-2 px-4 rounded-lg transition text-sm"
-                  >
-                    Send Quote
-                  </button>
-                </div>
               )}
 
               {/* Message Input - Always Visible */}
@@ -531,11 +672,10 @@ export function ChatModal({
                   onChange={(e) => setMessageText(e.target.value)}
                   placeholder={isAdmin ? "Type a message..." : "Reply..."}
                   className="flex-1 px-4 py-2 md:py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-lime-600 focus:border-transparent text-sm"
-                  disabled={showQuoteForm && isAdmin}
                 />
                 <button
                   type="submit"
-                  disabled={isSubmitting || (!messageText.trim() && !showQuoteForm)}
+                  disabled={isSubmitting || !messageText.trim()}
                   className="bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white p-2 md:p-3 rounded-full transition flex items-center justify-center flex-shrink-0 h-10 w-10 md:h-11 md:w-11"
                   aria-label="Send message"
                 >

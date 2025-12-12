@@ -9,6 +9,7 @@ export interface IMessage extends Document {
   content: string;
   isFinalPrice?: boolean;
   quotedPrice?: number;
+  quotedDeliveryDate?: Date; // Admin's proposed production ready date
   quotedVAT?: number;
   quotedTotal?: number;
   discountPercentage?: number;
@@ -58,6 +59,10 @@ const messageSchema = new Schema<IMessage>(
     },
     quotedPrice: {
       type: Number,
+      default: null,
+    },
+    quotedDeliveryDate: {
+      type: Date,
       default: null,
     },
     quotedVAT: {

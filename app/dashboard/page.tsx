@@ -403,10 +403,10 @@ export default function BuyerDashboardPage() {
   const totalSpent = invoices.reduce((sum, inv) => sum + inv.totalAmount, 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900 flex flex-col">
       <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
 
-      <header className={`border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm transition-all duration-300 ${
+      <header className={`border-b border-lime-100 sticky top-0 z-40 bg-white/95 backdrop-blur-sm shadow-sm transition-all duration-300 ${
         headerVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
       }`}>
         <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-between">
@@ -418,25 +418,24 @@ export default function BuyerDashboardPage() {
         {/* Welcome Header with Logo */}
         <div className="mb-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex-1">
-            <h1 className="text-xl sm:text-2xl font-black text-gray-900">
+            <h1 className="text-xl sm:text-3xl font-black text-gray-900">
               Welcome back, {buyer.fullName}! 👋
             </h1>
-            <p className="text-gray-600 text-sm sm:text-base">Your invoice management dashboard</p>
           </div>
-          <Link href="/" className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-lime-600 hover:bg-lime-700 text-white font-semibold transition shadow-md hover:shadow-lg whitespace-nowrap">
+          <Link href="/" className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold transition shadow-md hover:shadow-lg whitespace-nowrap">
             <ShoppingBag className="h-5 w-5" />
             <span>Continue Shopping</span>
           </Link>
         </div>
 
         {/* Tab Navigation - Modern Pills */}
-        <div className="flex gap-4 mb-12 flex-wrap">
+        <div className="flex gap-3 mb-12 flex-wrap">
           <button
             onClick={() => setActiveTab("invoices")}
             className={`px-6 py-3 font-bold transition rounded-full flex items-center gap-2 ${
               activeTab === "invoices"
-                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg"
-                : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300"
+                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl"
+                : "bg-white text-gray-700 hover:text-lime-600 border-2 border-gray-100 hover:border-lime-200 shadow-sm hover:shadow-md"
             }`}
           >
             <FileText className="h-5 w-5" />
@@ -446,8 +445,8 @@ export default function BuyerDashboardPage() {
             onClick={() => setActiveTab("custom-orders")}
             className={`px-6 py-3 font-bold transition rounded-full flex items-center gap-2 ${
               activeTab === "custom-orders"
-                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg"
-                : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300"
+                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl"
+                : "bg-white text-gray-700 hover:text-lime-600 border-2 border-gray-100 hover:border-lime-200 shadow-sm hover:shadow-md"
             }`}
           >
             <Palette className="h-5 w-5" />
@@ -457,8 +456,8 @@ export default function BuyerDashboardPage() {
             onClick={() => setActiveTab("profile")}
             className={`px-6 py-3 font-bold transition rounded-full flex items-center gap-2 ${
               activeTab === "profile"
-                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg"
-                : "bg-white text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300"
+                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl"
+                : "bg-white text-gray-700 hover:text-lime-600 border-2 border-gray-100 hover:border-lime-200 shadow-sm hover:shadow-md"
             }`}
           >
             <MapPin className="h-5 w-5" />
@@ -470,13 +469,13 @@ export default function BuyerDashboardPage() {
         {activeTab === "invoices" && (
           <div className="space-y-8">
             {/* Premium Header Section */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl p-12 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full -mr-48 -mt-48"></div>
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-5 rounded-full -ml-48 -mb-48"></div>
+            <div className="bg-gradient-to-r from-lime-600 via-green-600 to-lime-700 rounded-3xl shadow-2xl p-12 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
+              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-4">
                   <div>
-                    <p className="text-blue-200 font-bold uppercase text-sm tracking-wider">📋 Invoice Management</p>
+                    <p className="text-lime-100 font-bold uppercase text-sm tracking-wider">📋 Invoice Management</p>
                   </div>
                 </div>
                 <p className="text-slate-300 text-lg mt-2">View, manage and download all your purchase invoices</p>
@@ -504,27 +503,27 @@ export default function BuyerDashboardPage() {
                     </div>
                     <table className="w-full">
                         <thead>
-                          <tr className="bg-gradient-to-r from-slate-50 to-gray-50 border-b-2 border-slate-200">
-                            <th className="px-8 py-4 text-left font-black text-slate-900 uppercase text-xs tracking-wider">Invoice #</th>
-                            <th className="px-8 py-4 text-left font-black text-slate-900 uppercase text-xs tracking-wider">Date</th>
-                            <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Items</th>
-                            <th className="px-8 py-4 text-right font-black text-slate-900 uppercase text-xs tracking-wider">Amount</th>
-                            <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Status</th>
-                            <th className="px-8 py-4 text-center font-black text-slate-900 uppercase text-xs tracking-wider">Action</th>
+                          <tr className="bg-gradient-to-r from-lime-50 via-green-50 to-lime-50 border-b-2 border-lime-200">
+                            <th className="px-8 py-4 text-left font-black text-lime-900 uppercase text-xs tracking-wider">Invoice #</th>
+                            <th className="px-8 py-4 text-left font-black text-lime-900 uppercase text-xs tracking-wider">Date</th>
+                            <th className="px-8 py-4 text-center font-black text-lime-900 uppercase text-xs tracking-wider">Items</th>
+                            <th className="px-8 py-4 text-right font-black text-lime-900 uppercase text-xs tracking-wider">Amount</th>
+                            <th className="px-8 py-4 text-center font-black text-lime-900 uppercase text-xs tracking-wider">Status</th>
+                            <th className="px-8 py-4 text-center font-black text-lime-900 uppercase text-xs tracking-wider">Action</th>
                           </tr>
                         </thead>
                       <tbody>
                         {invoices.map((invoice, index) => (
                           <tr
                             key={invoice.invoiceNumber}
-                            className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-lime-50 hover:to-green-50 transition group"
+                            className="border-b border-gray-100 hover:bg-gradient-to-r hover:from-lime-50/60 hover:to-green-50/60 transition group"
                           >
                             <td className="px-8 py-5">
                               <div className="flex items-center gap-3">
                                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center">
                                   <span className="text-xs font-bold text-blue-700">#{index + 1}</span>
                                 </div>
-                                <span className="font-black text-gray-900 group-hover:text-lime-700 transition">{invoice.invoiceNumber}</span>
+                                <span className="font-black text-gray-900 group-hover:text-lime-600 transition">{invoice.invoiceNumber}</span>
                               </div>
                             </td>
                             <td className="px-8 py-5">
@@ -631,16 +630,16 @@ export default function BuyerDashboardPage() {
         {activeTab === "custom-orders" && (
           <div className="space-y-8">
             {/* Premium Header Section */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-3xl shadow-2xl p-12 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full -mr-48 -mt-48"></div>
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-5 rounded-full -ml-48 -mb-48"></div>
+            <div className="bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-700 rounded-3xl shadow-2xl p-12 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
+              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
               <div className="relative z-10">
                 <div className="flex items-center gap-4 mb-4">
                   <div>
-                    <p className="text-purple-200 font-bold uppercase text-sm tracking-wider">🎨 Custom Orders</p>
+                    <p className="text-cyan-100 font-bold uppercase text-sm tracking-wider">🎨 Custom Orders</p>
                   </div>
                 </div>
-                <p className="text-slate-300 text-lg mt-2">Track your custom costume orders and view design references</p>
+                <p className="text-cyan-50 text-lg mt-2">Track your custom costume orders and view design references</p>
               </div>
             </div>
 
@@ -680,7 +679,7 @@ export default function BuyerDashboardPage() {
                   };
                   
                   return (
-                    <div key={order._id} id={`order-${order._id}`} className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition transform hover:-translate-y-1 flex flex-col break-inside-avoid">
+                    <div key={order._id} id={`order-${order._id}`} className="bg-white rounded-2xl shadow-md border-2 border-lime-200 bg-gradient-to-br from-white to-lime-50/30 overflow-hidden hover:shadow-xl hover:border-lime-400 transition transform hover:-translate-y-1 flex flex-col break-inside-avoid">
                       {/* Message Badge */}
                       {messageCount.unread > 0 && (
                         <div className="bg-red-500 text-white text-xs font-bold px-4 py-2 flex items-center justify-between">
@@ -698,7 +697,7 @@ export default function BuyerDashboardPage() {
                           e.stopPropagation();
                           handleCardToggle();
                         }}
-                        className="w-full p-5 flex flex-col gap-3 hover:bg-gray-50 transition text-left"
+                        className="w-full p-5 flex flex-col gap-3 hover:bg-lime-50/50 transition text-left"
                       >
                         <div className="flex items-start justify-between gap-3">
                           <div className="flex-1">
@@ -806,7 +805,7 @@ export default function BuyerDashboardPage() {
 
                           {/* Chat Button */}
                           {buyer && (
-                            <div className="border-t border-gray-200 p-5 bg-white">
+                            <div className="border-t-2 border-lime-100 p-5 bg-gradient-to-r from-lime-50/30 to-white">
                               <button
                                 onClick={(e) => {
                                   e.preventDefault();
@@ -834,13 +833,13 @@ export default function BuyerDashboardPage() {
         {activeTab === "profile" && (
           <div className="space-y-6 md:space-y-8">
             {/* ACCOUNT OWNER CARD */}
-            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl md:rounded-3xl shadow-lg p-4 md:p-8 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-5 rounded-full -mr-48 -mt-48"></div>
+            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 rounded-2xl md:rounded-3xl shadow-lg p-4 md:p-8 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
               <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 md:gap-6">
                 <div className="flex-1">
-                  <p className="text-slate-300 text-xs md:text-sm font-bold uppercase tracking-widest mb-1 md:mb-2">👤 Account Owner</p>
+                  <p className="text-blue-100 text-xs md:text-sm font-bold uppercase tracking-widest mb-1 md:mb-2">👤 Account Owner</p>
                   <h2 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black mb-1 md:mb-2 leading-tight break-words">{buyer?.fullName}</h2>
-                  <p className="text-slate-300 text-xs sm:text-sm md:text-base font-semibold break-all">{buyer?.email}</p>
+                  <p className="text-blue-100 text-xs sm:text-sm md:text-base font-semibold break-all">{buyer?.email}</p>
                 </div>
                 
                 {/* ACTION BUTTONS */}
@@ -866,8 +865,8 @@ export default function BuyerDashboardPage() {
             </div>
 
             {/* CONTACT INFORMATION CARD */}
-            <div className="bg-white rounded-2xl md:rounded-3xl shadow-lg border border-gray-200 p-6 md:p-8">
-              <h3 className="text-xl md:text-2xl font-black text-gray-900 mb-6">Contact Information</h3>
+            <div className="bg-white rounded-2xl md:rounded-3xl shadow-lg border-2 border-lime-100 bg-gradient-to-br from-white to-lime-50/20 p-6 md:p-8">
+              <h3 className="text-xl md:text-2xl font-black bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent mb-6\">Contact Information</h3>
               
               {isEditingProfile ? (
                 <div className="space-y-4 md:space-y-6">
@@ -990,87 +989,93 @@ export default function BuyerDashboardPage() {
 
         return (
           <>
-            {/* Backdrop */}
+            {/* Backdrop - Simple transparent overlay */}
             <div
-              className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-0 md:p-4"
+              className="fixed inset-0 bg-black/40 z-50 flex flex-col items-center justify-center p-3 md:p-6"
               onClick={() => setImageModalOpen(null)}
             >
-              {/* Modal Content */}
+              {/* Modal Container - Prevents close on internal clicks */}
               <div
-                className="w-full h-full md:w-auto md:h-auto md:max-w-4xl md:max-h-[90vh] bg-black rounded-none md:rounded-xl flex flex-col relative"
+                className="relative w-full h-auto max-h-[90vh] flex flex-col items-center justify-between"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Close Button */}
                 <button
                   onClick={() => setImageModalOpen(null)}
-                  className="absolute top-4 right-4 z-10 bg-white/80 hover:bg-white text-gray-900 rounded-full p-2 transition"
+                  className="absolute top-0 right-0 z-20 bg-white hover:bg-gray-100 text-gray-900 rounded-full p-2 transition shadow-lg"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
 
-                {/* Main Image */}
-                <div className="flex-1 flex items-center justify-center p-4 md:p-0 overflow-hidden">
+                {/* Image Container with Navigation Arrows */}
+                <div className="relative w-full h-[60vh] md:h-[70vh] flex items-center justify-center group">
+                  {/* Main Image */}
                   <img
                     src={currentImage}
                     alt={`Design ${imageModalOpen.index + 1}`}
-                    className="max-w-full max-h-full object-contain w-full h-full md:w-auto md:h-auto"
+                    className="w-full h-full object-contain max-w-full max-h-full"
                   />
+
+                  {/* Left Arrow */}
+                  {images.length > 1 && (
+                    <button
+                      onClick={() => setImageModalOpen({
+                        orderId: imageModalOpen.orderId,
+                        index: imageModalOpen.index === 0 ? images.length - 1 : imageModalOpen.index - 1
+                      })}
+                      className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-900 p-2 md:p-3 rounded-lg transition shadow-lg opacity-0 group-hover:opacity-100 transform hover:scale-110"
+                      title="Previous image"
+                    >
+                      <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Right Arrow */}
+                  {images.length > 1 && (
+                    <button
+                      onClick={() => setImageModalOpen({
+                        orderId: imageModalOpen.orderId,
+                        index: imageModalOpen.index === images.length - 1 ? 0 : imageModalOpen.index + 1
+                      })}
+                      className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-900 p-2 md:p-3 rounded-lg transition shadow-lg opacity-0 group-hover:opacity-100 transform hover:scale-110"
+                      title="Next image"
+                    >
+                      <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Image Counter */}
+                  <div className="absolute top-3 left-3 bg-black/60 text-white px-3 py-1 rounded-lg text-sm font-semibold">
+                    {imageModalOpen.index + 1} / {images.length}
+                  </div>
                 </div>
 
-                {/* Image Info and Navigation */}
+                {/* Thumbnail Strip - Bottom */}
                 {images.length > 1 && (
-                  <div className="bg-black/90 backdrop-blur px-4 py-3 md:px-6 md:py-4 flex items-center justify-between border-t border-gray-700">
-                    <div className="text-white text-sm md:text-base">
-                      {imageModalOpen.index + 1} / {images.length}
-                    </div>
-                    
-                    <div className="flex gap-2">
+                  <div className="w-full flex gap-2 justify-center overflow-x-auto pb-2 mt-4 px-2">
+                    {images.map((url, index) => (
                       <button
-                        onClick={() => setImageModalOpen({
-                          orderId: imageModalOpen.orderId,
-                          index: imageModalOpen.index === 0 ? images.length - 1 : imageModalOpen.index - 1
-                        })}
-                        className="bg-lime-600 hover:bg-lime-700 text-white p-2 rounded-lg transition"
+                        key={index}
+                        onClick={() => setImageModalOpen({ orderId: imageModalOpen.orderId, index })}
+                        className={`flex-shrink-0 rounded-lg overflow-hidden border-3 transition transform hover:scale-110 ${
+                          imageModalOpen.index === index
+                            ? "border-lime-400 ring-2 ring-lime-400"
+                            : "border-gray-300 hover:border-gray-400"
+                        }`}
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
+                        <img
+                          src={url}
+                          alt={`Thumbnail ${index + 1}`}
+                          className="h-16 w-16 md:h-20 md:w-20 object-cover"
+                        />
                       </button>
-                      <button
-                        onClick={() => setImageModalOpen({
-                          orderId: imageModalOpen.orderId,
-                          index: imageModalOpen.index === images.length - 1 ? 0 : imageModalOpen.index + 1
-                        })}
-                        className="bg-lime-600 hover:bg-lime-700 text-white p-2 rounded-lg transition"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Thumbnail Strip */}
-                    <div className="hidden md:flex gap-2 overflow-x-auto max-w-xs">
-                      {images.map((url, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setImageModalOpen({ orderId: imageModalOpen.orderId, index })}
-                          className={`flex-shrink-0 rounded-lg overflow-hidden border-2 transition ${
-                            imageModalOpen.index === index
-                              ? "border-lime-600 ring-2 ring-lime-600"
-                              : "border-gray-600 hover:border-gray-500"
-                          }`}
-                        >
-                          <img
-                            src={url}
-                            alt={`Thumbnail ${index + 1}`}
-                            className="h-12 w-12 object-cover"
-                          />
-                        </button>
-                      ))}
-                    </div>
+                    ))}
                   </div>
                 )}
               </div>

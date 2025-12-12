@@ -70,6 +70,7 @@ export async function POST(request: NextRequest) {
       content,
       isFinalPrice = false,
       quotedPrice = null,
+      quotedDeliveryDate = null,
       messageType = 'text', // 'text', 'quote', or 'negotiation'
     } = body;
 
@@ -160,6 +161,7 @@ export async function POST(request: NextRequest) {
       content,
       isFinalPrice,
       quotedPrice: quotedPrice ? parseFloat(quotedPrice) : null,
+      quotedDeliveryDate: quotedDeliveryDate ? new Date(quotedDeliveryDate) : null,
       quotedVAT,
       quotedTotal,
       discountPercentage,
@@ -173,11 +175,17 @@ export async function POST(request: NextRequest) {
     // If admin sends a quote or final price, update the order
     if (senderType === 'admin' && (messageType === 'quote' || isFinalPrice)) {
       console.log('[API:POST /messages] Updating order quotedPrice:', quotedPrice);
+      const orderUpdate: any = {
+        quotedPrice: quotedPrice || undefined,
+      };
+      
+      if (quotedDeliveryDate) {
+        orderUpdate.proposedDeliveryDate = new Date(quotedDeliveryDate);
+      }
+      
       await CustomOrder.findByIdAndUpdate(
         finalOrderId,
-        {
-          quotedPrice: quotedPrice || undefined,
-        },
+        orderUpdate,
         { new: true }
       );
     }

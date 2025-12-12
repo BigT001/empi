@@ -39,6 +39,7 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
   const [messageText, setMessageText] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [quotePrice, setQuotePrice] = useState<string>(order.quotedPrice?.toString() || '');
+  const [quotedDeliveryDate, setQuotedDeliveryDate] = useState<string>('');
   const [isFinalPrice, setIsFinalPrice] = useState(false);
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -108,6 +109,9 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
 
       if (messageType === 'quote' || messageType === 'negotiation') {
         payload.quotedPrice = parseFloat(quotePrice);
+        if (quotedDeliveryDate) {
+          payload.quotedDeliveryDate = quotedDeliveryDate;
+        }
       }
 
       console.log('[ChatPanel] Sending message:', payload);
@@ -127,6 +131,7 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
 
       setMessageText('');
       setQuotePrice('');
+      setQuotedDeliveryDate('');
       setIsFinalPrice(false);
       setShowQuoteForm(false);
       
@@ -145,152 +150,212 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
   };
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col h-96">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-200 px-4 py-3">
-        <h3 className="font-semibold text-gray-900">Chat with Customer</h3>
-        <p className="text-xs text-gray-600 mt-1">{order.email}</p>
-      </div>
+    <>
+      {/* Chat Panel - Always Fixed Height */}
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col h-96">
+        {/* Header */}
+        <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-200 px-4 py-3 flex-shrink-0">
+          <h3 className="font-semibold text-gray-900">Chat with Customer</h3>
+          <p className="text-xs text-gray-600 mt-1">{order.email}</p>
+        </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-        {messages.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-gray-500">
-            <p className="text-sm">No messages yet. Start the conversation!</p>
-          </div>
-        ) : (
-          messages.map((msg) => (
-            <div
-              key={msg._id}
-              className={`flex ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}
-            >
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+          {messages.length === 0 ? (
+            <div className="flex items-center justify-center h-full text-gray-500">
+              <p className="text-sm">No messages yet. Start the conversation!</p>
+            </div>
+          ) : (
+            messages.map((msg) => (
               <div
-                className={`max-w-xs px-4 py-2 rounded-lg ${
-                  msg.senderType === 'admin'
-                    ? 'bg-lime-600 text-white'
-                    : 'bg-white text-gray-900 border border-gray-200'
-                }`}
+                key={msg._id}
+                className={`flex ${msg.senderType === 'admin' ? 'justify-end' : 'justify-start'}`}
               >
-                <p className="text-xs font-medium opacity-75 mb-1">{msg.senderName}</p>
-                <p className="text-sm">{msg.content}</p>
+                <div
+                  className={`max-w-xs px-4 py-2 rounded-lg ${
+                    msg.senderType === 'admin'
+                      ? 'bg-lime-600 text-white'
+                      : 'bg-white text-gray-900 border border-gray-200'
+                  }`}
+                >
+                  <p className="text-xs font-medium opacity-75 mb-1">{msg.senderName}</p>
+                  <p className="text-sm">{msg.content}</p>
 
-                {/* Price Badge */}
-                {msg.quotedPrice && (
-                  <div className="mt-2 pt-2 border-t border-current border-opacity-30 flex items-center gap-1">
-                    <DollarSign className="h-3 w-3" />
-                    <span className="text-sm font-bold">₦{msg.quotedPrice.toLocaleString()}</span>
-                    {msg.isFinalPrice && (
-                      <span className="text-xs ml-1 bg-opacity-30 px-2 py-0.5 rounded">Final</span>
-                    )}
-                  </div>
-                )}
+                  {/* Price Badge */}
+                  {msg.quotedPrice && (
+                    <div className="mt-2 pt-2 border-t border-current border-opacity-30 flex items-center gap-1">
+                      <DollarSign className="h-3 w-3" />
+                      <span className="text-sm font-bold">₦{msg.quotedPrice.toLocaleString()}</span>
+                      {msg.isFinalPrice && (
+                        <span className="text-xs ml-1 bg-opacity-30 px-2 py-0.5 rounded">Final</span>
+                      )}
+                    </div>
+                  )}
 
-                <p className="text-xs opacity-75 mt-1">
-                  {new Date(msg.createdAt).toLocaleTimeString([], {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                </p>
+                  <p className="text-xs opacity-75 mt-1">
+                    {new Date(msg.createdAt).toLocaleTimeString([], {
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
               </div>
-            </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
-      {/* Quote Form */}
-      {showQuoteForm && (
-        <div className="border-t border-gray-200 bg-blue-50 p-3 space-y-2">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-semibold text-blue-900">Send Quote</span>
-          </div>
-
-          <div className="space-y-2">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">
-                Price (₦)
-              </label>
-              <input
-                type="number"
-                value={quotePrice}
-                onChange={(e) => setQuotePrice(e.target.value)}
-                placeholder="Enter price"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="checkbox"
-                id="finalPrice"
-                checked={isFinalPrice}
-                onChange={(e) => setIsFinalPrice(e.target.checked)}
-                className="rounded"
-              />
-              <label htmlFor="finalPrice" className="text-xs font-medium text-gray-700">
-                This is the final price (no negotiation)
-              </label>
-            </div>
-
-            <textarea
+        {/* Input Area */}
+        <div className="border-t border-gray-200 p-3 space-y-2 flex-shrink-0">
+          <form onSubmit={(e) => sendMessage(e, 'text')} className="flex gap-2">
+            <input
+              type="text"
               value={messageText}
               onChange={(e) => setMessageText(e.target.value)}
-              placeholder="Add a message (optional)"
-              rows={2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+              placeholder="Type a message..."
+              className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 text-sm"
             />
+            <button
+              type="submit"
+              disabled={isSubmitting || !messageText.trim()}
+              className="bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white p-2 rounded-lg transition"
+            >
+              <Send className="h-5 w-5" />
+            </button>
+          </form>
 
-            <div className="flex gap-2">
-              <button
-                onClick={(e) => sendMessage(e, 'quote')}
-                disabled={isSubmitting || !quotePrice}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm font-medium py-2 rounded transition"
-              >
-                Send Quote
-              </button>
+          <button
+            onClick={() => setShowQuoteForm(true)}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium rounded-lg transition text-sm"
+          >
+            <DollarSign className="h-4 w-4" />
+            Send Quote
+          </button>
+        </div>
+      </div>
+
+      {/* Quote Modal - Separate Card */}
+      {showQuoteForm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 animate-in fade-in zoom-in-95 duration-300">
+            {/* Header */}
+            <div className="flex items-center gap-2 mb-6">
+              <div className="bg-blue-100 rounded-lg p-3">
+                <DollarSign className="h-5 w-5 text-blue-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Send Quote</h2>
+                <p className="text-xs text-gray-600">Order: {order.orderNumber}</p>
+              </div>
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="grid md:grid-cols-2 gap-6 mb-6">
+              {/* Price Card */}
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border-2 border-blue-300">
+                <label className="block text-sm font-bold text-blue-900 mb-3">
+                  💰 Unit Price (₦)
+                </label>
+                <input
+                  type="number"
+                  value={quotePrice}
+                  onChange={(e) => setQuotePrice(e.target.value)}
+                  placeholder="Enter price in Naira"
+                  className="w-full px-4 py-3 border-2 border-blue-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-lg font-semibold bg-white"
+                />
+                {quotePrice && (
+                  <div className="mt-3 p-3 bg-white rounded-lg border border-blue-200">
+                    <p className="text-xs text-blue-600">Price: </p>
+                    <p className="text-xl font-bold text-blue-700">₦{parseFloat(quotePrice).toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Date Card */}
+              <div className="bg-gradient-to-br from-orange-50 to-amber-100 rounded-xl p-4 border-2 border-orange-300">
+                <label className="block text-sm font-bold text-orange-900 mb-3">
+                  📅 Production Ready Date
+                </label>
+                <input
+                  type="date"
+                  value={quotedDeliveryDate}
+                  onChange={(e) => setQuotedDeliveryDate(e.target.value)}
+                  className="w-full px-4 py-3 border-2 border-orange-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 text-sm font-semibold bg-white"
+                />
+                {quotedDeliveryDate && (
+                  <div className="mt-3 p-3 bg-white rounded-lg border border-orange-200">
+                    <p className="text-xs text-orange-600">Proposed: </p>
+                    <p className="text-sm font-bold text-orange-700">
+                      {new Date(quotedDeliveryDate).toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Options */}
+            <div className="bg-gray-50 rounded-lg p-4 mb-6 space-y-3">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="finalPrice"
+                  checked={isFinalPrice}
+                  onChange={(e) => setIsFinalPrice(e.target.checked)}
+                  className="w-4 h-4 accent-blue-600 cursor-pointer"
+                />
+                <label htmlFor="finalPrice" className="text-sm font-medium text-gray-700 cursor-pointer">
+                  ✓ This is the final price (no negotiation)
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  📝 Additional Message (Optional)
+                </label>
+                <textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder="e.g., 'Includes rush fee' or 'Based on your specifications...'"
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm resize-none"
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
               <button
                 onClick={() => {
                   setShowQuoteForm(false);
                   setMessageText('');
                   setQuotePrice('');
+                  setQuotedDeliveryDate('');
+                  setIsFinalPrice(false);
                 }}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-900 text-sm font-medium py-2 rounded transition"
+                className="flex-1 px-4 py-3 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold rounded-lg transition"
               >
                 Cancel
+              </button>
+              <button
+                onClick={(e) => {
+                  sendMessage(e, 'quote');
+                  setTimeout(() => {
+                    setShowQuoteForm(false);
+                    setQuotePrice('');
+                    setQuotedDeliveryDate('');
+                    setIsFinalPrice(false);
+                  }, 500);
+                }}
+                disabled={isSubmitting || !quotePrice}
+                className="flex-1 px-4 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+              >
+                <DollarSign className="h-4 w-4" />
+                Send Quote
               </button>
             </div>
           </div>
         </div>
       )}
-
-      {/* Input Area */}
-      <div className="border-t border-gray-200 p-3 space-y-2">
-        <form onSubmit={(e) => sendMessage(e, 'text')} className="flex gap-2">
-          <input
-            type="text"
-            value={messageText}
-            onChange={(e) => setMessageText(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 text-sm"
-          />
-          <button
-            type="submit"
-            disabled={isSubmitting || !messageText.trim()}
-            className="bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white p-2 rounded-lg transition"
-          >
-            <Send className="h-5 w-5" />
-          </button>
-        </form>
-
-        <button
-          onClick={() => setShowQuoteForm(!showQuoteForm)}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium rounded-lg transition text-sm"
-        >
-          <DollarSign className="h-4 w-4" />
-          Send Quote
-        </button>
-      </div>
-    </div>
+    </>
   );
 }

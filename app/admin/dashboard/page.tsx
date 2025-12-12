@@ -54,14 +54,13 @@ const TABS = [
   { id: 'products', label: 'Products', icon: Package, color: 'text-green-600' },
   { id: 'orders', label: 'Orders', icon: ShoppingCart, color: 'text-orange-600' },
   { id: 'custom', label: 'Custom Orders', icon: Paintbrush, color: 'text-indigo-600' },
-  { id: 'pending', label: 'Pending', icon: Clock, color: 'text-red-600' },
 ] as const;
 
 export default function AdminDashboardPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'users' | 'orders' | 'products' | 'custom' | 'pending'
+    'overview' | 'users' | 'orders' | 'products' | 'custom'
   >('overview');
   // ⚡ Track loaded tabs to prevent re-fetching
   const [loadedTabs, setLoadedTabs] = useState(new Set(['overview']));
@@ -170,12 +169,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Pending Tab - ⚡ Only loaded/rendered when clicked */}
-        {activeTab === 'pending' && loadedTabs.has('pending') && (
-          <div className="animate-fadeIn">
-            <PendingPanel />
-          </div>
-        )}
+
       </main>
 
       {/* Mobile Bottom Sidebar Navigation - MOBILE ONLY */}

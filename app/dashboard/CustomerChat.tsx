@@ -12,6 +12,7 @@ interface Message {
   content: string;
   isFinalPrice?: boolean;
   quotedPrice?: number;
+  quotedDeliveryDate?: string;
   messageType: 'text' | 'quote' | 'negotiation';
   isRead: boolean;
   createdAt: string;
@@ -23,6 +24,8 @@ interface CustomOrder {
   email: string;
   fullName: string;
   quotedPrice?: number;
+  buyerAgreedToDate?: boolean;
+  deliveryDate?: string;
 }
 
 interface CustomerChatProps {
@@ -37,6 +40,7 @@ export function CustomerChat({ order, customerEmail, customerName }: CustomerCha
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [dateAgreedByBuyer, setDateAgreedByBuyer] = useState(order.buyerAgreedToDate || false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Fetch messages
@@ -100,6 +104,26 @@ export function CustomerChat({ order, customerEmail, customerName }: CustomerCha
       });
     } catch (error) {
       console.error('Error marking messages as read:', error);
+    }
+  };
+
+  const handleDateAgreement = async (agreed: boolean) => {
+    try {
+      const response = await fetch(`/api/custom-orders/${order._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ buyerAgreedToDate: agreed }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update agreement status');
+      }
+
+      setDateAgreedByBuyer(agreed);
+      console.log('✅ Buyer agreement status updated:', agreed);
+    } catch (error) {
+      console.error('Error updating date agreement:', error);
+      alert('Failed to update agreement status');
     }
   };
 
@@ -224,11 +248,46 @@ export function CustomerChat({ order, customerEmail, customerName }: CustomerCha
 
                     {/* Price Badge */}
                     {msg.quotedPrice && (
-                      <div className="mt-2 pt-2 border-t border-current border-opacity-30 flex items-center gap-1">
-                        <DollarSign className="h-3 w-3" />
-                        <span className="text-sm font-bold">₦{msg.quotedPrice.toLocaleString()}</span>
-                        {msg.isFinalPrice && (
-                          <span className="text-xs ml-1 px-2 py-0.5 rounded bg-green-600">Final</span>
+                      <div className="mt-2 pt-2 border-t border-current border-opacity-30 space-y-2">
+                        <div className="flex items-center gap-1">
+                          <DollarSign className="h-3 w-3" />
+                          <span className="text-sm font-bold">₦{msg.quotedPrice.toLocaleString()}</span>
+                          {msg.isFinalPrice && (
+                            <span className="text-xs ml-1 px-2 py-0.5 rounded bg-green-600">Final</span>
+                          )}
+                        </div>
+
+                        {/* Date Comparison */}
+                        {msg.quotedDeliveryDate && (
+                          <div className="bg-blue-50 p-2 rounded text-xs space-y-1">
+                            <div className="font-semibold text-blue-900">Delivery Dates:</div>
+                            <div className="flex justify-between">
+                              <span className="text-gray-700">Your requested:</span>
+                              <span className="font-medium">{order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'Not specified'}</span>
+                            </div>
+                            <div className="flex justify-between border-t border-blue-200 pt-1">
+                              <span className="text-gray-700">Admin proposes:</span>
+                              <span className="font-medium text-blue-600">{new Date(msg.quotedDeliveryDate).toLocaleDateString()}</span>
+                            </div>
+                            {!dateAgreedByBuyer && (
+                              <div className="mt-2 flex items-center gap-2 pt-1 border-t border-blue-200">
+                                <input
+                                  type="checkbox"
+                                  id={`date-agree-${msg._id}`}
+                                  onChange={(e) => handleDateAgreement(e.target.checked)}
+                                  className="w-4 h-4 accent-blue-600 cursor-pointer"
+                                />
+                                <label htmlFor={`date-agree-${msg._id}`} className="cursor-pointer text-gray-700">
+                                  I agree to this date
+                                </label>
+                              </div>
+                            )}
+                            {dateAgreedByBuyer && (
+                              <div className="mt-2 pt-1 border-t border-green-300 text-green-700 font-semibold">
+                                ✓ You agreed to this date
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     )}

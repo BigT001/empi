@@ -19,6 +19,7 @@ interface CustomOrder {
   designUrls?: string[];
   quantity?: number;
   deliveryDate?: string;
+  productionStartedAt?: string;
   status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
   notes?: string;
   quotedPrice?: number;
@@ -34,7 +35,7 @@ export function CustomOrdersPanel() {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{ type: 'decline' | 'delete'; orderId: string } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ type: 'decline' | 'delete' | 'cancel'; orderId: string } | null>(null);
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({});
   const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
   const [messageCountPerOrder, setMessageCountPerOrder] = useState<Record<string, { total: number; unread: number }>>({});
@@ -74,6 +75,9 @@ export function CustomOrdersPanel() {
   useEffect(() => {
     if (selectedStatus === "all") {
       setFilteredOrders(orders);
+    } else if (selectedStatus === "rejected") {
+      // Show rejected orders in the rejected tab
+      setFilteredOrders(orders.filter((o) => o.status === "rejected"));
     } else {
       setFilteredOrders(orders.filter((o) => o.status === selectedStatus));
     }
@@ -222,6 +226,64 @@ export function CustomOrdersPanel() {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       console.error("[CustomOrdersPanel] ❌ Error declining order:", errorMsg);
       alert(`❌ Failed to decline order: ${errorMsg}`);
+      setConfirmModal(null);
+    }
+  };
+
+  const cancelOrder = async (orderId: string) => {
+    try {
+      console.log(`[CustomOrdersPanel] 📤 Cancelling order: ${orderId}`);
+      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "cancelled" }),
+      });
+
+      console.log(`[CustomOrdersPanel] Response status: ${response.status}`);
+      const responseText = await response.text();
+      console.log(`[CustomOrdersPanel] Response text (first 500 chars):`, responseText.substring(0, 500));
+      
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("[CustomOrdersPanel] Failed to parse response as JSON:", parseError);
+        console.error("[CustomOrdersPanel] Response was:", responseText);
+        throw new Error("Server error - check console for details");
+      }
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to cancel order");
+      }
+
+      // Find the order to get the orderId for messaging
+      const order = orders.find(o => o._id === orderId);
+      if (order) {
+        // Send a system message to the chat
+        await fetch("/api/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            senderEmail: admin?.email || "admin@empi.com",
+            senderName: "System",
+            senderType: "admin",
+            content: "🛑 Your order has been cancelled by the admin and you will receive a full refund. Contact us if you have questions.",
+            messageType: "system",
+          }),
+        });
+      }
+      
+      setOrders(orders.map(o => 
+        o._id === orderId ? { ...o, status: "rejected" } : o
+      ));
+      setConfirmModal(null);
+      alert("✅ Order cancelled and refund initiated!");
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.error("[CustomOrdersPanel] ❌ Error cancelling order:", errorMsg);
+      alert(`❌ Failed to cancel order: ${errorMsg}`);
       setConfirmModal(null);
     }
   };
@@ -428,59 +490,226 @@ export function CustomOrdersPanel() {
                       </div>
                     </div>
                   </div>
+                    {/* Production Progress - Shows when production has started */}
+                    {order.status === "in-progress" && order.productionStartedAt && order.deliveryDate && (() => {
+                      const startDate = new Date(order.productionStartedAt);
+                      const deliveryDate = new Date(order.deliveryDate);
+                      const now = new Date();
+                      const totalTime = deliveryDate.getTime() - startDate.getTime();
+                      const elapsedTime = now.getTime() - startDate.getTime();
+                      const progressPercent = Math.min(100, Math.max(0, (elapsedTime / totalTime) * 100));
+                      const remainingTime = deliveryDate.getTime() - now.getTime();
+                      const daysRemaining = Math.ceil(remainingTime / (1000 * 60 * 60 * 24));
+                      const hoursRemaining = Math.ceil((remainingTime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
 
-                  {/* Description */}
+                      return (
+                        <div className="bg-gradient-to-r from-purple-50 to-pink-50 rounded-xl p-5 border border-purple-200 shadow-sm mt-4">
+                          <h3 className="font-bold text-gray-900 mb-4 text-sm uppercase tracking-wide text-purple-700">⏱️ Production Progress</h3>
+                          
+                          {/* Progress Bar */}
+                          <div className="mb-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <span className="text-sm font-semibold text-gray-700">Completion</span>
+                              <span className="text-sm font-bold text-purple-600">{Math.round(progressPercent)}%</span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                              <div
+                                className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-300"
+                                style={{ width: `${progressPercent}%` }}
+                              ></div>
+                            </div>
+                          </div>
+
+                          {/* Countdown Timer */}
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-white rounded-lg p-3 border border-purple-100">
+                              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Days Remaining</p>
+                              <p className="text-2xl font-black text-purple-600">{daysRemaining > 0 ? daysRemaining : 0}</p>
+                            </div>
+                            <div className="bg-white rounded-lg p-3 border border-purple-100">
+                              <p className="text-xs text-gray-500 uppercase tracking-wide mb-1">Hours Remaining</p>
+                              <p className="text-2xl font-black text-pink-600">{hoursRemaining > 0 ? hoursRemaining : 0}</p>
+                            </div>
+                          </div>
+
+                          <p className="text-xs text-gray-600 mt-3">
+                            📅 Delivery: <span className="font-semibold">{new Date(order.deliveryDate).toLocaleDateString()}</span>
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  {/* Description with Design Images Preview */}
                   <div className="mt-6">
-                    <h3 className="font-bold text-gray-900 mb-3 text-sm uppercase tracking-wide text-purple-700">Description</h3>
-                    <p className="text-sm text-gray-700 bg-white rounded-xl p-4 border border-gray-200 shadow-xs leading-relaxed">{order.description}</p>
+                    <h3 className="font-bold text-gray-900 mb-3 text-sm uppercase tracking-wide text-purple-700">Description & Design Preview</h3>
+                    <div className="flex gap-4 items-start">
+                      <p className="text-base text-gray-700 bg-white rounded-xl p-5 border border-gray-200 shadow-xs leading-relaxed flex-1">{order.description}</p>
+                      {(order.designUrls && order.designUrls.length > 0) || order.designUrl ? (
+                        <div className="flex flex-col gap-2 w-48">
+                          {/* Image Preview */}
+                          <button
+                            type="button"
+                            onClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
+                            className="relative w-48 h-48 rounded-xl overflow-hidden border-2 border-lime-200 shadow-md hover:shadow-lg transition transform hover:scale-105 group"
+                            title={`View ${order.designUrls?.length || 1} design image(s)`}
+                          >
+                            <img
+                              src={(order.designUrls && order.designUrls[0]) || order.designUrl}
+                              alt="Design preview"
+                              className="w-full h-full object-cover"
+                            />
+                            {/* Overlay with view icon */}
+                            <div className="absolute inset-0 bg-black/40 group-hover:bg-black/60 transition flex items-center justify-center">
+                              <div className="text-white text-center">
+                                <svg className="w-8 h-8 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                </svg>
+                                <span className="text-xs font-semibold">View All</span>
+                              </div>
+                            </div>
+                            {/* Image count badge */}
+                            <div className="absolute top-2 right-2 bg-lime-600 text-white px-2 py-1 rounded-lg text-xs font-bold">
+                              {order.designUrls?.length || 1}
+                            </div>
+                          </button>
+
+                          {/* Download button */}
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                const images = (order.designUrls && order.designUrls.length > 0) 
+                                  ? order.designUrls 
+                                  : order.designUrl ? [order.designUrl] : [];
+                                
+                                if (images.length === 0) {
+                                  alert('No images to download');
+                                  return;
+                                }
+
+                                // Download each image with staggered timing to prevent browser issues
+                                for (let i = 0; i < images.length; i++) {
+                                  const url = images[i];
+                                  setTimeout(async () => {
+                                    try {
+                                      const response = await fetch(url);
+                                      const blob = await response.blob();
+                                      const link = document.createElement('a');
+                                      link.href = URL.createObjectURL(blob);
+                                      // Better filename with image number
+                                      const fileExtension = url.includes('.png') ? 'png' : url.includes('.gif') ? 'gif' : 'jpg';
+                                      link.download = `${order.orderNumber}-design-${i + 1}-of-${images.length}.${fileExtension}`;
+                                      document.body.appendChild(link);
+                                      link.click();
+                                      document.body.removeChild(link);
+                                      URL.revokeObjectURL(link.href);
+                                    } catch (error) {
+                                      console.error(`Failed to download image ${i + 1}:`, error);
+                                    }
+                                  }, i * 500); // 500ms delay between each download
+                                }
+                              } catch (error) {
+                                console.error('Download failed:', error);
+                                alert('Failed to download images');
+                              }
+                            }}
+                            className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 shadow-md hover:shadow-lg text-sm"
+                            title={`Download all ${(order.designUrls?.length || 1)} design image(s)`}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Download All</span>
+                          </button>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
-                  {/* Design Images - Modal View */}
-                  {(order.designUrls && order.designUrls.length > 0) || order.designUrl ? (
-                    <div className="mt-6">
+
+                  {/* Admin Actions Section */}
+                  <div className="mt-6 pt-4 border-t border-lime-200">
+                    {/* During Production - Only Cancel Button */}
+                    {order.status === "in-progress" && (
                       <button
-                        type="button"
-                        onClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
-                        className="w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold py-3 px-4 rounded-lg transition transform hover:scale-105 flex items-center justify-center gap-2"
+                        onClick={() => setConfirmModal({ type: 'cancel', orderId: order._id })}
+                        className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white font-bold py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md text-xs"
+                        title="Cancel production and process refund"
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                        </svg>
-                        View Design Images ({(order.designUrls?.length || 1)})
+                        <XCircle className="w-4 h-4" />
+                        <span>Cancel & Refund</span>
                       </button>
-                    </div>
-                  ) : null}
+                    )}
 
-                  {/* Admin Action - Chat Button */}
-                  <div className="mt-8 pt-6 border-t border-lime-200 space-y-3">
-                    <button
-                      onClick={() => setChatModalOpen(order._id)}
-                      className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-3 px-4 rounded-lg transition flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
-                    >
-                      <MessageCircle className="h-5 w-5" />
-                      Send Quote or Message
-                    </button>
+                    {/* Top Row - Start Production & Send Quote (for pending/approved) */}
+                    {order.status !== "in-progress" && (
+                      <div className="flex gap-2 mb-2">
+                        {order.status === "approved" && !order.productionStartedAt && (
+                          <button
+                            onClick={async () => {
+                              try {
+                                const response = await fetch(`/api/custom-orders/${order._id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    status: 'in-progress',
+                                    productionStartedAt: new Date().toISOString()
+                                  })
+                                });
 
-                    <div className="grid grid-cols-2 gap-2">
-                      {order.status !== "rejected" && (
+                                if (response.ok) {
+                                  alert('Production started! Countdown timer activated.');
+                                  fetchOrders();
+                                }
+                              } catch (error) {
+                                console.error('Error:', error);
+                              }
+                            }}
+                            className="flex-1 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white font-bold py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md text-xs"
+                            title="Start production"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            <span className="hidden md:inline">Start</span>
+                          </button>
+                        )}
+                        {order.status === "pending" && (
+                          <button
+                            onClick={() => setChatModalOpen(order._id)}
+                            className="flex-1 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md text-xs"
+                          >
+                            <MessageCircle className="w-4 h-4" />
+                            <span>Quote</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Bottom Row - Decline & Delete (only for non-production statuses) */}
+                    {order.status !== "in-progress" && (
+                      <div className="flex gap-2">
+                        {order.status !== "rejected" && (
+                          <button
+                            onClick={() => setConfirmModal({ type: 'decline', orderId: order._id })}
+                            className="flex-1 bg-yellow-50 hover:bg-yellow-100 text-yellow-700 font-semibold py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1 border border-yellow-200 text-xs"
+                            title="Decline"
+                          >
+                            <XCircle className="w-4 h-4" />
+                            <span className="hidden md:inline">Decline</span>
+                          </button>
+                        )}
                         <button
-                          onClick={() => setConfirmModal({ type: 'decline', orderId: order._id })}
-                          className="bg-red-50 hover:bg-red-100 text-red-700 font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 border border-red-200"
+                          onClick={() => setConfirmModal({ type: 'delete', orderId: order._id })}
+                          className={`bg-red-600 hover:bg-red-700 text-white font-semibold py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1 text-xs ${
+                            order.status !== "rejected" ? "flex-1" : "flex-1"
+                          }`}
+                          title="Delete"
                         >
-                          <XCircle className="h-4 w-4" />
-                          Decline
+                          <Trash2 className="w-4 h-4" />
+                          <span className="hidden md:inline">Delete</span>
                         </button>
-                      )}
-                      <button
-                        onClick={() => setConfirmModal({ type: 'delete', orderId: order._id })}
-                        className={`bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 ${
-                          order.status !== "rejected" ? "" : "col-span-2"
-                        }`}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Delete
-                      </button>
-                    </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -524,6 +753,16 @@ export function CustomOrdersPanel() {
                   This will decline the order and notify the customer via chat. This action can be undone by accepting the order later.
                 </p>
               </>
+            ) : confirmModal.type === 'cancel' ? (
+              <>
+                <div className="flex items-center justify-center w-12 h-12 bg-orange-100 rounded-full mx-auto mb-4">
+                  <AlertCircle className="h-6 w-6 text-orange-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Cancel Order & Refund?</h3>
+                <p className="text-gray-600 text-center mb-6">
+                  This will cancel the production, stop the countdown, and process a full refund to the customer. They will be notified via chat.
+                </p>
+              </>
             ) : (
               <>
                 <div className="flex items-center justify-center w-12 h-12 bg-red-100 rounded-full mx-auto mb-4">
@@ -541,12 +780,14 @@ export function CustomOrdersPanel() {
                 onClick={() => setConfirmModal(null)}
                 className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition"
               >
-                Cancel
+                Back
               </button>
               <button
                 onClick={() => {
                   if (confirmModal.type === 'decline') {
                     declineOrder(confirmModal.orderId);
+                  } else if (confirmModal.type === 'cancel') {
+                    cancelOrder(confirmModal.orderId);
                   } else {
                     deleteOrder(confirmModal.orderId);
                   }
@@ -554,10 +795,12 @@ export function CustomOrdersPanel() {
                 className={`flex-1 px-4 py-2 text-white font-semibold rounded-lg transition ${
                   confirmModal.type === 'decline'
                     ? 'bg-yellow-600 hover:bg-yellow-700'
+                    : confirmModal.type === 'cancel'
+                    ? 'bg-orange-600 hover:bg-orange-700'
                     : 'bg-red-600 hover:bg-red-700'
                 }`}
               >
-                {confirmModal.type === 'decline' ? 'Decline' : 'Delete'}
+                {confirmModal.type === 'decline' ? 'Decline' : confirmModal.type === 'cancel' ? 'Cancel & Refund' : 'Delete'}
               </button>
             </div>
           </div>
@@ -577,87 +820,93 @@ export function CustomOrdersPanel() {
 
         return (
           <>
-            {/* Backdrop */}
+            {/* Backdrop - Simple transparent overlay */}
             <div
-              className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-0 md:p-4"
+              className="fixed inset-0 bg-black/40 z-50 flex flex-col items-center justify-center p-3 md:p-6"
               onClick={() => setImageModalOpen(null)}
             >
-              {/* Modal Content */}
+              {/* Modal Container - Prevents close on internal clicks */}
               <div
-                className="w-full h-full md:w-auto md:h-auto md:max-w-4xl md:max-h-[90vh] bg-black rounded-none md:rounded-xl flex flex-col relative"
+                className="relative w-full h-auto max-h-[90vh] flex flex-col items-center justify-between"
                 onClick={(e) => e.stopPropagation()}
               >
                 {/* Close Button */}
                 <button
                   onClick={() => setImageModalOpen(null)}
-                  className="absolute top-4 right-4 z-10 bg-white/80 hover:bg-white text-gray-900 rounded-full p-2 transition"
+                  className="absolute top-0 right-0 z-20 bg-white hover:bg-gray-100 text-gray-900 rounded-full p-2 transition shadow-lg"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
 
-                {/* Main Image */}
-                <div className="flex-1 flex items-center justify-center p-4 md:p-0 overflow-hidden">
+                {/* Image Container with Navigation Arrows */}
+                <div className="relative w-full h-[60vh] md:h-[70vh] flex items-center justify-center group">
+                  {/* Main Image */}
                   <img
                     src={currentImage}
                     alt={`Design ${imageModalOpen.index + 1}`}
-                    className="max-w-full max-h-full object-contain w-full h-full md:w-auto md:h-auto"
+                    className="w-full h-full object-contain max-w-full max-h-full"
                   />
+
+                  {/* Left Arrow */}
+                  {images.length > 1 && (
+                    <button
+                      onClick={() => setImageModalOpen({
+                        orderId: imageModalOpen.orderId,
+                        index: imageModalOpen.index === 0 ? images.length - 1 : imageModalOpen.index - 1
+                      })}
+                      className="absolute left-2 md:left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-900 p-2 md:p-3 rounded-lg transition shadow-lg opacity-0 group-hover:opacity-100 transform hover:scale-110"
+                      title="Previous image"
+                    >
+                      <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Right Arrow */}
+                  {images.length > 1 && (
+                    <button
+                      onClick={() => setImageModalOpen({
+                        orderId: imageModalOpen.orderId,
+                        index: imageModalOpen.index === images.length - 1 ? 0 : imageModalOpen.index + 1
+                      })}
+                      className="absolute right-2 md:right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-900 p-2 md:p-3 rounded-lg transition shadow-lg opacity-0 group-hover:opacity-100 transform hover:scale-110"
+                      title="Next image"
+                    >
+                      <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
+
+                  {/* Image Counter */}
+                  <div className="absolute top-3 left-3 bg-black/60 text-white px-3 py-1 rounded-lg text-sm font-semibold">
+                    {imageModalOpen.index + 1} / {images.length}
+                  </div>
                 </div>
 
-                {/* Image Info and Navigation */}
+                {/* Thumbnail Strip - Bottom */}
                 {images.length > 1 && (
-                  <div className="bg-black/90 backdrop-blur px-4 py-3 md:px-6 md:py-4 flex items-center justify-between border-t border-gray-700">
-                    <div className="text-white text-sm md:text-base">
-                      {imageModalOpen.index + 1} / {images.length}
-                    </div>
-                    
-                    <div className="flex gap-2">
+                  <div className="w-full flex gap-2 justify-center overflow-x-auto pb-2 mt-4 px-2">
+                    {images.map((url, index) => (
                       <button
-                        onClick={() => setImageModalOpen({
-                          orderId: imageModalOpen.orderId,
-                          index: imageModalOpen.index === 0 ? images.length - 1 : imageModalOpen.index - 1
-                        })}
-                        className="bg-lime-600 hover:bg-lime-700 text-white p-2 rounded-lg transition"
+                        key={index}
+                        onClick={() => setImageModalOpen({ orderId: imageModalOpen.orderId, index })}
+                        className={`flex-shrink-0 rounded-lg overflow-hidden border-3 transition transform hover:scale-110 ${
+                          imageModalOpen.index === index
+                            ? "border-lime-400 ring-2 ring-lime-400"
+                            : "border-gray-300 hover:border-gray-400"
+                        }`}
                       >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                        </svg>
+                        <img
+                          src={url}
+                          alt={`Thumbnail ${index + 1}`}
+                          className="h-16 w-16 md:h-20 md:w-20 object-cover"
+                        />
                       </button>
-                      <button
-                        onClick={() => setImageModalOpen({
-                          orderId: imageModalOpen.orderId,
-                          index: imageModalOpen.index === images.length - 1 ? 0 : imageModalOpen.index + 1
-                        })}
-                        className="bg-lime-600 hover:bg-lime-700 text-white p-2 rounded-lg transition"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
-                      </button>
-                    </div>
-
-                    {/* Thumbnail Strip */}
-                    <div className="hidden md:flex gap-2 overflow-x-auto max-w-xs">
-                      {images.map((url, index) => (
-                        <button
-                          key={index}
-                          onClick={() => setImageModalOpen({ orderId: imageModalOpen.orderId, index })}
-                          className={`flex-shrink-0 rounded-lg overflow-hidden border-2 transition ${
-                            imageModalOpen.index === index
-                              ? "border-lime-600 ring-2 ring-lime-600"
-                              : "border-gray-600 hover:border-gray-500"
-                          }`}
-                        >
-                          <img
-                            src={url}
-                            alt={`Thumbnail ${index + 1}`}
-                            className="h-12 w-12 object-cover"
-                          />
-                        </button>
-                      ))}
-                    </div>
+                    ))}
                   </div>
                 )}
               </div>
