@@ -14,7 +14,13 @@ export interface IMessage extends Document {
   quotedTotal?: number;
   discountPercentage?: number;
   discountAmount?: number;
-  messageType: 'text' | 'quote' | 'negotiation' | 'system';
+  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update';
+  quantityChangeData?: {
+    oldQty: number;
+    newQty: number;
+    unitPrice: number;
+    newTotal: number;
+  };
   isRead: boolean;
   readAt?: Date;
   createdAt: Date;
@@ -83,9 +89,13 @@ const messageSchema = new Schema<IMessage>(
     },
     messageType: {
       type: String,
-      enum: ['text', 'quote', 'negotiation', 'system'],
+      enum: ['text', 'quote', 'negotiation', 'system', 'quantity-update'],
       default: 'text',
       index: true,
+    },
+    quantityChangeData: {
+      type: mongoose.Schema.Types.Mixed,
+      default: null,
     },
     isRead: {
       type: Boolean,

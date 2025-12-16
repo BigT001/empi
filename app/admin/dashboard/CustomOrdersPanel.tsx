@@ -39,6 +39,7 @@ export function CustomOrdersPanel() {
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({});
   const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
   const [messageCountPerOrder, setMessageCountPerOrder] = useState<Record<string, { total: number; unread: number }>>({});
+  const [clientStatusModal, setClientStatusModal] = useState<{ email: string; status: string } | null>(null);
 
   useEffect(() => {
     // Initial fetch
@@ -236,7 +237,7 @@ export function CustomOrdersPanel() {
       const response = await fetch(`/api/custom-orders?id=${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "cancelled" }),
+        body: JSON.stringify({ status: "rejected" }),
       });
 
       console.log(`[CustomOrdersPanel] Response status: ${response.status}`);
@@ -337,42 +338,46 @@ export function CustomOrdersPanel() {
 
       {/* Stats Cards */}
       <div className="grid md:grid-cols-5 gap-3">
-        <div className="bg-lime-50 rounded-xl border border-lime-300 p-5 hover:shadow-lg transition">
-          <p className="text-xs font-bold text-lime-700 mb-2 uppercase tracking-wider">📊 Total</p>
-          <p className="text-3xl font-black text-lime-600">{orders.length}</p>
-        </div>
-        <div className="bg-yellow-50 rounded-xl border border-yellow-300 p-5 hover:shadow-lg transition">
-          <p className="text-xs font-bold text-yellow-700 mb-2 uppercase tracking-wider">⏳ Pending</p>
-          <p className="text-3xl font-black text-yellow-600">{orders.filter((o) => o.status === "pending").length}</p>
-        </div>
-        <div className="bg-purple-50 rounded-xl border border-purple-300 p-5 hover:shadow-lg transition">
-          <p className="text-xs font-bold text-purple-700 mb-2 uppercase tracking-wider">🔨 Progress</p>
-          <p className="text-3xl font-black text-purple-600">{orders.filter((o) => o.status === "in-progress").length}</p>
-        </div>
-        <div className="bg-pink-50 rounded-xl border border-pink-300 p-5 hover:shadow-lg transition">
-          <p className="text-xs font-bold text-pink-700 mb-2 uppercase tracking-wider">✓ Ready</p>
-          <p className="text-3xl font-black text-pink-600">{orders.filter((o) => o.status === "ready").length}</p>
-        </div>
-        <div className="bg-emerald-50 rounded-xl border border-emerald-300 p-5 hover:shadow-lg transition">
-          <p className="text-xs font-bold text-emerald-700 mb-2 uppercase tracking-wider">✓✓ Done</p>
-          <p className="text-3xl font-black text-emerald-600">{orders.filter((o) => o.status === "completed").length}</p>
-        </div>
       </div>
 
-      {/* Filter Bar */}
-      <div className="bg-lime-50 rounded-2xl border border-lime-200 p-5 shadow-sm">
-        <div className="flex gap-2 flex-wrap">
-          {["all", "pending", "approved", "in-progress", "ready", "completed", "rejected"].map((status) => (
+      {/* Filter Bar - Clients View */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="flex gap-2 flex-wrap items-center">
+          <button
+            onClick={() => setSelectedStatus("all")}
+            className={`px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 ${
+              selectedStatus === "all"
+                ? "bg-slate-100 text-slate-700 border-slate-300 border-current shadow-md scale-105"
+                : "bg-slate-100 text-slate-700 border-slate-300 border-transparent hover:shadow-md"
+            }`}
+          >
+            <span>Clients</span>
+            <span className="bg-slate-200 text-slate-700 px-2.5 py-1 rounded-full text-xs font-bold">
+              {new Set(orders.map(o => o.email)).size}
+            </span>
+          </button>
+
+          {[
+            { id: "pending", label: "Pending", color: "bg-yellow-50 text-yellow-700 border-yellow-300", badgeColor: "bg-yellow-100" },
+            { id: "approved", label: "Approved", color: "bg-blue-50 text-blue-700 border-blue-300", badgeColor: "bg-blue-100" },
+            { id: "in-progress", label: "In Progress", color: "bg-purple-50 text-purple-700 border-purple-300", badgeColor: "bg-purple-100" },
+            { id: "ready", label: "Ready", color: "bg-green-50 text-green-700 border-green-300", badgeColor: "bg-green-100" },
+            { id: "completed", label: "Completed", color: "bg-emerald-50 text-emerald-700 border-emerald-300", badgeColor: "bg-emerald-100" },
+            { id: "rejected", label: "Rejected", color: "bg-red-50 text-red-700 border-red-300", badgeColor: "bg-red-100" }
+          ].map((tab) => (
             <button
-              key={status}
-              onClick={() => setSelectedStatus(status)}
-              className={`px-4 py-2 rounded-lg font-semibold transition-all ${
-                selectedStatus === status
-                  ? "bg-lime-600 text-white shadow-lg"
-                  : "bg-white text-gray-700 hover:bg-lime-100 border border-gray-200"
+              key={tab.id}
+              onClick={() => setSelectedStatus(tab.id)}
+              className={`px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 ${
+                selectedStatus === tab.id
+                  ? `${tab.color} border-current shadow-md scale-105`
+                  : `${tab.color} border-transparent hover:shadow-md`
               }`}
             >
-              {status.charAt(0).toUpperCase() + status.slice(1).replace("-", " ")}
+              <span>{tab.label}</span>
+              <span className={`${tab.badgeColor} px-2.5 py-1 rounded-full text-xs font-bold`}>
+                {orders.filter(o => o.status === tab.id).length}
+              </span>
             </button>
           ))}
         </div>
@@ -392,13 +397,95 @@ export function CustomOrdersPanel() {
             <FileText className="h-8 w-8 text-slate-500" />
           </div>
           <p className="text-gray-600 font-semibold text-lg">No custom orders found</p>
-          <p className="text-gray-500 text-sm mt-1">Change your filter to see other orders</p>
+          <p className="text-gray-500 text-sm mt-1">Add orders to get started</p>
         </div>
       )}
 
-      {/* Orders List */}
-      {!isLoading && filteredOrders.length > 0 && (
-        <div className="space-y-3">
+      {/* Clients Grid View - Only when "Clients" tab is selected */}
+      {!isLoading && selectedStatus === "all" && filteredOrders.length > 0 && (
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {Array.from(new Map(
+            filteredOrders.map(order => [order.email, order])
+          ).entries()).map(([email, firstOrder]) => {
+            const clientOrders = filteredOrders.filter(o => o.email === email);
+            const totalCost = clientOrders.reduce((sum, o) => sum + (o.quotedPrice || 0), 0);
+            const pendingOrders = clientOrders.filter(o => o.status === 'pending').length;
+
+            return (
+              <div key={email} className="bg-gradient-to-br from-white to-slate-50 rounded-2xl border-2 border-slate-200 overflow-hidden shadow-md hover:shadow-xl hover:border-slate-300 transition-all">
+                {/* Client Header */}
+                <div className="bg-gradient-to-r from-indigo-600 to-blue-600 p-5 text-white">
+                  <h3 className="font-bold text-lg">{firstOrder.fullName}</h3>
+                  <p className="text-sm text-indigo-100 mt-1">{firstOrder.city || 'Location not set'}</p>
+                </div>
+
+                {/* Client Details */}
+                <div className="p-5 space-y-4">
+                  {/* Contact Info */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm">
+                      <Mail className="h-4 w-4 text-indigo-600" />
+                      <p className="text-gray-700 truncate">{email}</p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm">
+                      <Phone className="h-4 w-4 text-indigo-600" />
+                      <p className="text-gray-700">{firstOrder.phone || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-2 gap-3 pt-3 border-t border-slate-200">
+                    <div className="bg-indigo-50 rounded-lg p-3 text-center">
+                      <p className="text-2xl font-bold text-indigo-700">{clientOrders.length}</p>
+                      <p className="text-xs text-indigo-600 font-medium">Orders</p>
+                    </div>
+                    <div className="bg-blue-50 rounded-lg p-3 text-center">
+                      <p className="text-lg font-bold text-blue-700">₦{(totalCost / 1000000).toFixed(1)}M</p>
+                      <p className="text-xs text-blue-600 font-medium">Total</p>
+                    </div>
+                  </div>
+
+                  {/* Status Breakdown */}
+                  <div className="pt-3 border-t border-slate-200">
+                    <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Order Status Breakdown</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { status: 'pending', label: 'Pending', color: 'bg-yellow-50 text-yellow-700 hover:bg-yellow-100' },
+                        { status: 'approved', label: 'Approved', color: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
+                        { status: 'in-progress', label: 'In Progress', color: 'bg-purple-50 text-purple-700 hover:bg-purple-100' },
+                        { status: 'ready', label: 'Ready', color: 'bg-green-50 text-green-700 hover:bg-green-100' },
+                        { status: 'completed', label: 'Completed', color: 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100' },
+                        { status: 'rejected', label: 'Rejected', color: 'bg-red-50 text-red-700 hover:bg-red-100' }
+                      ].map((stat) => {
+                        const count = clientOrders.filter(o => o.status === stat.status).length;
+                        return (
+                          <button
+                            key={stat.status}
+                            onClick={() => {
+                              if (count > 0) {
+                                setClientStatusModal({ email, status: stat.status });
+                              }
+                            }}
+                            disabled={count === 0}
+                            className={`${stat.color} rounded-lg p-2 text-center text-xs font-semibold transition-all ${count > 0 ? 'cursor-pointer' : 'opacity-50 cursor-not-allowed'}`}
+                          >
+                            <p className="font-bold text-lg">{count}</p>
+                            <p className="text-xs">{stat.label}</p>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Orders List View - When a status tab is selected */}
+      {!isLoading && selectedStatus !== "all" && filteredOrders.length > 0 && (
+        <div className="space-y-6">
           {filteredOrders.map((order) => (
             <div key={order._id} className="bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
               {/* Order Header */}
@@ -682,6 +769,15 @@ export function CustomOrdersPanel() {
                             <span>Quote</span>
                           </button>
                         )}
+                        {/* Chat button for all statuses */}
+                        <button
+                          onClick={() => setChatModalOpen(order._id)}
+                          className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-bold py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md text-xs"
+                          title="Open chat"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>Chat</span>
+                        </button>
                       </div>
                     )}
 
@@ -715,6 +811,58 @@ export function CustomOrdersPanel() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Client Status Modal - Show orders for selected client and status */}
+      {clientStatusModal && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-2xl font-bold text-gray-900">
+                {orders.find(o => o.email === clientStatusModal.email)?.fullName || 'Client'} - {clientStatusModal.status.charAt(0).toUpperCase() + clientStatusModal.status.slice(1)} Orders
+              </h3>
+              <button
+                onClick={() => setClientStatusModal(null)}
+                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {orders
+                .filter(o => o.email === clientStatusModal.email && o.status === clientStatusModal.status)
+                .map((order) => (
+                  <div key={order._id} className="bg-slate-50 rounded-xl border border-slate-200 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <p className="font-bold text-lg text-gray-900">{order.orderNumber}</p>
+                        <p className="text-sm text-gray-600 mt-1">{order.description}</p>
+                        <p className="text-sm text-gray-500 mt-2">Qty: {order.quantity || 1} | Price: ₦{(order.quotedPrice || 0).toLocaleString()}</p>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setChatModalOpen(order._id);
+                          setClientStatusModal(null);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors flex items-center gap-2 flex-shrink-0"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Chat
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+
+            <button
+              onClick={() => setClientStatusModal(null)}
+              className="w-full mt-6 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold py-2 px-4 rounded-lg transition-colors"
+            >
+              Close
+            </button>
+          </div>
         </div>
       )}
 

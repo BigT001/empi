@@ -92,8 +92,10 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Generate unique order number
-    const orderNumber = `CUSTOM-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // Generate unique order number using buyer's first name and short code
+    const firstName = fullName.split(' ')[0]; // Get first name
+    const shortCode = Math.random().toString(36).substr(2, 6).toUpperCase();
+    const orderNumber = `${firstName}-${shortCode}`;
 
     // Create custom order in database
     const customOrder = await CustomOrder.create({
@@ -195,7 +197,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Only allow specific fields to be updated
-    const allowedUpdates = ["status", "buyerAgreedToDate"];
+    const allowedUpdates = ["status", "buyerAgreedToDate", "deliveryDate", "quantity"];
     const updates: Record<string, any> = {};
 
     for (const key of Object.keys(body)) {
@@ -212,6 +214,21 @@ export async function PATCH(request: NextRequest) {
           { message: "Invalid status value" },
           { status: 400 }
         );
+      }
+    }
+
+    // If quantity is being updated, recalculate quotedPrice using unitPrice
+    if (updates.quantity) {
+      const currentOrder = await CustomOrder.findById(id);
+      if (currentOrder) {
+        const unitPrice = currentOrder.unitPrice || (currentOrder.quotedPrice / (currentOrder.quantity || 1));
+        const newQuotedPrice = unitPrice * updates.quantity;
+        updates.quotedPrice = newQuotedPrice;
+        // Store unitPrice for future calculations if not already set
+        if (!currentOrder.unitPrice) {
+          updates.unitPrice = unitPrice;
+        }
+        console.log(`[API:PATCH] 🔢 Auto-calculated price: quantity ${currentOrder.quantity} → ${updates.quantity}, unitPrice ₦${unitPrice}, newQuotedPrice ₦${newQuotedPrice}`);
       }
     }
 

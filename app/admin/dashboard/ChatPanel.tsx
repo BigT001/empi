@@ -13,7 +13,17 @@ interface Message {
   content: string;
   isFinalPrice?: boolean;
   quotedPrice?: number;
-  messageType: 'text' | 'quote' | 'negotiation';
+  quotedVAT?: number;
+  quotedTotal?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update';
+  quantityChangeData?: {
+    oldQty: number;
+    newQty: number;
+    unitPrice: number;
+    newTotal: number;
+  };
   isRead: boolean;
   createdAt: string;
 }
@@ -179,7 +189,35 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
                   }`}
                 >
                   <p className="text-xs font-medium opacity-75 mb-1">{msg.senderName}</p>
-                  <p className="text-sm">{msg.content}</p>
+                  
+                  {/* Quantity Update Message */}
+                  {msg.messageType === 'quantity-update' ? (
+                    <div className="space-y-2">
+                      <p className="text-sm font-semibold">📊 Quantity Update Request</p>
+                      <div className="bg-white/10 rounded p-2 space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span className="opacity-75">Previous:</span>
+                          <span className="font-bold">{msg.quantityChangeData?.oldQty} units</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="opacity-75">New:</span>
+                          <span className="font-bold">{msg.quantityChangeData?.newQty} units</span>
+                        </div>
+                        <div className="border-t border-current border-opacity-30 pt-1 mt-1">
+                          <div className="flex justify-between">
+                            <span className="opacity-75">Unit Price:</span>
+                            <span className="font-bold">₦{msg.quantityChangeData?.unitPrice?.toLocaleString()}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="opacity-75">New Total:</span>
+                            <span className="font-bold">₦{msg.quantityChangeData?.newTotal?.toLocaleString()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm">{msg.content}</p>
+                  )}
 
                   {/* Price Badge */}
                   {msg.quotedPrice && (

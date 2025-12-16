@@ -12,7 +12,8 @@ import { useBuyer } from "../context/BuyerContext";
 import { getBuyerInvoices, StoredInvoice } from "@/lib/invoiceStorage";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { formatDate } from "@/lib/utils";
-import { Download, ShoppingBag, Check, Truck, MapPin, Eye, FileText, Calendar, Package, DollarSign, MessageCircle, Share2, ArrowLeft, LogOut, ChevronRight, Edit3, Save, Palette, Clock, AlertCircle } from "lucide-react";
+import { calculateMainCardTotal, generateQuantityUpdateData, generateQuantityUpdateMessageContent } from "@/lib/priceCalculations";
+import { Download, ShoppingBag, Check, Truck, MapPin, Eye, FileText, Calendar, Package, DollarSign, MessageCircle, Share2, ArrowLeft, LogOut, ChevronRight, Edit3, Save, Palette, Clock, AlertCircle, CheckCircle } from "lucide-react";
 
 interface CustomOrder {
   _id: string;
@@ -28,6 +29,8 @@ interface CustomOrder {
   designUrls?: string[];
   quantity?: number;
   deliveryDate?: string;
+  proposedDeliveryDate?: string;
+  buyerAgreedToDate?: boolean;
   status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
   notes?: string;
   quotedPrice?: number;
@@ -43,7 +46,13 @@ export default function BuyerDashboardPage() {
   const { buyer, isHydrated, logout, updateProfile } = useBuyer();
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
-  const [activeTab, setActiveTab] = useState<"invoices" | "custom-orders" | "profile">("invoices");
+  const [activeTab, setActiveTab] = useState<"invoices" | "custom-orders" | "profile">(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('buyerDashboardActiveTab');
+      return (saved as "invoices" | "custom-orders" | "profile") || "invoices";
+    }
+    return "invoices";
+  });
   const [selectedInvoice, setSelectedInvoice] = useState<StoredInvoice | null>(null);
   const [shareMenuOpen, setShareMenuOpen] = useState<string | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -54,6 +63,7 @@ export default function BuyerDashboardPage() {
   const [expandedCustomOrder, setExpandedCustomOrder] = useState<string | null>(null);
   const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
   const [messageCountPerOrder, setMessageCountPerOrder] = useState<Record<string, { total: number; unread: number }>>({});
+  const [pendingQuantityChange, setPendingQuantityChange] = useState<Record<string, number>>({});
   const [editFormData, setEditFormData] = useState({
     fullName: "",
     phone: "",
@@ -169,6 +179,11 @@ export default function BuyerDashboardPage() {
     }
   };
 
+  // Persist active tab to localStorage
+  useEffect(() => {
+    localStorage.setItem('buyerDashboardActiveTab', activeTab);
+  }, [activeTab]);
+
   useEffect(() => {
     if (isHydrated && !buyer) {
       router.push("/auth");
@@ -270,8 +285,9 @@ export default function BuyerDashboardPage() {
   // Poll ONLY message counts (without re-fetching orders)
   const pollMessageCounts = async () => {
     if (customOrders.length === 0) return;
-    console.log('[Dashboard] Polling message counts only...');
-    fetchMessageCounts(customOrders);
+    console.log('[Dashboard] Polling message counts and order data...');
+    // Refresh order data to pick up any updates to quotedPrice from admin quotes
+    await fetchCustomOrders();
   };
 
   // Fetch custom orders (full refresh - only on initial load)
@@ -428,41 +444,30 @@ export default function BuyerDashboardPage() {
           </Link>
         </div>
 
-        {/* Tab Navigation - Modern Pills */}
-        <div className="flex gap-3 mb-12 flex-wrap">
-          <button
-            onClick={() => setActiveTab("invoices")}
-            className={`px-6 py-3 font-bold transition rounded-full flex items-center gap-2 ${
-              activeTab === "invoices"
-                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl"
-                : "bg-white text-gray-700 hover:text-lime-600 border-2 border-gray-100 hover:border-lime-200 shadow-sm hover:shadow-md"
-            }`}
-          >
-            <FileText className="h-5 w-5" />
-            Invoices ({invoices.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("custom-orders")}
-            className={`px-6 py-3 font-bold transition rounded-full flex items-center gap-2 ${
-              activeTab === "custom-orders"
-                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl"
-                : "bg-white text-gray-700 hover:text-lime-600 border-2 border-gray-100 hover:border-lime-200 shadow-sm hover:shadow-md"
-            }`}
-          >
-            <Palette className="h-5 w-5" />
-            Custom Orders ({customOrders.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("profile")}
-            className={`px-6 py-3 font-bold transition rounded-full flex items-center gap-2 ${
-              activeTab === "profile"
-                ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl"
-                : "bg-white text-gray-700 hover:text-lime-600 border-2 border-gray-100 hover:border-lime-200 shadow-sm hover:shadow-md"
-            }`}
-          >
-            <MapPin className="h-5 w-5" />
-            Profile
-          </button>
+        {/* Tab Navigation - Modern Design with Badges */}
+        <div className="mb-12 bg-white rounded-2xl p-2 shadow-md flex gap-2 overflow-x-auto max-w-full">
+          {[
+            { id: "custom-orders", label: "Custom Orders", count: customOrders.length, color: "bg-lime-50 text-lime-700 border-lime-300", badgeColor: "bg-lime-100" },
+            { id: "invoices", label: "Invoices", count: invoices.length, color: "bg-blue-50 text-blue-700 border-blue-300", badgeColor: "bg-blue-100" },
+            { id: "profile", label: "Profile", count: null, color: "bg-indigo-50 text-indigo-700 border-indigo-300", badgeColor: "bg-indigo-100" }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as "invoices" | "custom-orders" | "profile")}
+              className={`px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${
+                activeTab === tab.id
+                  ? `${tab.color} border-current shadow-md scale-105`
+                  : `${tab.color} border-transparent hover:shadow-md`
+              }`}
+            >
+              <span>{tab.label}</span>
+              {tab.count !== null && (
+                <span className={`${tab.badgeColor} px-2 py-0.5 rounded-full text-xs font-bold ml-1`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
         </div>
 
         {/* INVOICES TAB */}
@@ -629,19 +634,7 @@ export default function BuyerDashboardPage() {
         {/* CUSTOM ORDERS TAB */}
         {activeTab === "custom-orders" && (
           <div className="space-y-8">
-            {/* Premium Header Section */}
-            <div className="bg-gradient-to-r from-cyan-600 via-teal-500 to-cyan-700 rounded-3xl shadow-2xl p-12 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-4">
-                  <div>
-                    <p className="text-cyan-100 font-bold uppercase text-sm tracking-wider">🎨 Custom Orders</p>
-                  </div>
-                </div>
-                <p className="text-cyan-50 text-lg mt-2">Track your custom costume orders and view design references</p>
-              </div>
-            </div>
+
 
             {customOrders.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-12 text-center">
@@ -680,16 +673,6 @@ export default function BuyerDashboardPage() {
                   
                   return (
                     <div key={order._id} id={`order-${order._id}`} className="bg-white rounded-2xl shadow-md border-2 border-lime-200 bg-gradient-to-br from-white to-lime-50/30 overflow-hidden hover:shadow-xl hover:border-lime-400 transition transform hover:-translate-y-1 flex flex-col break-inside-avoid">
-                      {/* Message Badge */}
-                      {messageCount.unread > 0 && (
-                        <div className="bg-red-500 text-white text-xs font-bold px-4 py-2 flex items-center justify-between">
-                          <span className="flex items-center gap-2">
-                            <MessageCircle className="h-4 w-4" />
-                            {messageCount.unread} new message{messageCount.unread !== 1 ? 's' : ''}
-                          </span>
-                        </div>
-                      )}
-
                       {/* Card Header */}
                       <button
                         onClick={(e) => {
@@ -697,63 +680,228 @@ export default function BuyerDashboardPage() {
                           e.stopPropagation();
                           handleCardToggle();
                         }}
-                        className="w-full p-5 flex flex-col gap-3 hover:bg-lime-50/50 transition text-left"
+                        className="w-full bg-gradient-to-br from-white via-lime-50/40 to-white hover:from-lime-50 hover:via-lime-100/40 hover:to-lime-50 transition-all p-4 flex flex-col gap-3 text-left border-b border-lime-100"
                       >
+                        {/* Top Row: Order Number and Status */}
                         <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-bold text-gray-900 truncate">{order.orderNumber}</h3>
-                            <p className="text-xs text-gray-600 mt-1">{new Date(order.createdAt).toLocaleDateString()}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-baseline gap-2">
+                              <h3 className="text-base md:text-lg font-bold bg-gradient-to-r from-lime-700 to-green-600 bg-clip-text text-transparent truncate">
+                                {order.orderNumber}
+                              </h3>
+                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0 whitespace-nowrap ${
+                                order.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                                order.status === "approved" ? "bg-blue-100 text-blue-700" :
+                                order.status === "in-progress" ? "bg-purple-100 text-purple-700" :
+                                order.status === "ready" ? "bg-green-100 text-green-700" :
+                                order.status === "completed" ? "bg-gray-100 text-gray-700" :
+                                "bg-red-100 text-red-700"
+                              }`}>
+                                {order.status === "pending" && <Clock className="h-3 w-3" />}
+                                {order.status === "completed" && <Check className="h-3 w-3" />}
+                                {order.status === "rejected" && <AlertCircle className="h-3 w-3" />}
+                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-1">📅 {new Date(order.createdAt).toLocaleDateString()}</p>
                           </div>
-                          <ChevronRight className={`h-5 w-5 text-gray-400 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
+                          <ChevronRight className={`h-5 w-5 text-lime-600 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
                         </div>
 
-                        {/* Status Badge and Countdown Timer */}
-                        <div className="flex items-center justify-between gap-2 flex-wrap">
-                          <span className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-xs font-bold w-fit ${
-                            order.status === "pending" ? "bg-yellow-100 text-yellow-800" :
-                            order.status === "approved" ? "bg-blue-100 text-blue-800" :
-                            order.status === "in-progress" ? "bg-purple-100 text-purple-800" :
-                            order.status === "ready" ? "bg-green-100 text-green-800" :
-                            order.status === "completed" ? "bg-gray-100 text-gray-800" :
-                            "bg-red-100 text-red-800"
-                          }`}>
-                            {order.status === "pending" && <Clock className="h-3 w-3" />}
-                            {order.status === "completed" && <Check className="h-3 w-3" />}
-                            {order.status === "rejected" && <AlertCircle className="h-3 w-3" />}
-                            {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                          </span>
+                        {/* Info Grid */}
+                        <div className="grid grid-cols-3 gap-2">
+                          {/* Quantity - Display only (editing in separate section) */}
+                          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2 border border-lime-100/50">
+                            <p className="text-xs text-gray-600 font-medium">📦 Qty</p>
+                            <p className="text-sm font-bold text-gray-900">{order.quantity || 1}</p>
+                          </div>
+                          
+                          {/* Price */}
+                          {order.quotedPrice && (
+                            <div className="bg-gradient-to-br from-lime-100/60 to-green-100/60 rounded-lg p-2 border border-lime-200/50">
+                              <p className="text-xs text-gray-600 font-medium">💰 Total</p>
+                              <p className="text-sm font-bold text-lime-700">₦{Math.round(calculateMainCardTotal(order)).toLocaleString()}</p>
+                            </div>
+                          )}
+                          
+                          {/* Timer or Days Left */}
+                          {order.timerStartedAt && order.deadlineDate ? (
+                            <div className="bg-gradient-to-br from-orange-100/60 to-red-100/60 rounded-lg p-2 border border-orange-200/50">
+                              <p className="text-xs text-gray-600 font-medium">⏱️ Time</p>
+                              <p className="text-sm font-bold text-orange-700">
+                                {Math.ceil((new Date(order.deadlineDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d
+                              </p>
+                            </div>
+                          ) : order.buyerAgreedToDate && order.proposedDeliveryDate ? (
+                            // Show agreed delivery date when buyer has agreed
+                            <div className="bg-gradient-to-br from-green-100/60 to-emerald-100/60 rounded-lg p-2 border border-green-200/50">
+                              <p className="text-xs text-gray-600 font-medium">📆 Agreed</p>
+                              <p className="text-sm font-bold text-green-700">{new Date(order.proposedDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                            </div>
+                          ) : order.deliveryDate ? (
+                            // Show original delivery date if no agreement yet
+                            <div className="bg-gradient-to-br from-blue-100/60 to-cyan-100/60 rounded-lg p-2 border border-blue-200/50">
+                              <p className="text-xs text-gray-600 font-medium">📆 Needed</p>
+                              <p className="text-sm font-bold text-blue-700">{new Date(order.deliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                            </div>
+                          ) : null}
+                        </div>
 
-                          {/* Compact Countdown Timer */}
-                          {order.timerStartedAt && order.deadlineDate && (
+                        {/* Countdown Timer Inline */}
+                        {order.timerStartedAt && order.deadlineDate && (
+                          <div className="mt-1">
                             <CountdownTimer
                               timerStartedAt={order.timerStartedAt}
                               deadlineDate={order.deadlineDate}
                               status={order.status}
                               compact={true}
                             />
-                          )}
-                        </div>
-
-                        {/* Quantity and Price Summary */}
-                        <div className="grid grid-cols-2 gap-3 pt-3 border-t border-gray-200">
-                          <div>
-                            <p className="text-xs text-gray-600 mb-1">Quantity</p>
-                            <p className="text-sm font-bold text-gray-900">{order.quantity || 1} unit{(order.quantity || 1) !== 1 ? 's' : ''}</p>
                           </div>
-                          {order.quotedPrice && (
-                            <div className="text-right">
-                              <p className="text-xs text-gray-600 mb-1">Quote</p>
-                              <p className="text-sm font-bold text-lime-600">₦{order.quotedPrice.toLocaleString()}</p>
-                            </div>
+                        )}
+                      </button>
+
+                      {/* Action Bar - Chat Button with Message Badge */}
+                      <div className="border-t border-lime-100 px-4 py-3 bg-gradient-to-r from-lime-600/5 to-green-600/5 flex items-center justify-start gap-3">
+                        {/* Chat Icon Button with Message Count Badge */}
+                        <div className="relative">
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setChatModalOpen(order._id);
+                            }}
+                            className="bg-gradient-to-br from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white p-3 rounded-full transition-all shadow-md hover:shadow-lg hover:scale-110 flex items-center justify-center"
+                            title="Open chat"
+                          >
+                            <MessageCircle className="h-6 w-6" />
+                          </button>
+                          
+                          {/* Message Count Badge on Icon */}
+                          {messageCount.unread > 0 && (
+                            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold shadow-lg border-2 border-white">
+                              {messageCount.unread > 99 ? '99+' : messageCount.unread}
+                            </span>
                           )}
                         </div>
-                      </button>
+                      </div>
 
                       {/* Expanded Content */}
                       {isExpanded && (
                         <>
                           <div className="border-t border-gray-200"></div>
                           <div className="p-5 space-y-5 bg-gray-50 flex-1 overflow-y-auto max-h-96">
+                            {/* Quantity Editor - Only in Pending Status */}
+                            {order.status === 'pending' && (
+                              <div>
+                                <h4 className="font-semibold text-gray-900 mb-3 text-sm">📦 Adjust Quantity</h4>
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-3 bg-white rounded-lg p-4 border border-lime-200">
+                                    <button
+                                      onClick={() => {
+                                        const currentPending = pendingQuantityChange[order._id] || (order.quantity || 1);
+                                        setPendingQuantityChange({
+                                          ...pendingQuantityChange,
+                                          [order._id]: Math.max(1, currentPending - 1)
+                                        });
+                                      }}
+                                      className="bg-red-500 hover:bg-red-600 text-white font-bold w-8 h-8 rounded-lg text-lg transition flex items-center justify-center"
+                                    >
+                                      −
+                                    </button>
+                                    <div className="flex-1 text-center">
+                                      <p className="text-2xl font-bold text-gray-900">{pendingQuantityChange[order._id] || (order.quantity || 1)}</p>
+                                      <p className="text-xs text-gray-500 mt-1">units</p>
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        const currentPending = pendingQuantityChange[order._id] || (order.quantity || 1);
+                                        setPendingQuantityChange({
+                                          ...pendingQuantityChange,
+                                          [order._id]: currentPending + 1
+                                        });
+                                      }}
+                                      className="bg-lime-600 hover:bg-lime-700 text-white font-bold w-8 h-8 rounded-lg text-lg transition flex items-center justify-center"
+                                    >
+                                      +
+                                    </button>
+                                  </div>
+
+                                  {/* Show Confirm button only if quantity changed */}
+                                  {(pendingQuantityChange[order._id] || order.quantity || 1) !== (order.quantity || 1) && (
+                                    <button
+                                      onClick={async () => {
+                                        const oldQty = order.quantity || 1;
+                                        const newQty = pendingQuantityChange[order._id] || oldQty;
+                                        
+                                        try {
+                                          // Update quantity in database
+                                          const res = await fetch(`/api/custom-orders?id=${order._id}`, {
+                                            method: 'PATCH',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify({ quantity: newQty })
+                                          });
+                                          
+                                          if (res.ok) {
+                                            // Generate quantity-update data using centralized utility
+                                            const quantityUpdateData = generateQuantityUpdateData(order, oldQty, newQty);
+                                            
+                                            console.log('[Dashboard] 📊 Quantity Update Data:', quantityUpdateData);
+                                            
+                                            // Send notification message to admin (NOT a quote yet)
+                                            const messageRes = await fetch(`/api/messages`, {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json' },
+                                              body: JSON.stringify({
+                                                orderId: order._id,
+                                                orderNumber: order.orderNumber,
+                                                senderEmail: buyer?.email || 'buyer@empi.com',
+                                                senderName: buyer?.fullName || 'Buyer',
+                                                senderType: 'customer',
+                                                content: generateQuantityUpdateMessageContent(
+                                                  quantityUpdateData.oldQty,
+                                                  quantityUpdateData.newQty,
+                                                  quantityUpdateData.subtotal,
+                                                  quantityUpdateData.discountPercentage,
+                                                  quantityUpdateData.discountAmount,
+                                                  quantityUpdateData.subtotalAfterDiscount,
+                                                  quantityUpdateData.vat,
+                                                  quantityUpdateData.newTotal
+                                                ),
+                                                messageType: 'quantity-update',
+                                                quantityChangeData: quantityUpdateData
+                                              })
+                                            });
+                                            
+                                            if (messageRes.ok) {
+                                              const messageData = await messageRes.json();
+                                              console.log('[Dashboard] ✅ Message sent successfully:', messageData);
+                                            } else {
+                                              console.error('[Dashboard] ❌ Failed to send message:', messageRes.status, messageRes.statusText);
+                                            }
+                                            
+                                            // Clear pending change
+                                            setPendingQuantityChange({
+                                              ...pendingQuantityChange,
+                                              [order._id]: undefined
+                                            });
+                                            
+                                            fetchCustomOrders();
+                                            fetchMessageCounts([order]);
+                                          }
+                                        } catch (err) {
+                                          console.error('Error confirming quantity change:', err);
+                                        }
+                                      }}
+                                      className="w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2"
+                                    >
+                                      <CheckCircle className="h-4 w-4" />
+                                      Confirm Quantity Change
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+
                             {/* Description */}
                             <div>
                               <h4 className="font-semibold text-gray-900 mb-2 text-sm">Description</h4>
@@ -790,35 +938,21 @@ export default function BuyerDashboardPage() {
 
                             {/* Additional Details */}
                             <div className="space-y-3 text-xs">
-                              <div className="flex justify-between">
-                                <dt className="text-gray-600">Needed By:</dt>
-                                <dd className="font-medium text-gray-900">{order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'N/A'}</dd>
-                              </div>
                               {order.notes && (
                                 <div>
                                   <dt className="text-gray-600 mb-1">Admin Notes:</dt>
                                   <dd className="text-gray-700 bg-blue-50 p-2 rounded border border-blue-200 text-xs line-clamp-2">{order.notes}</dd>
                                 </div>
                               )}
+                              {order.buyerAgreedToDate && order.proposedDeliveryDate && (
+                                <div className="mt-3 bg-green-50 border-l-4 border-green-600 p-2 rounded">
+                                  <dt className="text-green-700 font-semibold mb-1">✓ Agreed Delivery Date</dt>
+                                  <dd className="font-bold text-green-800">{new Date(order.proposedDeliveryDate).toLocaleDateString()}</dd>
+                                </div>
+                              )}
                             </div>
                           </div>
 
-                          {/* Chat Button */}
-                          {buyer && (
-                            <div className="border-t-2 border-lime-100 p-5 bg-gradient-to-r from-lime-50/30 to-white">
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setChatModalOpen(order._id);
-                                }}
-                                className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-2 px-3 rounded-lg transition flex items-center justify-center gap-2 text-sm"
-                              >
-                                <MessageCircle className="h-4 w-4" />
-                                {messageCount.total > 0 ? `Chat (${messageCount.total})` : 'Open Chat'}
-                              </button>
-                            </div>
-                          )}
                         </>
                       )}
                     </div>
@@ -1088,12 +1222,31 @@ export default function BuyerDashboardPage() {
       {customOrders && chatModalOpen && buyer && (
         <ChatModal
           isOpen={!!chatModalOpen}
-          onClose={() => {
+          onClose={async () => {
             setChatModalOpen(null);
-            // Refresh message counts when modal closes
+            // Mark messages as read and refresh data when modal closes
             const order = customOrders.find(o => o._id === chatModalOpen);
             if (order) {
-              fetchMessageCounts([order]);
+              try {
+                // Immediately clear the count for this order
+                setMessageCountPerOrder(prev => ({
+                  ...prev,
+                  [order._id]: { ...prev[order._id], unread: 0 }
+                }));
+                // Mark all unread messages as read
+                await fetch(`/api/messages?orderId=${order._id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' }
+                });
+                console.log(`[Dashboard] ✅ Marked messages as read for order ${order._id}`);
+                
+                // Refetch custom orders to get updated delivery date after buyer agreement
+                setTimeout(() => {
+                  fetchCustomOrders();
+                }, 100);
+              } catch (err) {
+                console.error('Error marking messages as read:', err);
+              }
             }
           }}
           onMessageSent={() => {

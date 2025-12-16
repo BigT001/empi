@@ -20,6 +20,7 @@ export interface ICustomOrder extends Document {
   status: 'pending' | 'approved' | 'in-progress' | 'ready' | 'completed' | 'rejected';
   notes?: string;
   quotedPrice?: number;
+  unitPrice?: number; // Unit price per item (for auto-recalculation when quantity changes)
   // Countdown timer fields
   deadlineDate?: Date; // When the costume must be delivered
   timerStartedAt?: Date; // When the countdown timer was started (after payment)
@@ -83,6 +84,7 @@ const customOrderSchema = new Schema(
     },
     notes: String,
     quotedPrice: Number,
+    unitPrice: Number, // Unit price per item (for auto-recalculation when quantity changes)
     // Countdown timer fields
     deadlineDate: Date,
     timerStartedAt: Date,

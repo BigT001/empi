@@ -61,7 +61,13 @@ export default function AdminDashboardPage() {
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<
     'overview' | 'users' | 'orders' | 'products' | 'custom'
-  >('overview');
+  >(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminDashboardActiveTab');
+      return (saved as 'overview' | 'users' | 'orders' | 'products' | 'custom') || 'overview';
+    }
+    return 'overview';
+  });
   // ⚡ Track loaded tabs to prevent re-fetching
   const [loadedTabs, setLoadedTabs] = useState(new Set(['overview']));
   
@@ -77,6 +83,11 @@ export default function AdminDashboardPage() {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+
+  // Persist active tab to localStorage
+  useEffect(() => {
+    localStorage.setItem('adminDashboardActiveTab', activeTab);
+  }, [activeTab]);
 
   // ⚡ Handle tab click - mark as loaded
   const handleTabClick = (tabId: string) => {

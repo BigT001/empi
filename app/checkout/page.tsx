@@ -783,17 +783,22 @@ export default function CheckoutPage() {
                   console.log("  - deliveryQuote:", deliveryQuote);
                   console.log("  - buyer:", buyer);
                   
-                  // Use comprehensive validation function
-                  const validation = validateCheckoutRequirements(shippingOption, buyer);
-                  console.log("🔍 Validation result:", validation);
-                  
-                  if (!validation.valid) {
-                    console.log("❌ Validation failed, showing modal");
-                    // Show validation modal
-                    setValidationType(validation.type as any);
-                    setValidationMessage(validation.message);
-                    setValidationModalOpen(true);
-                    return;
+                  // Skip delivery validation for custom orders (fromQuote)
+                  if (!isFromQuote) {
+                    // Use comprehensive validation function for regular products
+                    const validation = validateCheckoutRequirements(shippingOption, buyer);
+                    console.log("🔍 Validation result:", validation);
+                    
+                    if (!validation.valid) {
+                      console.log("❌ Validation failed, showing modal");
+                      // Show validation modal
+                      setValidationType(validation.type as any);
+                      setValidationMessage(validation.message);
+                      setValidationModalOpen(true);
+                      return;
+                    }
+                  } else {
+                    console.log("✅ Skipping delivery validation for custom order (fromQuote)");
                   }
                   
                   if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
