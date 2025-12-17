@@ -21,6 +21,7 @@ export interface IMessage extends Document {
     unitPrice: number;
     newTotal: number;
   };
+  recipientType?: 'admin' | 'buyer' | 'all'; // Who should see this message (admin-only, buyer-only, or both)
   isRead: boolean;
   readAt?: Date;
   createdAt: Date;
@@ -96,6 +97,11 @@ const messageSchema = new Schema<IMessage>(
     quantityChangeData: {
       type: mongoose.Schema.Types.Mixed,
       default: null,
+    },
+    recipientType: {
+      type: String,
+      enum: ['admin', 'buyer', 'all'],
+      default: 'all',
     },
     isRead: {
       type: Boolean,

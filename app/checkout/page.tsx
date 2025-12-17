@@ -236,7 +236,14 @@ export default function CheckoutPage() {
           body: JSON.stringify(quoteInvoiceData),
         });
 
-        const invoiceResData = await invoiceRes.json();
+        let invoiceResData;
+        try {
+          invoiceResData = await invoiceRes.json();
+        } catch (parseError) {
+          invoiceResData = { error: 'Invalid JSON response from invoice API' };
+        }
+        
+        console.log("📮 Quote invoice response status:", invoiceRes.status);
         console.log("📮 Quote invoice response:", invoiceResData);
 
         if (invoiceRes.ok) {
@@ -245,16 +252,47 @@ export default function CheckoutPage() {
           console.error("❌ Quote invoice generation failed:", {
             status: invoiceRes.status,
             statusText: invoiceRes.statusText,
-            response: invoiceResData,
             error: invoiceResData?.error,
-            details: invoiceResData?.details || "No additional details provided",
-            stack: invoiceResData?.stack
+            details: invoiceResData?.details,
+            message: invoiceResData?.message,
+            fullResponse: JSON.stringify(invoiceResData)
           });
           // Don't fail the payment, but log it for debugging
         }
 
+        // Send payment notification messages to both user and admin
+        try {
+          console.log("📧 Sending payment success notifications (custom order)...");
+          const notificationPayload: any = {
+            type: "success",
+            orderNumber: customOrderQuote.orderNumber,
+            orderId: customOrderQuote.orderId,
+            buyerEmail: buyer?.email,
+            buyerName: buyer?.fullName,
+            amount: customOrderQuote.quotedTotal,
+            paymentReference: response.reference,
+          };
+          
+          // Add invoiceId if available for invoice links
+          if (invoiceResData?.invoice?._id) {
+            notificationPayload.invoiceId = invoiceResData.invoice._id;
+            console.log("✅ Invoice ID added to notification:", invoiceResData.invoice._id);
+          }
+          
+          await fetch("/api/send-payment-notification", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(notificationPayload),
+          });
+          console.log("✅ Payment notifications sent (custom order)");
+        } catch (notificationError) {
+          console.error("⚠️ Failed to send notifications:", notificationError);
+          // Don't fail the payment for notification issues
+        }
+        
         // Show success and clear sessionStorage
         sessionStorage.removeItem('customOrderQuote');
+        
         setSuccessReference(response.reference);
         setSuccessModalOpen(true);
       } else {
@@ -339,17 +377,62 @@ export default function CheckoutPage() {
             body: JSON.stringify(invoiceData),
           });
 
-          const invoiceResData = await invoiceRes.json();
+          let invoiceResData;
+          try {
+            invoiceResData = await invoiceRes.json();
+          } catch (parseError) {
+            invoiceResData = { error: 'Invalid JSON response from invoice API' };
+          }
+          
+          console.log("📮 Invoice response status:", invoiceRes.status);
           console.log("📮 Invoice response:", invoiceResData);
 
           if (invoiceRes.ok) {
             console.log("✅ Invoice generated");
           } else {
-            console.error("❌ Invoice generation failed:", invoiceResData);
+            console.error("❌ Invoice generation failed:", {
+              status: invoiceRes.status,
+              statusText: invoiceRes.statusText,
+              error: invoiceResData?.error,
+              details: invoiceResData?.details,
+              message: invoiceResData?.message,
+              fullResponse: JSON.stringify(invoiceResData)
+            });
           }
 
           // Clear cart and show success modal AFTER both are saved
           console.log("🧹 Clearing cart and showing success modal");
+          
+          // Send payment notification messages to both user and admin
+          try {
+            console.log("📧 Sending payment success notifications...");
+            const notificationPayload: any = {
+              type: "success",
+              orderNumber: response.reference,
+              orderId: undefined,  // Regular cart orders don't have orderId, only orderNumber
+              buyerEmail: buyer?.email,
+              buyerName: buyer?.fullName,
+              amount: totalAmount,
+              paymentReference: response.reference,
+            };
+            
+            // Add invoiceId if available for invoice links
+            if (invoiceResData?.invoice?._id) {
+              notificationPayload.invoiceId = invoiceResData.invoice._id;
+              console.log("✅ Invoice ID added to notification:", invoiceResData.invoice._id);
+            }
+            
+            await fetch("/api/send-payment-notification", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(notificationPayload),
+            });
+            console.log("✅ Payment notifications sent");
+          } catch (notificationError) {
+            console.error("⚠️ Failed to send notifications:", notificationError);
+            // Don't fail the payment for notification issues
+          }
+          
           setSuccessReference(response.reference);
           setSuccessModalOpen(true);
           clearCart();

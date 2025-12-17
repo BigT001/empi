@@ -208,7 +208,7 @@ export async function PATCH(request: NextRequest) {
 
     // Validate status if provided
     if (updates.status) {
-      const validStatuses = ["pending", "quoted", "accepted", "rejected", "completed"];
+      const validStatuses = ["pending", "approved", "in-progress", "ready", "completed", "rejected"];
       if (!validStatuses.includes(updates.status)) {
         return NextResponse.json(
           { message: "Invalid status value" },

@@ -19,23 +19,62 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       line-height: 1.6; 
       color: #1f2937; 
       background: #f3f4f6; 
-      padding: 12px;
+      padding: 8px;
+    }
+    .back-button-container {
+      margin-bottom: 8px;
+      display: flex;
+      gap: 8px;
+    }
+    .back-button {
+      background: #3b82f6;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .back-button:hover {
+      background: #2563eb;
+    }
+    .print-button-inline {
+      background: #10b981;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background 0.2s;
+    }
+    .print-button-inline:hover {
+      background: #059669;
     }
     .invoice-container { 
-      max-width: 100%; 
+      max-width: 900px; 
       margin: 0 auto; 
       background: white; 
-      border-radius: 16px; 
+      border-radius: 12px; 
       overflow: hidden; 
-      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
     }
     
     /* HEADER */
     .invoice-header { 
       background: white; 
       color: #111827; 
-      padding: 20px 16px; 
-      border-bottom: 3px solid #10b981;
+      padding: 14px 12px; 
+      border-bottom: 2px solid #10b981;
     }
     .header-content { 
       display: flex;
@@ -59,16 +98,16 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       object-fit: contain;
     }
     .company-name { 
-      font-size: 20px; 
+      font-size: 18px; 
       font-weight: 900; 
       color: #111827;
     }
     .status-badge { 
       background: #10b981; 
       color: white; 
-      padding: 5px 12px; 
-      border-radius: 20px; 
-      font-size: 10px; 
+      padding: 4px 10px; 
+      border-radius: 16px; 
+      font-size: 9px; 
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -77,21 +116,21 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
     .header-info { 
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 12px;
+      gap: 8px;
     }
     .info-item { 
       min-width: 0;
     }
     .info-label { 
-      font-size: 9px; 
+      font-size: 8px; 
       font-weight: 600; 
       text-transform: uppercase; 
       color: #6b7280; 
       letter-spacing: 0.5px;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
     }
     .info-value { 
-      font-size: 13px; 
+      font-size: 12px; 
       font-weight: 700; 
       color: #111827;
       word-break: break-word;
@@ -99,7 +138,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
     
     /* CONTENT */
     .invoice-content { 
-      padding: 16px;
+      padding: 12px;
     }
     .section-title { 
       font-size: 11px; 
@@ -107,7 +146,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       text-transform: uppercase; 
       color: #374151; 
       letter-spacing: 0.8px;
-      margin: 16px 0 12px 0;
+      margin: 10px 0 8px 0;
       display: flex;
       align-items: center;
     }
@@ -225,10 +264,10 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       background: linear-gradient(90deg, #f9fafb 0%, #ffffff 100%);
     }
     .items-table td { 
-      padding: 14px 16px;
+      padding: 10px 12px;
       border-bottom: 1px solid #f0f0f0;
       display: table-cell;
-      font-size: 13px;
+      font-size: 12px;
       color: #374151;
       font-weight: 500;
       border-right: 1px solid #f0f0f0;
@@ -553,6 +592,10 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
   </style>
 </head>
 <body>
+  <div class="back-button-container">
+    <button class="back-button" onclick="window.history.back()">← Back to Chat</button>
+    <button class="print-button-inline" onclick="window.print()">🖨️ Print</button>
+  </div>
   <div class="invoice-container">
     <!-- HEADER -->
     <div class="invoice-header">

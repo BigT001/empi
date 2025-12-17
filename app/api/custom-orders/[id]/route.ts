@@ -14,13 +14,23 @@ export async function GET(
   try {
     await connectDB();
 
-    const { id } = await params;
+    let id: string;
+    try {
+      const resolvedParams = await params;
+      id = resolvedParams.id;
+    } catch (paramError) {
+      console.error('[API:GET /custom-orders/:id] ❌ Error resolving params:', paramError);
+      return NextResponse.json(
+        { message: 'Invalid request parameters' },
+        { status: 400 }
+      );
+    }
 
     console.log(`[API:GET /custom-orders/:id] 📖 Fetching order ${id}`);
 
     // Validate that id is a valid MongoDB ObjectId
     if (!id || id.length !== 24) {
-      console.log(`[API:GET] ❌ Invalid order ID format: ${id}`);
+      console.log(`[API:GET /custom-orders/:id] ❌ Invalid order ID format: ${id}`);
       return NextResponse.json(
         { message: "Invalid order ID" },
         { status: 400 }
@@ -31,14 +41,18 @@ export async function GET(
     const order = await CustomOrder.findById(id).lean();
 
     if (!order) {
-      console.log(`[API:GET] ❌ Order not found: ${id}`);
+      console.log(`[API:GET /custom-orders/:id] ❌ Order not found: ${id}`);
       return NextResponse.json(
         { message: "Custom order not found" },
         { status: 404 }
       );
     }
 
-    console.log(`✅ Custom order ${id} fetched successfully`);
+    console.log(`[API:GET /custom-orders/:id] ✅ Order fetched successfully:`, {
+      _id: (order as any)._id,
+      orderNumber: (order as any).orderNumber,
+      status: (order as any).status,
+    });
 
     return NextResponse.json(
       {
@@ -71,14 +85,25 @@ export async function PATCH(
   try {
     await connectDB();
 
-    const { id } = await params;
+    let id: string;
+    try {
+      const resolvedParams = await params;
+      id = resolvedParams.id;
+    } catch (paramError) {
+      console.error('[API:PATCH /custom-orders/:id] ❌ Error resolving params:', paramError);
+      return NextResponse.json(
+        { message: 'Invalid request parameters' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
 
     console.log(`[API:PATCH /custom-orders/:id] 📝 Updating order ${id} with:`, body);
 
     // Validate that id is a valid MongoDB ObjectId
     if (!id || id.length !== 24) {
-      console.log(`[API:PATCH] ❌ Invalid order ID format: ${id}`);
+      console.log(`[API:PATCH /custom-orders/:id] ❌ Invalid order ID format: ${id}`);
       return NextResponse.json(
         { message: "Invalid order ID" },
         { status: 400 }
@@ -86,7 +111,7 @@ export async function PATCH(
     }
 
     // Only allow specific fields to be updated
-    const allowedUpdates = ["status", "paymentReference"];
+    const allowedUpdates = ["status", "paymentReference", "buyerAgreedToDate", "deliveryDate"];
     const updates: Record<string, any> = {};
 
     for (const key of Object.keys(body)) {

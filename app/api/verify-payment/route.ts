@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import connectDB from '@/lib/mongodb';
+import Order from '@/lib/models/Order';
+import CustomOrder from '@/lib/models/CustomOrder';
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +47,76 @@ export async function GET(request: NextRequest) {
 
     // Check if payment was successful
     if (data.data?.status === 'success') {
-      console.log("✅ Payment verified as successful");
+      console.log("✅ Payment verified as successful for reference:", reference);
+      
+      // Send payment notifications
+      try {
+        console.log('[verify-payment] 🔗 Connecting to database...');
+        await connectDB();
+        console.log('[verify-payment] ✅ Database connected');
+        
+        // Find order by reference
+        console.log('[verify-payment] 🔍 Looking for order with reference:', reference);
+        const order = await Order.findOne({ orderNumber: reference });
+        const customOrder = await CustomOrder.findOne({ orderNumber: reference });
+        
+        console.log('[verify-payment] 📊 Order lookup results:', {
+          orderFound: !!order,
+          customOrderFound: !!customOrder,
+          reference,
+        });
+        
+        const orderData = order || customOrder;
+        
+        if (orderData) {
+          const amount = data.data.amount / 100; // Paystack returns amount in kobo
+          const customerName = orderData.fullName || orderData.firstName || 'Valued Customer';
+          const customerEmail = orderData.email || data.data.customer?.email;
+          
+          console.log('[verify-payment] 📧 Preparing to send notifications:', {
+            orderNumber: reference,
+            customerName,
+            customerEmail,
+            amount,
+          });
+          
+          // Send success message to buyer
+          console.log('[verify-payment] 📤 Sending success message to buyer...');
+          /*
+          await sendPaymentSuccessMessage({
+            orderId: orderData._id?.toString(),
+            orderNumber: reference,
+            buyerEmail: customerEmail,
+            buyerName: customerName,
+            amount: amount,
+            paymentReference: reference,
+          });
+          console.log('[verify-payment] ✅ Success message sent');
+          
+          // Send notification to admin
+          console.log('[verify-payment] 📤 Sending notification to admin...');
+          await sendPaymentSuccessNotificationToAdmin({
+            orderId: orderData._id?.toString(),
+            orderNumber: reference,
+            buyerEmail: customerEmail,
+            buyerName: customerName,
+            amount: amount,
+            paymentReference: reference,
+          });
+          console.log('[verify-payment] ✅ Admin notification sent');
+          */
+        } else {
+          console.warn('[verify-payment] ⚠️ Order not found for reference:', reference);
+          console.warn('[verify-payment] Available data:', {
+            paymentReference: reference,
+            paymentStatus: data.data?.status,
+          });
+        }
+      } catch (notificationError) {
+        console.error('[verify-payment] ⚠️ Failed to send payment notifications:', notificationError);
+        // Don't fail the payment verification if notifications fail
+      }
+      
       return NextResponse.json({
         success: true,
         reference: data.data.reference,
@@ -54,6 +126,44 @@ export async function GET(request: NextRequest) {
       });
     } else {
       console.log("⚠️ Payment status is not success:", data.data?.status);
+      
+      // Send failure notification
+      try {
+        await connectDB();
+        const order = await Order.findOne({ orderNumber: reference });
+        const customOrder = await CustomOrder.findOne({ orderNumber: reference });
+        const orderData = order || customOrder;
+        
+        if (orderData) {
+          /*
+          const { sendPaymentFailedMessage, sendPaymentFailedNotificationToAdmin } = await import('@/lib/paymentNotifications');
+          const amount = data.data.amount / 100;
+          const customerName = orderData.fullName || orderData.firstName || 'Valued Customer';
+          const customerEmail = orderData.email;
+          
+          await sendPaymentFailedMessage({
+            orderId: orderData._id?.toString(),
+            orderNumber: reference,
+            buyerEmail: customerEmail,
+            buyerName: customerName,
+            amount: amount,
+            reason: data.data?.status,
+          });
+          
+          await sendPaymentFailedNotificationToAdmin({
+            orderId: orderData._id?.toString(),
+            orderNumber: reference,
+            buyerEmail: customerEmail,
+            buyerName: customerName,
+            amount: amount,
+            reason: data.data?.status,
+          });
+          */
+        }
+      } catch (notificationError) {
+        console.error('⚠️ Failed to send payment failure notifications:', notificationError);
+      }
+      
       return NextResponse.json({
         success: false,
         status: data.data?.status,

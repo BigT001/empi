@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Send, AlertCircle, CheckCircle, DollarSign } from "lucide-react";
+import { Send, AlertCircle, CheckCircle, DollarSign, X } from "lucide-react";
 
 interface Message {
   _id: string;
@@ -162,7 +162,7 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
   return (
     <>
       {/* Chat Panel - Always Fixed Height */}
-      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col h-96">
+      <div className="bg-white rounded-lg border border-gray-200 overflow-hidden flex flex-col min-h-96">
         {/* Header */}
         <div className="bg-gradient-to-r from-purple-50 to-pink-50 border-b border-gray-200 px-4 py-3 flex-shrink-0">
           <h3 className="font-semibold text-gray-900">Chat with Customer</h3>
@@ -244,7 +244,7 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
         </div>
 
         {/* Input Area */}
-        <div className="border-t border-gray-200 p-3 space-y-2 flex-shrink-0">
+        <div className="border-t border-gray-200 p-3 space-y-3 flex-shrink-0">
           <form onSubmit={(e) => sendMessage(e, 'text')} className="flex gap-2">
             <input
               type="text"
@@ -262,13 +262,33 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
             </button>
           </form>
 
-          <button
-            onClick={() => setShowQuoteForm(true)}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 font-medium rounded-lg transition text-sm"
-          >
-            <DollarSign className="h-4 w-4" />
-            Send Quote
-          </button>
+          <div className="grid grid-cols-2 gap-2 w-full">
+            <button
+              onClick={() => setShowQuoteForm(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 font-semibold rounded-lg transition text-sm border border-blue-300"
+            >
+              <DollarSign className="h-4 w-4" />
+              Send Quote
+            </button>
+            <button
+              onClick={() => {
+                if (window.confirm('Are you sure you want to decline this order?')) {
+                  fetch(`/api/custom-orders?id=${order._id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ status: 'rejected' })
+                  }).then(() => {
+                    alert('Order declined');
+                    window.location.reload();
+                  });
+                }
+              }}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-red-100 hover:bg-red-200 text-red-700 font-semibold rounded-lg transition text-sm border border-red-300"
+            >
+              <X className="h-4 w-4" />
+              Decline
+            </button>
+          </div>
         </div>
       </div>
 

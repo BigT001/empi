@@ -880,10 +880,9 @@ export default function BuyerDashboardPage() {
                                             }
                                             
                                             // Clear pending change
-                                            setPendingQuantityChange({
-                                              ...pendingQuantityChange,
-                                              [order._id]: undefined
-                                            });
+                                            const updated = { ...pendingQuantityChange };
+                                            delete updated[order._id];
+                                            setPendingQuantityChange(updated);
                                             
                                             fetchCustomOrders();
                                             fetchMessageCounts([order]);

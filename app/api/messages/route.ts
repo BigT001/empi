@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
       quotedDeliveryDate = null,
       messageType = 'text', // 'text', 'quote', 'negotiation', or 'quantity-update'
       quantityChangeData = null,
+      recipientType = 'all', // 'admin', 'buyer', or 'all'
     } = body;
 
     console.log('[API:POST /messages] Received:', { orderId, orderNumber, senderType, messageType, contentLength: content?.length });
@@ -177,6 +178,7 @@ export async function POST(request: NextRequest) {
         discountAmount,
         messageType,
         quantityChangeData: quantityChangeData || null,
+        recipientType,
         isRead: false,
       });
 

@@ -8,7 +8,7 @@ import { MobileBottomSidebar } from "./MobileBottomSidebar";
 import { useAdmin } from "@/app/context/AdminContext";
 import { useSessionExpiry } from "@/lib/hooks/useSessionExpiry";
 import MobileAdminDashboardSkeleton from "../mobile-dashboard";
-import { Users, ShoppingCart, Palette, Package, Clock, BarChart3, AlertTriangle, Palette as Paintbrush } from "lucide-react";
+import { Users, ShoppingCart, Palette, Package, Clock, BarChart3, AlertTriangle, Palette as Paintbrush, CheckCircle2 } from "lucide-react";
 
 // ⚡ LAZY LOAD panels with code splitting - dramatically reduces initial bundle size
 const UsersPanel = dynamic(() => import("./UsersPanel").then(mod => ({ default: mod.UsersPanel })), {
@@ -27,6 +27,11 @@ const ProductsPanel = dynamic(() => import("./ProductsPanel").then(mod => ({ def
 });
 
 const PendingPanel = dynamic(() => import("./PendingPanel").then(mod => ({ default: mod.PendingPanel })), {
+  loading: () => <PanelSkeleton />,
+  ssr: false
+});
+
+const ApprovedOrdersPanel = dynamic(() => import("./ApprovedOrdersPanel").then(mod => ({ default: mod.ApprovedOrdersPanel })), {
   loading: () => <PanelSkeleton />,
   ssr: false
 });
@@ -51,20 +56,21 @@ function PanelSkeleton() {
 const TABS = [
   { id: 'overview', label: 'Overview', icon: BarChart3, color: 'text-blue-600' },
   { id: 'users', label: 'Users', icon: Users, color: 'text-purple-600' },
-  { id: 'products', label: 'Products', icon: Package, color: 'text-green-600' },
-  { id: 'orders', label: 'Orders', icon: ShoppingCart, color: 'text-orange-600' },
-  { id: 'custom', label: 'Custom Orders', icon: Paintbrush, color: 'text-indigo-600' },
+  { id: 'pending', label: 'Pending', icon: Clock, color: 'text-red-600' },
+  { id: 'approved', label: 'Approved', icon: CheckCircle2, color: 'text-green-600' },
+  { id: 'products', label: 'Products', icon: Package, color: 'text-indigo-600' },
+  { id: 'custom', label: 'Custom Orders', icon: Paintbrush, color: 'text-orange-600' },
 ] as const;
 
 export default function AdminDashboardPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'users' | 'orders' | 'products' | 'custom'
+    'overview' | 'users' | 'pending' | 'approved' | 'products' | 'custom'
   >(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('adminDashboardActiveTab');
-      return (saved as 'overview' | 'users' | 'orders' | 'products' | 'custom') || 'overview';
+      return (saved as 'overview' | 'users' | 'pending' | 'approved' | 'products' | 'custom') || 'overview';
     }
     return 'overview';
   });
@@ -159,10 +165,17 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Orders Tab - ⚡ Only loaded/rendered when clicked */}
-        {activeTab === 'orders' && loadedTabs.has('orders') && (
+        {/* Pending Tab - ⚡ Only loaded/rendered when clicked */}
+        {activeTab === 'pending' && loadedTabs.has('pending') && (
           <div className="animate-fadeIn">
-            <OrdersPanel />
+            <PendingPanel />
+          </div>
+        )}
+
+        {/* Approved Tab - ⚡ Only loaded/rendered when clicked */}
+        {activeTab === 'approved' && loadedTabs.has('approved') && (
+          <div className="animate-fadeIn">
+            <ApprovedOrdersPanel />
           </div>
         )}
 

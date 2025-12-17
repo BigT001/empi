@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Link from "next/link";
 import { Send, X, DollarSign, CheckCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useBuyer } from "@/app/context/BuyerContext";
@@ -21,13 +22,15 @@ interface Message {
   quotedTotal?: number;
   discountPercentage?: number;
   discountAmount?: number;
-  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update';
+  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update' | 'delivery-option';
+  deliveryOption?: 'pickup' | 'delivery'; // Selected delivery option
   quantityChangeData?: {
     oldQty: number;
     newQty: number;
     unitPrice: number;
     newTotal: number;
   };
+  recipientType?: 'admin' | 'buyer' | 'all'; // Who should see this message
   isRead: boolean;
   createdAt: string;
 }
@@ -51,6 +54,7 @@ interface ChatModalProps {
   isAdmin?: boolean;
   adminName?: string;
   onMessageSent?: () => void;
+  orderStatus?: string; // Current tab/status: pending, approved, in-progress, ready, completed, rejected
 }
 
 export function ChatModal({
@@ -62,6 +66,7 @@ export function ChatModal({
   isAdmin = false,
   adminName = "Empi Costumes",
   onMessageSent,
+  orderStatus: currentOrderStatus = 'pending',
 }: ChatModalProps) {
   const router = useRouter();
   const { buyer } = useBuyer();
@@ -74,12 +79,16 @@ export function ChatModal({
   const [showQuoteForm, setShowQuoteForm] = useState(false);
   const [orderStatus, setOrderStatus] = useState<string | null>(null);
   const [isPaymentDone, setIsPaymentDone] = useState(false);
+  const [showDeliveryOptions, setShowDeliveryOptions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [userScrolledUp, setUserScrolledUp] = useState(false);
   const [agreedToDateMessageId, setAgreedToDateMessageId] = useState<string | null>(null);
-  const [buyerAgreedToDate, setBuyerAgreedToDate] = useState(order.buyerAgreedToDate || false);
+  const [buyerAgreedToDate, setBuyerAgreedToDate] = useState((order && order.buyerAgreedToDate) || false);
+  const [showDeclineModal, setShowDeclineModal] = useState(false);
+  const [declineReason, setDeclineReason] = useState('');
+  const [isSubmittingDecline, setIsSubmittingDecline] = useState(false);
 
   const calculateQuoteDetails = () => {
     const basePrice = parseFloat(quotePrice) || 0;
@@ -91,6 +100,11 @@ export function ChatModal({
   // Fetch order status to check if payment is done
   const fetchOrderStatus = async () => {
     try {
+      if (!order?._id) {
+        console.warn('[ChatModal] ⚠️ Order ID missing, skipping status fetch');
+        return;
+      }
+      
       const res = await fetch(`/api/custom-orders/${order._id}`);
       if (res.ok) {
         const data = await res.json();
@@ -104,9 +118,11 @@ export function ChatModal({
         if (paymentDone) {
           console.log('[ChatModal] ✅ Payment detected, disabling Pay Now button');
         }
+      } else {
+        console.warn('[ChatModal] ⚠️ Failed to fetch order status:', res.status, res.statusText);
       }
     } catch (error) {
-      console.error('[ChatModal] Error fetching order status:', error);
+      console.error('[ChatModal] ❌ Error fetching order status:', error);
     }
   };
 
@@ -258,7 +274,48 @@ export function ChatModal({
       const data = await response.json();
       if (data.success && Array.isArray(data.messages)) {
         console.log('[ChatModal] ✅ Fetched', data.messages.length, 'messages');
-        data.messages.forEach((msg: Message) => {
+        
+        // Filter messages based on recipientType and viewer role
+        const filteredMessages = data.messages.filter((msg: Message) => {
+          // Always show messages without recipientType (backward compatibility) or recipientType='all'
+          if (!msg.recipientType || msg.recipientType === 'all') {
+            console.log('[ChatModal] 📊 Message passes filter (no recipientType or all):', {
+              messageId: msg._id,
+              messageType: msg.messageType,
+              recipientType: msg.recipientType,
+            });
+            return true;
+          }
+          // Admin-only messages: show only if viewer is admin
+          if (msg.recipientType === 'admin' && isAdmin) {
+            console.log('[ChatModal] 📊 Message passes filter (admin message, viewer is admin):', {
+              messageId: msg._id,
+              messageType: msg.messageType,
+              recipientType: msg.recipientType,
+            });
+            return true;
+          }
+          // Buyer-only messages: show only if viewer is NOT admin (is buyer)
+          if (msg.recipientType === 'buyer' && !isAdmin) {
+            console.log('[ChatModal] 📊 Message passes filter (buyer message, viewer is buyer):', {
+              messageId: msg._id,
+              messageType: msg.messageType,
+              recipientType: msg.recipientType,
+            });
+            return true;
+          }
+          console.log('[ChatModal] 📊 Message BLOCKED by filter:', {
+            messageId: msg._id,
+            messageType: msg.messageType,
+            recipientType: msg.recipientType,
+            viewerIsAdmin: isAdmin,
+          });
+          return false;
+        });
+        
+        console.log('[ChatModal] 📊 Filtered to', filteredMessages.length, 'messages (viewer is', isAdmin ? 'admin' : 'buyer', ')');
+        
+        filteredMessages.forEach((msg: Message) => {
           if (msg.messageType === 'quantity-update') {
             console.log('[ChatModal] 📊 Found quantity-update message:', {
               messageId: msg._id,
@@ -267,7 +324,7 @@ export function ChatModal({
             });
           }
         });
-        setMessages(data.messages);
+        setMessages(filteredMessages);
       } else {
         console.warn('[ChatModal] ⚠️ Response format unexpected:', data);
       }
@@ -352,6 +409,152 @@ export function ChatModal({
       setIsSubmitting(false);
       inputRef.current?.focus();
     }
+  };
+
+  // Send delivery options to buyer
+  const sendDeliveryOptions = async () => {
+    try {
+      setIsSubmitting(true);
+      const deliveryMessage = `📦 **DELIVERY OPTIONS** 📦\n\nYour costume is ready! Please select how you'd like to receive it:`;
+      
+      const messageResponse = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          senderEmail: userEmail,
+          senderName: adminName,
+          senderType: 'admin',
+          content: deliveryMessage,
+          messageType: 'system',
+          recipientType: 'all',
+          deliveryOptionRequest: true
+        })
+      });
+
+      if (!messageResponse.ok) {
+        console.error('Failed to send delivery options:', await messageResponse.text());
+        alert('Failed to send delivery options');
+        return;
+      }
+
+      setShowDeliveryOptions(false);
+      // Refresh messages
+      fetchMessages();
+    } catch (error) {
+      console.error('Error sending delivery options:', error);
+      alert('Failed to send delivery options. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Handle delivery option selection by buyer
+  const selectDeliveryOption = async (option: 'pickup' | 'delivery') => {
+    try {
+      const optionLabel = option === 'pickup' ? '📍 Personal Pickup' : '🚚 Empi Delivery';
+      const optionMessage = `I choose: ${optionLabel}`;
+      
+      const messageResponse = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          senderEmail: userEmail,
+          senderName: userName,
+          senderType: 'customer',
+          content: optionMessage,
+          messageType: 'system',
+          deliveryOption: option,
+          recipientType: 'all'
+        })
+      });
+
+      if (!messageResponse.ok) {
+        console.error('Failed to select delivery option:', await messageResponse.text());
+        alert('Failed to select delivery option');
+        return;
+      }
+
+      // If customer selected personal pickup, automatically send pickup address
+      if (option === 'pickup') {
+        const pickupAddress = `📍 **PICKUP LOCATION** 📍\n\nYour costume is ready for pickup!\n\n**Address:** 22 Chi-Ben street, Ojo, Lagos State\n\nPlease arrange a convenient time to pick it up.`;
+        
+        const addressResponse = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            senderEmail: userEmail,
+            senderName: adminName,
+            senderType: 'admin',
+            content: pickupAddress,
+            messageType: 'system',
+            recipientType: 'all'
+          })
+        });
+
+        if (!addressResponse.ok) {
+          console.error('Failed to send pickup address:', await addressResponse.text());
+        }
+      } else if (option === 'delivery') {
+        // If customer selected Empi delivery, send logistics message
+        const deliveryMessage = `🚚 **DELIVERY ARRANGEMENT** 🚚\n\nThank you for choosing Empi Delivery! You will receive a call from our logistics department soon to arrange the delivery of your costume.\n\nPlease ensure you're available to receive the call.`;
+        
+        const deliveryResponse = await fetch('/api/messages', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            senderEmail: userEmail,
+            senderName: adminName,
+            senderType: 'admin',
+            content: deliveryMessage,
+            messageType: 'system',
+            recipientType: 'all'
+          })
+        });
+
+        if (!deliveryResponse.ok) {
+          console.error('Failed to send delivery message:', await deliveryResponse.text());
+        }
+      }
+
+      // Refresh messages
+      fetchMessages();
+    } catch (error) {
+      console.error('Error selecting delivery option:', error);
+      alert('Failed to select delivery option. Please try again.');
+    }
+  };
+
+  // Helper function to render message content with markdown links
+  const renderMessageContent = (content: string) => {
+    // Split by markdown link pattern: [text](/url)
+    const parts = content.split(/(\[.*?\]\(.*?\))/g);
+    
+    return parts.map((part, index) => {
+      const linkMatch = part.match(/\[(.*?)\]\((.*?)\)/);
+      if (linkMatch) {
+        const [, linkText, linkUrl] = linkMatch;
+        return (
+          <Link
+            key={index}
+            href={linkUrl}
+            target={linkUrl.startsWith('http') ? '_blank' : '_self'}
+            rel={linkUrl.startsWith('http') ? 'noopener noreferrer' : ''}
+            className="text-blue-600 hover:text-blue-800 underline font-semibold"
+          >
+            {linkText}
+          </Link>
+        );
+      }
+      return <span key={index}>{part}</span>;
+    });
   };
 
   const finalMessage = messages.find(m => m.isFinalPrice && m.senderType === 'admin');
@@ -713,18 +916,16 @@ export function ChatModal({
                             <div className="border-t border-white/20 mt-2 pt-2">
                               <p className="text-xs md:text-sm opacity-90">Unit Price:</p>
                               <p className="text-sm md:text-base font-bold">{formatPrice(msg.quantityChangeData?.unitPrice || 0)}</p>
-                              <p className="text-xs md:text-sm opacity-90 mt-2">Subtotal:</p>
-                              <p className="text-sm md:text-base font-bold">{formatPrice(msg.quantityChangeData?.subtotal || 0)}</p>
-                              {msg.quantityChangeData?.discountPercentage > 0 && (
+                              <p className="text-xs md:text-sm opacity-90 mt-2">New Total:</p>
+                              <p className="text-sm md:text-base font-bold">{formatPrice((msg.quantityChangeData as any)?.newTotal || 0)}</p>
+                              {(msg.quantityChangeData as any)?.discountPercentage && (msg.quantityChangeData as any)?.discountPercentage > 0 && (
                                 <>
-                                  <p className="text-xs md:text-sm opacity-90 mt-2">Discount ({msg.quantityChangeData?.discountPercentage}%):</p>
-                                  <p className="text-sm md:text-base font-bold text-green-300">-{formatPrice(msg.quantityChangeData?.discountAmount || 0)}</p>
-                                  <p className="text-xs md:text-sm opacity-90 mt-2">Subtotal after discount:</p>
-                                  <p className="text-sm md:text-base font-bold">{formatPrice(msg.quantityChangeData?.subtotalAfterDiscount || 0)}</p>
+                                  <p className="text-xs md:text-sm opacity-90 mt-2">Discount ({(msg.quantityChangeData as any)?.discountPercentage}%):</p>
+                                  <p className="text-sm md:text-base font-bold text-green-300">-{formatPrice((msg.quantityChangeData as any)?.discountAmount || 0)}</p>
                                 </>
                               )}
                               <p className="text-xs md:text-sm opacity-90 mt-2">VAT (7.5%):</p>
-                              <p className="text-sm md:text-base font-bold text-yellow-300">{formatPrice(msg.quantityChangeData?.vat || 0)}</p>
+                              <p className="text-sm md:text-base font-bold text-yellow-300">{formatPrice((msg.quantityChangeData as any)?.vat || 0)}</p>
                               <div className="border-t border-white/20 mt-2 pt-2">
                                 <p className="text-xs md:text-sm opacity-90">Total (with VAT):</p>
                                 <p className="text-sm md:text-base font-bold text-lime-300">{formatPrice(msg.quantityChangeData?.newTotal || 0)}</p>
@@ -741,8 +942,43 @@ export function ChatModal({
                             </button>
                           )}
                         </div>
+                      ) : msg.messageType === 'system' && msg.content && msg.content.includes('DELIVERY OPTIONS') ? (
+                        <div className="space-y-3 md:space-y-4">
+                          <p className="text-sm md:text-base font-semibold">{msg.content}</p>
+                          {/* Show buttons if admin sent this (message from admin means customer can select) */}
+                          {msg.senderType === 'admin' ? (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-600 font-semibold mb-2">Select your preferred option:</p>
+                              <button
+                                onClick={() => selectDeliveryOption('pickup')}
+                                className="w-full px-4 py-3 rounded-lg font-semibold text-sm transition border-2 bg-white text-gray-900 border-blue-300 hover:bg-blue-50 hover:border-blue-500 flex items-center justify-center gap-2"
+                              >
+                                📍 Personal Pickup
+                              </button>
+                              <button
+                                onClick={() => selectDeliveryOption('delivery')}
+                                className="w-full px-4 py-3 rounded-lg font-semibold text-sm transition border-2 bg-white text-gray-900 border-green-300 hover:bg-green-50 hover:border-green-500 flex items-center justify-center gap-2"
+                              >
+                                🚚 Empi Delivery
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      ) : msg.messageType === 'system' && msg.deliveryOption ? (
+                        <div className="space-y-2">
+                          <p className="text-sm md:text-base font-semibold">{msg.content}</p>
+                          <div className={`px-3 md:px-4 py-2 md:py-3 rounded-lg font-semibold text-sm ${
+                            msg.deliveryOption === 'pickup'
+                              ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                              : 'bg-green-100 text-green-700 border border-green-300'
+                          }`}>
+                            ✓ {msg.deliveryOption === 'pickup' ? '📍 Personal Pickup' : '🚚 Empi Delivery'}
+                          </div>
+                        </div>
                       ) : (
-                        <p className="text-sm md:text-base leading-relaxed break-words">{msg.content}</p>
+                        <div className="text-sm md:text-base leading-relaxed break-words whitespace-pre-wrap">
+                          {renderMessageContent(msg.content)}
+                        </div>
                       )}
                       {/* Timestamp */}
                       <p className={`text-xs mt-1 md:mt-2 opacity-70`}>
@@ -768,14 +1004,34 @@ export function ChatModal({
               </div>
             )}
 
-            {/* Quote Form Toggle (Admin Only) */}
-            {isAdmin && !finalMessage && (
+            {/* Quote Form Toggle (Admin Only) - Hidden on Ready Tab */}
+            {isAdmin && !finalMessage && currentOrderStatus !== 'ready' && (
+              <div className="grid grid-cols-2 gap-2 w-full">
+                <button
+                  onClick={() => setShowQuoteForm(true)}
+                  className="py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300"
+                >
+                  <DollarSign className="h-4 w-4" />
+                  Send Quote
+                </button>
+                <button
+                  onClick={() => setShowDeclineModal(true)}
+                  className="py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300"
+                >
+                  <X className="h-4 w-4" />
+                  Decline
+                </button>
+              </div>
+            )}
+
+            {/* Delivery Options Button - Only on Ready Tab */}
+            {isAdmin && currentOrderStatus === 'ready' && (
               <button
-                onClick={() => setShowQuoteForm(true)}
-                className="w-full py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-900"
+                onClick={sendDeliveryOptions}
+                disabled={isSubmitting}
+                className="w-full py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-300 disabled:opacity-50"
               >
-                <DollarSign className="h-4 w-4" />
-                + Send Quote
+                🚚 Send Delivery Options
               </button>
             )}
 
@@ -801,6 +1057,104 @@ export function ChatModal({
           </div>
         </div>
       </div>
+
+      {/* Decline Reason Modal */}
+      {showDeclineModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">Decline Order</h3>
+              <button
+                onClick={() => {
+                  setShowDeclineModal(false);
+                  setDeclineReason('');
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-600">
+              Please provide a reason for declining this order. The buyer will see this reason.
+            </p>
+
+            <textarea
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="Enter reason for declining (e.g., Out of stock, Cannot meet deadline, etc.)"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
+              rows={4}
+            />
+
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeclineModal(false);
+                  setDeclineReason('');
+                }}
+                className="px-4 py-2 text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg font-medium transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!declineReason.trim()) {
+                    alert('Please provide a reason for declining');
+                    return;
+                  }
+
+                  setIsSubmittingDecline(true);
+                  try {
+                    // Send decline message to buyer
+                    const messageResponse = await fetch('/api/messages', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        orderId: order._id,
+                        senderEmail: userEmail,
+                        senderName: adminName,
+                        senderType: 'admin',
+                        content: `Order Declined: ${declineReason}`,
+                        messageType: 'system',
+                        recipientType: 'all'
+                      })
+                    });
+
+                    if (!messageResponse.ok) {
+                      console.error('Failed to send decline message:', await messageResponse.text());
+                    }
+
+                    // Update order status
+                    await fetch(`/api/custom-orders?id=${order._id}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ 
+                        status: 'rejected',
+                        declineReason: declineReason
+                      })
+                    });
+
+                    setShowDeclineModal(false);
+                    setDeclineReason('');
+                    alert('Order declined and buyer has been notified');
+                    onClose();
+                  } catch (error) {
+                    console.error('Error declining order:', error);
+                    alert('Failed to decline order. Please try again.');
+                  } finally {
+                    setIsSubmittingDecline(false);
+                  }
+                }}
+                disabled={isSubmittingDecline}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg font-medium transition"
+              >
+                {isSubmittingDecline ? 'Declining...' : 'Decline Order'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
