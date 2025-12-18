@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Buyer from "@/lib/models/Buyer";
 import { serializeDoc } from "@/lib/serializer";
+import crypto from "crypto";
 
 // Get admin emails from environment variable (comma-separated)
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').filter(e => e.trim());
@@ -91,6 +92,8 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { email, phone, password } = body;
 
+    console.log("🔐 Login attempt - body:", { email: email ? "provided" : "missing", phone: phone ? "provided" : "missing", password: password ? "provided" : "missing" });
+
     // Validation
     if (!password) {
       return NextResponse.json(
@@ -118,26 +121,34 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    console.log("🔍 Searching for buyer with filters:", orFilters);
+
     const buyer = await Buyer.findOne({
       $or: orFilters,
     });
 
     if (!buyer) {
+      console.log("❌ Buyer not found for:", { email, phone });
       return NextResponse.json(
         { error: "Invalid email/phone or password" },
         { status: 401 }
       );
     }
+
+    console.log("✅ Buyer found:", buyer.email);
 
     // Compare passwords
     const isPasswordValid = await buyer.comparePassword(password);
 
     if (!isPasswordValid) {
+      console.log("❌ Password mismatch for buyer:", buyer.email);
       return NextResponse.json(
         { error: "Invalid email/phone or password" },
         { status: 401 }
       );
     }
+
+    console.log("✅ Password valid for buyer:", buyer.email);
 
     // Check if email is admin email (in case it wasn't set during registration)
     const isAdmin = ADMIN_EMAILS.includes(buyer.email.toLowerCase().trim());
@@ -146,17 +157,36 @@ export async function PUT(request: NextRequest) {
       await buyer.save();
     }
 
-    // Update last login
+    // 🔒 Generate secure session token
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const sessionExpiry = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+
+    // Update last login and set session
     buyer.lastLogin = new Date();
+    buyer.sessionToken = sessionToken;
+    buyer.sessionExpiry = sessionExpiry;
     await buyer.save();
 
     console.log(`✅ Buyer logged in: ${email || phone}${buyer.isAdmin ? ' (ADMIN)' : ''}`);
+    console.log(`✅ Session token created for buyer: ${buyer.email}`);
 
     // Return buyer without password - properly serialized
     const buyerData = serializeDoc(buyer);
     delete (buyerData as any).password;
 
-    return NextResponse.json(buyerData, { status: 200 });
+    // 🔒 Set HTTP-only session cookie (secure, can't be accessed by JS)
+    const response = NextResponse.json(buyerData, { status: 200 });
+    response.cookies.set('empi_session', sessionToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 30 * 24 * 60 * 60, // 30 days in seconds
+      path: '/',
+    });
+
+    console.log(`✅ Session cookie set for buyer: ${buyer.email}`);
+
+    return response;
   } catch (error: any) {
     console.error("Error logging in buyer:", error);
     return NextResponse.json(

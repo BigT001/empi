@@ -4,10 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Footer } from "../components/Footer";
+import { Navigation } from "../components/Navigation";
 import { InvoiceModal } from "../components/InvoiceModal";
 import { ChatModal } from "../components/ChatModal";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { useBuyer } from "../context/BuyerContext";
+import { useCurrency } from "../context/CurrencyContext";
 import { getBuyerInvoices, StoredInvoice } from "@/lib/invoiceStorage";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { formatDate } from "@/lib/utils";
@@ -44,6 +46,8 @@ interface CustomOrder {
 
 export default function BuyerDashboardPage() {
   const { buyer, isHydrated, logout, updateProfile } = useBuyer();
+  const { currency, setCurrency } = useCurrency();
+  const [category, setCategory] = useState("adults");
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
@@ -440,15 +444,23 @@ export default function BuyerDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900 flex flex-col">
       <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
+      {/* Navigation Header */}
+      <Navigation
+        category={category}
+        onCategoryChange={setCategory}
+        currency={currency}
+        onCurrencyChange={setCurrency}
+      />
+
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-6 sm:py-8 w-full mt-20 md:mt-32">
         {/* Welcome Header with Logo */}
-        <div className="mb-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="mb-8 sm:mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1">
-            <h1 className="text-xl sm:text-3xl font-black text-gray-900">
+            <h1 className="text-lg sm:text-3xl font-black text-gray-900">
               {isFirstVisit ? "Welcome" : "Welcome back"}, {buyer.fullName}! 👋
             </h1>
           </div>
-          <Link href="/" className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold transition shadow-md hover:shadow-lg whitespace-nowrap">
+          <Link href="/" className="hidden sm:flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold transition shadow-md hover:shadow-lg whitespace-nowrap">
             <ShoppingBag className="h-5 w-5" />
             <span>Continue Shopping</span>
           </Link>

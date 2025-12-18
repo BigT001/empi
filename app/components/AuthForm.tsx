@@ -186,20 +186,27 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         }
 
         // 1️⃣ Authenticate with API (sets HTTP-only session cookie)
+        const loginPayload = {
+          [loginType]: loginType === "email" ? loginIdentifier.toLowerCase() : loginIdentifier,
+          password: formData.password,
+        };
+        
+        console.log("📝 Login payload:", loginPayload);
+        
         const loginResponse = await fetch("/api/buyers", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           credentials: "include", // Important: include cookies
-          body: JSON.stringify({
-            [loginType]: loginType === "email" ? loginIdentifier.toLowerCase() : loginIdentifier,
-            password: formData.password,
-          }),
+          body: JSON.stringify(loginPayload),
         });
 
         if (!loginResponse.ok) {
           const errorData = await loginResponse.json();
+          console.error("❌ Login error response:", errorData);
           throw new Error(errorData.error || "Login failed");
         }
+
+        console.log("✅ Login successful");
 
         // 2️⃣ Fetch fresh profile from secure /api/auth/me endpoint
         // This validates the session and gets the latest data from database

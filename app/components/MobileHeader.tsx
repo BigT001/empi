@@ -100,7 +100,7 @@ export function MobileHeader() {
   return (
     <>
       {/* Mobile Header */}
-      <div className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-100 transition-transform duration-300 ${
+      <div className={`block md:hidden fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-100 transition-transform duration-300 ${
         headerVisible ? "translate-y-0" : "-translate-y-full"
       }`}>
         <div className="flex items-center justify-between px-3 py-3 gap-2">
