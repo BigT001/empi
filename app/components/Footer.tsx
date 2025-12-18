@@ -10,10 +10,41 @@ export function Footer() {
   return (
     <footer className="border-t border-gray-200 bg-gradient-to-b from-gray-50 to-white mt-20">
       <div className="mx-auto max-w-7xl px-4 md:px-6 py-12 md:py-16">
-        {/* Main Footer Grid - 3 Columns */}
-        <div className="grid gap-8 md:gap-12 md:grid-cols-3 mb-12">
-          {/* Brand Section */}
-          <div>
+        {/* Brand Section - Full Width on Mobile, Part of Grid on Desktop */}
+        <div className="mb-8 md:mb-0 md:hidden">
+          <div className="flex items-center gap-3 mb-4">
+            <Image
+              src="/logo/EMPI-2k24-LOGO-1.PNG"
+              alt="EMPI Logo"
+              width={45}
+              height={45}
+              className="rounded-lg shadow-md"
+            />
+            <div>
+              <span className="text-2xl font-black bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">EMPI</span>
+              <p className="text-xs text-gray-600 font-medium">Premium Costumes</p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-700 mb-6 leading-relaxed">
+            Lagos's premier destination for premium costumes. Rent or buy quality costumes for every occasion.
+          </p>
+          
+          {/* Instagram Link */}
+          <a 
+            href="https://www.instagram.com/empicostumes/" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-semibold rounded-lg transition transform hover:scale-105 shadow-md"
+          >
+            <Instagram className="h-5 w-5" />
+            Follow on Instagram
+          </a>
+        </div>
+
+        {/* Main Footer Grid - 2 Columns on Mobile, 3 Columns on Desktop */}
+        <div className="grid gap-8 md:gap-12 grid-cols-2 md:grid-cols-3 mb-12">
+          {/* Brand Section - Hidden on Mobile, Shows on Desktop */}
+          <div className="hidden md:block">
             <div className="flex items-center gap-3 mb-4">
               <Image
                 src="/logo/EMPI-2k24-LOGO-1.PNG"
@@ -93,14 +124,14 @@ export function Footer() {
         <div className="border-t border-gray-200 my-8"></div>
 
         {/* Bottom Footer */}
-        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-6 text-center md:text-left">
           {/* Copyright */}
           <p className="text-sm text-gray-600 font-medium">
             © {currentYear} EMPI Costumes. All rights reserved. | Proudly serving Lagos, Nigeria.
           </p>
           
           {/* Policy Links */}
-          <div className="flex gap-6 text-sm">
+          <div className="flex gap-6 text-sm justify-center md:justify-end">
             <a href="#" className="text-gray-600 hover:text-lime-600 transition font-medium">Privacy Policy</a>
             <a href="#" className="text-gray-600 hover:text-lime-600 transition font-medium">Terms of Service</a>
           </div>

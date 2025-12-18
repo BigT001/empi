@@ -101,7 +101,7 @@ export function MobileHeader() {
       <div className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-100 transition-transform duration-300 ${
         headerVisible ? "translate-y-0" : "-translate-y-full"
       }`}>
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-3 py-3 gap-2">
           {/* Logo */}
           <Link href="/" className="flex-shrink-0">
             <Image
@@ -114,7 +114,7 @@ export function MobileHeader() {
           </Link>
 
           {/* Category Buttons */}
-          <div className="flex gap-1">
+          <div className="flex gap-1 flex-1 justify-center">
             <button
               onClick={() => handleCategoryClick("adults")}
               className={`px-3 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
@@ -148,7 +148,7 @@ export function MobileHeader() {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 flex-shrink-0">
             <button 
               onClick={() => setShowSearchModal(true)}
               className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
