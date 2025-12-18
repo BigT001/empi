@@ -46,6 +46,7 @@ export default function BuyerDashboardPage() {
   const { buyer, isHydrated, logout, updateProfile } = useBuyer();
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
+  const [isFirstVisit, setIsFirstVisit] = useState(false);
   const [activeTab, setActiveTab] = useState<"invoices" | "custom-orders" | "profile">(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('buyerDashboardActiveTab');
@@ -74,6 +75,23 @@ export default function BuyerDashboardPage() {
   });
   const [isSaving, setIsSaving] = useState(false);
   const router = useRouter();
+
+  // Check if this is the user's first visit to the dashboard
+  useEffect(() => {
+    if (buyer && isHydrated) {
+      const dashboardVisitKey = `dashboard_visited_${buyer.id}`;
+      const hasVisited = localStorage.getItem(dashboardVisitKey);
+      
+      if (!hasVisited) {
+        // First visit - mark it as visited
+        setIsFirstVisit(true);
+        localStorage.setItem(dashboardVisitKey, 'true');
+      } else {
+        // Subsequent visits
+        setIsFirstVisit(false);
+      }
+    }
+  }, [buyer, isHydrated]);
 
   useEffect(() => {
     if (selectedInvoice) {
@@ -422,20 +440,12 @@ export default function BuyerDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900 flex flex-col">
       <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
 
-      <header className={`border-b border-lime-100 sticky top-0 z-40 bg-white/95 backdrop-blur-sm shadow-sm transition-all duration-300 ${
-        headerVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
-      }`}>
-        <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">📊 My Dashboard</h1>
-        </div>
-      </header>
-
       <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full">
         {/* Welcome Header with Logo */}
         <div className="mb-12 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex-1">
             <h1 className="text-xl sm:text-3xl font-black text-gray-900">
-              Welcome back, {buyer.fullName}! 👋
+              {isFirstVisit ? "Welcome" : "Welcome back"}, {buyer.fullName}! 👋
             </h1>
           </div>
           <Link href="/" className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold transition shadow-md hover:shadow-lg whitespace-nowrap">

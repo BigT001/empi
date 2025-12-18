@@ -3,10 +3,11 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, Search, Menu, ArrowLeft } from "lucide-react";
+import { ShoppingCart, Search, Menu, ArrowLeft, User } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "./CartContext";
 import { useCurrency } from "../context/CurrencyContext";
+import { useBuyer } from "../context/BuyerContext";
 import { CURRENCY_RATES } from "./constants";
 
 export function MobileHeader() {
@@ -20,6 +21,7 @@ export function MobileHeader() {
   const router = useRouter();
   const { items } = useCart();
   const { currency, setCurrency } = useCurrency();
+  const { buyer, isLoggedIn, isHydrated } = useBuyer();
 
   // Determine current category based on pathname
   const getCategory = () => {
@@ -196,14 +198,26 @@ export function MobileHeader() {
             </button>
 
             {/* Login/Profile Button */}
-            <Link 
-              href="/auth" 
-              className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition duration-300 font-semibold text-sm text-blue-700"
-              title="Login"
-              onClick={() => setShowMobileMenu(false)}
-            >
-              Login
-            </Link>
+            {isHydrated && !isLoggedIn ? (
+              <Link 
+                href="/auth" 
+                className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition duration-300 font-semibold text-sm text-blue-700 gap-1"
+                title="Login"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <span>🔐</span> Login
+              </Link>
+            ) : (
+              <Link 
+                href="/dashboard" 
+                className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-lime-100 hover:bg-lime-200 transition duration-300 font-semibold text-sm text-lime-700 gap-1"
+                title="Profile"
+                onClick={() => setShowMobileMenu(false)}
+              >
+                <User className="h-4 w-4" />
+                Profile
+              </Link>
+            )}
           </div>
         </div>
       )}
