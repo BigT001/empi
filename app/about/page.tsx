@@ -1,6 +1,5 @@
 "use client";
 
-import { Header } from "../components/Header";
 import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
 import { useState, useCallback } from "react";
@@ -21,23 +20,13 @@ export default function About() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-gray-50 to-white text-gray-900 flex flex-col">
-      {/* Header with Logo and Navigation */}
-      <header className="border-b border-gray-200/50 sticky top-0 z-40 bg-white/95 backdrop-blur-md shadow-sm">
-        <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-center gap-2 md:justify-between md:gap-8">
-          {/* Logo - from Header */}
-          <Header />
-          
-          {/* Navigation */}
-          <nav className="flex items-center flex-1">
-            <Navigation 
-              category={category}
-              onCategoryChange={handleCategoryChange}
-              currency={currency}
-              onCurrencyChange={setCurrency}
-            />
-          </nav>
-        </div>
-      </header>
+      {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
+      <Navigation 
+        category={category}
+        onCategoryChange={handleCategoryChange}
+        currency={currency}
+        onCurrencyChange={setCurrency}
+      />
 
       {/* Main Content */}
       <main className="flex-1 w-full">

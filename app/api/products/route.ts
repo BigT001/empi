@@ -8,27 +8,42 @@ import { revalidatePath } from 'next/cache';
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const category = searchParams.get('category');
+  const costumeType = searchParams.get('costumeType');
+  const color = searchParams.get('color');
+  const material = searchParams.get('material');
   const mode = searchParams.get('mode'); // NEW: filter by mode ('buy' or 'rent')
   const lite = searchParams.get('lite'); // lightweight mode for product picker
   const page = parseInt(searchParams.get('page') || '1');
   const limit = parseInt(searchParams.get('limit') || '12'); // Default 12 items per page
   const search = searchParams.get('search'); // New: search query
+  const minPrice = searchParams.get('minPrice');
+  const maxPrice = searchParams.get('maxPrice');
 
   try {
     console.log("📥 GET /api/products - Fetching products from database...");
-    console.log("🔍 Category filter:", category || "none");
-    console.log("🎬 Mode filter:", mode || "none");
-    console.log("🔎 Search query:", search || "none");
-    console.log("🪶 Lite mode:", lite ? "yes" : "no");
-    console.log("📄 Pagination: page", page, "limit", limit);
+    console.log("🔍 Filters:", { category, costumeType, color, material, search });
 
     await connectDB();
 
-    // Build query object
+    // Build query object with advanced filtering
     let query: any = {};
     
     if (category) {
       query.category = category;
+    }
+
+    if (costumeType) {
+      query.costumeType = costumeType;
+    }
+
+    if (color) {
+      // Case-insensitive color search
+      query.color = new RegExp(color, 'i');
+    }
+
+    if (material) {
+      // Case-insensitive material search
+      query.material = new RegExp(material, 'i');
     }
     
     // NEW: Filter by availability based on mode
@@ -38,8 +53,19 @@ export async function GET(request: NextRequest) {
       query.availableForRent = true;
     }
     
+    // Price filtering
+    if (minPrice || maxPrice) {
+      query.sellPrice = {};
+      if (minPrice) {
+        query.sellPrice.$gte = parseFloat(minPrice);
+      }
+      if (maxPrice) {
+        query.sellPrice.$lte = parseFloat(maxPrice);
+      }
+    }
+    
     if (search) {
-      // Search in name, description, costumeType, color, material
+      // Advanced search: match name, description, costumeType, color, material
       const searchRegex = new RegExp(search, 'i'); // Case-insensitive search
       query.$or = [
         { name: searchRegex },

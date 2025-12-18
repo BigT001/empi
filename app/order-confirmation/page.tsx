@@ -3,7 +3,6 @@
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Header } from "@/app/components/Header";
 import { Footer } from "@/app/components/Footer";
 import {
   CheckCircle,
@@ -106,7 +105,11 @@ function OrderConfirmationContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
-        <Header />
+        <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
+          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4">
+            <h1 className="text-2xl font-bold text-gray-900">⏳ Loading...</h1>
+          </div>
+        </header>
         <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
@@ -123,7 +126,11 @@ function OrderConfirmationContent() {
   if (error || !order) {
     return (
       <div className="min-h-screen flex flex-col bg-gray-50">
-        <Header />
+        <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
+          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4">
+            <h1 className="text-2xl font-bold text-gray-900">⚠️ Error</h1>
+          </div>
+        </header>
         <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
           <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
             <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
@@ -144,7 +151,11 @@ function OrderConfirmationContent() {
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-green-50 to-emerald-50">
-      <Header />
+      <header className="border-b border-green-200 sticky top-0 z-40 bg-white shadow-sm">
+        <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4">
+          <h1 className="text-2xl font-bold text-gray-900">✅ Order Confirmed!</h1>
+        </div>
+      </header>
       <main className="flex-1 max-w-5xl mx-auto px-4 py-8 w-full">
         {/* Success Header */}
         <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-12 mb-8">

@@ -9,6 +9,7 @@ import { HomeModeProvider } from "./context/HomeModeContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { FloatingSupport } from "./components/FloatingSupport";
+import { MobileHeader } from "./components/MobileHeader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -74,21 +75,22 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ScrollToTop />
-        <FloatingSupport />
-        <BuyerProvider>
-          <CurrencyProvider>
-            <HomeModeProvider>
-              <ModeProvider>
-                <AdminProvider>
-                  <CartProvider>
+        <CartProvider>
+          <BuyerProvider>
+            <CurrencyProvider>
+              <MobileHeader />
+              <ScrollToTop />
+              <FloatingSupport />
+              <HomeModeProvider>
+                <ModeProvider>
+                  <AdminProvider>
                     {children}
-                  </CartProvider>
-                </AdminProvider>
-              </ModeProvider>
-            </HomeModeProvider>
-          </CurrencyProvider>
-        </BuyerProvider>
+                  </AdminProvider>
+                </ModeProvider>
+              </HomeModeProvider>
+            </CurrencyProvider>
+          </BuyerProvider>
+        </CartProvider>
       </body>
     </html>
   );

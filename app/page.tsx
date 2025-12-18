@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Header } from "./components/Header";
+import Image from "next/image";
 import { Navigation } from "./components/Navigation";
 import { ProductGrid } from "./components/ProductGrid";
 import { Footer } from "./components/Footer";
@@ -47,57 +47,53 @@ export default function Home() {
     return null;
   }
 
+  const handleCategoryChange = (newCategory: string) => {
+    setCategory(newCategory);
+  };
+
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col animate-in fade-in duration-500">
+      {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
+      <Navigation 
+        category={category}
+        onCategoryChange={setCategory}
+        currency={currency}
+        onCurrencyChange={setCurrency}
+        mode={mode}
+        onModeChange={setMode}
+      />
+
       {/* Discount Popup */}
       <DiscountPopup intervalMinutes={7} />
 
-      {/* Header with Logo and Navigation */}
-      <header className="border-b border-gray-100 sticky top-0 z-40 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-center gap-2 md:justify-between md:gap-8">
-          {/* Logo - from Header */}
-          <Header />
-          
-          {/* Navigation */}
-          <nav className="flex items-center flex-1">
-            <Navigation 
-              category={category}
-              onCategoryChange={setCategory}
-              currency={currency}
-              onCurrencyChange={setCurrency}
-              mode={mode}
-              onModeChange={setMode}
-            />
-          </nav>
-        </div>
-      </header>
-
-      {/* Hero Section with SEO Content */}
-      <section className="hidden bg-gradient-to-r from-lime-50 to-green-50 py-12 md:py-16 px-4">
-        <div className="max-w-6xl mx-auto text-center">
-          <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-            Premium Costumes for Every Occasion in Lagos
-          </h1>
-          <p className="text-lg md:text-xl text-gray-700 mb-8">
-            EMPI is Lagos's leading costume maker, offering high-quality adult and kids costumes for rent and sale. 
-            Perfect for parties, events, themed celebrations, and special occasions.
-          </p>
-          <div className="flex flex-wrap justify-center gap-4">
-            <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
-              ✓ Professional Quality
-            </span>
-            <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
-              ✓ Fast Delivery
-            </span>
-            <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
-              ✓ Affordable Prices
-            </span>
+      {/* Main Content - Add padding for both mobile and desktop headers */}
+      <div className="pt-20 md:pt-32">
+        {/* Hero Section with SEO Content */}
+        <section className="hidden bg-gradient-to-r from-lime-50 to-green-50 py-12 md:py-16 px-4">
+          <div className="max-w-6xl mx-auto text-center">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Premium Costumes for Every Occasion in Lagos
+            </h1>
+            <p className="text-lg md:text-xl text-gray-700 mb-8">
+              EMPI is Lagos's leading costume maker, offering high-quality adult and kids costumes for rent and sale. 
+              Perfect for parties, events, themed celebrations, and special occasions.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                ✓ Professional Quality
+              </span>
+              <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                ✓ Fast Delivery
+              </span>
+              <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                ✓ Affordable Prices
+              </span>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* Premium Banner Card - Polished, Compact */}
-      <section className="mx-auto w-full max-w-7xl px-4 md:px-6 py-6 md:py-8">
+        {/* Premium Banner Card - Polished, Compact */}
+        <section className="mx-auto w-full max-w-7xl px-4 md:px-6 py-6 md:py-8">
         <div className="bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 border border-lime-200 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
           <div className="relative px-6 md:px-10 py-8 md:py-10">
             {/* Background decorative elements */}
@@ -123,46 +119,47 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Custom Costumes CTA Section */}
-      {/* Main Content */}
-      <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} />
+        {/* Custom Costumes CTA Section */}
+        {/* Main Content */}
+        <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} />
 
-      {/* SEO Text Section */}
-      <section className="hidden bg-gray-50 py-12 px-4">
-        <div className="max-w-4xl mx-auto">
-          <h2 className="text-3xl font-bold text-gray-900 mb-6">Why Choose EMPI Costumes?</h2>
-          <div className="grid md:grid-cols-2 gap-8">
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">Lagos's Top Costume Maker</h3>
-              <p className="text-gray-700 mb-4">
-                EMPI is the most trusted costume maker in Lagos, Nigeria. With years of experience in creating 
-                and renting quality costumes, we serve thousands of satisfied customers across Lagos.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">Wide Selection</h3>
-              <p className="text-gray-700 mb-4">
-                From adult party costumes to kids themed costumes, we have everything you need for any occasion. 
-                Our collection includes traditional, modern, and themed costumes for all ages.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">Affordable Rental & Sales</h3>
-              <p className="text-gray-700 mb-4">
-                Looking to rent or buy? EMPI offers flexible options. Whether you need a costume for one night 
-                or want to purchase quality pieces, we have competitive prices in Lagos.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-3">Fast & Reliable Service</h3>
-              <p className="text-gray-700 mb-4">
-                We understand your time matters. Our fast delivery service ensures you get your costumes on time. 
-                Serving all areas of Lagos with professional service and care.
-              </p>
+        {/* SEO Text Section */}
+        <section className="hidden bg-gray-50 py-12 px-4">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl font-bold text-gray-900 mb-6">Why Choose EMPI Costumes?</h2>
+            <div className="grid md:grid-cols-2 gap-8">
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">Lagos's Top Costume Maker</h3>
+                <p className="text-gray-700 mb-4">
+                  EMPI is the most trusted costume maker in Lagos, Nigeria. With years of experience in creating 
+                  and renting quality costumes, we serve thousands of satisfied customers across Lagos.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">Wide Selection</h3>
+                <p className="text-gray-700 mb-4">
+                  From adult party costumes to kids themed costumes, we have everything you need for any occasion. 
+                  Our collection includes traditional, modern, and themed costumes for all ages.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">Affordable Rental & Sales</h3>
+                <p className="text-gray-700 mb-4">
+                  Looking to rent or buy? EMPI offers flexible options. Whether you need a costume for one night 
+                  or want to purchase quality pieces, we have competitive prices in Lagos.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-xl font-semibold text-gray-800 mb-3">Fast & Reliable Service</h3>
+                <p className="text-gray-700 mb-4">
+                  We understand your time matters. Our fast delivery service ensures you get your costumes on time. 
+                  Serving all areas of Lagos with professional service and care.
+                </p>
+              </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      </div>
 
       {/* Footer */}
       <Footer />

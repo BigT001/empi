@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ShoppingCart, Info } from "lucide-react";
+import { ShoppingCart, Info, Check } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { CURRENCY_RATES } from "./constants";
@@ -31,6 +31,7 @@ interface ProductCardProps {
 
 export function ProductCard({ product, formattedPrice: initialFormattedPrice, currency = "NGN" }: ProductCardProps) {
   const { addItem } = useCart();
+  const [showNotification, setShowNotification] = useState(false);
   
   // Get safe product ID (handle both id and _id from MongoDB)
   const productId = product.id || (product as any)._id || '';
@@ -67,8 +68,14 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
       quantity: 1,
       ...rentalMetadata,
     });
-    // Optional: Show a brief success message
-    console.log(`✅ Added ${product.name} (${cardMode}) to cart`);
+    
+    // Show notification
+    setShowNotification(true);
+    
+    // Hide notification after 3 seconds
+    setTimeout(() => {
+      setShowNotification(false);
+    }, 3000);
   };
 
   // Get all images - use imageUrls array if available, otherwise use main imageUrl
@@ -234,6 +241,21 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
           </Link>
         </div>
       </div>
+
+      {/* Add to Cart Notification - Bottom of screen */}
+      {showNotification && (
+        <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-80 z-50 animate-in slide-in-from-bottom duration-300">
+          <div className="bg-lime-600 text-white rounded-lg shadow-lg p-4 flex items-center gap-3">
+            <div className="flex-shrink-0">
+              <Check className="h-5 w-5" />
+            </div>
+            <div className="flex-grow">
+              <p className="font-semibold text-sm">Added to cart!</p>
+              <p className="text-xs opacity-90">{product.name}</p>
+            </div>
+          </div>
+        </div>
+      )}
     </article>
   );
 }

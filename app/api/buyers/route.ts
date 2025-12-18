@@ -6,7 +6,11 @@ import { serializeDoc } from "@/lib/serializer";
 // Get admin emails from environment variable (comma-separated)
 const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '').toLowerCase().split(',').filter(e => e.trim());
 
-// Register a new buyer with password
+/**
+ * POST /api/buyers
+ * Register a new buyer account
+ * 🔒 Returns minimal info - full profile fetched via /api/auth/me
+ */
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
@@ -75,6 +79,12 @@ export async function POST(request: NextRequest) {
 }
 
 // Login with email/phone and password
+/**
+ * PUT /api/buyers
+ * Login endpoint - validates credentials and sets HTTP-only session cookie
+ * 🔒 Returns only confirmation - full profile fetched via /api/auth/me
+ * Client should call /api/auth/me after successful login
+ */
 export async function PUT(request: NextRequest) {
   try {
     await connectDB();

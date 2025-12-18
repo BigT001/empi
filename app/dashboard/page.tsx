@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { InvoiceModal } from "../components/InvoiceModal";
 import { ChatModal } from "../components/ChatModal";
@@ -427,7 +426,7 @@ export default function BuyerDashboardPage() {
         headerVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0 pointer-events-none'
       }`}>
         <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-between">
-          <Header />
+          <h1 className="text-2xl font-bold text-gray-900">📊 My Dashboard</h1>
         </div>
       </header>
 

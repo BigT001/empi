@@ -66,7 +66,7 @@ export function CompletedOrderCard({ order, onImageClick, onChatClick }: Complet
       {(order.images?.length || 0) + (order.designUrls?.length || 0) > 0 && (
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <p className="text-xs font-semibold text-gray-600 uppercase">Product Images</p>
+            <p className="text-xs font-semibold text-gray-600 uppercase">Design Images</p>
             <button
               onClick={() => {
                 const allImages = [...(order.images || []), ...(order.designUrls || [])];
@@ -93,21 +93,21 @@ export function CompletedOrderCard({ order, onImageClick, onChatClick }: Complet
               Download All
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {(order.images || order.designUrls || []).slice(0, 6).map((img, idx) => (
-              <div
-                key={idx}
-                className="relative aspect-square bg-gray-100 rounded border border-emerald-300 overflow-hidden cursor-pointer hover:border-emerald-500 transition"
-                onClick={onImageClick}
-              >
-                <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
-              </div>
-            ))}
+          <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-emerald-300 scrollbar-track-emerald-100">
+            <div className="flex gap-2">
+              {(order.images || order.designUrls || []).map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative aspect-square bg-gray-100 rounded border border-emerald-300 overflow-hidden cursor-pointer hover:border-emerald-500 transition flex-shrink-0 w-16 h-16"
+                  onClick={onImageClick}
+                >
+                  <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
           </div>
-          {(((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) > 6) && (
-            <button onClick={onImageClick} className="text-xs text-emerald-600 font-semibold hover:text-emerald-700">
-              View all {((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0)} images
-            </button>
+          {((order.images?.length || 0) + (order.designUrls?.length || 0) > 4) && (
+            <p className="text-xs text-gray-500 text-center">← Scroll to see more →</p>
           )}
         </div>
       )}

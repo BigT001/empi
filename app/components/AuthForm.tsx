@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useBuyer } from "@/app/context/BuyerContext";
 import { useCurrency } from "@/app/context/CurrencyContext";
-import { LogIn, UserPlus, Mail, Phone, Lock, User, MapPin, Eye, EyeOff } from "lucide-react";
+import { LogIn, UserPlus, Mail, Phone, Lock, User, Eye, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react";
 
 interface AuthFormProps {
@@ -33,10 +33,6 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
     phone: "",
     password: "",
     fullName: "",
-    address: "",
-    city: "",
-    state: "",
-    postalCode: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -75,10 +71,6 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 fullName: session.user.name || "User",
                 password: "",
                 phone: "",
-                address: "Not provided",
-                city: "Not provided",
-                state: "Not provided",
-                postalCode: "Not provided",
                 oauthProvider: provider,
               }),
             });
@@ -135,7 +127,6 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         if (!validatePhone(formData.phone)) throw new Error("Please enter a valid phone number");
         if (!formData.password?.trim()) throw new Error("Password is required");
         if (formData.password.length < 6) throw new Error("Password must be at least 6 characters");
-        if (!formData.address?.trim()) throw new Error("Address is required");
 
         const response = await fetch("/api/buyers", {
           method: "POST",
@@ -145,10 +136,6 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
             phone: formData.phone,
             password: formData.password,
             fullName: formData.fullName,
-            address: formData.address,
-            city: formData.city,
-            state: formData.state,
-            postalCode: formData.postalCode,
           }),
         });
 
@@ -188,7 +175,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           }
         }, 1500);
       } else {
-        // Login with email/phone and password
+        // 🔒 LOGIN FLOW - Secure approach
         const loginIdentifier = loginType === "email" ? formData.email : formData.phone;
         
         if (!loginIdentifier?.trim()) {
@@ -198,38 +185,42 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           throw new Error("Password is required");
         }
 
-        const response = await fetch("/api/buyers", {
+        // 1️⃣ Authenticate with API (sets HTTP-only session cookie)
+        const loginResponse = await fetch("/api/buyers", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
+          credentials: "include", // Important: include cookies
           body: JSON.stringify({
             [loginType]: loginType === "email" ? loginIdentifier.toLowerCase() : loginIdentifier,
             password: formData.password,
           }),
         });
 
-        if (!response.ok) {
-          const errorData = await response.json();
+        if (!loginResponse.ok) {
+          const errorData = await loginResponse.json();
           throw new Error(errorData.error || "Login failed");
         }
 
-        const buyer = await response.json();
-        const buyerProfile = {
-          id: buyer._id || buyer.id,
-          email: buyer.email,
-          fullName: buyer.fullName,
-          phone: buyer.phone,
-          address: buyer.address,
-          city: buyer.city,
-          state: buyer.state,
-          postalCode: buyer.postalCode,
-          createdAt: buyer.createdAt,
-          preferredCurrency: buyer.preferredCurrency || "NGN",
-        };
+        // 2️⃣ Fetch fresh profile from secure /api/auth/me endpoint
+        // This validates the session and gets the latest data from database
+        const meResponse = await fetch("/api/auth/me", {
+          method: "GET",
+          credentials: "include", // Include HTTP-only session cookie
+        });
+
+        if (!meResponse.ok) {
+          throw new Error("Failed to load user profile");
+        }
+
+        const meData = await meResponse.json();
+        const buyerProfile = meData.buyer;
+        
+        // 3️⃣ Store profile in React context (which stores minimal data to localStorage)
         login(buyerProfile);
         
         // Load the user's preferred currency
-        if (buyer.preferredCurrency) {
-          setCurrency(buyer.preferredCurrency);
+        if (buyerProfile.preferredCurrency) {
+          setCurrency(buyerProfile.preferredCurrency);
         }
 
         setSuccess("✅ Logged in successfully! Redirecting...");
@@ -253,24 +244,28 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
   return (
     <div 
-      className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8 md:p-10 w-full max-w-md max-h-[90vh] overflow-y-auto"
+      className={`bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-100/50 p-5 w-full max-w-sm transition-all duration-300 overflow-y-auto ${
+        mode === "register" 
+          ? "max-h-[calc(100vh-120px)]" 
+          : "max-h-[calc(100vh-200px)]"
+      }`}
       onClick={(e) => e.stopPropagation()}
     >
       {/* Tabs */}
-      <div className="flex gap-3 mb-8">
+      <div className="flex gap-1.5 mb-4">
         <button
           onClick={() => {
             setMode("login");
             setError("");
             setSuccess("");
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold transition ${
+          className={`flex-1 flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg font-semibold text-xs transition duration-300 ${
             mode === "login"
-              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-lg"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-md hover:shadow-lg"
+              : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
           }`}
         >
-          <LogIn className="h-4 w-4" />
+          <LogIn className="h-3 w-3" />
           Login
         </button>
         <button
@@ -279,72 +274,72 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
             setError("");
             setSuccess("");
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-lg font-bold transition ${
+          className={`flex-1 flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg font-semibold text-xs transition duration-300 ${
             mode === "register"
-              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-lg"
-              : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-md hover:shadow-lg"
+              : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
           }`}
         >
-          <UserPlus className="h-4 w-4" />
+          <UserPlus className="h-3 w-3" />
           Register
         </button>
       </div>
 
       {/* Title & Description */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">
+      <div className="mb-3.5">
+        <h1 className="text-xl font-bold text-gray-900 mb-0.5">
           {mode === "login" ? "Welcome Back!" : "Join EMPI"}
         </h1>
-        <p className="text-gray-600 text-sm">
+        <p className="text-gray-500 text-xs leading-tight">
           {mode === "login"
-            ? "Sign in with your email/phone and password to access your account"
-            : "Create a new account to start shopping with EMPI"}
+            ? "Sign in to continue"
+            : "Create an account"}
         </p>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-6 flex items-start gap-3">
-          <span className="text-lg mt-0.5">⚠️</span>
-          <span>{error}</span>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-2.5 py-2 rounded-lg mb-3 flex items-start gap-1.5 text-xs">
+          <span className="text-sm mt-0.5 flex-shrink-0">⚠️</span>
+          <span className="leading-snug">{error}</span>
         </div>
       )}
 
       {/* Success Message */}
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-6 flex items-start gap-3">
-          <span className="text-lg mt-0.5">✅</span>
-          <span>{success}</span>
+        <div className="bg-green-50 border border-green-200 text-green-700 px-2.5 py-2 rounded-lg mb-3 flex items-start gap-1.5 text-xs">
+          <span className="text-sm mt-0.5 flex-shrink-0">✅</span>
+          <span className="leading-snug">{success}</span>
         </div>
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-3">
         {/* Login: Email/Phone Toggle */}
         {mode === "login" && (
-          <div className="flex gap-3 mb-6">
+          <div className="flex gap-1.5 mb-3">
             <button
               type="button"
               onClick={() => setLoginType("email")}
-              className={`flex-1 py-2 px-3 rounded-lg font-medium transition flex items-center justify-center gap-2 ${
+              className={`flex-1 py-1.5 px-2 rounded-lg font-medium text-xs transition flex items-center justify-center gap-1 ${
                 loginType === "email"
-                  ? "bg-lime-100 text-lime-700 border border-lime-300"
-                  : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                  ? "bg-lime-100 text-lime-700 border border-lime-300 shadow-sm"
+                  : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
               }`}
             >
-              <Mail className="h-4 w-4" />
+              <Mail className="h-3 w-3" />
               Email
             </button>
             <button
               type="button"
               onClick={() => setLoginType("phone")}
-              className={`flex-1 py-2 px-3 rounded-lg font-medium transition flex items-center justify-center gap-2 ${
+              className={`flex-1 py-1.5 px-2 rounded-lg font-medium text-xs transition flex items-center justify-center gap-1 ${
                 loginType === "phone"
-                  ? "bg-lime-100 text-lime-700 border border-lime-300"
-                  : "bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200"
+                  ? "bg-lime-100 text-lime-700 border border-lime-300 shadow-sm"
+                  : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
               }`}
             >
-              <Phone className="h-4 w-4" />
+              <Phone className="h-3 w-3" />
               Phone
             </button>
           </div>
@@ -354,27 +349,27 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         {mode === "login" && (
           <>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
                 {loginType === "email" ? (
-                  <Mail className="h-4 w-4 text-lime-600" />
+                  <Mail className="h-3 w-3 text-lime-600" />
                 ) : (
-                  <Phone className="h-4 w-4 text-lime-600" />
+                  <Phone className="h-3 w-3 text-lime-600" />
                 )}
-                {loginType === "email" ? "Email Address" : "Phone Number"} *
+                {loginType === "email" ? "Email" : "Phone"} *
               </label>
               <input
                 type={loginType === "email" ? "email" : "tel"}
                 name={loginType}
                 value={loginType === "email" ? formData.email : formData.phone}
                 onChange={handleChange}
-                placeholder={loginType === "email" ? "your@email.com" : "+234 801 234 5678"}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
+                placeholder={loginType === "email" ? "you@example.com" : "+234 801 234 5678"}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <Lock className="h-4 w-4 text-lime-600" />
+              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                <Lock className="h-3 w-3 text-lime-600" />
                 Password *
               </label>
               <div className="relative">
@@ -384,14 +379,14 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                 </button>
               </div>
             </div>
@@ -402,8 +397,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         {mode === "register" && (
           <>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <User className="h-4 w-4 text-lime-600" />
+              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                <User className="h-3 w-3 text-lime-600" />
                 Full Name *
               </label>
               <input
@@ -411,30 +406,30 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 name="fullName"
                 value={formData.fullName}
                 onChange={handleChange}
-                placeholder="John Doe"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
+                placeholder="Your full name"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <Mail className="h-4 w-4 text-lime-600" />
-                Email Address *
+              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                <Mail className="h-3 w-3 text-lime-600" />
+                Email *
               </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="your@email.com"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
+                placeholder="you@example.com"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <Phone className="h-4 w-4 text-lime-600" />
-                Phone Number *
+              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                <Phone className="h-3 w-3 text-lime-600" />
+                Phone *
               </label>
               <input
                 type="tel"
@@ -442,14 +437,14 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+234 801 234 5678"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <Lock className="h-4 w-4 text-lime-600" />
-                Password (min 6 characters) *
+              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                <Lock className="h-3 w-3 text-lime-600" />
+                Password (6+ chars) *
               </label>
               <div className="relative">
                 <input
@@ -458,74 +453,16 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
                 >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                 </button>
               </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-lime-600" />
-                Address *
-              </label>
-              <input
-                type="text"
-                name="address"
-                value={formData.address}
-                onChange={handleChange}
-                placeholder="123 Main Street"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  City
-                </label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  placeholder="Lagos"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
-                  State
-                </label>
-                <input
-                  type="text"
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  placeholder="Lagos"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Postal Code
-              </label>
-              <input
-                type="text"
-                name="postalCode"
-                value={formData.postalCode}
-                onChange={handleChange}
-                placeholder="100001"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition"
-              />
             </div>
           </>
         )}
@@ -534,11 +471,11 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         <button
           type="submit"
           disabled={loading || oauthLoading}
-          className="w-full bg-gradient-to-r from-lime-600 to-lime-500 hover:from-lime-700 hover:to-lime-600 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold py-3 px-4 rounded-lg transition shadow-lg hover:shadow-xl"
+          className="w-full bg-gradient-to-r from-lime-600 to-lime-500 hover:from-lime-700 hover:to-lime-600 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-md hover:shadow-lg mt-4 text-sm"
         >
           {loading ? (
-            <span className="flex items-center justify-center gap-2">
-              <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
+            <span className="flex items-center justify-center gap-2 text-xs">
+              <span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span>
               Processing...
             </span>
           ) : mode === "login" ? (
@@ -550,8 +487,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
       </form>
 
       {/* Toggle Mode */}
-      <p className="text-center text-sm text-gray-600 mt-6">
-        {mode === "login" ? "Don't have an account? " : "Already have an account? "}
+      <p className="text-center text-xs text-gray-600 mt-3">
+        {mode === "login" ? "No account? " : "Have an account? "}
         <button
           onClick={() => {
             setMode(mode === "login" ? "register" : "login");
@@ -562,24 +499,20 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
               phone: "",
               password: "",
               fullName: "",
-              address: "",
-              city: "",
-              state: "",
-              postalCode: "",
             });
           }}
-          className="text-lime-600 hover:text-lime-700 font-bold underline"
+          className="text-lime-600 hover:text-lime-700 font-semibold transition"
         >
-          {mode === "login" ? "Register Here" : "Login Here"}
+          {mode === "login" ? "Sign up" : "Sign in"}
         </button>
       </p>
 
       {/* Guest/Cancel Option */}
       {onCancel && (
-        <div className="mt-6 text-center">
+        <div className="mt-3 text-center">
           <button
             onClick={onCancel}
-            className="inline-block px-6 py-2 border-2 border-lime-600 text-lime-600 font-bold rounded-lg hover:bg-lime-50 transition"
+            className="inline-block px-3 py-1 border-2 border-lime-300 text-lime-700 text-xs font-semibold rounded-lg hover:bg-lime-50 transition duration-300"
           >
             Continue as Guest
           </button>

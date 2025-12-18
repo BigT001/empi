@@ -540,6 +540,28 @@ export default function LogisticsPage() {
                             </div>
                           )}
 
+                          {/* Design Images - Horizontal Scrollable */}
+                          {order.designUrls && order.designUrls.length > 0 && (
+                            <div className="space-y-2">
+                              <p className="text-xs font-semibold text-gray-600">🖼️ Design Images</p>
+                              <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-green-300 scrollbar-track-green-100">
+                                <div className="flex gap-2">
+                                  {order.designUrls.map((img, idx) => (
+                                    <div
+                                      key={idx}
+                                      className="relative aspect-square bg-gray-100 rounded border border-green-300 overflow-hidden cursor-pointer hover:border-green-500 transition flex-shrink-0 w-16 h-16"
+                                    >
+                                      <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              {order.designUrls.length > 4 && (
+                                <p className="text-xs text-gray-500 text-center">← Scroll to see more →</p>
+                              )}
+                            </div>
+                          )}
+
                           {/* Completion Badge */}
                           <div className="bg-green-100 border border-green-300 rounded-lg p-2 text-center">
                             <p className="text-xs font-bold text-green-700">✓ COMPLETED</p>
@@ -699,7 +721,7 @@ export default function LogisticsPage() {
                     type="text"
                     value={accountHolderName}
                     onChange={(e) => setAccountHolderName(e.target.value)}
-                    placeholder="e.g., John Doe"
+                    placeholder="Account holder name"
                     className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:outline-none focus:border-green-600 text-sm font-medium"
                   />
                 </div>

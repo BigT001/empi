@@ -1,9 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Search, AlertCircle } from "lucide-react";
+import { ArrowLeft, Search, AlertCircle, ChevronDown } from "lucide-react";
 import { ProductCard } from "@/app/components/ProductCard";
 import { CURRENCY_RATES } from "@/app/components/constants";
 
@@ -32,8 +32,13 @@ interface PaginationData {
   hasMore: boolean;
 }
 
+const COSTUME_TYPES = ['Angel', 'Carnival', 'Superhero', 'Traditional', 'Cosplay', 'Other'];
+const COLORS = ['Red', 'Blue', 'Black', 'White', 'Gold', 'Silver', 'Purple', 'Green', 'Pink', 'Yellow', 'Orange', 'Brown'];
+const MATERIALS = ['Cotton', 'Polyester', 'Satin', 'Silk', 'Velvet', 'Leather', 'Synthetic'];
+
 export default function SearchResults() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const query = searchParams.get("q") || "";
   const category = searchParams.get("category") || "";
   const currency = searchParams.get("currency") || "NGN";
@@ -49,6 +54,16 @@ export default function SearchResults() {
     hasMore: false,
   });
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Filter states
+  const [selectedType, setSelectedType] = useState("");
+  const [selectedColor, setSelectedColor] = useState("");
+  const [selectedMaterial, setSelectedMaterial] = useState("");
+  const [showFilters, setShowFilters] = useState(false);
+  
+  // Header visibility state
+  const [headerVisible, setHeaderVisible] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
 
   const formatPrice = (price: number) => {
     const converted = price * (CURRENCY_RATES[currency]?.rate || 1);
@@ -75,6 +90,9 @@ export default function SearchResults() {
         const params = new URLSearchParams();
         params.append("search", query);
         if (category) params.append("category", category);
+        if (selectedType) params.append("costumeType", selectedType);
+        if (selectedColor) params.append("color", selectedColor);
+        if (selectedMaterial) params.append("material", selectedMaterial);
         params.append("page", currentPage.toString());
         params.append("limit", "12");
 
@@ -93,45 +111,143 @@ export default function SearchResults() {
     };
 
     fetchSearchResults();
-  }, [query, category, currentPage]);
+  }, [query, category, selectedType, selectedColor, selectedMaterial, currentPage]);
+
+  // Handle scroll to hide/show header
+  useEffect(() => {
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Show header when scrolling up or at top
+      if (currentScrollY < lastScrollY || currentScrollY < 50) {
+        setHeaderVisible(true);
+      } else if (currentScrollY > lastScrollY && currentScrollY > 50) {
+        // Hide header when scrolling down
+        setHeaderVisible(false);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [lastScrollY]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-4">
+      {/* Header with Search and Filters */}
+      <div className={`fixed md:sticky top-16 md:top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 shadow-md transition-all duration-300 ${
+        headerVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
+      }`}>
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          {/* Search Bar */}
+          <div className="flex items-center gap-2 mb-3">
             <Link
               href="/"
-              className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-700"
+              className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-700 flex-shrink-0"
             >
-              <ArrowLeft className="h-5 w-5" />
+              <ArrowLeft className="h-4 w-4" />
             </Link>
             <div className="flex-1">
-              <div className="flex items-center gap-2">
-                <Search className="h-5 w-5 text-gray-400" />
-                <span className="text-lg font-bold text-gray-900">
-                  Search Results
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
+                <Search className="h-4 w-4 text-gray-400" />
+                <span className="text-base font-semibold text-gray-900 flex-1 truncate">
+                  {query || "Search costumes..."}
                 </span>
               </div>
-              <p className="text-sm text-gray-600">
-                {query && (
-                  <>
-                    Results for <span className="font-semibold">"{query}"</span>
-                    {category && <span> in {category}</span>}
-                  </>
-                )}
-              </p>
+            </div>
+          </div>
+
+          {/* Results Info and Horizontal Filters */}
+          <div className="space-y-2">
+            {/* Info */}
+            <div className="flex items-center justify-between">
+              <div className="flex-1">
+                <p className="text-sm font-bold text-gray-900">
+                  {pagination.total} result{pagination.total !== 1 ? "s" : ""} found
+                </p>
+                {query && <p className="text-xs text-gray-600">for <span className="font-semibold">"{query}"</span></p>}
+              </div>
+              {(selectedType || selectedColor || selectedMaterial) && (
+                <button
+                  onClick={() => {
+                    setSelectedType("");
+                    setSelectedColor("");
+                    setSelectedMaterial("");
+                    setCurrentPage(1);
+                  }}
+                  className="px-3 py-1 bg-red-100 text-red-700 rounded-lg font-semibold hover:bg-red-200 transition text-xs ml-2 flex-shrink-0"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Horizontal Filters */}
+            <div className="flex flex-wrap gap-2 pb-1">
+              {/* Costume Type Filter */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">TYPE:</label>
+                <select
+                  value={selectedType}
+                  onChange={(e) => {
+                    setSelectedType(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white hover:border-lime-400 transition cursor-pointer"
+                >
+                  <option value="">All</option>
+                  {COSTUME_TYPES.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Color Filter */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">COLOR:</label>
+                <select
+                  value={selectedColor}
+                  onChange={(e) => {
+                    setSelectedColor(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white hover:border-lime-400 transition cursor-pointer"
+                >
+                  <option value="">All</option>
+                  {COLORS.map(color => (
+                    <option key={color} value={color}>{color}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Material Filter */}
+              <div className="flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">MATERIAL:</label>
+                <select
+                  value={selectedMaterial}
+                  onChange={(e) => {
+                    setSelectedMaterial(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                  className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white hover:border-lime-400 transition cursor-pointer"
+                >
+                  <option value="">All</option>
+                  {MATERIALS.map(material => (
+                    <option key={material} value={material}>{material}</option>
+                  ))}
+                </select>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="max-w-7xl mx-auto px-4 py-4 pt-44 md:pt-4">
         {/* Error State */}
         {error && !loading && (
-          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+          <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 mb-6">
             <AlertCircle className="h-5 w-5 flex-shrink-0" />
             <p>{error}</p>
           </div>
@@ -153,7 +269,7 @@ export default function SearchResults() {
               No products found
             </h2>
             <p className="text-gray-600 mb-6">
-              Try adjusting your search terms or browsing by category
+              Try adjusting your search terms or filters
             </p>
             <Link
               href="/"
@@ -167,21 +283,8 @@ export default function SearchResults() {
         {/* Results */}
         {!loading && !error && products.length > 0 && (
           <>
-            <div className="mb-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">
-                    Found {pagination.total} product{pagination.total !== 1 ? "s" : ""}
-                  </h2>
-                  <p className="text-sm text-gray-600 mt-1">
-                    Page {pagination.page} of {pagination.totalPages}
-                  </p>
-                </div>
-              </div>
-            </div>
-
             {/* Products Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               {products.map((product) => {
                 const productId = product.id || product._id || '';
                 return (
@@ -201,37 +304,41 @@ export default function SearchResults() {
 
             {/* Pagination */}
             {pagination.totalPages > 1 && (
-              <div className="flex items-center justify-center gap-4 py-8">
+              <div className="flex items-center justify-center gap-2 py-8">
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
-                  Previous
+                  ← Previous
                 </button>
+                
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(
-                    (page) => (
+                  {Array.from({ length: Math.min(pagination.totalPages, 7) }, (_, i) => {
+                    const pageNum = i + 1;
+                    const isActive = currentPage === pageNum;
+                    return (
                       <button
-                        key={page}
-                        onClick={() => setCurrentPage(page)}
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
                         className={`w-10 h-10 rounded-lg font-semibold transition ${
-                          currentPage === page
-                            ? "bg-lime-600 text-white"
+                          isActive
+                            ? "bg-lime-600 text-white shadow-lg"
                             : "border border-gray-300 text-gray-700 hover:bg-gray-50"
                         }`}
                       >
-                        {page}
+                        {pageNum}
                       </button>
-                    )
-                  )}
+                    );
+                  })}
                 </div>
+
                 <button
                   onClick={() => setCurrentPage((prev) => Math.min(pagination.totalPages, prev + 1))}
                   disabled={!pagination.hasMore}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition"
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
-                  Next
+                  Next →
                 </button>
               </div>
             )}

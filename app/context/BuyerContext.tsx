@@ -45,45 +45,71 @@ interface BuyerContextType {
 }
 
 const BuyerContext = createContext<BuyerContextType | undefined>(undefined);
-const STORAGE_KEY = "empi_buyer_profile";
+
+// 🔒 SECURITY: Store ONLY non-sensitive preferences in localStorage
+// Full profile is fetched from server via /api/auth/me which validates session
+const MINIMAL_STORAGE_KEY = "empi_buyer_id";
+const CURRENCY_STORAGE_KEY = "empi_preferred_currency";
 
 export function BuyerProvider({ children }: { children: ReactNode }) {
   const [buyer, setBuyer] = useState<BuyerProfile | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
-  // Load from localStorage on mount
+  // 🔒 Load buyer profile from secure server endpoint on mount
+  // Only use localStorage to check if user was logged in
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const buyerData = JSON.parse(stored);
-        setBuyer(buyerData);
+    const loadBuyerProfile = async () => {
+      try {
+        // Try to fetch fresh profile from server (validates HTTP-only session cookie)
+        const response = await fetch("/api/auth/me", { credentials: "include" });
+
+        if (response.ok) {
+          const data = await response.json();
+          setBuyer(data.buyer);
+          // Store only minimal info for quick checks
+          localStorage.setItem(MINIMAL_STORAGE_KEY, data.buyer.id);
+        } else {
+          // Session invalid or expired - clear any stored data
+          localStorage.removeItem(MINIMAL_STORAGE_KEY);
+          localStorage.removeItem(CURRENCY_STORAGE_KEY);
+        }
+      } catch (error) {
+        console.error("Failed to load buyer profile from server", error);
+        localStorage.removeItem(MINIMAL_STORAGE_KEY);
       }
-    } catch (error) {
-      console.error("Failed to load buyer profile from localStorage", error);
-    }
-    setIsHydrated(true);
+
+      setIsHydrated(true);
+    };
+
+    loadBuyerProfile();
   }, []);
 
-  // Save to localStorage whenever buyer changes
+  // 🔒 Save ONLY preferences to localStorage (NOT full profile with PII)
+  // Full profile stays only in memory and server
   useEffect(() => {
     if (isHydrated) {
-      if (buyer) {
+      if (buyer?.id) {
         try {
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(buyer));
+          // Store only user ID as indicator they were logged in
+          localStorage.setItem(MINIMAL_STORAGE_KEY, buyer.id);
+          // Store currency preference (user choice, not sensitive)
+          if (buyer.preferredCurrency) {
+            localStorage.setItem(CURRENCY_STORAGE_KEY, buyer.preferredCurrency);
+          }
         } catch (error) {
-          console.error("Failed to save buyer profile to localStorage", error);
+          console.error("Failed to save minimal buyer data to localStorage", error);
         }
       } else {
-        // Clear localStorage when buyer is null
+        // Clear localStorage when logged out
         try {
-          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(MINIMAL_STORAGE_KEY);
+          localStorage.removeItem(CURRENCY_STORAGE_KEY);
         } catch (error) {
-          console.error("Failed to clear buyer profile from localStorage", error);
+          console.error("Failed to clear buyer data from localStorage", error);
         }
       }
     }
-  }, [buyer, isHydrated]);
+  }, [buyer?.id, buyer?.preferredCurrency, isHydrated]);
 
   const login = (buyerData: BuyerProfile) => {
     const updatedBuyer = {
@@ -93,8 +119,26 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
     setBuyer(updatedBuyer);
   };
 
-  const logout = () => {
-    console.log("🔐 BuyerContext logout called");
+  const logout = async () => {
+    console.log("🔐 Logging out user...");
+    
+    try {
+      // Call server to clear session
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "include", // Include HTTP-only session cookie
+      });
+
+      if (!response.ok) {
+        console.error("Server logout failed, but clearing local session");
+      } else {
+        console.log("✅ Server session cleared");
+      }
+    } catch (error) {
+      console.error("Error calling logout endpoint", error);
+    }
+
+    // Clear local state (this also clears localStorage via useEffect)
     setBuyer(null);
   };
 

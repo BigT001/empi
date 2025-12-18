@@ -1,7 +1,6 @@
 "use client";
 
 import { useCart } from "../components/CartContext";
-import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { Navigation } from "../components/Navigation";
 import { useBuyer } from "../context/BuyerContext";
@@ -160,16 +159,10 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
-      <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
-        <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-center gap-2 md:justify-between md:gap-8">
-          <Header />
-          <nav className="flex items-center flex-1">
-            <Navigation category={category} onCategoryChange={setCategory} currency={currency} onCurrencyChange={setCurrency} />
-          </nav>
-        </div>
-      </header>
+      {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
+      <Navigation category={category} onCategoryChange={setCategory} currency={currency} onCurrencyChange={setCurrency} />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-12 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-12 w-full mt-20">
         <div className="mb-8">
           <Link href="/" className="inline-flex items-center gap-2 text-lime-600 hover:text-lime-700 font-medium mb-4">
             <ArrowLeft className="h-4 w-4" /> Continue Shopping

@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { Header } from "../components/Header";
 import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
 import { Upload, AlertCircle, CheckCircle, Loader, X } from "lucide-react";
@@ -197,23 +196,17 @@ export default function CustomCostumesPage({
 
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col">
-      {/* Header with Logo and Navigation */}
-      <header className="border-b border-gray-100 sticky top-0 z-40 bg-white/95 backdrop-blur-sm">
-        <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4 flex items-center justify-center gap-2 md:justify-between md:gap-8">
-          <Header />
-          <nav className="flex items-center flex-1">
-            <Navigation 
-              category={localCategory}
-              onCategoryChange={onCategoryChange}
-              currency={localCurrency}
-              onCurrencyChange={onCurrencyChange}
-            />
-          </nav>
-        </div>
-      </header>
+      {/* Navigation with Logo */}
+      {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
+      <Navigation 
+        category={localCategory}
+        onCategoryChange={onCategoryChange}
+        currency={localCurrency}
+        onCurrencyChange={onCurrencyChange}
+      />
 
       {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto px-4 md:px-6 py-12 md:py-16">
+      <main className="flex-1 max-w-4xl mx-auto px-4 md:px-6 py-12 md:py-16 mt-20 md:mt-32">
         <div className="space-y-12">
           {/* Hero Section */}
           <section className="text-center space-y-4">
@@ -295,7 +288,7 @@ export default function CustomCostumesPage({
                       onChange={handleInputChange}
                       required
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition"
-                      placeholder="John Doe"
+                      placeholder="Your full name"
                     />
                   </div>
                   <div>
