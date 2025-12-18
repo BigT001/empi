@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home } from "lucide-react";
+import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home, Truck } from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
 import {
   Sidebar,
@@ -46,6 +46,11 @@ const sidebarItems: SidebarItem[] = [
     icon: <FileText className="h-5 w-5" />,
   },
   {
+    name: "Logistics",
+    href: "/admin/logistics",
+    icon: <Truck className="h-5 w-5" />,
+  },
+  {
     name: "Settings",
     href: "/admin/settings",
     icon: <Settings className="h-5 w-5" />,
@@ -83,10 +88,10 @@ export function AdminSidebar() {
   };
 
   return (
-    <Sidebar className={`border-r border-gray-200 bg-white ${state === 'collapsed' ? 'sidebar-collapsed' : 'sidebar-expanded'}`} collapsible="icon">
-      <SidebarHeader className="border-b border-gray-100 pb-4">
+    <Sidebar className={`border-r border-gray-200 bg-gradient-to-b from-white via-gray-50 to-gray-50 ${state === 'collapsed' ? 'sidebar-collapsed' : 'sidebar-expanded'}`} collapsible="icon">
+      <SidebarHeader className="border-b border-gray-200 pb-4 bg-white">
         <div className="flex items-center justify-between px-2">
-          <Link href="/" className="flex items-center justify-center flex-1" onClick={handleMenuClick}>
+          <Link href="/" className="flex items-center justify-center flex-1 hover:opacity-80 transition-opacity" onClick={handleMenuClick}>
             <Image
               src="/logo/EMPI-2k24-LOGO-1.PNG"
               alt="EMPI Logo"
@@ -107,13 +112,13 @@ export function AdminSidebar() {
               <SidebarMenuButton
                 asChild
                 isActive={isActive(item.href)}
-                className={`rounded-lg transition-all ${ 
+                className={`rounded-lg transition-all duration-200 px-4 py-2.5 ${ 
                   isActive(item.href) 
-                    ? "bg-lime-50 text-lime-700 border border-lime-200 shadow-sm" 
-                    : "text-gray-700 hover:bg-gray-50 border border-transparent"
+                    ? "bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md shadow-lime-200 font-semibold" 
+                    : "text-gray-700 hover:bg-gray-100 hover:text-gray-900 border border-transparent"
                 }`}
               >
-                <Link href={item.href} onClick={handleMenuClick} className="font-medium text-sm" title={item.name}>
+                <Link href={item.href} onClick={handleMenuClick} className="font-medium text-sm flex items-center gap-3 w-full" title={item.name}>
                   {item.icon}
                   <span className="sidebar-text">{item.name}</span>
                 </Link>
@@ -126,11 +131,11 @@ export function AdminSidebar() {
       <SidebarFooter className="border-t border-gray-100 pt-4">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-4 py-2.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg font-medium transition text-sm border border-transparent hover:border-red-200"
+          className="flex items-center gap-3 w-full px-4 py-2.5 text-gray-600 hover:text-white hover:bg-red-500 rounded-lg font-medium transition-all duration-200 text-sm border border-gray-200 hover:border-red-500 shadow-sm hover:shadow-md"
           title="Logout"
         >
           <LogOut className="h-5 w-5" />
-          <span>Logout</span>
+          <span className="sidebar-text">Logout</span>
         </button>
       </SidebarFooter>
     </Sidebar>

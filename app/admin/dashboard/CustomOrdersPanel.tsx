@@ -15,7 +15,6 @@ import { InProgressOrderCard } from "./components/InProgressOrderCard";
 import { ImageModal } from "./components/ImageModal";
 import { ClientStatusModal } from "./components/ClientStatusModal";
 import { ConfirmationModal } from "./components/ConfirmationModal";
-import { OrderStatsGrid } from "./components/OrderStatsGrid";
 
 interface CustomOrder {
   _id: string;
@@ -35,6 +34,7 @@ interface CustomOrder {
   status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
   notes?: string;
   quotedPrice?: number;
+  productId?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -388,6 +388,7 @@ export function CustomOrdersPanel() {
         };
         
         if (statusMessages[newStatus]) {
+          // Send the main status message
           await fetch("/api/messages", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -401,6 +402,25 @@ export function CustomOrdersPanel() {
               messageType: "system",
             }),
           });
+
+          // If marked as ready, also send the delivery options message
+          if (newStatus === "ready") {
+            const deliveryMessage = `📦 **DELIVERY OPTIONS** 📦\n\nYour costume is ready! Please select how you'd like to receive it:\n\nSelect your preferred option:\n\n📍 Personal Pickup\n🚚 Empi Delivery`;
+            
+            await fetch("/api/messages", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderId: order._id,
+                orderNumber: order.orderNumber,
+                senderEmail: admin?.email || "admin@empi.com",
+                senderName: "System",
+                senderType: "admin",
+                content: deliveryMessage,
+                messageType: "system",
+              }),
+            });
+          }
         }
       }
       
@@ -421,14 +441,17 @@ export function CustomOrdersPanel() {
       <div className="bg-lime-600 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
-        <div className="relative z-10">
-          <h2 className="text-4xl font-black text-white mb-2">Custom Orders</h2>
-          <p className="text-white/90 text-lg">Manage custom costume requests and send professional quotes</p>
+        <div className="relative z-10 flex items-start justify-between">
+          <div>
+            <h2 className="text-4xl font-black text-white mb-2">Custom Orders</h2>
+            <p className="text-white/90 text-lg">Manage custom costume requests and send professional quotes</p>
+          </div>
+          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 border border-white/30">
+            <p className="text-white/80 text-sm font-semibold uppercase tracking-wide">Total Orders</p>
+            <p className="text-5xl font-black text-white mt-2">{orders.length}</p>
+          </div>
         </div>
       </div>
-
-      {/* Stats Cards */}
-      <OrderStatsGrid orders={filteredOrders} />
 
       {/* Filter Bar - Status Tabs */}
       <StatusTabs 

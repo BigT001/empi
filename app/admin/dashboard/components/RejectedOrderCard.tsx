@@ -20,6 +20,7 @@ interface Order {
   pickupTime?: string;
   description?: string;
   costumeType?: string;
+  productId?: string;
   customData?: {
     fabricColor?: string;
     size?: string;
@@ -53,6 +54,14 @@ export function RejectedOrderCard({ order, onImageClick, onChatClick }: Rejected
         <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Order Details</p>
         <p className="text-sm font-bold text-red-700">{order.costumeType || order.costumeName || 'Costume'}</p>
       </div>
+
+      {/* Product ID */}
+      {order.productId && (
+        <div className="bg-white rounded p-2 border border-red-200">
+          <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Product ID</p>
+          <p className="text-sm font-bold text-red-700 font-mono">{order.productId}</p>
+        </div>
+      )}
 
       {/* Decline Reason */}
       {order.declineReason && (

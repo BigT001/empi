@@ -1,6 +1,7 @@
 "use client";
 
-import { MessageSquare, Zap, Calendar, Clock, DollarSign, Truck } from "lucide-react";
+import { useState } from "react";
+import { MessageSquare, Zap, Calendar, Clock, DollarSign, Truck, X } from "lucide-react";
 
 interface Order {
   _id: string;
@@ -20,6 +21,7 @@ interface Order {
   pickupTime?: string;
   description?: string;
   costumeType?: string;
+  productId?: string;
   customData?: {
     fabricColor?: string;
     size?: string;
@@ -37,6 +39,17 @@ interface ReadyOrderCardProps {
 }
 
 export function ReadyOrderCard({ order, onImageClick, onChatClick }: ReadyOrderCardProps) {
+  const [showDescriptionModal, setShowDescriptionModal] = useState(false);
+  
+  // Truncate description to 2 lines (~80 characters)
+  const maxDescLength = 80;
+  const fullDescription = order.description || order.costumeType || order.costumeName || 'Costume';
+  const isTruncated = fullDescription.length > maxDescLength;
+  const truncatedDescription = isTruncated ? fullDescription.substring(0, maxDescLength) + '...' : fullDescription;
+  
+  // Get all images
+  const allImages = [...(order.images || []), ...(order.designUrls || [])];
+  
   return (
     <div className="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 h-full flex flex-col gap-3 shadow-sm hover:shadow-md transition">
       {/* Header - Customer Info */}
@@ -48,20 +61,29 @@ export function ReadyOrderCard({ order, onImageClick, onChatClick }: ReadyOrderC
         <p className="text-xs opacity-75">{order.email}</p>
       </div>
 
-      {/* What They're Getting */}
+      {/* Costume Description */}
       <div className="bg-white rounded p-2 border border-purple-200">
         <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Costume</p>
-        <p className="text-sm font-bold text-purple-700">{order.description || order.costumeType || order.costumeName || 'Costume'}</p>
+        <p 
+          onClick={() => isTruncated && setShowDescriptionModal(true)}
+          className={`text-sm font-bold text-purple-700 line-clamp-2 ${isTruncated ? 'cursor-pointer hover:text-purple-900 transition' : ''}`}
+        >
+          {truncatedDescription}
+        </p>
+        {isTruncated && (
+          <p className="text-xs text-purple-600 font-semibold cursor-pointer hover:text-purple-700 mt-1">
+            Click to view full description
+          </p>
+        )}
       </div>
 
-      {/* Product Images Gallery */}
-      {(order.images?.length || 0) + (order.designUrls?.length || 0) > 0 && (
+      {/* Product Images Gallery - Horizontal Scrollable */}
+      {allImages.length > 0 && (
         <div className="space-y-2">
           <div className="flex justify-between items-center">
-            <p className="text-xs font-semibold text-gray-600 uppercase">Product Images</p>
+            <p className="text-xs font-semibold text-gray-600 uppercase">Product Images ({allImages.length})</p>
             <button
               onClick={() => {
-                const allImages = [...(order.images || []), ...(order.designUrls || [])];
                 allImages.forEach((img, idx) => {
                   const xhr = new XMLHttpRequest();
                   xhr.responseType = 'blob';
@@ -84,22 +106,20 @@ export function ReadyOrderCard({ order, onImageClick, onChatClick }: ReadyOrderC
               Download All
             </button>
           </div>
-          <div className="grid grid-cols-3 gap-2">
-            {(order.images || order.designUrls || []).slice(0, 6).map((img, idx) => (
-              <div
-                key={idx}
-                className="relative aspect-square bg-gray-100 rounded border border-purple-300 overflow-hidden cursor-pointer hover:border-purple-500 transition"
-                onClick={onImageClick}
-              >
-                <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
-              </div>
-            ))}
+          <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-purple-300 scrollbar-track-purple-100">
+            <div className="flex gap-2">
+              {allImages.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="relative aspect-square bg-gray-100 rounded border border-purple-300 overflow-hidden cursor-pointer hover:border-purple-500 transition flex-shrink-0 w-20 h-20"
+                  onClick={onImageClick}
+                >
+                  <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
           </div>
-          {(((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) > 6) && (
-            <button onClick={onImageClick} className="text-xs text-purple-600 font-semibold hover:text-purple-700">
-              View all {((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0)} images
-            </button>
-          )}
+          <p className="text-xs text-gray-500 text-center">← Scroll to see more images →</p>
         </div>
       )}
 
@@ -147,30 +167,8 @@ export function ReadyOrderCard({ order, onImageClick, onChatClick }: ReadyOrderC
         </div>
       )}
 
-      {/* Delivery Options */}
-      <div className="bg-white rounded p-3 border border-purple-200 mb-3 flex-shrink-0">
-        <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Delivery Option</p>
-        <div className="flex gap-2">
-          <button className="flex-1 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold text-sm rounded-lg transition border-2 border-purple-300">
-            📍 Customer Pickup
-          </button>
-          <button className="flex-1 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 font-semibold text-sm rounded-lg transition border-2 border-purple-300">
-            🚚 Empi Delivery
-          </button>
-        </div>
-      </div>
-
       {/* Action Buttons */}
       <div className="flex flex-col gap-2 mt-auto">
-        {(order.images?.length || 0) > 0 && (
-          <button
-            onClick={onImageClick}
-            className="flex items-center justify-center gap-2 px-3 py-2 bg-white hover:bg-purple-50 text-purple-700 font-bold text-sm rounded-lg transition border-2 border-purple-300 hover:border-purple-500"
-          >
-            <Zap className="h-4 w-4" />
-            View All Images
-          </button>
-        )}
         <button
           onClick={onChatClick}
           className="flex items-center justify-center gap-2 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm rounded-lg transition"
@@ -179,6 +177,29 @@ export function ReadyOrderCard({ order, onImageClick, onChatClick }: ReadyOrderC
           Chat with Buyer
         </button>
       </div>
+
+      {/* Description Modal */}
+      {showDescriptionModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowDescriptionModal(false)}>
+          <div 
+            className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold text-gray-900">Full Description</h3>
+              <button
+                onClick={() => setShowDescriptionModal(false)}
+                className="text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-1 rounded transition"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap break-words">
+              {fullDescription}
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

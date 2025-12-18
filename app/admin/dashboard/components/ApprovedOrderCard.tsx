@@ -32,6 +32,59 @@ export function ApprovedOrderCard({ order, onChatClick, onStartProduction }: App
           </div>
         </div>
 
+        {/* Product ID */}
+        {order.productId && (
+          <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
+            <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Product ID</p>
+            <p className="font-mono text-sm font-bold text-blue-700">{order.productId}</p>
+          </div>
+        )}
+
+        {/* Product Images Gallery */}
+        {((order.designUrls?.length || 0) > 0) && (
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <p className="text-xs font-semibold text-gray-600 uppercase">Design Images</p>
+              <button
+                onClick={() => {
+                  (order.designUrls || []).forEach((img, idx) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.responseType = 'blob';
+                    xhr.open('GET', img, true);
+                    xhr.onload = () => {
+                      const url = window.URL.createObjectURL(xhr.response);
+                      const link = document.createElement('a');
+                      link.href = url;
+                      link.download = `image-${idx + 1}.jpg`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                      window.URL.revokeObjectURL(url);
+                    };
+                    xhr.send();
+                  });
+                }}
+                className="text-xs text-blue-600 font-semibold hover:text-blue-700 transition"
+              >
+                Download All
+              </button>
+            </div>
+            <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-blue-300 scrollbar-track-blue-100">
+              <div className="flex gap-2">
+                {(order.designUrls || []).map((img, idx) => (
+                  <div
+                    key={idx}
+                    className="relative aspect-square bg-gray-100 rounded border border-blue-300 overflow-hidden cursor-pointer hover:border-blue-500 transition flex-shrink-0 w-20 h-20"
+                  >
+                    <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 text-center">← Scroll to see more images →</p>
+          </div>
+        )}
+
         {/* Stats - 3 column grid */}
         <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-200">
           <div className="bg-blue-50 rounded-lg p-2 text-center border border-blue-200">

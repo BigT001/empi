@@ -10,6 +10,7 @@ export interface ICustomOrder extends Document {
   state?: string;
   costumeType?: string; // Optional - kept for backwards compatibility
   description: string;
+  productId?: string; // Reference to product being ordered
   designUrl?: string;
   designUrls?: string[]; // Multiple design images
   quantity: number;
@@ -25,6 +26,11 @@ export interface ICustomOrder extends Document {
   deadlineDate?: Date; // When the costume must be delivered
   timerStartedAt?: Date; // When the countdown timer was started (after payment)
   timerDurationDays?: number; // Duration in days (0-30 typically)
+  // Logistics handoff fields
+  currentHandler?: 'production' | 'logistics'; // Who is currently handling the order
+  handoffAt?: Date; // When logistics took over
+  logisticsCanViewFullHistory?: boolean; // Super admin grants permission to view full chat history
+  deliveryOption?: 'pickup' | 'delivery'; // Customer's delivery preference
   createdAt: Date;
   updatedAt: Date;
 }
@@ -61,6 +67,7 @@ const customOrderSchema = new Schema(
       type: String,
       required: true,
     },
+    productId: String, // Reference to product being ordered
     designUrl: String,
     designUrls: [String], // Array of design image URLs
     quantity: {
@@ -89,6 +96,23 @@ const customOrderSchema = new Schema(
     deadlineDate: Date,
     timerStartedAt: Date,
     timerDurationDays: Number,
+    // Logistics handoff fields
+    currentHandler: {
+      type: String,
+      enum: ['production', 'logistics'],
+      default: 'production',
+      index: true,
+    },
+    handoffAt: Date,
+    logisticsCanViewFullHistory: {
+      type: Boolean,
+      default: false,
+    },
+    deliveryOption: {
+      type: String,
+      enum: ['pickup', 'delivery'],
+      default: null,
+    },
   },
   {
     timestamps: true,

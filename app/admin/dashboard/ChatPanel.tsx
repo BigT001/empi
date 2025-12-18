@@ -295,7 +295,7 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
       {/* Quote Modal - Separate Card */}
       {showQuoteForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-6 animate-in fade-in zoom-in-95 duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-300">
             {/* Header */}
             <div className="flex items-center gap-2 mb-6">
               <div className="bg-blue-100 rounded-lg p-3">

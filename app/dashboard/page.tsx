@@ -34,6 +34,7 @@ interface CustomOrder {
   status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
   notes?: string;
   quotedPrice?: number;
+  productId?: string;
   // Timer fields
   deadlineDate?: string;
   timerStartedAt?: string;
@@ -709,42 +710,53 @@ export default function BuyerDashboardPage() {
                         </div>
 
                         {/* Info Grid */}
-                        <div className="grid grid-cols-3 gap-2">
-                          {/* Quantity - Display only (editing in separate section) */}
-                          <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2 border border-lime-100/50">
-                            <p className="text-xs text-gray-600 font-medium">📦 Qty</p>
-                            <p className="text-sm font-bold text-gray-900">{order.quantity || 1}</p>
+                        <div className="space-y-2">
+                          {/* First Row: Qty, Total, Date/Timer */}
+                          <div className="grid grid-cols-3 gap-2">
+                            {/* Quantity - Display only (editing in separate section) */}
+                            <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2 border border-lime-100/50">
+                              <p className="text-xs text-gray-600 font-medium">📦 Qty</p>
+                              <p className="text-sm font-bold text-gray-900">{order.quantity || 1}</p>
+                            </div>
+                            
+                            {/* Price */}
+                            {order.quotedPrice && (
+                              <div className="bg-gradient-to-br from-lime-100/60 to-green-100/60 rounded-lg p-2 border border-lime-200/50">
+                                <p className="text-xs text-gray-600 font-medium">💰 Total</p>
+                                <p className="text-sm font-bold text-lime-700">₦{Math.round(calculateMainCardTotal(order)).toLocaleString()}</p>
+                              </div>
+                            )}
+                            
+                            {/* Timer or Days Left */}
+                            {order.timerStartedAt && order.deadlineDate ? (
+                              <div className="bg-gradient-to-br from-orange-100/60 to-red-100/60 rounded-lg p-2 border border-orange-200/50">
+                                <p className="text-xs text-gray-600 font-medium">⏱️ Time</p>
+                                <p className="text-sm font-bold text-orange-700">
+                                  {Math.ceil((new Date(order.deadlineDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d
+                                </p>
+                              </div>
+                            ) : order.buyerAgreedToDate && order.proposedDeliveryDate ? (
+                              // Show agreed delivery date when buyer has agreed
+                              <div className="bg-gradient-to-br from-green-100/60 to-emerald-100/60 rounded-lg p-2 border border-green-200/50">
+                                <p className="text-xs text-gray-600 font-medium">📆 Agreed</p>
+                                <p className="text-sm font-bold text-green-700">{new Date(order.proposedDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                              </div>
+                            ) : order.deliveryDate ? (
+                              // Show original delivery date if no agreement yet
+                              <div className="bg-gradient-to-br from-blue-100/60 to-cyan-100/60 rounded-lg p-2 border border-blue-200/50">
+                                <p className="text-xs text-gray-600 font-medium">📆 Needed</p>
+                                <p className="text-sm font-bold text-blue-700">{new Date(order.deliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                              </div>
+                            ) : null}
                           </div>
-                          
-                          {/* Price */}
-                          {order.quotedPrice && (
-                            <div className="bg-gradient-to-br from-lime-100/60 to-green-100/60 rounded-lg p-2 border border-lime-200/50">
-                              <p className="text-xs text-gray-600 font-medium">💰 Total</p>
-                              <p className="text-sm font-bold text-lime-700">₦{Math.round(calculateMainCardTotal(order)).toLocaleString()}</p>
+
+                          {/* Product ID Row */}
+                          {order.productId && (
+                            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg p-2 border border-amber-300/60">
+                              <p className="text-xs text-gray-600 font-medium">🆔 Product ID</p>
+                              <p className="text-sm font-bold text-amber-900 font-mono">{order.productId}</p>
                             </div>
                           )}
-                          
-                          {/* Timer or Days Left */}
-                          {order.timerStartedAt && order.deadlineDate ? (
-                            <div className="bg-gradient-to-br from-orange-100/60 to-red-100/60 rounded-lg p-2 border border-orange-200/50">
-                              <p className="text-xs text-gray-600 font-medium">⏱️ Time</p>
-                              <p className="text-sm font-bold text-orange-700">
-                                {Math.ceil((new Date(order.deadlineDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d
-                              </p>
-                            </div>
-                          ) : order.buyerAgreedToDate && order.proposedDeliveryDate ? (
-                            // Show agreed delivery date when buyer has agreed
-                            <div className="bg-gradient-to-br from-green-100/60 to-emerald-100/60 rounded-lg p-2 border border-green-200/50">
-                              <p className="text-xs text-gray-600 font-medium">📆 Agreed</p>
-                              <p className="text-sm font-bold text-green-700">{new Date(order.proposedDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                            </div>
-                          ) : order.deliveryDate ? (
-                            // Show original delivery date if no agreement yet
-                            <div className="bg-gradient-to-br from-blue-100/60 to-cyan-100/60 rounded-lg p-2 border border-blue-200/50">
-                              <p className="text-xs text-gray-600 font-medium">📆 Needed</p>
-                              <p className="text-sm font-bold text-blue-700">{new Date(order.deliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                            </div>
-                          ) : null}
                         </div>
 
                         {/* Countdown Timer Inline */}

@@ -23,6 +23,7 @@ interface Order {
   description?: string;
   costumeType?: string;
   designUrls?: string[];
+  productId?: string;
   customData?: {
     fabricColor?: string;
     size?: string;
@@ -125,6 +126,14 @@ export function OtherStatusOrderCard({
             <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">What They're Buying</p>
             <h4 className="font-bold text-base text-gray-900">{order.costumeType || order.description || 'Custom Order'}</h4>
           </div>
+
+          {/* Product ID Section */}
+          {order.productId && (
+            <div className="bg-white rounded-lg p-3 border-2 border-yellow-200 mb-3 flex-shrink-0">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Product ID</p>
+              <p className="font-bold text-base text-gray-900 font-mono">{order.productId}</p>
+            </div>
+          )}
 
           {/* Images Gallery */}
           {(order.images && order.images.length > 0 || order.designUrls && order.designUrls.length > 0) && (

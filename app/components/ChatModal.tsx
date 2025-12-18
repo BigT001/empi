@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Send, X, DollarSign, CheckCircle } from "lucide-react";
+import { Send, X, DollarSign, CheckCircle, MapPin } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useBuyer } from "@/app/context/BuyerContext";
 import { calculateQuote } from "@/lib/discountCalculator";
@@ -22,7 +22,7 @@ interface Message {
   quotedTotal?: number;
   discountPercentage?: number;
   discountAmount?: number;
-  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update' | 'delivery-option';
+  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update' | 'delivery-option' | 'address';
   deliveryOption?: 'pickup' | 'delivery'; // Selected delivery option
   quantityChangeData?: {
     oldQty: number;
@@ -39,6 +39,7 @@ interface CustomOrder {
   _id: string;
   orderNumber: string;
   email: string;
+  phone: string;
   fullName: string;
   quantity?: number;
   quotedPrice?: number;
@@ -52,10 +53,13 @@ interface ChatModalProps {
   userEmail: string;
   userName: string;
   isAdmin?: boolean;
+  isLogisticsTeam?: boolean; // True if ChatModal is opened from logistics page
+  deliveryOption?: 'pickup' | 'delivery'; // Type of delivery for logistics
   adminName?: string;
   onMessageSent?: () => void;
   orderStatus?: string; // Current tab/status: pending, approved, in-progress, ready, completed, rejected
 }
+
 
 export function ChatModal({
   isOpen,
@@ -64,6 +68,8 @@ export function ChatModal({
   userEmail,
   userName,
   isAdmin = false,
+  isLogisticsTeam = false,
+  deliveryOption,
   adminName = "Empi Costumes",
   onMessageSent,
   orderStatus: currentOrderStatus = 'pending',
@@ -89,6 +95,29 @@ export function ChatModal({
   const [showDeclineModal, setShowDeclineModal] = useState(false);
   const [declineReason, setDeclineReason] = useState('');
   const [isSubmittingDecline, setIsSubmittingDecline] = useState(false);
+  
+  // Logistics delivery quote state
+  const [showLogisticsQuoteForm, setShowLogisticsQuoteForm] = useState(false);
+  const [logisticsQuoteAmount, setLogisticsQuoteAmount] = useState('');
+  const [logisticsDeliveryType, setLogisticsDeliveryType] = useState('car');
+  const [logisticsBankName, setLogisticsBankName] = useState('');
+  const [logisticsAccountNumber, setLogisticsAccountNumber] = useState('');
+  const [logisticsAccountHolder, setLogisticsAccountHolder] = useState('');
+  const [isSubmittingLogisticsQuote, setIsSubmittingLogisticsQuote] = useState(false);
+
+  // Logistics pickup address modal state
+  const [showAddressModal, setShowAddressModal] = useState(false);
+  const [selectedPickupAddress, setSelectedPickupAddress] = useState<string>('');
+  const [isSubmittingAddress, setIsSubmittingAddress] = useState(false);
+
+  // Pickup confirmation modal state
+  const [showPickupConfirmModal, setShowPickupConfirmModal] = useState(false);
+  const [isSubmittingPickupConfirm, setIsSubmittingPickupConfirm] = useState(false);
+
+  const pickupAddresses = [
+    '22 Chi-Ben street, Ojo, Lagos',
+    '22 Ejire street Suru Lere, Lagos, Nigeria',
+  ];
 
   const calculateQuoteDetails = () => {
     const basePrice = parseFloat(quotePrice) || 0;
@@ -478,50 +507,21 @@ export function ChatModal({
         return;
       }
 
-      // If customer selected personal pickup, automatically send pickup address
-      if (option === 'pickup') {
-        const pickupAddress = `📍 **PICKUP LOCATION** 📍\n\nYour costume is ready for pickup!\n\n**Address:** 22 Chi-Ben street, Ojo, Lagos State\n\nPlease arrange a convenient time to pick it up.`;
-        
-        const addressResponse = await fetch('/api/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: order._id,
-            orderNumber: order.orderNumber,
-            senderEmail: userEmail,
-            senderName: adminName,
-            senderType: 'admin',
-            content: pickupAddress,
-            messageType: 'system',
-            recipientType: 'all'
-          })
-        });
+      // **TRIGGER: Hand off order to logistics**
+      console.log('[ChatModal] 🚀 TRIGGER: Handing off order to logistics...');
+      const handoffResponse = await fetch('/api/orders/handoff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+        })
+      });
 
-        if (!addressResponse.ok) {
-          console.error('Failed to send pickup address:', await addressResponse.text());
-        }
-      } else if (option === 'delivery') {
-        // If customer selected Empi delivery, send logistics message
-        const deliveryMessage = `🚚 **DELIVERY ARRANGEMENT** 🚚\n\nThank you for choosing Empi Delivery! You will receive a call from our logistics department soon to arrange the delivery of your costume.\n\nPlease ensure you're available to receive the call.`;
-        
-        const deliveryResponse = await fetch('/api/messages', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            orderId: order._id,
-            orderNumber: order.orderNumber,
-            senderEmail: userEmail,
-            senderName: adminName,
-            senderType: 'admin',
-            content: deliveryMessage,
-            messageType: 'system',
-            recipientType: 'all'
-          })
-        });
-
-        if (!deliveryResponse.ok) {
-          console.error('Failed to send delivery message:', await deliveryResponse.text());
-        }
+      if (!handoffResponse.ok) {
+        console.error('Failed to hand off order to logistics:', await handoffResponse.text());
+      } else {
+        console.log('[ChatModal] ✅ Order successfully handed off to logistics');
       }
 
       // Refresh messages
@@ -531,6 +531,228 @@ export function ChatModal({
       alert('Failed to select delivery option. Please try again.');
     }
   };
+
+  // Send delivery quote from chat (Logistics team)
+  const sendLogisticsQuote = async () => {
+    if (!logisticsQuoteAmount.trim()) {
+      alert('Please enter a quote amount');
+      return;
+    }
+
+    if (!logisticsBankName.trim() || !logisticsAccountNumber.trim() || !logisticsAccountHolder.trim()) {
+      alert('Please fill in all bank details');
+      return;
+    }
+
+    setIsSubmittingLogisticsQuote(true);
+
+    try {
+      const quoteData = {
+        amount: logisticsQuoteAmount,
+        transportType: logisticsDeliveryType,
+        bankName: logisticsBankName,
+        accountNumber: logisticsAccountNumber,
+        accountHolder: logisticsAccountHolder,
+      };
+
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          senderEmail: userEmail,
+          senderName: userName,
+          senderType: 'admin',
+          content: JSON.stringify(quoteData),
+          messageType: 'quote',
+          recipientType: 'all',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Failed to send quote: ${response.status} - ${error}`);
+      }
+
+      // Reset form
+      setShowLogisticsQuoteForm(false);
+      setLogisticsQuoteAmount('');
+      setLogisticsDeliveryType('car');
+      setLogisticsBankName('');
+      setLogisticsAccountNumber('');
+      setLogisticsAccountHolder('');
+
+      // Refresh messages
+      await fetchMessages();
+
+      console.log('[ChatModal] ✅ Logistics quote sent successfully');
+    } catch (error) {
+      console.error('[ChatModal] Error sending logistics quote:', error);
+      alert('Failed to send quote. Please try again.');
+    } finally {
+      setIsSubmittingLogisticsQuote(false);
+    }
+  };
+
+  const sendPickupAddress = async (address: string) => {
+    if (!address.trim()) {
+      alert('Please select an address');
+      return;
+    }
+
+    setIsSubmittingAddress(true);
+
+    try {
+      const addressData = {
+        pickupLocation: address,
+        type: 'pickup_address',
+      };
+
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          senderEmail: userEmail,
+          senderName: userName,
+          senderType: 'admin',
+          content: JSON.stringify(addressData),
+          messageType: 'address',
+          recipientType: 'all',
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        throw new Error(`Failed to send address: ${response.status} - ${error}`);
+      }
+
+      // Reset form
+      setShowAddressModal(false);
+      setSelectedPickupAddress('');
+
+      // Refresh messages
+      await fetchMessages();
+
+      console.log('[ChatModal] ✅ Pickup address sent successfully');
+    } catch (error) {
+      console.error('[ChatModal] Error sending pickup address:', error);
+      alert('Failed to send address. Please try again.');
+    } finally {
+      setIsSubmittingAddress(false);
+    }
+  };
+
+  const confirmPickup = async () => {
+    console.log('[ChatModal] ==================== confirmPickup STARTED ====================');
+    setIsSubmittingPickupConfirm(true);
+
+    try {
+      // Step 1: Update order status to 'completed'
+      console.log('[ChatModal] 📍 Step 1: Updating order status to completed...');
+      console.log('[ChatModal] Order ID:', order._id);
+      console.log('[ChatModal] Order fullName:', order.fullName);
+      
+      const patchUrl = `/api/custom-orders?id=${order._id}`;
+      console.log('[ChatModal] PATCH URL:', patchUrl);
+      
+      const statusResponse = await fetch(patchUrl, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          status: 'completed',
+        }),
+      });
+
+      console.log('[ChatModal] PATCH response status:', statusResponse.status);
+      if (!statusResponse.ok) {
+        const error = await statusResponse.text();
+        console.error('[ChatModal] ❌ PATCH error:', error);
+        throw new Error(`Failed to update status: ${statusResponse.status} - ${error}`);
+      }
+      console.log('[ChatModal] ✅ Step 1 complete: Order status updated successfully');
+
+      // Step 2: Send thank you message to chat
+      console.log('[ChatModal] 📨 Step 2: Sending thank you message...');
+      const thankYouMessage = `Thank you ${order.fullName}! 🎉
+
+Your costumes have been successfully picked up from our pickup location. We hope you're excited about your order!
+
+If you have any questions or feedback about your experience with Empi, please don't hesitate to reach out. We'd love to hear from you!
+
+Thank you for choosing Empi! 👖✨`;
+
+      const messagePayload = {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        senderEmail: 'logistics@empi.com',
+        senderName: 'Logistics Team',
+        senderType: 'admin',
+        content: thankYouMessage,
+        messageType: 'system',
+        recipientType: 'all',
+      };
+      
+      console.log('[ChatModal] 📨 Message payload:', messagePayload);
+
+      const messageResponse = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(messagePayload),
+      });
+
+      console.log('[ChatModal] POST /api/messages response status:', messageResponse.status);
+      console.log('[ChatModal] POST /api/messages response ok:', messageResponse.ok);
+
+      if (!messageResponse.ok) {
+        const error = await messageResponse.text();
+        console.error('[ChatModal] ⚠️ POST error:', error);
+        throw new Error(`Failed to send message: ${messageResponse.status} - ${error}`);
+      }
+      
+      const messageData = await messageResponse.json();
+      console.log('[ChatModal] ✅ Step 2 complete: Thank you message sent successfully:', messageData);
+
+      // Step 3: Close confirmation modal
+      console.log('[ChatModal] Step 3: Closing confirmation modal');
+      setShowPickupConfirmModal(false);
+      
+      // Step 4: Refresh messages to show thank you
+      console.log('[ChatModal] 🔄 Step 4: Refreshing messages...');
+      await fetchMessages();
+      console.log('[ChatModal] ✅ Step 4 complete: Messages refreshed');
+      
+      // Step 5: Call onMessageSent to refresh the parent component (logistics page)
+      console.log('[ChatModal] 📢 Step 5: Notifying parent component to refresh order list...');
+      if (onMessageSent) {
+        console.log('[ChatModal] 📢 Calling onMessageSent callback');
+        onMessageSent();
+      } else {
+        console.warn('[ChatModal] ⚠️ onMessageSent callback not available');
+      }
+
+      // Step 6: Wait a bit for parent to refresh, then show success and close
+      console.log('[ChatModal] ✅ Step 5 complete: Pickup confirmed - order marked as completed');
+      console.log('[ChatModal] ⏳ Step 6: Waiting 2.5 seconds for order list to refresh before closing...');
+      
+      // Step 7: Close the chat modal after a longer delay
+      setTimeout(() => {
+        console.log('[ChatModal] 🚪 Step 7: Closing chat modal now...');
+        console.log('[ChatModal] ==================== confirmPickup COMPLETED ====================');
+        onClose();
+      }, 2500);
+    } catch (error) {
+      console.error('[ChatModal] ❌ Error confirming pickup:', error);
+      console.error('[ChatModal] ❌ Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('[ChatModal] ❌ Full error object:', JSON.stringify(error, null, 2));
+      alert('Failed to confirm pickup: ' + (error instanceof Error ? error.message : String(error)));
+    } finally {
+      setIsSubmittingPickupConfirm(false);
+    }
+  };
+
 
   // Helper function to render message content with markdown links
   const renderMessageContent = (content: string) => {
@@ -565,14 +787,14 @@ export function ChatModal({
     <>
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${showQuoteForm ? 'pointer-events-none' : ''}`}
+        className={`fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300 ${showQuoteForm ? 'pointer-events-none' : ''}`}
         onClick={onClose}
       />
 
       {/* Quote Form Modal Overlay (Admin Only) */}
       {isAdmin && showQuoteForm && (
-        <div className="fixed inset-0 bg-black/60 z-[60] flex items-center justify-center p-2 md:p-4 pointer-events-auto">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-4 md:p-6 space-y-4 md:space-y-6 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-2 md:p-4 pointer-events-auto" onClick={() => setShowQuoteForm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-4 md:p-6 space-y-4 md:space-y-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Modal Header */}
             <div className="flex items-center justify-between">
               <div>
@@ -712,9 +934,274 @@ export function ChatModal({
         </div>
       )}
 
+      {/* Logistics Quote Form Modal */}
+      {isAdmin && showLogisticsQuoteForm && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-2 md:p-4 pointer-events-auto" onClick={() => setShowLogisticsQuoteForm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-4 md:p-6 space-y-4 md:space-y-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg md:text-xl font-bold text-gray-900">Send Delivery Quote</h3>
+                <p className="text-xs md:text-sm text-gray-600 mt-1">Order #{order.orderNumber}</p>
+              </div>
+              <button
+                onClick={() => setShowLogisticsQuoteForm(false)}
+                className="text-gray-600 hover:text-gray-900 p-2 rounded-lg transition"
+              >
+                <X className="h-5 w-5 md:h-6 md:w-6" />
+              </button>
+            </div>
+
+            {/* Order Summary Card */}
+            <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 md:p-6 border-2 border-gray-300 space-y-3">
+              <h4 className="font-semibold text-gray-900 text-sm md:text-base">📦 Order Information</h4>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <p className="text-gray-600 text-xs">Order Number</p>
+                  <p className="font-semibold text-gray-900">{order.orderNumber}</p>
+                </div>
+                <div>
+                  <p className="text-gray-600 text-xs">Customer</p>
+                  <p className="font-semibold text-gray-900">{order.fullName}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Two Column Layout */}
+            <div className="grid md:grid-cols-2 gap-4 md:gap-6">
+              {/* Delivery Quote Card */}
+              <div className="bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl p-4 md:p-6 space-y-4 border-2 border-orange-300">
+                <div>
+                  <h4 className="font-semibold text-gray-900 text-sm md:text-base mb-3">💰 Delivery Quote</h4>
+                  
+                  {/* Delivery Amount Input */}
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Quote Amount (₦)</label>
+                  <input
+                    type="number"
+                    value={logisticsQuoteAmount}
+                    onChange={(e) => setLogisticsQuoteAmount(e.target.value)}
+                    placeholder="Enter delivery quote amount"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-600 focus:border-transparent text-sm"
+                  />
+
+                  {/* Delivery Type Selection */}
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mt-4 mb-2">Delivery Type</label>
+                  <div className="space-y-2">
+                    {['bike', 'car', 'van'].map((type) => (
+                      <label key={type} className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          name="deliveryType"
+                          value={type}
+                          checked={logisticsDeliveryType === type}
+                          onChange={(e) => setLogisticsDeliveryType(e.target.value)}
+                          className="w-4 h-4 rounded border-gray-300 text-orange-600 focus:ring-orange-600"
+                        />
+                        <span className="text-xs md:text-sm text-gray-700 capitalize">{type}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Bank Details Card */}
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 md:p-6 space-y-4 border-2 border-blue-300">
+                <div>
+                  <h4 className="font-semibold text-gray-900 text-sm md:text-base mb-3">🏦 Bank Details</h4>
+                  
+                  {/* Bank Name */}
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Bank Name</label>
+                  <input
+                    type="text"
+                    value={logisticsBankName}
+                    onChange={(e) => setLogisticsBankName(e.target.value)}
+                    placeholder="E.g., First Bank"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm mb-3"
+                  />
+
+                  {/* Account Number */}
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Account Number</label>
+                  <input
+                    type="text"
+                    value={logisticsAccountNumber}
+                    onChange={(e) => setLogisticsAccountNumber(e.target.value)}
+                    placeholder="Account number"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm mb-3"
+                  />
+
+                  {/* Account Holder */}
+                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Account Holder</label>
+                  <input
+                    type="text"
+                    value={logisticsAccountHolder}
+                    onChange={(e) => setLogisticsAccountHolder(e.target.value)}
+                    placeholder="Account holder name"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Note */}
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 md:p-4">
+              <p className="text-xs md:text-sm text-gray-700">
+                <strong>Note:</strong> The customer will see this delivery quote and can proceed with payment once approved.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 md:gap-3 pt-4">
+              <button
+                onClick={() => setShowLogisticsQuoteForm(false)}
+                className="flex-1 py-2 md:py-3 px-4 rounded-lg font-semibold text-sm md:text-base border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={sendLogisticsQuote}
+                disabled={isSubmittingLogisticsQuote || !logisticsQuoteAmount.trim()}
+                className="flex-1 py-2 md:py-3 px-4 rounded-lg font-semibold text-sm md:text-base bg-orange-600 hover:bg-orange-700 disabled:bg-gray-300 text-white transition flex items-center justify-center gap-2"
+              >
+                <DollarSign className="h-4 w-4" />
+                Send Quote
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pickup Address Selection Modal */}
+      {isAdmin && isLogisticsTeam && deliveryOption === 'pickup' && showAddressModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-2 md:p-4 pointer-events-auto" onClick={() => setShowAddressModal(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-4 md:p-6 space-y-4 md:space-y-6" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg md:text-xl font-bold text-gray-900">Select Pickup Address</h3>
+                <p className="text-xs md:text-sm text-gray-600 mt-1">Order #{order.orderNumber}</p>
+              </div>
+              <button
+                onClick={() => setShowAddressModal(false)}
+                className="text-gray-600 hover:text-gray-900 p-2 rounded-lg transition"
+              >
+                <X className="h-5 w-5 md:h-6 md:w-6" />
+              </button>
+            </div>
+
+            {/* Address Options */}
+            <div className="space-y-2 md:space-y-3">
+              {pickupAddresses.map((address, index) => (
+                <button
+                  key={index}
+                  onClick={() => setSelectedPickupAddress(address)}
+                  className={`w-full p-3 md:p-4 rounded-lg border-2 transition text-left ${
+                    selectedPickupAddress === address
+                      ? 'border-lime-600 bg-lime-50'
+                      : 'border-gray-200 bg-gray-50 hover:border-lime-400'
+                  }`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className={`h-5 w-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                      selectedPickupAddress === address
+                        ? 'border-lime-600 bg-lime-600'
+                        : 'border-gray-300'
+                    }`}>
+                      {selectedPickupAddress === address && (
+                        <div className="h-2 w-2 bg-white rounded-full"></div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs md:text-sm font-semibold text-gray-900">📍 Pickup Location {index + 1}</p>
+                      <p className="text-sm md:text-base font-medium text-gray-700 mt-1">{address}</p>
+                    </div>
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            {/* Note */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
+              <p className="text-xs md:text-sm text-blue-700">
+                <strong>Note:</strong> The customer will receive this pickup location and can confirm their order.
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 md:gap-3 pt-4">
+              <button
+                onClick={() => {
+                  setShowAddressModal(false);
+                  setSelectedPickupAddress('');
+                }}
+                className="flex-1 py-2 md:py-3 px-4 rounded-lg font-semibold text-sm md:text-base border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => sendPickupAddress(selectedPickupAddress)}
+                disabled={isSubmittingAddress || !selectedPickupAddress.trim()}
+                className="flex-1 py-2 md:py-3 px-4 rounded-lg font-semibold text-sm md:text-base bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white transition flex items-center justify-center gap-2"
+              >
+                <MapPin className="h-4 w-4" />
+                Send Address
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pickup Confirmation Modal */}
+      {isLogisticsTeam && showPickupConfirmModal && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[70] flex items-center justify-center p-2 md:p-4 pointer-events-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-4 md:p-6 space-y-4 md:space-y-6" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg md:text-xl font-bold text-gray-900">Confirm Pickup</h3>
+                <p className="text-xs md:text-sm text-gray-600 mt-1">Order #{order.orderNumber}</p>
+              </div>
+              <button
+                onClick={() => setShowPickupConfirmModal(false)}
+                className="text-gray-600 hover:text-gray-900 p-2 rounded-lg transition"
+              >
+                <X className="h-5 w-5 md:h-6 md:w-6" />
+              </button>
+            </div>
+
+            {/* Confirmation Message */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 md:p-4">
+              <p className="text-sm md:text-base text-gray-800">
+                <span className="font-semibold text-blue-900">Are you sure</span> that <span className="font-bold">{order.fullName}</span> has picked up the costumes?
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-2 md:gap-3 pt-4">
+              <button
+                onClick={() => setShowPickupConfirmModal(false)}
+                className="flex-1 py-2 md:py-3 px-4 rounded-lg font-semibold text-sm md:text-base border border-gray-300 text-gray-700 hover:bg-gray-50 transition"
+              >
+                No
+              </button>
+              <button
+                onClick={(e) => {
+                  console.log('[ChatModal Button] ✓ Yes, Picked Up button clicked!');
+                  e.preventDefault();
+                  confirmPickup();
+                }}
+                disabled={isSubmittingPickupConfirm}
+                className="flex-1 py-2 md:py-3 px-4 rounded-lg font-semibold text-sm md:text-base bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white transition flex items-center justify-center gap-2"
+              >
+                {isSubmittingPickupConfirm ? '...' : '✓ Yes, Picked Up'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Chat Modal - Full Screen on Mobile, Centered on Desktop */}
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4">
-        <div className="bg-white rounded-none md:rounded-2xl shadow-2xl w-full md:max-w-2xl h-full md:max-h-[90vh] flex flex-col">
+      <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-2 md:p-4" onClick={onClose}>
+        <div className="bg-white rounded-none md:rounded-2xl shadow-2xl w-full md:max-w-2xl h-full md:max-h-[90vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
           
           {/* Header - Clean and Minimal */}
           <div className="bg-white border-b border-gray-200 px-4 md:px-6 py-3 md:py-4 flex items-center justify-between flex-shrink-0">
@@ -763,21 +1250,146 @@ export function ChatModal({
             ) : (
               <>
                 {messages.map((msg) => (
-                  <div key={msg._id} className={`flex ${msg.senderType === 'customer' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-xs md:max-w-sm px-3 md:px-4 py-2 md:py-3 rounded-2xl ${
-                      msg.senderType === 'customer'
-                        ? 'bg-lime-600 text-white rounded-br-none'
-                        : 'bg-gray-100 text-gray-900 rounded-bl-none'
-                    }`}>
-                      {/* Message Content or Quote */}
-                      {msg.messageType === 'quote' ? (
-                        <div className="space-y-2 md:space-y-3">
-                          {msg.content && msg.content !== `Quote: ₦${msg.quotedPrice}` && (
-                            <p className="text-sm md:text-base leading-relaxed">{msg.content}</p>
+                  <div key={msg._id} className="w-full">
+                    {msg.messageType === 'quote' && msg.content ? (
+                      (() => {
+                        try {
+                          // Try to parse as JSON if content starts with {
+                          let quoteData = null;
+                          if (msg.content.trim().startsWith('{')) {
+                            quoteData = JSON.parse(msg.content);
+                          }
+                          
+                          if (quoteData) {
+                            // Determine if it's a delivery quote (has transportType) or product quote (has quotedPrice)
+                            const isDeliveryQuote = quoteData.transportType || quoteData.amount;
+                            
+                            if (isDeliveryQuote) {
+                              // Delivery quote from logistics
+                              return (
+                                <div className={`flex ${msg.senderType === 'customer' ? 'justify-end' : 'justify-start'} mb-4`}>
+                                  <div className="bg-gradient-to-br from-lime-50 to-green-50 border-2 border-lime-600 rounded-xl p-3 space-y-2 w-full max-w-xs">
+                                    <div className="text-center border-b border-lime-200 pb-2">
+                                      <p className="text-xs font-semibold text-gray-600 mb-0.5">📨 {msg.senderName}</p>
+                                      <h2 className="text-base font-bold text-lime-700">🚚 DELIVERY QUOTE</h2>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-lg p-2.5 space-y-1.5">
+                                      <div>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Amount</p>
+                                        <p className="text-lg font-bold text-lime-600">₦{parseInt(quoteData.amount).toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Type</p>
+                                        <p className="text-sm font-semibold text-gray-900 capitalize">{quoteData.transportType}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-lg p-2.5 space-y-1">
+                                      <p className="text-xs font-bold text-lime-700 uppercase">Bank Details</p>
+                                      
+                                      <div className="border-b border-gray-200 pb-1">
+                                        <p className="text-xs font-bold text-gray-500 uppercase">Bank</p>
+                                        <p className="text-xs font-semibold text-gray-900">{quoteData.bankName}</p>
+                                      </div>
+
+                                      <div className="border-b border-gray-200 pb-1">
+                                        <p className="text-xs font-bold text-gray-500 uppercase">Account</p>
+                                        <p className="text-xs font-mono font-semibold text-gray-900">{quoteData.accountNumber}</p>
+                                      </div>
+
+                                      <div>
+                                        <p className="text-xs font-bold text-gray-500 uppercase">Holder</p>
+                                        <p className="text-xs font-semibold text-gray-900">{quoteData.accountHolder}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-lime-100 border-l-4 border-lime-600 p-2 rounded text-center">
+                                      <p className="text-xs font-semibold text-lime-900">✓ Confirm to proceed</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            } else {
+                              // Product quote (original format)
+                              return (
+                                <div className={`flex ${msg.senderType === 'customer' ? 'justify-end' : 'justify-start'} mb-4`}>
+                                  <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-500 rounded-2xl p-6 space-y-4 w-full max-w-md">
+                                    <div className="text-center border-b-2 border-green-200 pb-4">
+                                      <p className="text-xs font-semibold text-gray-600 mb-1">📨 {msg.senderName}</p>
+                                      <h2 className="text-2xl font-bold text-green-700">💰 QUOTE</h2>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-xl p-4 space-y-3">
+                                      <div>
+                                        <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Amount Due</p>
+                                        <p className="text-3xl font-bold text-green-600">₦{quoteData.amount.toLocaleString()}</p>
+                                      </div>
+                                      <div>
+                                        <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Transport Type</p>
+                                        <p className="text-lg font-semibold text-gray-900">{quoteData.transportType}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-white rounded-xl p-4 space-y-3">
+                                      <p className="text-sm font-bold text-green-700 uppercase">Bank Details</p>
+                                      
+                                      <div className="border-b border-gray-200 pb-3">
+                                        <p className="text-xs font-bold text-gray-600 uppercase">Bank Name</p>
+                                        <p className="text-base font-semibold text-gray-900">{quoteData.bankName}</p>
+                                      </div>
+
+                                      <div className="border-b border-gray-200 pb-3">
+                                        <p className="text-xs font-bold text-gray-600 uppercase">Account Number</p>
+                                        <p className="text-base font-mono font-semibold text-gray-900">{quoteData.accountNumber}</p>
+                                      </div>
+
+                                      <div>
+                                        <p className="text-xs font-bold text-gray-600 uppercase">Account Holder</p>
+                                        <p className="text-base font-semibold text-gray-900">{quoteData.accountHolder}</p>
+                                      </div>
+                                    </div>
+
+                                    <div className="bg-blue-100 border-l-4 border-blue-600 p-3 rounded">
+                                      <p className="text-sm font-semibold text-blue-900">✓ Please confirm to proceed with payment</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                          } else {
+                            // Not JSON, show as regular message
+                            throw new Error('Not JSON format');
+                          }
+                        } catch (e) {
+                          // Fallback: show as regular message
+                          return (
+                            <div className={`flex ${msg.senderType === 'customer' ? 'justify-end' : 'justify-start'}`}>
+                              <div className="bg-gray-100 text-gray-900 rounded-2xl rounded-bl-none px-3 md:px-4 py-2 md:py-3 text-sm max-w-xs md:max-w-sm break-words">{msg.content}</div>
+                            </div>
+                          );
+                        }
+                      })()
+                    ) : (
+                      <div className={`flex ${msg.senderType === 'customer' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-xs md:max-w-sm px-3 md:px-4 py-2 md:py-3 rounded-2xl ${
+                          msg.senderType === 'customer'
+                            ? 'bg-lime-600 text-white rounded-br-none'
+                            : 'bg-gray-100 text-gray-900 rounded-bl-none'
+                        }`}>
+                          {/* Sender Name for Admin Messages (to show "Logistics Team" or other admin senders) */}
+                          {msg.senderType === 'admin' && (
+                            <p className="text-xs font-semibold text-blue-700 mb-1">👤 {msg.senderName}</p>
                           )}
-                          {msg.quotedPrice && (
-                            <div className={`space-y-1 md:space-y-2 pt-2 md:pt-3 border-t ${
-                              msg.senderType === 'customer' ? 'border-white/30' : 'border-gray-300'
+                          {/* Message Content or Quote */}
+                          {msg.messageType === 'quote' ? (
+                            <div className="space-y-2 md:space-y-3">
+                              {msg.content && msg.content !== `Quote: ₦${msg.quotedPrice}` && (
+                                <p className="text-sm md:text-base leading-relaxed">{msg.content}</p>
+                              )}
+                              {msg.quotedPrice && (
+                                <div className={`space-y-1 md:space-y-2 pt-2 md:pt-3 border-t ${
+                                  msg.senderType === 'customer' ? 'border-white/30' : 'border-gray-300'
                             }`}>
                               <div className="flex justify-between text-xs md:text-sm gap-3">
                                 <span className="opacity-90">Unit Price:</span>
@@ -975,6 +1587,58 @@ export function ChatModal({
                             ✓ {msg.deliveryOption === 'pickup' ? '📍 Personal Pickup' : '🚚 Empi Delivery'}
                           </div>
                         </div>
+                      ) : msg.messageType === 'address' && msg.content ? (
+                        (() => {
+                          try {
+                            let addressData = null;
+                            if (msg.content.trim().startsWith('{')) {
+                              addressData = JSON.parse(msg.content);
+                            }
+                            
+                            if (addressData && addressData.pickupLocation) {
+                              return (
+                                <div className={`flex ${msg.senderType === 'customer' ? 'justify-end' : 'justify-start'} mb-4`}>
+                                  <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border-2 border-blue-500 rounded-xl p-3 space-y-2 w-full max-w-xs">
+                                    <div className="text-center border-b border-blue-200 pb-2">
+                                      <p className="text-xs font-semibold text-gray-600 mb-0.5">📨 {msg.senderName}</p>
+                                      <h2 className="text-base font-bold text-blue-700">📍 PICKUP ADDRESS</h2>
+                                    </div>
+                                    
+                                    <div className="bg-white rounded-lg p-3 space-y-2">
+                                      <p className="text-xs font-bold text-blue-600 uppercase tracking-wide">Location</p>
+                                      <p className="text-sm font-semibold text-gray-900 leading-relaxed">{addressData.pickupLocation}</p>
+                                    </div>
+
+                                    {/* Help Contact Section */}
+                                    <div className="bg-orange-50 border border-orange-200 rounded-lg p-2.5">
+                                      <p className="text-xs font-semibold text-orange-600 mb-1">📞 Need Help?</p>
+                                      <p className="text-sm font-bold text-gray-900">{order.phone}</p>
+                                      <p className="text-xs text-gray-600 mt-1">Call this number if you need assistance</p>
+                                    </div>
+
+                                    <div className="bg-blue-100 border-l-4 border-blue-600 p-2 rounded text-center">
+                                      <p className="text-xs font-semibold text-blue-900">✓ Pickup location confirmed</p>
+                                    </div>
+
+                                    {/* Picked Up Button - Only show for logistics team */}
+                                    {isLogisticsTeam && (
+                                      <button
+                                        onClick={() => setShowPickupConfirmModal(true)}
+                                        className="w-full mt-2 py-2 px-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold text-sm transition"
+                                      >
+                                        ✓ Picked Up
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          } catch (e) {
+                            console.error('[ChatModal] Error parsing address data:', e);
+                            return null;
+                          }
+                        })()
                       ) : (
                         <div className="text-sm md:text-base leading-relaxed break-words whitespace-pre-wrap">
                           {renderMessageContent(msg.content)}
@@ -987,7 +1651,9 @@ export function ChatModal({
                           minute: '2-digit',
                         })}
                       </p>
-                    </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
                 <div ref={messagesEndRef} />
@@ -1024,44 +1690,76 @@ export function ChatModal({
               </div>
             )}
 
-            {/* Delivery Options Button - Only on Ready Tab */}
-            {isAdmin && currentOrderStatus === 'ready' && (
-              <button
-                onClick={sendDeliveryOptions}
-                disabled={isSubmitting}
-                className="w-full py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-purple-100 hover:bg-purple-200 text-purple-700 border border-purple-300 disabled:opacity-50"
-              >
-                🚚 Send Delivery Options
-              </button>
+            {/* Logistics Quote/Address Button & Message Input - Side by Side for Logistics */}
+            {isAdmin && isLogisticsTeam && currentOrderStatus === 'ready' ? (
+              <form onSubmit={sendMessage} className="flex gap-2 items-center">
+                {/* Conditional button: Quote for delivery, Address for pickup */}
+                {deliveryOption === 'pickup' ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowAddressModal(true)}
+                    disabled={isSubmitting}
+                    className="flex-shrink-0 py-2 px-3 md:px-4 rounded-lg font-medium text-xs md:text-sm transition flex items-center justify-center gap-1 bg-lime-100 hover:bg-lime-200 text-lime-700 border border-lime-300 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    <MapPin className="h-4 w-4" />
+                    <span className="hidden md:inline">Address</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setShowLogisticsQuoteForm(true)}
+                    disabled={isSubmitting}
+                    className="flex-shrink-0 py-2 px-3 md:px-4 rounded-lg font-medium text-xs md:text-sm transition flex items-center justify-center gap-1 bg-orange-100 hover:bg-orange-200 text-orange-700 border border-orange-300 disabled:opacity-50 whitespace-nowrap"
+                  >
+                    <DollarSign className="h-4 w-4" />
+                    <span className="hidden md:inline">Quote</span>
+                  </button>
+                )}
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder={isAdmin ? "Type a message..." : "Reply..."}
+                  className="flex-1 px-4 py-2 md:py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-lime-600 focus:border-transparent text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !messageText.trim()}
+                  className="bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white p-2 md:p-3 rounded-full transition flex items-center justify-center flex-shrink-0 h-10 w-10 md:h-11 md:w-11"
+                  aria-label="Send message"
+                >
+                  <Send className="h-4 w-4 md:h-5 md:w-5" />
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={sendMessage} className="flex gap-2 items-center">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder={isAdmin ? "Type a message..." : "Reply..."}
+                  className="flex-1 px-4 py-2 md:py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-lime-600 focus:border-transparent text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={isSubmitting || !messageText.trim()}
+                  className="bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white p-2 md:p-3 rounded-full transition flex items-center justify-center flex-shrink-0 h-10 w-10 md:h-11 md:w-11"
+                  aria-label="Send message"
+                >
+                  <Send className="h-4 w-4 md:h-5 md:w-5" />
+                </button>
+              </form>
             )}
-
-            {/* Message Input - Always Visible */}
-            <form onSubmit={sendMessage} className="flex gap-2 items-center">
-              <input
-                ref={inputRef}
-                type="text"
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                placeholder={isAdmin ? "Type a message..." : "Reply..."}
-                className="flex-1 px-4 py-2 md:py-3 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-lime-600 focus:border-transparent text-sm"
-              />
-              <button
-                type="submit"
-                disabled={isSubmitting || !messageText.trim()}
-                className="bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white p-2 md:p-3 rounded-full transition flex items-center justify-center flex-shrink-0 h-10 w-10 md:h-11 md:w-11"
-                aria-label="Send message"
-              >
-                <Send className="h-4 w-4 md:h-5 md:w-5" />
-              </button>
-            </form>
           </div>
         </div>
       </div>
 
       {/* Decline Reason Modal */}
       {showDeclineModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4">
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => { setShowDeclineModal(false); setDeclineReason(''); }}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900">Decline Order</h3>
               <button

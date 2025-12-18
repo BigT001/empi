@@ -65,8 +65,8 @@ export function ClientStatusModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col">
+    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[85vh] overflow-hidden animate-in fade-in zoom-in-95 duration-300 flex flex-col" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className={`sticky top-0 bg-gradient-to-r ${statusColorMap[selectedStatus] || "from-blue-600 to-blue-700"} px-6 py-5 flex items-center justify-between flex-shrink-0`}>
           <div>

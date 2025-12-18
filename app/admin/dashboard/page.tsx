@@ -65,6 +65,8 @@ const TABS = [
 export default function AdminDashboardPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  
+  // ⚡ Initialize activeTab and loadedTabs together to prevent missing content on page refresh
   const [activeTab, setActiveTab] = useState<
     'overview' | 'users' | 'pending' | 'approved' | 'products' | 'custom'
   >(() => {
@@ -74,8 +76,16 @@ export default function AdminDashboardPage() {
     }
     return 'overview';
   });
-  // ⚡ Track loaded tabs to prevent re-fetching
-  const [loadedTabs, setLoadedTabs] = useState(new Set(['overview']));
+  
+  // ⚡ Track loaded tabs to prevent re-fetching - Initialize with activeTab so content loads on refresh
+  const [loadedTabs, setLoadedTabs] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adminDashboardActiveTab');
+      const initialTab = (saved as 'overview' | 'users' | 'pending' | 'approved' | 'products' | 'custom') || 'overview';
+      return new Set(['overview', initialTab]);
+    }
+    return new Set(['overview']);
+  });
   
   // Use session expiry hook to detect logout
   const { sessionError } = useSessionExpiry();

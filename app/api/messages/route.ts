@@ -7,7 +7,8 @@ import { calculateQuote } from '@/lib/discountCalculator';
 /**
  * GET /api/messages
  * Fetch messages for a specific custom order
- * Query params: orderId or orderNumber
+ * Query params: orderId or orderNumber, handlerType (optional), userType (optional)
+ * If logistics handler: only show messages from handoffAt onwards (unless logisticsCanViewFullHistory is true)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -15,8 +16,10 @@ export async function GET(request: NextRequest) {
 
     const orderId = request.nextUrl.searchParams.get('orderId');
     const orderNumber = request.nextUrl.searchParams.get('orderNumber');
+    const handlerType = request.nextUrl.searchParams.get('handlerType'); // 'production' or 'logistics'
+    const isSuperAdmin = request.nextUrl.searchParams.get('isSuperAdmin') === 'true';
 
-    console.log('[API:GET /messages] Received request - orderId:', orderId, 'orderNumber:', orderNumber);
+    console.log('[API:GET /messages] Received request - orderId:', orderId, 'orderNumber:', orderNumber, 'handlerType:', handlerType);
 
     if (!orderId && !orderNumber) {
       console.log('[API:GET /messages] ❌ Missing orderId or orderNumber');
@@ -29,7 +32,20 @@ export async function GET(request: NextRequest) {
     const query = orderId ? { orderId } : { orderNumber };
     console.log('[API:GET /messages] Query:', JSON.stringify(query));
 
-    const messages = await Message.find(query)
+    // Fetch the order to check handoff details
+    const order = await CustomOrder.findOne(query).lean() as any;
+    
+    // Build message query with handler-based filtering
+    let messageQuery: any = query;
+    
+    if (handlerType === 'logistics' && order && order.handoffAt && !isSuperAdmin) {
+      // Logistics can only see messages from handoffAt onwards (unless super admin grants access)
+      if (!order.logisticsCanViewFullHistory) {
+        messageQuery.createdAt = { $gte: order.handoffAt };
+      }
+    }
+
+    const messages = await Message.find(messageQuery)
       .sort({ createdAt: 1 })
       .lean();
 
@@ -39,7 +55,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: true, messages },
+      { success: true, messages, order },
       { status: 200 }
     );
   } catch (error) {
@@ -74,9 +90,10 @@ export async function POST(request: NextRequest) {
       messageType = 'text', // 'text', 'quote', 'negotiation', or 'quantity-update'
       quantityChangeData = null,
       recipientType = 'all', // 'admin', 'buyer', or 'all'
+      deliveryOption = null, // 'pickup' or 'delivery' - set when customer selects their preference
     } = body;
 
-    console.log('[API:POST /messages] Received:', { orderId, orderNumber, senderType, messageType, contentLength: content?.length });
+    console.log('[API:POST /messages] Received:', { orderId, orderNumber, senderType, messageType, contentLength: content?.length, deliveryOption });
     console.log('[API:POST /messages] quantityChangeData:', quantityChangeData);
 
     // Validate required fields
@@ -179,10 +196,34 @@ export async function POST(request: NextRequest) {
         messageType,
         quantityChangeData: quantityChangeData || null,
         recipientType,
+        deliveryOption: deliveryOption || null, // Store delivery option when customer selects
         isRead: false,
       });
 
       console.log('✅ Message created:', message._id);
+      
+      // If customer selects delivery option, update the order with that preference
+      if (senderType === 'customer' && deliveryOption && (deliveryOption === 'pickup' || deliveryOption === 'delivery')) {
+        console.log('[API:POST /messages] 📦 Customer selected delivery option:', deliveryOption, 'for order:', finalOrderId);
+        
+        try {
+          const updatedOrder = await CustomOrder.findByIdAndUpdate(
+            finalOrderId,
+            { deliveryOption },
+            { new: true }
+          );
+          
+          console.log('[API:POST /messages] ✅ Order updated with deliveryOption:', {
+            orderId: finalOrderId,
+            deliveryOption: deliveryOption,
+            orderDeliveryOption: updatedOrder?.deliveryOption,
+            status: updatedOrder?.status,
+            currentHandler: updatedOrder?.currentHandler
+          });
+        } catch (err) {
+          console.error('[API:POST /messages] ❌ Error updating order with deliveryOption:', err);
+        }
+      }
       
       // If admin sends a quote or final price, update the order
       if (senderType === 'admin' && (messageType === 'quote' || isFinalPrice)) {

@@ -14,7 +14,7 @@ export interface IMessage extends Document {
   quotedTotal?: number;
   discountPercentage?: number;
   discountAmount?: number;
-  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update';
+  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update' | 'delivery-option' | 'address';
   quantityChangeData?: {
     oldQty: number;
     newQty: number;
@@ -22,6 +22,7 @@ export interface IMessage extends Document {
     newTotal: number;
   };
   recipientType?: 'admin' | 'buyer' | 'all'; // Who should see this message (admin-only, buyer-only, or both)
+  deliveryOption?: 'pickup' | 'delivery'; // Customer's selected delivery option
   isRead: boolean;
   readAt?: Date;
   createdAt: Date;
@@ -90,7 +91,7 @@ const messageSchema = new Schema<IMessage>(
     },
     messageType: {
       type: String,
-      enum: ['text', 'quote', 'negotiation', 'system', 'quantity-update'],
+      enum: ['text', 'quote', 'negotiation', 'system', 'quantity-update', 'delivery-option', 'address'],
       default: 'text',
       index: true,
     },
@@ -102,6 +103,11 @@ const messageSchema = new Schema<IMessage>(
       type: String,
       enum: ['admin', 'buyer', 'all'],
       default: 'all',
+    },
+    deliveryOption: {
+      type: String,
+      enum: ['pickup', 'delivery'],
+      default: null,
     },
     isRead: {
       type: Boolean,
