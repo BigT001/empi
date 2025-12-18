@@ -64,7 +64,6 @@ export default function BuyerDashboardPage() {
   const [headerVisible, setHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
-  const [customOrderImageIndexes, setCustomOrderImageIndexes] = useState<Record<string, number>>({});
   const [expandedCustomOrder, setExpandedCustomOrder] = useState<string | null>(null);
   const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
   const [messageCountPerOrder, setMessageCountPerOrder] = useState<Record<string, { total: number; unread: number }>>({});
@@ -466,28 +465,31 @@ export default function BuyerDashboardPage() {
           </Link>
         </div>
 
-        {/* Tab Navigation - Modern Design with Badges */}
-        <div className="mb-12 bg-white rounded-2xl p-2 shadow-md flex gap-2 overflow-x-auto max-w-full">
+        {/* Tab Navigation - Mobile Optimized with Top-Left Badges */}
+        <div className="mb-12 bg-white rounded-2xl p-1.5 shadow-md grid grid-cols-3 gap-1.5 sm:flex sm:gap-2 sm:overflow-x-auto max-w-full">
           {[
-            { id: "custom-orders", label: "Custom Orders", count: customOrders.length, color: "bg-lime-50 text-lime-700 border-lime-300", badgeColor: "bg-lime-100" },
-            { id: "invoices", label: "Invoices", count: invoices.length, color: "bg-blue-50 text-blue-700 border-blue-300", badgeColor: "bg-blue-100" },
-            { id: "profile", label: "Profile", count: null, color: "bg-indigo-50 text-indigo-700 border-indigo-300", badgeColor: "bg-indigo-100" }
+            { id: "custom-orders", label: "Custom Orders", shortLabel: "Custom", count: customOrders.length, color: "bg-lime-50 text-lime-700 border-lime-300", badgeColor: "bg-lime-600 text-white" },
+            { id: "invoices", label: "Invoices", shortLabel: "Invoices", count: invoices.length, color: "bg-blue-50 text-blue-700 border-blue-300", badgeColor: "bg-blue-600 text-white" },
+            { id: "profile", label: "Profile", shortLabel: "Profile", count: null, color: "bg-indigo-50 text-indigo-700 border-indigo-300", badgeColor: "bg-indigo-600 text-white" }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as "invoices" | "custom-orders" | "profile")}
-              className={`px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${
+              className={`relative px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-semibold transition-all border-2 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 whitespace-nowrap text-sm sm:text-base ${
                 activeTab === tab.id
-                  ? `${tab.color} border-current shadow-md scale-105`
+                  ? `${tab.color} border-current shadow-md sm:scale-105`
                   : `${tab.color} border-transparent hover:shadow-md`
               }`}
             >
-              <span>{tab.label}</span>
+              {/* Badge - Positioned top-left */}
               {tab.count !== null && (
-                <span className={`${tab.badgeColor} px-2 py-0.5 rounded-full text-xs font-bold ml-1`}>
+                <span className={`absolute -top-2 -left-2 sm:static ${tab.badgeColor} px-2 py-1 rounded-full text-xs font-bold`}>
                   {tab.count}
                 </span>
               )}
+              {/* Label - Show short version on mobile, full on desktop */}
+              <span className="sm:hidden text-xs font-semibold">{tab.shortLabel}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
         </div>
@@ -823,6 +825,22 @@ export default function BuyerDashboardPage() {
                         <>
                           <div className="border-t border-gray-200"></div>
                           <div className="p-5 space-y-5 bg-gray-50 flex-1 overflow-y-auto max-h-96">
+                            {/* Design Images - Grid Layout */}
+                            {(order.designUrls && order.designUrls.length > 0) || order.designUrl ? (
+                              <div>
+                                <h3 className="font-semibold text-gray-900 mb-2">Design References ({(order.designUrls?.length || 0) || (order.designUrl ? 1 : 0)})</h3>
+                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                  {order.designUrls && order.designUrls.length > 0 ? (
+                                    order.designUrls.map((url, index) => (
+                                      <img key={index} src={url} alt={`Design ${index + 1}`} className="h-40 rounded-lg object-cover border border-gray-300 hover:border-gray-400 transition" />
+                                    ))
+                                  ) : order.designUrl ? (
+                                    <img src={order.designUrl} alt="Design" className="h-40 rounded-lg object-cover border border-gray-300 hover:border-gray-400 transition" />
+                                  ) : null}
+                                </div>
+                              </div>
+                            ) : null}
+
                             {/* Quantity Editor - Only in Pending Status */}
                             {order.status === 'pending' && (
                               <div>
