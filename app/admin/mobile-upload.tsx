@@ -70,7 +70,7 @@ export default function MobileAdminUpload() {
   const compressImage = async (base64: string, mimeType: string): Promise<string> => {
     return new Promise((resolve, reject) => {
       try {
-        const img = new Image();
+        const img = new (window as any).Image();
         img.onload = () => {
           try {
             const canvas = document.createElement('canvas');
