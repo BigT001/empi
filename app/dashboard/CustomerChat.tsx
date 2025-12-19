@@ -246,8 +246,78 @@ export function CustomerChat({ order, customerEmail, customerName }: CustomerCha
                     <p className="text-xs font-medium opacity-75 mb-1">{msg.senderName}</p>
                     <p className="text-sm">{msg.content}</p>
 
-                    {/* Price Badge */}
-                    {msg.quotedPrice && (
+                    {/* Quote Card */}
+                    {msg.quotedPrice && (msg.messageType === 'quote' || msg.senderType === 'admin') ? (
+                      <div className="mt-3 pt-3 border-t border-current border-opacity-20">
+                        <div className="bg-gradient-to-br from-lime-50 to-green-50 border-2 border-lime-300 rounded-lg p-3 space-y-3">
+                          {/* Price Section */}
+                          <div className="bg-white rounded-lg p-3 space-y-1">
+                            <p className="text-xs font-semibold text-gray-600 uppercase">💰 Quoted Price</p>
+                            <p className="text-2xl font-bold text-lime-600">₦{msg.quotedPrice.toLocaleString()}</p>
+                            {msg.isFinalPrice && (
+                              <p className="text-xs text-green-700 font-semibold">✓ Final Price - No negotiation</p>
+                            )}
+                          </div>
+
+                          {/* Date Section */}
+                          {msg.quotedDeliveryDate && (
+                            <div className="bg-white rounded-lg p-3 space-y-2">
+                              <p className="text-xs font-semibold text-gray-600 uppercase">📅 Delivery Date</p>
+                              <div className="space-y-2 text-xs">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-gray-700">Your request:</span>
+                                  <span className="font-semibold text-gray-900">{order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Not specified'}</span>
+                                </div>
+                                <div className="flex justify-between items-center border-t border-gray-200 pt-2">
+                                  <span className="text-gray-700">Admin proposes:</span>
+                                  <span className="font-semibold text-lime-600">{new Date(msg.quotedDeliveryDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}</span>
+                                </div>
+                              </div>
+
+                              {/* Date Agreement */}
+                              {!dateAgreedByBuyer && (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                  <label className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded transition">
+                                    <input
+                                      type="checkbox"
+                                      id={`date-agree-${msg._id}`}
+                                      onChange={(e) => handleDateAgreement(e.target.checked)}
+                                      className="w-4 h-4 accent-lime-600 cursor-pointer"
+                                    />
+                                    <span className="text-xs text-gray-700 font-medium">I agree to this delivery date</span>
+                                  </label>
+                                </div>
+                              )}
+                              {dateAgreedByBuyer && (
+                                <div className="mt-2 pt-2 border-t-2 border-green-300 text-center">
+                                  <p className="text-xs text-green-700 font-semibold">✓ Date confirmed</p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Action Button */}
+                          {dateAgreedByBuyer && (
+                            <a
+                              href={`/checkout?fromQuote=true&orderId=${order._id}`}
+                              className="block w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold py-2.5 px-4 rounded-lg transition text-center text-sm flex items-center justify-center gap-2"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2 9m10 0h2m-2 0a2 2 0 100-4 2 2 0 000 4zm-6 0a2 2 0 100-4 2 2 0 000 4z" />
+                              </svg>
+                              Proceed to Checkout
+                            </a>
+                          )}
+
+                          {/* Info Message */}
+                          {!dateAgreedByBuyer && (
+                            <p className="text-xs text-gray-600 text-center bg-gray-50 p-2 rounded">
+                              ✓ Please confirm the delivery date to proceed to payment
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ) : msg.quotedPrice ? (
                       <div className="mt-2 pt-2 border-t border-current border-opacity-30 space-y-2">
                         <div className="flex items-center gap-1">
                           <DollarSign className="h-3 w-3" />
@@ -256,41 +326,8 @@ export function CustomerChat({ order, customerEmail, customerName }: CustomerCha
                             <span className="text-xs ml-1 px-2 py-0.5 rounded bg-green-600">Final</span>
                           )}
                         </div>
-
-                        {/* Date Comparison */}
-                        {msg.quotedDeliveryDate && (
-                          <div className="bg-blue-50 p-2 rounded text-xs space-y-1">
-                            <div className="font-semibold text-blue-900">Delivery Dates:</div>
-                            <div className="flex justify-between">
-                              <span className="text-gray-700">Your requested:</span>
-                              <span className="font-medium">{order.deliveryDate ? new Date(order.deliveryDate).toLocaleDateString() : 'Not specified'}</span>
-                            </div>
-                            <div className="flex justify-between border-t border-blue-200 pt-1">
-                              <span className="text-gray-700">Admin proposes:</span>
-                              <span className="font-medium text-blue-600">{new Date(msg.quotedDeliveryDate).toLocaleDateString()}</span>
-                            </div>
-                            {!dateAgreedByBuyer && (
-                              <div className="mt-2 flex items-center gap-2 pt-1 border-t border-blue-200">
-                                <input
-                                  type="checkbox"
-                                  id={`date-agree-${msg._id}`}
-                                  onChange={(e) => handleDateAgreement(e.target.checked)}
-                                  className="w-4 h-4 accent-blue-600 cursor-pointer"
-                                />
-                                <label htmlFor={`date-agree-${msg._id}`} className="cursor-pointer text-gray-700">
-                                  I agree to this date
-                                </label>
-                              </div>
-                            )}
-                            {dateAgreedByBuyer && (
-                              <div className="mt-2 pt-1 border-t border-green-300 text-green-700 font-semibold">
-                                ✓ You agreed to this date
-                              </div>
-                            )}
-                          </div>
-                        )}
                       </div>
-                    )}
+                    ) : null}
 
                     <p className="text-xs opacity-75 mt-1">
                       {new Date(msg.createdAt).toLocaleTimeString([], {

@@ -1251,7 +1251,7 @@ Thank you for choosing Empi! 👖✨`;
               <>
                 {messages.map((msg) => (
                   <div key={msg._id} className="w-full">
-                    {msg.messageType === 'quote' && msg.content ? (
+                    {msg.messageType === 'quote' && msg.content && msg.content.trim().startsWith('{') ? (
                       (() => {
                         try {
                           // Try to parse as JSON if content starts with {
@@ -1382,7 +1382,7 @@ Thank you for choosing Empi! 👖✨`;
                             <p className="text-xs font-semibold text-blue-700 mb-1">👤 {msg.senderName}</p>
                           )}
                           {/* Message Content or Quote */}
-                          {msg.messageType === 'quote' ? (
+                          {(msg.messageType === 'quote' || (msg.quotedPrice && msg.senderType === 'admin')) ? (
                             <div className="space-y-2 md:space-y-3">
                               {msg.content && msg.content !== `Quote: ₦${msg.quotedPrice}` && (
                                 <p className="text-sm md:text-base leading-relaxed">{msg.content}</p>

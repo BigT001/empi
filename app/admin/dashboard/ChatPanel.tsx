@@ -13,6 +13,7 @@ interface Message {
   content: string;
   isFinalPrice?: boolean;
   quotedPrice?: number;
+  quotedDeliveryDate?: string;
   quotedVAT?: number;
   quotedTotal?: number;
   discountPercentage?: number;
@@ -219,8 +220,32 @@ export function ChatPanel({ order, adminEmail, adminName, onQuoteUpdate }: ChatP
                     <p className="text-sm">{msg.content}</p>
                   )}
 
-                  {/* Price Badge */}
-                  {msg.quotedPrice && (
+                  {/* Quote Card */}
+                  {msg.quotedPrice && msg.messageType === 'quote' && (
+                    <div className="mt-3 pt-3 border-t border-current border-opacity-20">
+                      <div className="bg-gradient-to-br from-blue-100 to-blue-50 border-2 border-blue-300 rounded-lg p-3 space-y-2 text-gray-900">
+                        {/* Price Section */}
+                        <div className="space-y-1">
+                          <p className="text-xs font-semibold text-blue-700 uppercase">💰 Quoted Price</p>
+                          <p className="text-xl font-bold text-blue-600">₦{msg.quotedPrice.toLocaleString()}</p>
+                          {msg.isFinalPrice && (
+                            <p className="text-xs text-green-700 font-semibold">✓ Final Price - No negotiation</p>
+                          )}
+                        </div>
+
+                        {/* Date Section */}
+                        {msg.quotedDeliveryDate && (
+                          <div className="pt-2 border-t border-blue-200 space-y-1">
+                            <p className="text-xs font-semibold text-blue-700 uppercase">📅 Proposed Delivery</p>
+                            <p className="text-sm font-bold text-blue-600">{new Date(msg.quotedDeliveryDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Simple Price Badge for non-quote messages with price */}
+                  {msg.quotedPrice && msg.messageType !== 'quote' && (
                     <div className="mt-2 pt-2 border-t border-current border-opacity-30 flex items-center gap-1">
                       <DollarSign className="h-3 w-3" />
                       <span className="text-sm font-bold">₦{msg.quotedPrice.toLocaleString()}</span>
