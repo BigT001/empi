@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Zap, Calendar, Clock, DollarSign } from "lucide-react";
+import { MessageSquare, Zap, Calendar, Clock, DollarSign, Trash2 } from "lucide-react";
 
 interface Order {
   _id: string;
@@ -36,9 +36,10 @@ interface CompletedOrderCardProps {
   order: Order;
   onImageClick: () => void;
   onChatClick: () => void;
+  onDeleteOrder?: (orderId: string) => void;
 }
 
-export function CompletedOrderCard({ order, onImageClick, onChatClick }: CompletedOrderCardProps) {
+export function CompletedOrderCard({ order, onImageClick, onChatClick, onDeleteOrder }: CompletedOrderCardProps) {
   return (
     <div className="bg-emerald-50 border-2 border-emerald-300 rounded-xl p-4 h-full flex flex-col gap-3 shadow-sm hover:shadow-md transition">
       {/* Header - Customer Info */}
@@ -188,13 +189,26 @@ export function CompletedOrderCard({ order, onImageClick, onChatClick }: Complet
             View All Images
           </button>
         )}
-        <button
-          onClick={onChatClick}
-          className="flex items-center justify-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg transition"
-        >
-          <MessageSquare className="h-4 w-4" />
-          Chat with Buyer
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={onChatClick}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg transition"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Chat with Buyer
+          </button>
+          <button
+            onClick={() => {
+              if (confirm(`Delete order? This action cannot be undone.`)) {
+                onDeleteOrder?.(order._id);
+              }
+            }}
+            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete
+          </button>
+        </div>
       </div>
     </div>
   );

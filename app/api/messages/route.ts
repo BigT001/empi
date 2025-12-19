@@ -6,8 +6,13 @@ import { calculateQuote } from '@/lib/discountCalculator';
 
 /**
  * GET /api/messages
- * Fetch messages for a specific custom order
- * Query params: orderId or orderNumber, handlerType (optional), userType (optional)
+ * Fetch messages for a specific custom order, or all reviews if messageType=review
+ * Query params: 
+ *   - orderId or orderNumber (required for order messages)
+ *   - messageType (optional: 'review' to fetch all reviews without orderId)
+ *   - handlerType (optional: 'production' or 'logistics')
+ *   - isSuperAdmin (optional: 'true' to bypass logistics visibility restrictions)
+ * 
  * If logistics handler: only show messages from handoffAt onwards (unless logisticsCanViewFullHistory is true)
  */
 export async function GET(request: NextRequest) {
@@ -16,11 +21,27 @@ export async function GET(request: NextRequest) {
 
     const orderId = request.nextUrl.searchParams.get('orderId');
     const orderNumber = request.nextUrl.searchParams.get('orderNumber');
+    const messageType = request.nextUrl.searchParams.get('messageType');
     const handlerType = request.nextUrl.searchParams.get('handlerType'); // 'production' or 'logistics'
     const isSuperAdmin = request.nextUrl.searchParams.get('isSuperAdmin') === 'true';
 
-    console.log('[API:GET /messages] Received request - orderId:', orderId, 'orderNumber:', orderNumber, 'handlerType:', handlerType);
+    console.log('[API:GET /messages] Received request - orderId:', orderId, 'orderNumber:', orderNumber, 'messageType:', messageType, 'handlerType:', handlerType);
 
+    // Special case: fetch all reviews if messageType is 'review' and no orderId
+    if (messageType === 'review' && !orderId && !orderNumber) {
+      console.log('[API:GET /messages] Fetching all reviews');
+      const reviews = await Message.find({ messageType: 'review', senderType: 'customer' })
+        .sort({ createdAt: -1 })
+        .lean();
+
+      console.log('[API:GET /messages] ✅ Found', reviews.length, 'reviews');
+      return NextResponse.json(
+        { success: true, messages: reviews },
+        { status: 200 }
+      );
+    }
+
+    // Standard case: fetch messages for a specific order
     if (!orderId && !orderNumber) {
       console.log('[API:GET /messages] ❌ Missing orderId or orderNumber');
       return NextResponse.json(
@@ -373,5 +394,30 @@ export async function PATCH(request: NextRequest) {
       { message: 'Failed to mark messages as read' },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * DELETE /api/messages
+ * Delete messages for an order (admin action)
+ * Query param: orderId
+ */
+export async function DELETE(request: NextRequest) {
+  try {
+    await connectDB();
+
+    const orderId = request.nextUrl.searchParams.get('orderId');
+    if (!orderId) {
+      return NextResponse.json({ message: 'orderId is required' }, { status: 400 });
+    }
+
+    // Delete messages tied to this order
+    const result = await Message.deleteMany({ orderId });
+    console.log(`[API:DELETE /messages] ✅ Deleted ${result.deletedCount} messages for order ${orderId}`);
+
+    return NextResponse.json({ success: true, deletedCount: result.deletedCount }, { status: 200 });
+  } catch (error) {
+    console.error('[API:DELETE /messages] ❌ Error deleting messages:', error);
+    return NextResponse.json({ message: 'Failed to delete messages', error: String(error) }, { status: 500 });
   }
 }

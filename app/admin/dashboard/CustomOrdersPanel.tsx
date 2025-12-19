@@ -558,6 +558,7 @@ export function CustomOrdersPanel() {
                 order={order as any}
                 onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
                 onChatClick={() => setChatModalOpen(order._id)}
+                onDeleteOrder={deleteOrder}
               />
             ))
           ) : selectedStatus === "rejected" ? (
@@ -568,6 +569,7 @@ export function CustomOrdersPanel() {
                 order={order as any}
                 onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
                 onChatClick={() => setChatModalOpen(order._id)}
+                onDeleteOrder={(orderId) => deleteOrder(orderId)}
               />
             ))
           ) : (

@@ -22,7 +22,7 @@ interface Message {
   quotedTotal?: number;
   discountPercentage?: number;
   discountAmount?: number;
-  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update' | 'delivery-option' | 'address';
+  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update' | 'delivery-option' | 'address' | 'review-request' | 'review';
   deliveryOption?: 'pickup' | 'delivery'; // Selected delivery option
   quantityChangeData?: {
     oldQty: number;
@@ -113,6 +113,16 @@ export function ChatModal({
   // Pickup confirmation modal state
   const [showPickupConfirmModal, setShowPickupConfirmModal] = useState(false);
   const [isSubmittingPickupConfirm, setIsSubmittingPickupConfirm] = useState(false);
+
+  // Review submission state
+  const [reviewText, setReviewText] = useState('');
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+  const [reviewRating, setReviewRating] = useState<number>(5);
+  const [hoverRating, setHoverRating] = useState<number>(0);
+
+  // Review warning dialog state
+  const [showReviewWarning, setShowReviewWarning] = useState(false);
+  const [hasReviewBeenSent, setHasReviewBeenSent] = useState(false);
 
   const pickupAddresses = [
     '22 Chi-Ben street, Ojo, Lagos',
@@ -303,6 +313,11 @@ export function ChatModal({
       const data = await response.json();
       if (data.success && Array.isArray(data.messages)) {
         console.log('[ChatModal] ✅ Fetched', data.messages.length, 'messages');
+        
+        // Check if a review request has already been sent
+        const reviewRequestSent = data.messages.some((msg: Message) => msg.messageType === 'review-request');
+        setHasReviewBeenSent(reviewRequestSent);
+        console.log('[ChatModal] Review request sent:', reviewRequestSent);
         
         // Filter messages based on recipientType and viewer role
         const filteredMessages = data.messages.filter((msg: Message) => {
@@ -753,6 +768,63 @@ Thank you for choosing Empi! 👖✨`;
     }
   };
 
+  // Send a review request to the buyer (for completed orders)
+  const sendReviewRequest = async () => {
+    // If review has been sent before, show warning dialog
+    if (hasReviewBeenSent) {
+      setShowReviewWarning(true);
+      return;
+    }
+
+    // Otherwise, proceed with sending
+    await performSendReviewRequest();
+  };
+
+  // Perform the actual review request send
+  const performSendReviewRequest = async () => {
+    try {
+      setIsSubmitting(true);
+
+      // Create a polished review request message as JSON
+      const reviewRequestData = {
+        type: 'review_request',
+        heading: 'We\'d Love Your Feedback!',
+        thankYouMessage: 'Thank you so much for choosing Empi Costumes! 👖✨',
+        feedbackPrompt: 'Would you mind sharing your experience with us? Your feedback helps us serve you better.',
+      };
+
+      const messageResponse = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          senderEmail: userEmail,
+          senderName: adminName || userName,
+          senderType: 'admin',
+          content: JSON.stringify(reviewRequestData),
+          messageType: 'review-request',
+          recipientType: 'all',
+          reviewRequest: true,
+        }),
+      });
+
+      if (!messageResponse.ok) {
+        console.error('Failed to send review request:', await messageResponse.text());
+        alert('Failed to send review request');
+        return;
+      }
+
+      await fetchMessages();
+      alert('Review request sent to the customer');
+      setShowReviewWarning(false);
+    } catch (error) {
+      console.error('Error sending review request:', error);
+      alert('Failed to send review request. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   // Helper function to render message content with markdown links
   const renderMessageContent = (content: string) => {
@@ -777,6 +849,51 @@ Thank you for choosing Empi! 👖✨`;
       }
       return <span key={index}>{part}</span>;
     });
+  };
+
+  // Handle review submission from customer
+  const handleSubmitReview = async () => {
+    if (!reviewText.trim()) {
+      alert('Please enter your feedback');
+      return;
+    }
+
+    setIsSubmittingReview(true);
+    try {
+      const reviewData = {
+        rating: reviewRating,
+        feedback: reviewText,
+      };
+
+      const response = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          senderEmail: userEmail,
+          senderName: userName,
+          senderType: 'customer',
+          content: JSON.stringify(reviewData),
+          messageType: 'review',
+          recipientType: 'all',
+        }),
+      });
+
+      if (!response.ok) {
+        alert('Failed to submit review');
+        return;
+      }
+
+      setReviewText('');
+      setReviewRating(5);
+      await fetchMessages();
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      alert('Failed to submit review');
+    } finally {
+      setIsSubmittingReview(false);
+    }
   };
 
   const finalMessage = messages.find(m => m.isFinalPrice && m.senderType === 'admin');
@@ -1587,6 +1704,208 @@ Thank you for choosing Empi! 👖✨`;
                             ✓ {msg.deliveryOption === 'pickup' ? '📍 Personal Pickup' : '🚚 Empi Delivery'}
                           </div>
                         </div>
+                      ) : msg.messageType === 'review-request' && msg.content ? (
+                        (() => {
+                          try {
+                            let reviewData = null;
+                            if (msg.content.trim().startsWith('{')) {
+                              reviewData = JSON.parse(msg.content);
+                            }
+                            
+                            if (reviewData && reviewData.type === 'review_request') {
+                              // For customers (non-admin): show input form to submit review
+                              // For admin: show waiting message
+                              if (!isAdmin && msg.senderType === 'admin') {
+                                // Customer viewing the review request - show input form
+                                return (
+                                  <div className={`flex justify-start mb-4`}>
+                                    <div className="w-full max-w-md">
+                                      <div className="bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 border-2 border-lime-400 rounded-2xl p-5 space-y-4 shadow-md">
+                                        {/* Header */}
+                                        <div className="text-center">
+                                          <h3 className="text-lg font-bold text-lime-900">{reviewData.heading}</h3>
+                                        </div>
+
+                                        {/* Thank you message */}
+                                        <div className="bg-white rounded-xl p-4 border border-lime-100">
+                                          <p className="text-sm font-semibold text-gray-900 leading-relaxed">
+                                            {reviewData.thankYouMessage}
+                                          </p>
+                                        </div>
+
+                                        {/* Feedback prompt */}
+                                        <div className="bg-lime-100 rounded-xl p-3 border-l-4 border-lime-400">
+                                          <p className="text-sm text-lime-900 font-medium">{reviewData.feedbackPrompt}</p>
+                                        </div>
+
+                                        {/* Star Rating */}
+                                        <div className="space-y-2">
+                                          <label className="text-sm font-semibold text-lime-900">Rate your experience: ⭐</label>
+                                          <div className="flex justify-center gap-2">
+                                            {[1, 2, 3, 4, 5].map((star) => (
+                                              <button
+                                                key={star}
+                                                onClick={() => setReviewRating(star)}
+                                                onMouseEnter={() => setHoverRating(star)}
+                                                onMouseLeave={() => setHoverRating(0)}
+                                                className="text-3xl transition transform hover:scale-110"
+                                              >
+                                                {star <= (hoverRating || reviewRating) ? '⭐' : '☆'}
+                                              </button>
+                                            ))}
+                                          </div>
+                                          <p className="text-xs text-center text-lime-700 font-medium">
+                                            {reviewRating === 5 && 'Excellent!'}
+                                            {reviewRating === 4 && 'Very Good'}
+                                            {reviewRating === 3 && 'Good'}
+                                            {reviewRating === 2 && 'Fair'}
+                                            {reviewRating === 1 && 'Poor'}
+                                          </p>
+                                        </div>
+
+                                        {/* Review text input */}
+                                        <div className="space-y-2">
+                                          <textarea
+                                            value={reviewText}
+                                            onChange={(e) => setReviewText(e.target.value)}
+                                            placeholder="Share your feedback here..."
+                                            rows={3}
+                                            className="w-full px-4 py-3 border-2 border-lime-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 text-sm resize-none bg-white"
+                                          />
+                                          <button
+                                            onClick={handleSubmitReview}
+                                            disabled={isSubmittingReview || !reviewText.trim()}
+                                            className="w-full py-2 px-4 bg-gradient-to-r from-lime-400 to-green-400 hover:from-lime-500 hover:to-green-500 disabled:opacity-50 text-white font-bold rounded-lg text-center transition text-sm"
+                                          >
+                                            Send Feedback
+                                          </button>
+                                        </div>
+
+                                        {/* Footer note */}
+                                        <p className="text-xs text-lime-700 text-center">Your feedback means the world to us! 🙏</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              } else {
+                                // For admin: show the review request card with waiting message
+                                return (
+                                  <div className={`flex justify-start mb-4`}>
+                                    <div className="w-full max-w-md">
+                                      <div className="bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 border-2 border-lime-400 rounded-2xl p-5 space-y-4 shadow-md">
+                                        {/* Header */}
+                                        <div className="text-center">
+                                          <h3 className="text-lg font-bold text-lime-900">{reviewData.heading}</h3>
+                                        </div>
+
+                                        {/* Thank you message */}
+                                        <div className="bg-white rounded-xl p-4 border border-lime-100">
+                                          <p className="text-sm font-semibold text-gray-900 leading-relaxed">
+                                            {reviewData.thankYouMessage}
+                                          </p>
+                                        </div>
+
+                                        {/* Feedback prompt */}
+                                        <div className="bg-lime-100 rounded-xl p-3 border-l-4 border-lime-400">
+                                          <p className="text-sm text-lime-900 font-medium">{reviewData.feedbackPrompt}</p>
+                                        </div>
+
+                                        {/* Footer note */}
+                                        <p className="text-xs text-lime-700 text-center">Waiting for customer feedback...</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                            }
+                            return null;
+                          } catch (e) {
+                            console.error('[ChatModal] Error parsing review request data:', e);
+                            return null;
+                          }
+                        })()
+                      ) : msg.messageType === 'review' && msg.content && msg.senderType === 'customer' ? (
+                        // Customer review display (shown to admin)
+                        (() => {
+                          try {
+                            let reviewData = null;
+                            if (msg.content.trim().startsWith('{')) {
+                              reviewData = JSON.parse(msg.content);
+                            }
+
+                            if (reviewData && reviewData.feedback) {
+                              return (
+                                <div className={`flex justify-end mb-4`}>
+                                  <div className="w-full max-w-md">
+                                    <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-xl p-4 space-y-3 shadow-md">
+                                      {/* Header with customer name and rating */}
+                                      <div className="flex items-center justify-between">
+                                        <div>
+                                          <p className="text-xs font-semibold text-blue-600 uppercase">Customer Review</p>
+                                          <p className="text-sm font-bold text-gray-900">{msg.senderName}</p>
+                                        </div>
+                                        <div className="flex gap-1">
+                                          {[1, 2, 3, 4, 5].map((star) => (
+                                            <span key={star} className="text-lg">
+                                              {star <= (reviewData.rating || 0) ? '⭐' : '☆'}
+                                            </span>
+                                          ))}
+                                        </div>
+                                      </div>
+
+                                      {/* Rating text */}
+                                      <div className="text-xs font-semibold text-blue-700">
+                                        {reviewData.rating === 5 && '5/5 - Excellent!'}
+                                        {reviewData.rating === 4 && '4/5 - Very Good'}
+                                        {reviewData.rating === 3 && '3/5 - Good'}
+                                        {reviewData.rating === 2 && '2/5 - Fair'}
+                                        {reviewData.rating === 1 && '1/5 - Poor'}
+                                      </div>
+
+                                      {/* Review feedback */}
+                                      <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                        <p className="text-sm text-gray-900 leading-relaxed">{reviewData.feedback}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            // Fallback for old review format (plain text)
+                            return (
+                              <div className={`flex justify-end mb-4`}>
+                                <div className="w-full max-w-md">
+                                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-xl p-4 space-y-3 shadow-md">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xl">⭐</span>
+                                      <p className="text-xs font-semibold text-blue-600 uppercase">Customer Review</p>
+                                    </div>
+                                    <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                      <p className="text-sm text-gray-900 leading-relaxed">{msg.content}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          } catch (e) {
+                            console.error('[ChatModal] Error parsing review data:', e);
+                            return (
+                              <div className={`flex justify-end mb-4`}>
+                                <div className="w-full max-w-md">
+                                  <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-400 rounded-xl p-4 space-y-3 shadow-md">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-xl">⭐</span>
+                                      <p className="text-xs font-semibold text-blue-600 uppercase">Customer Review</p>
+                                    </div>
+                                    <div className="bg-white rounded-lg p-3 border border-blue-100">
+                                      <p className="text-sm text-gray-900 leading-relaxed">{msg.content}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+                        })()
                       ) : msg.messageType === 'address' && msg.content ? (
                         (() => {
                           try {
@@ -1670,24 +1989,40 @@ Thank you for choosing Empi! 👖✨`;
               </div>
             )}
 
-            {/* Quote Form Toggle (Admin Only) - Hidden on Ready Tab */}
-            {isAdmin && !finalMessage && currentOrderStatus !== 'ready' && (
-              <div className="grid grid-cols-2 gap-2 w-full">
-                <button
-                  onClick={() => setShowQuoteForm(true)}
-                  className="py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300"
-                >
-                  <DollarSign className="h-4 w-4" />
-                  Send Quote
-                </button>
-                <button
-                  onClick={() => setShowDeclineModal(true)}
-                  className="py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300"
-                >
-                  <X className="h-4 w-4" />
-                  Decline
-                </button>
-              </div>
+            {/* Admin action buttons (varies by order status) */}
+            {isAdmin && !finalMessage && (
+              currentOrderStatus === 'completed' ? (
+                <div className="flex gap-2 w-full">
+                  <button
+                    onClick={sendReviewRequest}
+                    disabled={isSubmitting}
+                    className="flex-1 py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border border-emerald-300"
+                  >
+                    <CheckCircle className="h-4 w-4" />
+                    Request Review
+                  </button>
+                </div>
+              ) : (
+                // Show Send Quote / Decline for statuses where it's allowed
+                currentOrderStatus !== 'ready' && currentOrderStatus !== 'approved' && currentOrderStatus !== 'in-progress' && (
+                  <div className="grid grid-cols-2 gap-2 w-full">
+                    <button
+                      onClick={() => setShowQuoteForm(true)}
+                      className="py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300"
+                    >
+                      <DollarSign className="h-4 w-4" />
+                      Send Quote
+                    </button>
+                    <button
+                      onClick={() => setShowDeclineModal(true)}
+                      className="py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300"
+                    >
+                      <X className="h-4 w-4" />
+                      Decline
+                    </button>
+                  </div>
+                )
+              )
             )}
 
             {/* Logistics Quote/Address Button & Message Input - Side by Side for Logistics */}
@@ -1853,6 +2188,45 @@ Thank you for choosing Empi! 👖✨`;
           </div>
         </div>
       )}
+
+      {/* Review Request Warning Dialog */}
+      {showReviewWarning && (
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full p-6 border border-gray-100">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-yellow-100 rounded-full p-2">
+                <svg className="h-6 w-6 text-yellow-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-bold text-gray-900">Review Already Sent</h3>
+            </div>
+
+            <p className="text-gray-700 mb-6">
+              A review request has already been sent to this customer. Are you sure you want to send another one?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowReviewWarning(false)}
+                className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium rounded-lg transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  await performSendReviewRequest();
+                }}
+                disabled={isSubmitting}
+                className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-lg transition"
+              >
+                {isSubmitting ? 'Sending...' : 'Send Again'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
+

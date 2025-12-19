@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, MessageSquare, AlertCircle, CheckCircle, Clock, Zap, Factory, AlertCircle as AlertIcon, Calendar } from "lucide-react";
+import { ChevronDown, ChevronUp, MessageSquare, AlertCircle, CheckCircle, Clock, Zap, Factory, AlertCircle as AlertIcon, Calendar, Trash2 } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface Order {
@@ -257,13 +257,22 @@ export function OtherStatusOrderCard({
                 View All Images
               </button>
             )}
-            <button
-              onClick={onChatClick}
-              className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition"
-            >
-              <MessageSquare className="h-4 w-4" />
-              Chat with Buyer
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={onChatClick}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition"
+              >
+                <MessageSquare className="h-4 w-4" />
+                Chat with Buyer
+              </button>
+              <button
+                onClick={onDeleteClick}
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            </div>
           </div>
         </div>
       ) : order.status === "in-progress" ? (

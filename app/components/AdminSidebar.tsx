@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home, Truck } from "lucide-react";
+import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home, Truck, MessageCircle } from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
 import {
   Sidebar,
@@ -44,6 +44,11 @@ const sidebarItems: SidebarItem[] = [
     name: "Invoices",
     href: "/admin/invoices",
     icon: <FileText className="h-5 w-5" />,
+  },
+  {
+    name: "Reviews",
+    href: "/admin/reviews",
+    icon: <MessageCircle className="h-5 w-5" />,
   },
   {
     name: "Logistics",

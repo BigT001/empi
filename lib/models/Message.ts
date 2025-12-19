@@ -14,7 +14,7 @@ export interface IMessage extends Document {
   quotedTotal?: number;
   discountPercentage?: number;
   discountAmount?: number;
-  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update' | 'delivery-option' | 'address';
+  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update' | 'delivery-option' | 'address' | 'review-request' | 'review';
   quantityChangeData?: {
     oldQty: number;
     newQty: number;
@@ -91,7 +91,7 @@ const messageSchema = new Schema<IMessage>(
     },
     messageType: {
       type: String,
-      enum: ['text', 'quote', 'negotiation', 'system', 'quantity-update', 'delivery-option', 'address'],
+      enum: ['text', 'quote', 'negotiation', 'system', 'quantity-update', 'delivery-option', 'address', 'review-request', 'review'],
       default: 'text',
       index: true,
     },

@@ -524,13 +524,83 @@ export default function BuyerDashboardPage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Premium Invoice Table */}
-                <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
-                  <div className="relative overflow-x-auto group">
-                    <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 md:hidden opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                      <span className="inline-block text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full mr-4">→ Scroll right</span>
+                {/* Mobile Card View */}
+                <div className="md:hidden space-y-4">
+                  {invoices.map((invoice, index) => (
+                    <div
+                      key={invoice.invoiceNumber}
+                      className="bg-white rounded-2xl shadow-md border border-gray-200 p-4 hover:shadow-lg transition"
+                    >
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-bold text-blue-700">#{index + 1}</span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-black text-gray-900 truncate">{invoice.invoiceNumber}</p>
+                            <p className="text-xs text-gray-500 mt-1">{formatDate(invoice.invoiceDate)}</p>
+                          </div>
+                        </div>
+                        <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold flex-shrink-0">
+                          <Check className="h-3 w-3" />
+                          PAID
+                        </span>
+                      </div>
+                      
+                      <div className="bg-gradient-to-r from-lime-50 to-green-50 rounded-lg p-3 mb-4 border border-lime-100">
+                        <p className="text-xs text-gray-600 font-semibold mb-1">Total Amount</p>
+                        <p className="font-black text-xl text-green-600">₦{invoice.totalAmount?.toLocaleString("en-NG", { maximumFractionDigits: 0 }) || "0"}</p>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={() => setSelectedInvoice(invoice)}
+                          className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-semibold text-xs transition"
+                        >
+                          <Eye className="h-4 w-4" />
+                          <span className="hidden sm:inline">View</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            const html = generateProfessionalInvoiceHTML(invoice);
+                            const blob = new Blob([html], { type: "text/html" });
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.download = `Invoice-${invoice.invoiceNumber}.html`;
+                            link.click();
+                            URL.revokeObjectURL(url);
+                          }}
+                          className="flex items-center justify-center gap-1 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-semibold text-xs transition"
+                        >
+                          <Download className="h-4 w-4" />
+                          <span className="hidden sm:inline">Download</span>
+                        </button>
+                        <button
+                          onClick={() => {
+                            const text = `Check out my invoice: ${invoice.invoiceNumber} from EMPI - Amount: ₦${invoice.totalAmount?.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
+                            const encodedMessage = encodeURIComponent(text);
+                            const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
+                            window.open(whatsappUrl, "_blank");
+                          }}
+                          className="flex items-center justify-center gap-1 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg font-semibold text-xs transition"
+                        >
+                          <Share2 className="h-4 w-4" />
+                          <span className="hidden sm:inline">Share</span>
+                        </button>
+                      </div>
                     </div>
-                    <table className="w-full">
+                  ))}
+                </div>
+
+                {/* Desktop Table View */}
+                <div className="hidden md:block">
+                  <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+                    <div className="relative overflow-x-auto group">
+                      <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 md:hidden opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                        <span className="inline-block text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full mr-4">→ Scroll right</span>
+                      </div>
+                      <table className="w-full">
                         <thead>
                           <tr className="bg-gradient-to-r from-lime-50 via-green-50 to-lime-50 border-b-2 border-lime-200">
                             <th className="px-8 py-4 text-left font-black text-lime-900 uppercase text-xs tracking-wider">Invoice #</th>
@@ -585,7 +655,8 @@ export default function BuyerDashboardPage() {
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                      </table>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -825,22 +896,6 @@ export default function BuyerDashboardPage() {
                         <>
                           <div className="border-t border-gray-200"></div>
                           <div className="p-5 space-y-5 bg-gray-50 flex-1 overflow-y-auto max-h-96">
-                            {/* Design Images - Grid Layout */}
-                            {(order.designUrls && order.designUrls.length > 0) || order.designUrl ? (
-                              <div>
-                                <h3 className="font-semibold text-gray-900 mb-2">Design References ({(order.designUrls?.length || 0) || (order.designUrl ? 1 : 0)})</h3>
-                                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                  {order.designUrls && order.designUrls.length > 0 ? (
-                                    order.designUrls.map((url, index) => (
-                                      <img key={index} src={url} alt={`Design ${index + 1}`} className="h-40 rounded-lg object-cover border border-gray-300 hover:border-gray-400 transition" />
-                                    ))
-                                  ) : order.designUrl ? (
-                                    <img src={order.designUrl} alt="Design" className="h-40 rounded-lg object-cover border border-gray-300 hover:border-gray-400 transition" />
-                                  ) : null}
-                                </div>
-                              </div>
-                            ) : null}
-
                             {/* Quantity Editor - Only in Pending Status */}
                             {order.status === 'pending' && (
                               <div>
