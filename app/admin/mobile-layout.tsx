@@ -4,7 +4,7 @@ import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Plus, Image as ImageIcon, BarChart3, FileText, Settings, Home, LogOut } from "lucide-react";
+import { Plus, BarChart3, FileText, Settings, Home, LogOut, MessageCircle, Truck } from "lucide-react";
 
 interface NavItem {
   name: string;
@@ -17,37 +17,43 @@ const navItems: NavItem[] = [
   {
     name: "Dashboard",
     href: "/admin/dashboard",
-    icon: <Home className="h-6 w-6" />,
+    icon: <Home className="h-5 w-5" />,
     label: "Overview",
   },
   {
-    name: "Upload",
+    name: "Add",
     href: "/admin/upload",
-    icon: <Plus className="h-6 w-6" />,
+    icon: <Plus className="h-5 w-5" />,
     label: "Add Product",
-  },
-  {
-    name: "Products",
-    href: "/admin/products",
-    icon: <ImageIcon className="h-6 w-6" />,
-    label: "View Products",
   },
   {
     name: "Finance",
     href: "/admin/finance",
-    icon: <BarChart3 className="h-6 w-6" />,
+    icon: <BarChart3 className="h-5 w-5" />,
     label: "Analytics",
   },
   {
     name: "Invoices",
     href: "/admin/invoices",
-    icon: <FileText className="h-6 w-6" />,
+    icon: <FileText className="h-5 w-5" />,
     label: "Invoices",
+  },
+  {
+    name: "Reviews",
+    href: "/admin/reviews",
+    icon: <MessageCircle className="h-5 w-5" />,
+    label: "Customer Reviews",
+  },
+  {
+    name: "Logistics",
+    href: "/admin/logistics",
+    icon: <Truck className="h-5 w-5" />,
+    label: "Logistics",
   },
   {
     name: "Settings",
     href: "/admin/settings",
-    icon: <Settings className="h-6 w-6" />,
+    icon: <Settings className="h-5 w-5" />,
     label: "Settings",
   },
 ];
@@ -94,7 +100,7 @@ export default function MobileAdminLayout({
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-20">
+      <main className="flex-1 overflow-y-auto pb-16">
         <div className="w-full">
           {children}
         </div>
@@ -102,32 +108,32 @@ export default function MobileAdminLayout({
 
       {/* Bottom Navigation Bar - Instagram Style */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 md:hidden">
-        <div className="flex justify-around items-center h-20">
+        <div className="flex items-center justify-between h-16 w-full px-0.5">
           {navItems.map((item) => {
             const active = isActive(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center w-full h-full py-2 px-1 relative transition-all ${
+                className={`flex flex-col items-center justify-center flex-1 h-full py-1 relative transition-colors ${
                   active
                     ? "text-lime-600"
-                    : "text-gray-600 hover:text-gray-900"
+                    : "text-gray-500 hover:text-gray-900"
                 }`}
                 title={item.label}
               >
                 {/* Active indicator dot */}
                 {active && (
-                  <div className="absolute top-1 w-2 h-2 bg-lime-600 rounded-full" />
+                  <div className="absolute top-1 w-1 h-1 bg-lime-600 rounded-full" />
                 )}
 
-                {/* Icon */}
-                <div className={`transition-transform ${active ? "scale-110" : ""}`}>
+                {/* Icon - size optimized */}
+                <div className="mb-0.5">
                   {item.icon}
                 </div>
 
                 {/* Label - very small on mobile */}
-                <span className="text-xs font-medium mt-0.5 line-clamp-1">
+                <span className="text-[8px] font-semibold leading-none line-clamp-1 px-0.5">
                   {item.name}
                 </span>
               </Link>
