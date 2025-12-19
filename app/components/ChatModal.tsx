@@ -865,6 +865,7 @@ Thank you for choosing Empi! 👖✨`;
         feedback: reviewText,
       };
 
+      // Submit the review
       const response = await fetch('/api/messages', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -883,6 +884,26 @@ Thank you for choosing Empi! 👖✨`;
       if (!response.ok) {
         alert('Failed to submit review');
         return;
+      }
+
+      // Send thank you message to buyer immediately
+      const thankYouResponse = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          senderEmail: userEmail,
+          senderName: userName,
+          senderType: 'customer',
+          content: '✨ Thank you so much for your valuable feedback! Your review helps us improve and serve you better. We truly appreciate your support! 🙏',
+          messageType: 'text',
+          recipientType: 'all',
+        }),
+      });
+
+      if (!thankYouResponse.ok) {
+        console.error('Failed to send thank you message');
       }
 
       setReviewText('');

@@ -67,9 +67,72 @@ export default function MobileAdminUpload() {
   const [notificationMessage, setNotificationMessage] = useState("");
   const [uploadedProductName, setUploadedProductName] = useState("");
 
-  const compressImage = (base64: string, mimeType: string): Promise<string> => {
-    return new Promise((resolve) => {
-      resolve(base64);
+  const compressImage = async (base64: string, mimeType: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const img = new Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            // Calculate new dimensions maintaining aspect ratio
+            const maxWidth = 1920;
+            const maxHeight = 1920;
+
+            if (width > height) {
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              }
+            } else {
+              if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              throw new Error('Could not get canvas context');
+            }
+
+            ctx.drawImage(img, 0, 0, width, height);
+
+            // Compress with progressively lower quality until it's under 1MB
+            let quality = 0.9;
+            let compressedBase64 = '';
+
+            while (quality > 0.1) {
+              compressedBase64 = canvas.toDataURL(mimeType, quality);
+              
+              // Check if compressed size is under 1MB
+              if ((compressedBase64.length * 0.75) / 1024 / 1024 < 1) {
+                break;
+              }
+              
+              quality -= 0.1;
+            }
+
+            console.log(`✅ Image compressed: ${(base64.length / 1024 / 1024).toFixed(2)}MB → ${(compressedBase64.length / 1024 / 1024).toFixed(2)}MB`);
+            resolve(compressedBase64);
+          } catch (err) {
+            reject(err);
+          }
+        };
+
+        img.onerror = () => {
+          reject(new Error('Failed to load image'));
+        };
+
+        img.src = base64;
+      } catch (err) {
+        reject(err);
+      }
     });
   };
 
@@ -111,7 +174,7 @@ export default function MobileAdminUpload() {
         });
 
         let finalBase64 = base64;
-        if (file.size > 1.5 * 1024 * 1024) {
+        if (file.size > 500 * 1024) { // Compress if larger than 500KB
           setUploadProgress(`Compressing ${i + 1}/${files.length}...`);
           finalBase64 = await compressImage(base64, file.type);
         }
