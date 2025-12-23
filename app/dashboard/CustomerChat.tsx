@@ -47,8 +47,8 @@ export function CustomerChat({ order, customerEmail, customerName }: CustomerCha
   useEffect(() => {
     console.log('[CustomerChat] Component mounted for order:', order.orderNumber, 'ID:', order._id);
     fetchMessages();
-    // Poll for new messages every 3 seconds
-    const interval = setInterval(fetchMessages, 3000);
+    // Poll for new messages every 8 seconds (increased from 3s to reduce blinking)
+    const interval = setInterval(fetchMessages, 8000);
     return () => {
       console.log('[CustomerChat] Cleaning up interval');
       clearInterval(interval);

@@ -45,10 +45,10 @@ export async function DELETE(
     const { id } = await params;
     await connectDB();
 
-    const adminId = request.cookies.get('admin_session')?.value;
-    if (!adminId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    const sessionToken = request.cookies.get('admin_session')?.value;
+    if (!sessionToken) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const requestingAdmin = await Admin.findById(adminId);
+    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
     if (!requestingAdmin || !['admin', 'super_admin'].includes(requestingAdmin.role || '')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
@@ -78,10 +78,10 @@ export async function POST(
 
     await connectDB();
 
-    const adminId = request.cookies.get('admin_session')?.value;
-    if (!adminId) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    const sessionToken = request.cookies.get('admin_session')?.value;
+    if (!sessionToken) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 
-    const requestingAdmin = await Admin.findById(adminId);
+    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
     if (!requestingAdmin || !['admin', 'super_admin'].includes(requestingAdmin.role || '')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }

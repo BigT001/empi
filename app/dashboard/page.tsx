@@ -4,12 +4,10 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Footer } from "../components/Footer";
-import { Navigation } from "../components/Navigation";
 import { InvoiceModal } from "../components/InvoiceModal";
 import { ChatModal } from "../components/ChatModal";
 import { CountdownTimer } from "../components/CountdownTimer";
 import { useBuyer } from "../context/BuyerContext";
-import { useCurrency } from "../context/CurrencyContext";
 import { getBuyerInvoices, StoredInvoice } from "@/lib/invoiceStorage";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { formatDate } from "@/lib/utils";
@@ -44,17 +42,37 @@ interface CustomOrder {
   updatedAt: string;
 }
 
+interface Order {
+  _id: string;
+  orderNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  items?: Array<{ name: string; quantity: number; imageUrl?: string }>;
+  productName?: string;
+  quantity?: number;
+  total: number;
+  shippingType: "self" | "empi" | "standard";
+  deliveryOption?: string;
+  status: "pending" | "in-progress" | "ready" | "completed" | "cancelled" | "rejected" | "archived";
+  createdAt: string;
+  updatedAt: string;
+}
+
 export default function BuyerDashboardPage() {
   const { buyer, isHydrated, logout, updateProfile } = useBuyer();
-  const { currency, setCurrency } = useCurrency();
-  const [category, setCategory] = useState("adults");
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
-  const [activeTab, setActiveTab] = useState<"invoices" | "custom-orders" | "profile">(() => {
+  const [activeTab, setActiveTab] = useState<"invoices" | "orders" | "custom-orders" | "profile">(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('buyerDashboardActiveTab');
-      return (saved as "invoices" | "custom-orders" | "profile") || "invoices";
+      return (saved as "invoices" | "orders" | "custom-orders" | "profile") || "invoices";
     }
     return "invoices";
   });
@@ -64,6 +82,7 @@ export default function BuyerDashboardPage() {
   const [headerVisible, setHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
+  const [customOrderImageIndexes, setCustomOrderImageIndexes] = useState<Record<string, number>>({});
   const [expandedCustomOrder, setExpandedCustomOrder] = useState<string | null>(null);
   const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
   const [messageCountPerOrder, setMessageCountPerOrder] = useState<Record<string, { total: number; unread: number }>>({});
@@ -337,13 +356,14 @@ export default function BuyerDashboardPage() {
   // Initial load
   useEffect(() => {
     if (buyer?.email) {
-      console.log('[Dashboard] Initial load - fetching custom orders');
+      console.log('[Dashboard] Initial load - fetching custom orders and regular orders');
       const fetchAndProcess = async () => {
-        const response = await fetch(`/api/custom-orders?email=${encodeURIComponent(buyer.email)}`);
-        const data = await response.json();
+        // Fetch custom orders
+        const customResponse = await fetch(`/api/custom-orders?email=${encodeURIComponent(buyer.email)}`);
+        const customData = await customResponse.json();
         
-        if (data.orders && Array.isArray(data.orders)) {
-          const customerOrders = data.orders.filter((order: CustomOrder) => order.email === buyer.email);
+        if (customData.orders && Array.isArray(customData.orders)) {
+          const customerOrders = customData.orders.filter((order: CustomOrder) => order.email === buyer.email);
           setCustomOrders(customerOrders);
           fetchMessageCounts(customerOrders);
 
@@ -368,11 +388,42 @@ export default function BuyerDashboardPage() {
           }
           // If no order in URL, stay at top - don't auto-scroll
         }
+
+        // Fetch regular orders
+        const ordersResponse = await fetch(`/api/orders?email=${encodeURIComponent(buyer.email)}`);
+        const ordersData = await ordersResponse.json();
+        if (ordersData.orders && Array.isArray(ordersData.orders)) {
+          setOrders(ordersData.orders);
+        }
+
+        // Check for delivery modal trigger from URL
+        const params = new URLSearchParams(window.location.search);
+        if (params.get("tab") === "orders") {
+          setActiveTab("orders");
+        }
       };
       
       fetchAndProcess();
     }
   }, [buyer?.email]);
+
+  // Fetch regular orders
+  const fetchOrders = async () => {
+    try {
+      if (!buyer?.email) return;
+      
+      console.log('[Dashboard] Fetching regular orders for:', buyer.email);
+      const response = await fetch(`/api/orders?email=${encodeURIComponent(buyer.email)}`);
+      const data = await response.json();
+      
+      if (data.orders && Array.isArray(data.orders)) {
+        console.log('[Dashboard] Got', data.orders.length, 'regular orders');
+        setOrders(data.orders);
+      }
+    } catch (error) {
+      console.error("[Dashboard] Error fetching regular orders:", error);
+    }
+  };
 
   // Polling for real-time message updates
   useEffect(() => {
@@ -443,14 +494,6 @@ export default function BuyerDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900 flex flex-col">
       <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
 
-      {/* Navigation Header */}
-      <Navigation
-        category={category}
-        onCategoryChange={setCategory}
-        currency={currency}
-        onCurrencyChange={setCurrency}
-      />
-
       <main className="flex-1 max-w-7xl mx-auto px-4 py-6 sm:py-8 w-full mt-20 md:mt-32">
         {/* Welcome Header with Logo */}
         <div className="mb-8 sm:mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -465,34 +508,134 @@ export default function BuyerDashboardPage() {
           </Link>
         </div>
 
-        {/* Tab Navigation - Mobile Optimized with Top-Left Badges */}
-        <div className="mb-12 bg-white rounded-2xl p-1.5 shadow-md grid grid-cols-3 gap-1.5 sm:flex sm:gap-2 sm:overflow-x-auto max-w-full">
+        {/* Tab Navigation - Modern Design with Badges */}
+        <div className="mb-12 bg-white rounded-2xl p-2 shadow-md flex gap-2 overflow-x-auto max-w-full">
           {[
-            { id: "custom-orders", label: "Custom Orders", shortLabel: "Custom", count: customOrders.length, color: "bg-lime-50 text-lime-700 border-lime-300", badgeColor: "bg-lime-600 text-white" },
-            { id: "invoices", label: "Invoices", shortLabel: "Invoices", count: invoices.length, color: "bg-blue-50 text-blue-700 border-blue-300", badgeColor: "bg-blue-600 text-white" },
-            { id: "profile", label: "Profile", shortLabel: "Profile", count: null, color: "bg-indigo-50 text-indigo-700 border-indigo-300", badgeColor: "bg-indigo-600 text-white" }
+            { id: "orders", label: "Orders", count: orders.length, color: "bg-green-50 text-green-700 border-green-300", badgeColor: "bg-green-100" },
+            { id: "custom-orders", label: "Custom Orders", count: customOrders.length, color: "bg-lime-50 text-lime-700 border-lime-300", badgeColor: "bg-lime-100" },
+            { id: "invoices", label: "Invoices", count: invoices.length, color: "bg-blue-50 text-blue-700 border-blue-300", badgeColor: "bg-blue-100" },
+            { id: "profile", label: "Profile", count: null, color: "bg-indigo-50 text-indigo-700 border-indigo-300", badgeColor: "bg-indigo-100" }
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as "invoices" | "custom-orders" | "profile")}
-              className={`relative px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl font-semibold transition-all border-2 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-1 sm:gap-2 whitespace-nowrap text-sm sm:text-base ${
+              onClick={() => setActiveTab(tab.id as "invoices" | "orders" | "custom-orders" | "profile")}
+              className={`px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${
                 activeTab === tab.id
-                  ? `${tab.color} border-current shadow-md sm:scale-105`
+                  ? `${tab.color} border-current shadow-md scale-105`
                   : `${tab.color} border-transparent hover:shadow-md`
               }`}
             >
-              {/* Badge - Positioned top-left */}
+              <span>{tab.label}</span>
               {tab.count !== null && (
-                <span className={`absolute -top-2 -left-2 sm:static ${tab.badgeColor} px-2 py-1 rounded-full text-xs font-bold`}>
+                <span className={`${tab.badgeColor} px-2 py-0.5 rounded-full text-xs font-bold ml-1`}>
                   {tab.count}
                 </span>
               )}
-              {/* Label - Show short version on mobile, full on desktop */}
-              <span className="sm:hidden text-xs font-semibold">{tab.shortLabel}</span>
-              <span className="hidden sm:inline">{tab.label}</span>
             </button>
           ))}
         </div>
+
+        {/* ORDERS TAB */}
+        {activeTab === "orders" && (
+          <div className="space-y-8">
+            {/* Premium Header Section */}
+            <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-green-700 rounded-3xl shadow-2xl p-12 text-white relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
+              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-4">
+                  <div>
+                    <p className="text-green-100 font-bold uppercase text-sm tracking-wider">📦 Orders</p>
+                  </div>
+                </div>
+                <p className="text-slate-300 text-lg mt-2">Track your product orders and delivery status</p>
+              </div>
+            </div>
+
+            {orders.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-12 text-center">
+                <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                <p className="text-gray-600 text-lg mb-6">You haven't placed any product orders yet.</p>
+                <Link
+                  href="/"
+                  className="inline-block bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-lg font-semibold transition"
+                >
+                  Browse Products
+                </Link>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {orders.map((order) => (
+                  <div key={order._id} className="bg-white rounded-lg shadow-sm border border-green-200 overflow-hidden hover:shadow-md hover:border-green-300 transition">
+                    {/* Header - Status and Buyer Info */}
+                    <div className={`p-3 text-white rounded-t-lg ${
+                      order.status === 'completed' ? 'bg-green-600' :
+                      order.status === 'ready' ? 'bg-blue-600' :
+                      order.status === 'in-progress' ? 'bg-purple-600' :
+                      order.status === 'pending' ? 'bg-yellow-600' :
+                      'bg-gray-600'
+                    }`}>
+                      <p className="text-xxxs font-bold uppercase tracking-wider opacity-90">{order.status === 'completed' ? '✓ COMPLETED' : order.status.toUpperCase()} ORDER</p>
+                      <h3 className="text-xs font-black mt-1">{order.firstName} {order.lastName}</h3>
+                      <p className="text-xxxs opacity-90 truncate">{order.email}</p>
+                    </div>
+
+                    {/* What They Ordered */}
+                    <div className="p-3 border-b border-gray-100">
+                      <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1">Order</p>
+                      <p className="text-xs font-bold text-green-700 line-clamp-2">{order.items?.[0]?.name || 'Product'}</p>
+                    </div>
+
+                    {/* Product Images */}
+                    {order.items && order.items.length > 0 && (
+                      <div className="p-3 border-b border-gray-100">
+                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-2">Images</p>
+                        <div className="flex gap-2 flex-wrap">
+                          {order.items.slice(0, 3).map((item, idx) => (
+                            <div
+                              key={idx}
+                              className="w-14 h-14 bg-gray-200 rounded border border-gray-300 flex items-center justify-center overflow-hidden hover:border-green-400 transition cursor-pointer"
+                              onClick={() => setImageModalOpen({ orderId: order._id, index: idx })}
+                            >
+                              {item.imageUrl ? (
+                                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <Package className="h-5 w-5 text-gray-400" />
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Quantity and Price */}
+                    <div className="p-3 grid grid-cols-2 gap-2 border-b border-gray-100">
+                      <div className="bg-gray-50 p-2 rounded border border-gray-100">
+                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-0.5">Qty</p>
+                        <p className="text-lg font-black text-green-700">{order.items?.reduce((sum, item) => sum + item.quantity, 0) || 1}</p>
+                      </div>
+                      <div className="bg-gray-50 p-2 rounded border border-gray-100">
+                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-0.5">Total</p>
+                        <p className="text-lg font-black text-green-700 line-clamp-1">₦{(order.total || 0).toLocaleString()}</p>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="p-3 flex gap-2">
+                      <button
+                        onClick={() => setChatModalOpen(order._id)}
+                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold transition text-xs"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                        Chat
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* INVOICES TAB */}
         {activeTab === "invoices" && (
@@ -524,83 +667,13 @@ export default function BuyerDashboardPage() {
               </div>
             ) : (
               <div className="space-y-6">
-                {/* Mobile Card View */}
-                <div className="md:hidden space-y-4">
-                  {invoices.map((invoice, index) => (
-                    <div
-                      key={invoice.invoiceNumber}
-                      className="bg-white rounded-2xl shadow-md border border-gray-200 p-4 hover:shadow-lg transition"
-                    >
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center gap-3 flex-1">
-                          <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-100 to-cyan-100 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-bold text-blue-700">#{index + 1}</span>
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="font-black text-gray-900 truncate">{invoice.invoiceNumber}</p>
-                            <p className="text-xs text-gray-500 mt-1">{formatDate(invoice.invoiceDate)}</p>
-                          </div>
-                        </div>
-                        <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-1 rounded-full text-xs font-bold flex-shrink-0">
-                          <Check className="h-3 w-3" />
-                          PAID
-                        </span>
-                      </div>
-                      
-                      <div className="bg-gradient-to-r from-lime-50 to-green-50 rounded-lg p-3 mb-4 border border-lime-100">
-                        <p className="text-xs text-gray-600 font-semibold mb-1">Total Amount</p>
-                        <p className="font-black text-xl text-green-600">₦{invoice.totalAmount?.toLocaleString("en-NG", { maximumFractionDigits: 0 }) || "0"}</p>
-                      </div>
-
-                      <div className="grid grid-cols-3 gap-2">
-                        <button
-                          onClick={() => setSelectedInvoice(invoice)}
-                          className="flex items-center justify-center gap-1 px-3 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg font-semibold text-xs transition"
-                        >
-                          <Eye className="h-4 w-4" />
-                          <span className="hidden sm:inline">View</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            const html = generateProfessionalInvoiceHTML(invoice);
-                            const blob = new Blob([html], { type: "text/html" });
-                            const url = URL.createObjectURL(blob);
-                            const link = document.createElement("a");
-                            link.href = url;
-                            link.download = `Invoice-${invoice.invoiceNumber}.html`;
-                            link.click();
-                            URL.revokeObjectURL(url);
-                          }}
-                          className="flex items-center justify-center gap-1 px-3 py-2 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg font-semibold text-xs transition"
-                        >
-                          <Download className="h-4 w-4" />
-                          <span className="hidden sm:inline">Download</span>
-                        </button>
-                        <button
-                          onClick={() => {
-                            const text = `Check out my invoice: ${invoice.invoiceNumber} from EMPI - Amount: ₦${invoice.totalAmount?.toLocaleString("en-NG", { maximumFractionDigits: 0 })}`;
-                            const encodedMessage = encodeURIComponent(text);
-                            const whatsappUrl = `https://wa.me/?text=${encodedMessage}`;
-                            window.open(whatsappUrl, "_blank");
-                          }}
-                          className="flex items-center justify-center gap-1 px-3 py-2 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg font-semibold text-xs transition"
-                        >
-                          <Share2 className="h-4 w-4" />
-                          <span className="hidden sm:inline">Share</span>
-                        </button>
-                      </div>
+                {/* Premium Invoice Table */}
+                <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
+                  <div className="relative overflow-x-auto group">
+                    <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 md:hidden opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      <span className="inline-block text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full mr-4">→ Scroll right</span>
                     </div>
-                  ))}
-                </div>
-
-                {/* Desktop Table View */}
-                <div className="hidden md:block">
-                  <div className="bg-white rounded-3xl shadow-lg border border-gray-200 overflow-hidden">
-                    <div className="relative overflow-x-auto group">
-                      <div className="absolute right-0 top-1/2 -translate-y-1/2 z-10 md:hidden opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                        <span className="inline-block text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-full mr-4">→ Scroll right</span>
-                      </div>
-                      <table className="w-full">
+                    <table className="w-full">
                         <thead>
                           <tr className="bg-gradient-to-r from-lime-50 via-green-50 to-lime-50 border-b-2 border-lime-200">
                             <th className="px-8 py-4 text-left font-black text-lime-900 uppercase text-xs tracking-wider">Invoice #</th>
@@ -655,8 +728,7 @@ export default function BuyerDashboardPage() {
                           </tr>
                         ))}
                       </tbody>
-                      </table>
-                    </div>
+                    </table>
                   </div>
                 </div>
               </div>
@@ -743,323 +815,98 @@ export default function BuyerDashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="columns-1 md:columns-2 lg:columns-3 gap-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {customOrders.map((order) => {
                   const messageCount = messageCountPerOrder[order._id] || { total: 0, unread: 0 };
-                  const isExpanded = expandedCustomOrder === order._id;
-                  
-                  // Debug logging
-                  if (isExpanded) {
-                    console.log('Expanded card:', order.orderNumber, 'ID:', order._id, 'expandedCustomOrder state:', expandedCustomOrder);
-                  }
-                  
-                  const handleCardToggle = () => {
-                    console.log('[Card Toggle] Current expanded:', expandedCustomOrder, 'Clicked order:', order._id, 'Currently expanded?:', isExpanded);
-                    if (isExpanded) {
-                      // Close this card
-                      setExpandedCustomOrder(null);
-                      console.log('[Card Toggle] Closing card:', order._id);
-                    } else {
-                      // Close any previously expanded card and open this one
-                      setExpandedCustomOrder(order._id);
-                      console.log('[Card Toggle] Opening card:', order._id);
-                    }
-                  };
                   
                   return (
-                    <div key={order._id} id={`order-${order._id}`} className="bg-white rounded-2xl shadow-md border-2 border-lime-200 bg-gradient-to-br from-white to-lime-50/30 overflow-hidden hover:shadow-xl hover:border-lime-400 transition transform hover:-translate-y-1 flex flex-col break-inside-avoid">
-                      {/* Card Header */}
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleCardToggle();
-                        }}
-                        className="w-full bg-gradient-to-br from-white via-lime-50/40 to-white hover:from-lime-50 hover:via-lime-100/40 hover:to-lime-50 transition-all p-4 flex flex-col gap-3 text-left border-b border-lime-100"
-                      >
-                        {/* Top Row: Order Number and Status */}
-                        <div className="flex items-start justify-between gap-3">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-baseline gap-2">
-                              <h3 className="text-base md:text-lg font-bold bg-gradient-to-r from-lime-700 to-green-600 bg-clip-text text-transparent truncate">
-                                {order.orderNumber}
-                              </h3>
-                              <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-semibold flex-shrink-0 whitespace-nowrap ${
-                                order.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                                order.status === "approved" ? "bg-blue-100 text-blue-700" :
-                                order.status === "in-progress" ? "bg-purple-100 text-purple-700" :
-                                order.status === "ready" ? "bg-green-100 text-green-700" :
-                                order.status === "completed" ? "bg-gray-100 text-gray-700" :
-                                "bg-red-100 text-red-700"
-                              }`}>
-                                {order.status === "pending" && <Clock className="h-3 w-3" />}
-                                {order.status === "completed" && <Check className="h-3 w-3" />}
-                                {order.status === "rejected" && <AlertCircle className="h-3 w-3" />}
-                                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                              </span>
-                            </div>
-                            <p className="text-xs text-gray-500 mt-1">📅 {new Date(order.createdAt).toLocaleDateString()}</p>
+                    <div key={order._id} className="bg-white rounded-lg shadow-sm border border-lime-200 overflow-hidden hover:shadow-md hover:border-lime-300 transition">
+                      {/* Header - Status and Buyer Info */}
+                      <div className={`p-3 text-white rounded-t-lg ${
+                        order.status === 'completed' ? 'bg-lime-600' :
+                        order.status === 'ready' ? 'bg-blue-600' :
+                        order.status === 'in-progress' ? 'bg-purple-600' :
+                        order.status === 'approved' ? 'bg-green-600' :
+                        order.status === 'pending' ? 'bg-yellow-600' :
+                        'bg-gray-600'
+                      }`}>
+                        <p className="text-xxxs font-bold uppercase tracking-wider opacity-90">{order.status === 'completed' ? '✓ COMPLETED' : order.status.toUpperCase()} CUSTOM ORDER</p>
+                        <h3 className="text-xs font-black mt-1">{order.fullName}</h3>
+                        <p className="text-xxxs opacity-90 truncate">{order.email}</p>
+                      </div>
+
+                      {/* What They Ordered */}
+                      <div className="p-3 border-b border-gray-100">
+                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1">Order</p>
+                        <p className="text-xs font-bold text-lime-700 line-clamp-2">{order.description || 'Custom Order'}</p>
+                      </div>
+
+                      {/* Design Images */}
+                      {order.designUrls && order.designUrls.length > 0 && (
+                        <div className="p-3 border-b border-gray-100">
+                          <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-2">Design Images</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {order.designUrls.slice(0, 3).map((url, idx) => (
+                              <div
+                                key={idx}
+                                className="w-14 h-14 bg-gray-200 rounded border border-gray-300 flex items-center justify-center overflow-hidden hover:border-lime-400 transition cursor-pointer"
+                                onClick={() => setImageModalOpen({ orderId: order._id, index: idx })}
+                              >
+                                <img src={url} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                              </div>
+                            ))}
                           </div>
-                          <ChevronRight className={`h-5 w-5 text-lime-600 transition-transform flex-shrink-0 ${isExpanded ? 'rotate-90' : ''}`} />
                         </div>
+                      )}
 
-                        {/* Info Grid */}
-                        <div className="space-y-2">
-                          {/* First Row: Qty, Total, Date/Timer */}
-                          <div className="grid grid-cols-3 gap-2">
-                            {/* Quantity - Display only (editing in separate section) */}
-                            <div className="bg-white/60 backdrop-blur-sm rounded-lg p-2 border border-lime-100/50">
-                              <p className="text-xs text-gray-600 font-medium">📦 Qty</p>
-                              <p className="text-sm font-bold text-gray-900">{order.quantity || 1}</p>
-                            </div>
-                            
-                            {/* Price */}
-                            {order.quotedPrice && (
-                              <div className="bg-gradient-to-br from-lime-100/60 to-green-100/60 rounded-lg p-2 border border-lime-200/50">
-                                <p className="text-xs text-gray-600 font-medium">💰 Total</p>
-                                <p className="text-sm font-bold text-lime-700">₦{Math.round(calculateMainCardTotal(order)).toLocaleString()}</p>
-                              </div>
-                            )}
-                            
-                            {/* Timer or Days Left */}
-                            {order.timerStartedAt && order.deadlineDate ? (
-                              <div className="bg-gradient-to-br from-orange-100/60 to-red-100/60 rounded-lg p-2 border border-orange-200/50">
-                                <p className="text-xs text-gray-600 font-medium">⏱️ Time</p>
-                                <p className="text-sm font-bold text-orange-700">
-                                  {Math.ceil((new Date(order.deadlineDate).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}d
-                                </p>
-                              </div>
-                            ) : order.buyerAgreedToDate && order.proposedDeliveryDate ? (
-                              // Show agreed delivery date when buyer has agreed
-                              <div className="bg-gradient-to-br from-green-100/60 to-emerald-100/60 rounded-lg p-2 border border-green-200/50">
-                                <p className="text-xs text-gray-600 font-medium">📆 Agreed</p>
-                                <p className="text-sm font-bold text-green-700">{new Date(order.proposedDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                              </div>
-                            ) : order.deliveryDate ? (
-                              // Show original delivery date if no agreement yet
-                              <div className="bg-gradient-to-br from-blue-100/60 to-cyan-100/60 rounded-lg p-2 border border-blue-200/50">
-                                <p className="text-xs text-gray-600 font-medium">📆 Needed</p>
-                                <p className="text-sm font-bold text-blue-700">{new Date(order.deliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
-                              </div>
-                            ) : null}
-                          </div>
+                      {/* Quantity and Price */}
+                      <div className="p-3 grid grid-cols-2 gap-2 border-b border-gray-100">
+                        <div className="bg-gray-50 p-2 rounded border border-gray-100">
+                          <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-0.5">Qty</p>
+                          <p className="text-lg font-black text-lime-700">{order.quantity || 1}</p>
+                        </div>
+                        <div className="bg-gray-50 p-2 rounded border border-gray-100">
+                          <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-0.5">Quote</p>
+                          <p className="text-lg font-black text-lime-700 line-clamp-1">₦{order.quotedPrice ? Math.round(calculateMainCardTotal(order)).toLocaleString() : 'Pending'}</p>
+                        </div>
+                      </div>
 
-                          {/* Product ID Row */}
-                          {order.productId && (
-                            <div className="bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg p-2 border border-amber-300/60">
-                              <p className="text-xs text-gray-600 font-medium">🆔 Product ID</p>
-                              <p className="text-sm font-bold text-amber-900 font-mono">{order.productId}</p>
-                            </div>
+                      {/* Status Details */}
+                      <div className="p-3 border-b border-gray-100">
+                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Details</p>
+                        <div className="space-y-1 text-xxxs">
+                          <p><span className={`inline-block px-1.5 py-0.5 rounded text-xxxs font-bold ${
+                            order.status === "pending" ? "bg-yellow-100 text-yellow-700" :
+                            order.status === "approved" ? "bg-green-100 text-green-700" :
+                            order.status === "in-progress" ? "bg-purple-100 text-purple-700" :
+                            order.status === "ready" ? "bg-blue-100 text-blue-700" :
+                            order.status === "completed" ? "bg-gray-100 text-gray-700" :
+                            "bg-red-100 text-red-700"
+                          }`}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span></p>
+                          {order.buyerAgreedToDate && order.proposedDeliveryDate && (
+                            <p className="text-gray-600">📆 Delivery: {new Date(order.proposedDeliveryDate).toLocaleDateString()}</p>
                           )}
-                        </div>
-
-                        {/* Countdown Timer Inline */}
-                        {order.timerStartedAt && order.deadlineDate && (
-                          <div className="mt-1">
-                            <CountdownTimer
-                              timerStartedAt={order.timerStartedAt}
-                              deadlineDate={order.deadlineDate}
-                              status={order.status}
-                              compact={true}
-                            />
-                          </div>
-                        )}
-                      </button>
-
-                      {/* Action Bar - Chat Button with Message Badge */}
-                      <div className="border-t border-lime-100 px-4 py-3 bg-gradient-to-r from-lime-600/5 to-green-600/5 flex items-center justify-start gap-3">
-                        {/* Chat Icon Button with Message Count Badge */}
-                        <div className="relative">
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              setChatModalOpen(order._id);
-                            }}
-                            className="bg-gradient-to-br from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white p-3 rounded-full transition-all shadow-md hover:shadow-lg hover:scale-110 flex items-center justify-center"
-                            title="Open chat"
-                          >
-                            <MessageCircle className="h-6 w-6" />
-                          </button>
-                          
-                          {/* Message Count Badge on Icon */}
-                          {messageCount.unread > 0 && (
-                            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold shadow-lg border-2 border-white">
-                              {messageCount.unread > 99 ? '99+' : messageCount.unread}
-                            </span>
+                          {messageCount.total > 0 && (
+                            <p className="text-lime-600 font-semibold">💬 {messageCount.total} messages</p>
                           )}
                         </div>
                       </div>
 
-                      {/* Expanded Content */}
-                      {isExpanded && (
-                        <>
-                          <div className="border-t border-gray-200"></div>
-                          <div className="p-5 space-y-5 bg-gray-50 flex-1 overflow-y-auto max-h-96">
-                            {/* Quantity Editor - Only in Pending Status */}
-                            {order.status === 'pending' && (
-                              <div>
-                                <h4 className="font-semibold text-gray-900 mb-3 text-sm">📦 Adjust Quantity</h4>
-                                <div className="space-y-3">
-                                  <div className="flex items-center gap-3 bg-white rounded-lg p-4 border border-lime-200">
-                                    <button
-                                      onClick={() => {
-                                        const currentPending = pendingQuantityChange[order._id] || (order.quantity || 1);
-                                        setPendingQuantityChange({
-                                          ...pendingQuantityChange,
-                                          [order._id]: Math.max(1, currentPending - 1)
-                                        });
-                                      }}
-                                      className="bg-red-500 hover:bg-red-600 text-white font-bold w-8 h-8 rounded-lg text-lg transition flex items-center justify-center"
-                                    >
-                                      −
-                                    </button>
-                                    <div className="flex-1 text-center">
-                                      <p className="text-2xl font-bold text-gray-900">{pendingQuantityChange[order._id] || (order.quantity || 1)}</p>
-                                      <p className="text-xs text-gray-500 mt-1">units</p>
-                                    </div>
-                                    <button
-                                      onClick={() => {
-                                        const currentPending = pendingQuantityChange[order._id] || (order.quantity || 1);
-                                        setPendingQuantityChange({
-                                          ...pendingQuantityChange,
-                                          [order._id]: currentPending + 1
-                                        });
-                                      }}
-                                      className="bg-lime-600 hover:bg-lime-700 text-white font-bold w-8 h-8 rounded-lg text-lg transition flex items-center justify-center"
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-
-                                  {/* Show Confirm button only if quantity changed */}
-                                  {(pendingQuantityChange[order._id] || order.quantity || 1) !== (order.quantity || 1) && (
-                                    <button
-                                      onClick={async () => {
-                                        const oldQty = order.quantity || 1;
-                                        const newQty = pendingQuantityChange[order._id] || oldQty;
-                                        
-                                        try {
-                                          // Update quantity in database
-                                          const res = await fetch(`/api/custom-orders?id=${order._id}`, {
-                                            method: 'PATCH',
-                                            headers: { 'Content-Type': 'application/json' },
-                                            body: JSON.stringify({ quantity: newQty })
-                                          });
-                                          
-                                          if (res.ok) {
-                                            // Generate quantity-update data using centralized utility
-                                            const quantityUpdateData = generateQuantityUpdateData(order, oldQty, newQty);
-                                            
-                                            console.log('[Dashboard] 📊 Quantity Update Data:', quantityUpdateData);
-                                            
-                                            // Send notification message to admin (NOT a quote yet)
-                                            const messageRes = await fetch(`/api/messages`, {
-                                              method: 'POST',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({
-                                                orderId: order._id,
-                                                orderNumber: order.orderNumber,
-                                                senderEmail: buyer?.email || 'buyer@empi.com',
-                                                senderName: buyer?.fullName || 'Buyer',
-                                                senderType: 'customer',
-                                                content: generateQuantityUpdateMessageContent(
-                                                  quantityUpdateData.oldQty,
-                                                  quantityUpdateData.newQty,
-                                                  quantityUpdateData.subtotal,
-                                                  quantityUpdateData.discountPercentage,
-                                                  quantityUpdateData.discountAmount,
-                                                  quantityUpdateData.subtotalAfterDiscount,
-                                                  quantityUpdateData.vat,
-                                                  quantityUpdateData.newTotal
-                                                ),
-                                                messageType: 'quantity-update',
-                                                quantityChangeData: quantityUpdateData
-                                              })
-                                            });
-                                            
-                                            if (messageRes.ok) {
-                                              const messageData = await messageRes.json();
-                                              console.log('[Dashboard] ✅ Message sent successfully:', messageData);
-                                            } else {
-                                              console.error('[Dashboard] ❌ Failed to send message:', messageRes.status, messageRes.statusText);
-                                            }
-                                            
-                                            // Clear pending change
-                                            const updated = { ...pendingQuantityChange };
-                                            delete updated[order._id];
-                                            setPendingQuantityChange(updated);
-                                            
-                                            fetchCustomOrders();
-                                            fetchMessageCounts([order]);
-                                          }
-                                        } catch (err) {
-                                          console.error('Error confirming quantity change:', err);
-                                        }
-                                      }}
-                                      className="w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold py-2.5 px-4 rounded-lg transition flex items-center justify-center gap-2"
-                                    >
-                                      <CheckCircle className="h-4 w-4" />
-                                      Confirm Quantity Change
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Description */}
-                            <div>
-                              <h4 className="font-semibold text-gray-900 mb-2 text-sm">Description</h4>
-                              <p className="text-xs text-gray-700 bg-white rounded-lg p-3 border border-gray-200 line-clamp-3">{order.description}</p>
-                            </div>
-
-                            {/* Countdown Timer */}
-                            {order.timerStartedAt && order.deadlineDate && (
-                              <CountdownTimer
-                                timerStartedAt={order.timerStartedAt}
-                                deadlineDate={order.deadlineDate}
-                                status={order.status}
-                                compact={false}
-                              />
-                            )}
-
-                            {/* Design References */}
-                            {(order.designUrls && order.designUrls.length > 0) || order.designUrl ? (
-                              <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setImageModalOpen({ orderId: order._id, index: 0 });
-                                }}
-                                className="w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold py-2 px-3 rounded-lg transition text-sm flex items-center justify-center gap-2"
-                              >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                </svg>
-                                View Images ({(order.designUrls?.length || 1)})
-                              </button>
-                            ) : null}
-
-                            {/* Additional Details */}
-                            <div className="space-y-3 text-xs">
-                              {order.notes && (
-                                <div>
-                                  <dt className="text-gray-600 mb-1">Admin Notes:</dt>
-                                  <dd className="text-gray-700 bg-blue-50 p-2 rounded border border-blue-200 text-xs line-clamp-2">{order.notes}</dd>
-                                </div>
-                              )}
-                              {order.buyerAgreedToDate && order.proposedDeliveryDate && (
-                                <div className="mt-3 bg-green-50 border-l-4 border-green-600 p-2 rounded">
-                                  <dt className="text-green-700 font-semibold mb-1">✓ Agreed Delivery Date</dt>
-                                  <dd className="font-bold text-green-800">{new Date(order.proposedDeliveryDate).toLocaleDateString()}</dd>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-
-                        </>
-                      )}
+                      {/* Action Buttons */}
+                      <div className="p-3 flex gap-2">
+                        <button
+                          onClick={() => setChatModalOpen(order._id)}
+                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-lime-600 hover:bg-lime-700 text-white rounded font-bold transition text-xs relative"
+                        >
+                          <MessageCircle className="h-4 w-4" />
+                          Chat
+                          {messageCount.unread > 0 && (
+                            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xxxs font-bold">
+                              {messageCount.unread > 9 ? '9+' : messageCount.unread}
+                            </span>
+                          )}
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1324,26 +1171,26 @@ export default function BuyerDashboardPage() {
       })()}
 
       {/* Chat Modal */}
-      {customOrders && chatModalOpen && buyer && (
+      {chatModalOpen && buyer && (
         <ChatModal
           isOpen={!!chatModalOpen}
           onClose={async () => {
             setChatModalOpen(null);
             // Mark messages as read and refresh data when modal closes
-            const order = customOrders.find(o => o._id === chatModalOpen);
-            if (order) {
+            const customOrder = customOrders.find(o => o._id === chatModalOpen);
+            if (customOrder) {
               try {
                 // Immediately clear the count for this order
                 setMessageCountPerOrder(prev => ({
                   ...prev,
-                  [order._id]: { ...prev[order._id], unread: 0 }
+                  [customOrder._id]: { ...prev[customOrder._id], unread: 0 }
                 }));
                 // Mark all unread messages as read
-                await fetch(`/api/messages?orderId=${order._id}`, {
+                await fetch(`/api/messages?orderId=${customOrder._id}`, {
                   method: 'PATCH',
                   headers: { 'Content-Type': 'application/json' }
                 });
-                console.log(`[Dashboard] ✅ Marked messages as read for order ${order._id}`);
+                console.log(`[Dashboard] ✅ Marked messages as read for order ${customOrder._id}`);
                 
                 // Refetch custom orders to get updated delivery date after buyer agreement
                 setTimeout(() => {
@@ -1356,12 +1203,12 @@ export default function BuyerDashboardPage() {
           }}
           onMessageSent={() => {
             // Refresh message counts when message is sent
-            const order = customOrders.find(o => o._id === chatModalOpen);
-            if (order) {
-              fetchMessageCounts([order]);
+            const customOrder = customOrders.find(o => o._id === chatModalOpen);
+            if (customOrder) {
+              fetchMessageCounts([customOrder]);
             }
           }}
-          order={customOrders.find(o => o._id === chatModalOpen)!}
+          order={customOrders.find(o => o._id === chatModalOpen) || (orders.find(o => o._id === chatModalOpen) as any)}
           userEmail={buyer.email}
           userName={buyer.fullName}
           isAdmin={false}

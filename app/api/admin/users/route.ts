@@ -7,9 +7,9 @@ export async function POST(request: NextRequest) {
     await connectDB();
 
     // Get admin_session cookie
-    const adminId = request.cookies.get('admin_session')?.value;
+    const sessionToken = request.cookies.get('admin_session')?.value;
 
-    if (!adminId) {
+    if (!sessionToken) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Verify requesting admin is super_admin
-    const requestingAdmin = await Admin.findById(adminId);
+    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
 
     if (!requestingAdmin || requestingAdmin.role !== 'super_admin') {
       return NextResponse.json(
@@ -123,9 +123,9 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     // Get admin_session cookie
-    const adminId = request.cookies.get('admin_session')?.value;
+    const sessionToken = request.cookies.get('admin_session')?.value;
 
-    if (!adminId) {
+    if (!sessionToken) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Verify requesting admin is super_admin
-    const requestingAdmin = await Admin.findById(adminId);
+    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
 
     if (!requestingAdmin || requestingAdmin.role !== 'super_admin') {
       return NextResponse.json(

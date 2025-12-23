@@ -44,10 +44,12 @@ export async function POST(request: NextRequest) {
       !customerPhone
     ) {
       console.error("❌ Missing required fields");
+      console.error("📋 Received fields:", {invoiceNumber, customerName, customerEmail, customerPhone});
       return NextResponse.json(
         {
           error:
             "invoiceNumber, customerName, customerEmail, and customerPhone are required",
+          received: {invoiceNumber, customerName, customerEmail, customerPhone}
         },
         { status: 400 }
       );
@@ -56,6 +58,7 @@ export async function POST(request: NextRequest) {
     // Check if invoice already exists
     let existingInvoice = await Invoice.findOne({ invoiceNumber });
     if (existingInvoice) {
+      console.log("⚠️ Invoice already exists:", invoiceNumber);
       return NextResponse.json(
         { 
           success: true, 
@@ -68,6 +71,19 @@ export async function POST(request: NextRequest) {
     }
 
     // Create new invoice
+    console.log("🔨 Creating new invoice with data:", {
+      invoiceNumber,
+      orderNumber: orderNumber || invoiceNumber,
+      buyerId: buyerId || null,
+      customerName,
+      customerEmail,
+      customerPhone,
+      subtotal,
+      shippingCost,
+      taxAmount,
+      totalAmount
+    });
+
     const invoice = new Invoice({
       invoiceNumber,
       orderNumber: orderNumber || invoiceNumber,  // Use invoice number as order number
@@ -101,14 +117,24 @@ export async function POST(request: NextRequest) {
     });
     
     await invoice.save();
+    const savedInvoice = await Invoice.findOne({ invoiceNumber });
     console.log(`✅ Invoice saved: ${invoiceNumber} (${type}) for buyer: ${buyerId || "guest"}`);
+    console.log(`📋 Verified saved invoice:`, {
+      _id: savedInvoice?._id,
+      invoiceNumber: savedInvoice?.invoiceNumber,
+      customerEmail: savedInvoice?.customerEmail,
+      totalAmount: savedInvoice?.totalAmount,
+    });
+
+    const serialized = serializeDoc(savedInvoice || invoice);
+    console.log(`🔄 Serialized invoice:`, serialized);
 
     return NextResponse.json(
       { 
         success: true, 
         message: "Invoice saved successfully", 
         invoiceNumber,
-        invoice: serializeDoc(invoice)
+        invoice: serialized
       }, 
       { status: 201 }
     );
@@ -134,8 +160,10 @@ export async function POST(request: NextRequest) {
 // Get invoices for a buyer or all invoices
 export async function GET(request: NextRequest) {
   try {
+    console.log("🔍 GET /api/invoices called with query:", Object.fromEntries(request.nextUrl.searchParams));
     await connectDB();
     const buyerId = request.nextUrl.searchParams.get("buyerId");
+    const email = request.nextUrl.searchParams.get("email");
     const type = request.nextUrl.searchParams.get("type"); // 'automatic', 'manual', or all
     const status = request.nextUrl.searchParams.get("status");
 
@@ -143,6 +171,13 @@ export async function GET(request: NextRequest) {
 
     if (buyerId) {
       query.buyerId = buyerId;
+      console.log(`🔎 Searching by buyerId: ${buyerId}`);
+    } else if (email) {
+      // For guest users, search by email
+      query.customerEmail = email.toLowerCase();
+      console.log(`🔎 Searching by email: ${email.toLowerCase()}`);
+    } else {
+      console.log(`🔎 Fetching all invoices`);
     }
 
     if (type) {
@@ -153,12 +188,53 @@ export async function GET(request: NextRequest) {
       query.status = status;
     }
 
+    console.log(`📋 Query object:`, query);
+
     const invoices = await Invoice.find(query).sort({ createdAt: -1 });
-    return NextResponse.json(serializeDocs(invoices), { status: 200 });
+    console.log(`📋 Found ${invoices.length} invoices with query:`, query);
+    
+    if (invoices.length > 0) {
+      console.log(`📄 First invoice:`, {
+        invoiceNumber: invoices[0].invoiceNumber,
+        customerEmail: invoices[0].customerEmail,
+        totalAmount: invoices[0].totalAmount,
+      });
+    }
+
+    const serialized = serializeDocs(invoices);
+    console.log(`✅ Returning ${serialized.length} serialized invoices`);
+    
+    return NextResponse.json(serialized, { status: 200 });
   } catch (error) {
     console.error("Error fetching invoices:", error);
     return NextResponse.json(
       { error: "Failed to fetch invoices" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE - Delete all invoices
+export async function DELETE(request: NextRequest) {
+  try {
+    await connectDB();
+
+    // Delete all invoices
+    const result = await Invoice.deleteMany({});
+
+    console.log(`✅ Deleted ${result.deletedCount} invoices`);
+
+    return NextResponse.json(
+      { 
+        message: `Successfully deleted ${result.deletedCount} invoices`,
+        deletedCount: result.deletedCount 
+      },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error deleting invoices:", error);
+    return NextResponse.json(
+      { error: "Failed to delete invoices" },
       { status: 500 }
     );
   }

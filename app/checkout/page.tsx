@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -8,6 +8,7 @@ import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
 import PaymentSuccessModal from "../components/PaymentSuccessModal";
 import AuthModal from "../components/AuthModal";
+import DeliveryMethodModal from "../components/DeliveryMethodModal";
 import { CheckoutValidationModal } from "../components/CheckoutValidationModal";
 import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin, Clock, Lock, CheckCircle2, FileText } from "lucide-react";
 
@@ -36,6 +37,8 @@ export default function CheckoutPage() {
   const [isFromQuote, setIsFromQuote] = useState(false);
   const [customOrderDetails, setCustomOrderDetails] = useState<any>(null);
   const [loadingCustomOrder, setLoadingCustomOrder] = useState(false);
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
 
   // Calculate caution fee (50% of rental items total)
   const rentalTotal = items.reduce((sum, item) => {
@@ -152,6 +155,15 @@ export default function CheckoutPage() {
       fetchCustomOrder();
     }
   }, [isFromQuote, customOrderQuote?.orderId]);
+
+  // Debug: Monitor delivery modal state
+  useEffect(() => {
+    console.log("🔍 Delivery modal state updated:", {
+      lastOrderId,
+      deliveryModalOpen,
+      successReference
+    });
+  }, [lastOrderId, deliveryModalOpen, successReference]);
 
   // Handle payment success - save order and invoice
   const handlePaymentSuccess = async (response: any) => {
@@ -310,6 +322,7 @@ export default function CheckoutPage() {
             phone: buyer?.phone || "",
           },
           items,
+          shippingType: shippingOption, // Add shipping type so order appears in logistics
           pricing: {
             subtotal: total,
             bulkDiscountPercentage: discountPercentage,
@@ -334,7 +347,23 @@ export default function CheckoutPage() {
         });
 
         if (res.ok) {
-          console.log("✅ Order saved");
+          const orderResponse = await res.json();
+          const orderId = orderResponse.orderId || orderResponse._id || orderResponse.id;
+          console.log("✅ Order saved with ID:", orderId);
+          console.log("Full order response:", orderResponse);
+          
+          if (!orderId) {
+            console.error("❌ No orderId returned from order creation!");
+            setOrderError("Order created but couldn't retrieve ID. Refreshing page...");
+            // Reload page to refresh order state
+            setTimeout(() => window.location.reload(), 1500);
+            return;
+          }
+          
+          // Store orderId and reference for delivery method modal
+          console.log("🎯 Setting lastOrderId to:", orderId);
+          setLastOrderId(orderId);
+          setSuccessReference(response.reference);
           
           // Generate invoice - create a shorter unique reference
           const shortRef = Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -400,7 +429,7 @@ export default function CheckoutPage() {
           }
 
           // Clear cart and show success modal AFTER both are saved
-          console.log("🧹 Clearing cart and showing success modal");
+          console.log("🧹 Showing delivery method modal");
           
           // Send payment notification messages to both user and admin
           try {
@@ -408,7 +437,7 @@ export default function CheckoutPage() {
             const notificationPayload: any = {
               type: "success",
               orderNumber: response.reference,
-              orderId: undefined,  // Regular cart orders don't have orderId, only orderNumber
+              orderId: orderId,  // Include orderId for regular cart orders
               buyerEmail: buyer?.email,
               buyerName: buyer?.fullName,
               amount: totalAmount,
@@ -432,12 +461,24 @@ export default function CheckoutPage() {
             // Don't fail the payment for notification issues
           }
           
-          setSuccessReference(response.reference);
-          setSuccessModalOpen(true);
-          clearCart();
+          // Show delivery method modal for user to choose delivery option
+          console.log("🎯 About to show delivery modal with orderId:", orderId);
+          // Show modal - this will work because we already set lastOrderId above
+          setDeliveryModalOpen(true);
+          console.log("✅ setDeliveryModalOpen(true) called");
+          console.log("📌 Delivery modal state should now be true");
+          
+          // Clear the success reference so success modal doesn't show instead
+          setSuccessModalOpen(false);
         } else {
-          console.error("❌ Order save failed");
-          setOrderError("Failed to save order. Please contact support.");
+          const errorData = await res.json().catch(() => ({}));
+          console.error("❌ Order save failed - response not OK");
+          console.error("Response status:", res.status);
+          console.error("Error data:", errorData);
+          console.error("Full error response:", JSON.stringify(errorData, null, 2));
+          
+          const errorMessage = errorData?.details || errorData?.error || "Failed to save order. Please contact support.";
+          setOrderError(errorMessage);
         }
       }
     } catch (error) {
@@ -496,8 +537,15 @@ export default function CheckoutPage() {
 
   if (!isHydrated) return null;
 
+  // ===== SHOW DELIVERY MODAL IF PAYMENT WAS SUCCESSFUL =====
+  // Don't show empty cart message if we have a delivery modal to show
+  if (deliveryModalOpen && lastOrderId) {
+    // Keep the page loaded while showing the delivery modal
+    // The modal will be rendered below
+  }
+  
   // ===== EMPTY CART =====
-  if (items.length === 0 && !isFromQuote) {
+  if (items.length === 0 && !isFromQuote && !deliveryModalOpen) {
     return (
       <div className="min-h-screen flex flex-col">
         <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
@@ -878,21 +926,20 @@ export default function CheckoutPage() {
                   console.log("  - buyer:", buyer);
                   
                   // Skip delivery validation for custom orders (fromQuote)
+                  // Also skip delivery validation since delivery form was removed
                   if (!isFromQuote) {
-                    // Use comprehensive validation function for regular products
-                    const validation = validateCheckoutRequirements(shippingOption, buyer);
-                    console.log("🔍 Validation result:", validation);
-                    
-                    if (!validation.valid) {
-                      console.log("❌ Validation failed, showing modal");
-                      // Show validation modal
-                      setValidationType(validation.type as any);
-                      setValidationMessage(validation.message);
+                    // Only validate rental schedule, not delivery (delivery form removed)
+                    // Check if there are rental items that need validation
+                    const hasRentalItems = items.some((item: any) => item.mode === 'rent');
+                    if (hasRentalItems && !rentalSchedule?.pickupDate) {
+                      console.log("❌ Rental schedule validation failed");
+                      setValidationType("rental_schedule");
+                      setValidationMessage("⏰ Rental schedule not complete. Please fill the Rental Schedule form.");
                       setValidationModalOpen(true);
                       return;
                     }
                   } else {
-                    console.log("✅ Skipping delivery validation for custom order (fromQuote)");
+                    console.log("✅ Skipping validation for custom order (fromQuote)");
                   }
                   
                   if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
@@ -1199,7 +1246,7 @@ export default function CheckoutPage() {
 
       {/* Success Modal */}
       <PaymentSuccessModal
-        isOpen={successModalOpen}
+        isOpen={successModalOpen && !deliveryModalOpen}
         onClose={() => {
           setSuccessModalOpen(false);
           // Cart already cleared in handlePaymentSuccess
@@ -1207,6 +1254,20 @@ export default function CheckoutPage() {
         orderReference={successReference}
         total={totalAmount}
       />
+
+      {/* Delivery Method Modal - Show after successful payment for regular orders */}
+      {lastOrderId && deliveryModalOpen && (
+        <DeliveryMethodModal
+          isOpen={true}
+          orderId={lastOrderId}
+          orderReference={successReference}
+          onClose={() => {
+            setDeliveryModalOpen(false);
+            clearCart();
+          }}
+          total={totalAmount}
+        />
+      )}
 
       {/* Validation Modal - Checkout Requirements */}
       <CheckoutValidationModal

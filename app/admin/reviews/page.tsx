@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAdmin } from "@/app/context/AdminContext";
 import { Star, MessageCircle, User, Calendar } from "lucide-react";
+import MobileAdminLayout from "../mobile-layout";
 
 interface Review {
   _id: string;
@@ -21,6 +22,18 @@ export default function ReviewsPage() {
   const [reviews, setReviews] = useState<Review[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalReviews, setTotalReviews] = useState(0);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   useEffect(() => {
     if (!admin) {
@@ -75,8 +88,120 @@ export default function ReviewsPage() {
     }
   };
 
+  // Show mobile view on small screens
+  if (!isMounted) {
+    return null;
+  }
+
+  if (isMobile) {
+    return (
+      <MobileAdminLayout>
+        <div className="min-h-screen bg-gray-50 pb-20 p-4">
+          <div className="max-w-6xl mx-auto">
+            {/* Header */}
+            <div className="mb-8">
+              <div className="flex items-center gap-3 mb-2">
+                <div className="bg-blue-100 rounded-lg p-3">
+                  <MessageCircle className="h-6 w-6 text-blue-600" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">Customer Reviews</h1>
+                  <p className="text-gray-600 mt-1">Feedback from customers</p>
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div className="inline-block bg-white rounded-lg p-4 border border-gray-200 mt-6">
+                <p className="text-sm text-gray-600">Total Reviews</p>
+                <p className="text-3xl font-bold text-blue-600 mt-2">{totalReviews}</p>
+              </div>
+            </div>
+
+            {/* Reviews List - 1-2 columns grid for mobile */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
+              {isLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <div className="animate-spin">
+                    <div className="h-8 w-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+                  </div>
+                </div>
+              ) : reviews.length === 0 ? (
+                <div className="bg-white rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
+                  <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-lg font-medium text-gray-900">No reviews yet</p>
+                  <p className="text-gray-600 mt-1">
+                    Customer reviews will appear here
+                  </p>
+                </div>
+              ) : (
+                reviews.map((review) => {
+                  let parsedReview = { rating: 5, feedback: review.content };
+                  try {
+                    if (review.content && review.content.trim().startsWith('{')) {
+                      const parsed = JSON.parse(review.content);
+                      if (parsed.rating && parsed.feedback) {
+                        parsedReview = { rating: parsed.rating, feedback: parsed.feedback };
+                      }
+                    }
+                  } catch (e) {
+                    console.log('[ReviewsPage] Error parsing review content:', e);
+                  }
+
+                  const getRatingLabel = (rating: number) => {
+                    switch (rating) {
+                      case 5: return 'Excellent!';
+                      case 4: return 'Very Good';
+                      case 3: return 'Good';
+                      case 2: return 'Fair';
+                      case 1: return 'Poor';
+                      default: return 'No Rating';
+                    }
+                  };
+
+                  return (
+                    <div
+                      key={review._id}
+                      className="bg-white rounded-lg border border-gray-200 p-3 hover:shadow-lg transition flex flex-col h-full"
+                    >
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-bold text-blue-600">
+                            {review.senderName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{review.senderName}</p>
+                          <p className="text-xs text-gray-500">{new Date(review.createdAt).toLocaleDateString()}</p>
+                        </div>
+                      </div>
+
+                      {/* Star Rating */}
+                      <div className="flex items-center gap-1 mb-2">
+                        {Array(5).fill(0).map((_, i) => (
+                          <span key={i} className="text-lg">
+                            {i < parsedReview.rating ? '⭐' : '☆'}
+                          </span>
+                        ))}
+                        <span className="text-xs text-gray-600 ml-2">
+                          {parsedReview.rating}/5 - {getRatingLabel(parsedReview.rating)}
+                        </span>
+                      </div>
+
+                      {/* Feedback */}
+                      <p className="text-sm text-gray-700 flex-1">{parsedReview.feedback}</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      </MobileAdminLayout>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-6 pb-20">
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">

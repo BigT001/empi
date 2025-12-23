@@ -1,7 +1,17 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { CheckCircle2, Search, Calendar, Package, User, Mail, DollarSign, AlertCircle, Eye, ChevronRight, TrendingUp } from "lucide-react";
+import { CheckCircle2, Search, Calendar, Package, User, Mail, DollarSign, AlertCircle, Eye, ChevronRight, TrendingUp, Download, Trash2 } from "lucide-react";
+import Image from "next/image";
+
+interface OrderItem {
+  productId?: string;
+  name: string;
+  quantity: number;
+  price: number;
+  mode?: string;
+  imageUrl?: string;
+}
 
 interface ApprovedOrderData {
   _id: string;
@@ -13,7 +23,7 @@ interface ApprovedOrderData {
   total: number;
   status: string;
   createdAt: string;
-  items: any[];
+  items: OrderItem[];
   paymentReference?: string;
 }
 
@@ -23,6 +33,12 @@ export function ApprovedOrdersPanel() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<ApprovedOrderData | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -73,7 +89,57 @@ export function ApprovedOrdersPanel() {
     }
   };
 
+  const getDaysOld = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      const days = Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+      return days;
+    } catch {
+      return 0;
+    }
+  };
+
   const totalApprovedAmount = approved.reduce((sum, o) => sum + o.total, 0);
+
+  const deleteAllApprovedOrders = async () => {
+    if (!window.confirm(`Are you sure you want to delete all ${approved.length} approved orders? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let deletedCount = 0;
+      let failedCount = 0;
+
+      for (const order of approved) {
+        try {
+          const res = await fetch(`/api/orders/${order._id}`, {
+            method: 'DELETE',
+          });
+
+          if (res.ok) {
+            deletedCount++;
+          } else {
+            failedCount++;
+          }
+        } catch (err) {
+          console.error(`Failed to delete order ${order._id}:`, err);
+          failedCount++;
+        }
+      }
+
+      setApproved([]);
+      const message = failedCount > 0 
+        ? `Deleted ${deletedCount} orders, ${failedCount} failed`
+        : `All ${deletedCount} approved orders deleted successfully!`;
+      showToast(message, failedCount > 0 ? 'error' : 'success');
+    } catch (err: any) {
+      console.error('[ApprovedOrdersPanel] Error deleting all approved orders:', err);
+      showToast(err.message || 'Failed to delete approved orders', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -141,7 +207,18 @@ export function ApprovedOrdersPanel() {
         </div>
 
         {/* Content */}
-        <div className="divide-y divide-gray-200">
+        <div className="p-6">
+          {/* Error State */}
+          {error && !loading && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-red-900">Error loading approved orders</p>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          )}
+
           {/* Loading State */}
           {loading && (
             <div className="flex items-center justify-center py-12">
@@ -152,100 +229,146 @@ export function ApprovedOrdersPanel() {
             </div>
           )}
 
-          {/* Error State */}
-          {error && !loading && (
-            <div className="p-6">
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-red-900">Error loading approved orders</p>
-                  <p className="text-sm text-red-700">{error}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* Empty State */}
           {!loading && !error && approved.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-16 px-6">
+            <div className="flex flex-col items-center justify-center py-12">
               <div className="text-center">
-                <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
-                  <CheckCircle2 className="h-8 w-8 text-gray-400" />
+                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <CheckCircle2 className="h-6 w-6 text-green-600" />
                 </div>
-                <p className="font-semibold text-gray-900 text-lg">No approved orders</p>
+                <p className="font-semibold text-gray-900">No approved orders</p>
                 <p className="text-gray-600 text-sm mt-1">Confirmed orders will appear here once customers complete payment</p>
               </div>
             </div>
           )}
 
-          {/* Orders List */}
+          {/* Approved Orders Cards Grid */}
           {!loading && !error && approved.length > 0 && (
             <>
+              {/* Filter Results Info and Delete All Button */}
+              <div className="flex items-center justify-between mb-6">
+                <p className="text-sm text-gray-600">
+                  {filteredApproved.length} of {approved.length} orders
+                </p>
+                <button
+                  onClick={deleteAllApprovedOrders}
+                  disabled={approved.length === 0 || loading}
+                  className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              </div>
+
               {filteredApproved.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 px-6">
-                  <p className="text-gray-500 text-sm">No orders match your search</p>
+                <div className="text-center py-12">
+                  <p className="text-gray-500 font-semibold">No approved orders found</p>
                 </div>
               ) : (
-                <div>
-                  {filteredApproved.map((order, index) => (
-                    <div
-                      key={order._id}
-                      className="p-5 hover:bg-gray-50 transition cursor-pointer group"
-                      onClick={() => setSelectedOrder(order)}
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        {/* Left: Main Info */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                            <span className="font-bold text-gray-900 font-mono text-sm">
-                              {order.orderNumber || order._id.slice(-8).toUpperCase()}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {formatDate(order.createdAt)}
-                            </span>
-                          </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredApproved.map((order) => {
+                    const daysOld = getDaysOld(order.createdAt);
 
-                          <div className="space-y-1">
-                            <p className="text-sm font-semibold text-gray-900">
-                              {order.firstName} {order.lastName}
-                            </p>
-                            <p className="text-xs text-gray-500 truncate">{order.email}</p>
-                          </div>
-
-                          <div className="mt-2 flex items-center gap-2 flex-wrap">
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-full">
-                              <Package className="h-3 w-3" />
-                              {order.items?.length || 0} items
-                            </span>
-                          </div>
+                    return (
+                      <div
+                        key={order._id}
+                        className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border-2 border-green-200 overflow-hidden shadow-md hover:shadow-xl hover:border-green-300 transition-all flex flex-col"
+                      >
+                        {/* Header - Customer Info */}
+                        <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-5 text-white">
+                          <h3 className="font-bold text-lg">{order.firstName} {order.lastName}</h3>
+                          <p className="text-sm text-green-100 truncate">{order.email}</p>
+                          {order.phone && <p className="text-sm text-green-100">{order.phone}</p>}
                         </div>
 
-                        {/* Right: Amount & Action */}
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-lg font-black text-green-600 mb-1">
-                            {formatCurrency(order.total)}
-                          </p>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setSelectedOrder(order);
-                            }}
-                            className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-green-600 hover:bg-green-50 rounded-lg transition opacity-0 group-hover:opacity-100"
-                          >
-                            View <ChevronRight className="h-3.5 w-3.5" />
-                          </button>
+                        {/* Content */}
+                        <div className="p-5 space-y-4 flex-1 flex flex-col">
+                          {/* Product Images Gallery */}
+                          {order.items && order.items.length > 0 && (
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <p className="text-xs font-semibold text-gray-600 uppercase">Product Images</p>
+                              </div>
+                              <div className="overflow-x-auto pb-2">
+                                <div className="flex gap-2 min-w-min">
+                                  {order.items.map((item, idx) => (
+                                    <div
+                                      key={`${order._id}-item-${idx}`}
+                                      className="relative aspect-square bg-gray-100 rounded border border-green-300 overflow-hidden flex-shrink-0 w-20 h-20"
+                                    >
+                                      {item.imageUrl ? (
+                                        <Image
+                                          src={item.imageUrl}
+                                          alt={item.name}
+                                          fill
+                                          className="object-cover"
+                                          unoptimized={true}
+                                        />
+                                      ) : (
+                                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                          <span className="text-xs text-gray-600">No Image</span>
+                                        </div>
+                                      )}
+                                      {item.quantity > 1 && (
+                                        <div className="absolute bottom-0 right-0 bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-tl">
+                                          ×{item.quantity}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 text-center">← Scroll to see more items →</p>
+                            </div>
+                          )}
+
+                          {/* Stats - 3 column grid */}
+                          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-green-200">
+                            <div className="bg-green-50 rounded-lg p-2 text-center border border-green-300">
+                              <p className="text-2xl font-bold text-green-700">{order.items?.length || '—'}</p>
+                              <p className="text-xs text-green-600 font-medium">Items</p>
+                            </div>
+                            <div className="bg-emerald-50 rounded-lg p-2 text-center border border-emerald-300">
+                              <p className="text-lg font-bold text-emerald-700">
+                                ₦{order.total < 1000000 ? (order.total / 1000).toFixed(0) + 'K' : (order.total / 1000000).toFixed(1) + 'M'}
+                              </p>
+                              <p className="text-xs text-emerald-600 font-medium">Confirmed</p>
+                            </div>
+                            <div className="bg-teal-50 rounded-lg p-2 text-center border border-teal-300">
+                              <p className="text-xs font-bold text-teal-700">{formatDate(order.createdAt)}</p>
+                              <p className="text-xs text-teal-600 font-medium">{daysOld === 0 ? 'Today' : daysOld === 1 ? '1 day' : `${daysOld} days`}</p>
+                            </div>
+                          </div>
+
+                          {/* Order Details */}
+                          <div className="pt-3 border-t border-green-200">
+                            <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Order Info</p>
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <Calendar className="h-3.5 w-3.5" />
+                                <span>Order: {order.orderNumber}</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-xs text-gray-600">
+                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                <span>Status: Confirmed</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Button */}
+                          <div className="flex gap-2 pt-4 border-t border-green-200 mt-auto">
+                            <button
+                              onClick={() => setSelectedOrder(order)}
+                              className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
+                            >
+                              <Download className="h-4 w-4" />
+                              Invoice
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Footer Info */}
-              {filteredApproved.length > 0 && (
-                <div className="px-6 py-4 bg-gray-50 text-xs text-gray-600">
-                  Showing {filteredApproved.length} of {approved.length} approved orders
+                    );
+                  })}
                 </div>
               )}
             </>
@@ -255,86 +378,39 @@ export function ApprovedOrdersPanel() {
 
       {/* Detail Modal */}
       {selectedOrder && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center p-4" onClick={() => setSelectedOrder(null)}>
-          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto md:max-h-[85vh]" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header */}
-            <div className="sticky top-0 bg-gradient-to-r from-green-600 to-emerald-600 p-6 text-white flex items-center justify-between rounded-t-2xl">
-              <div>
-                <h3 className="text-xl font-bold">Order Details</h3>
-                <p className="text-green-100 text-sm mt-1">{selectedOrder.orderNumber || selectedOrder._id.slice(-8).toUpperCase()}</p>
-              </div>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="text-white hover:bg-green-700 p-2 rounded-lg transition"
-              >
-                ✕
-              </button>
+        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-sm mx-4 p-6 space-y-4">
+            <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto">
+              <CheckCircle2 className="h-6 w-6 text-green-600" />
             </div>
-
-            {/* Modal Content */}
-            <div className="p-6 space-y-6">
-              {/* Status */}
-              <div className="flex items-center gap-3 p-4 bg-green-50 border border-green-200 rounded-xl">
-                <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />
-                <div>
-                  <p className="font-semibold text-green-900 text-sm">Payment Confirmed</p>
-                  <p className="text-xs text-green-700">{formatDate(selectedOrder.createdAt)}</p>
-                </div>
-              </div>
-
-              {/* Customer Information */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide text-gray-600">Customer</h4>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Full Name</p>
-                    <p className="text-sm font-semibold text-gray-900">{selectedOrder.firstName} {selectedOrder.lastName}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Email</p>
-                    <p className="text-sm font-semibold text-gray-900">{selectedOrder.email}</p>
-                  </div>
-                  {selectedOrder.phone && (
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Phone</p>
-                      <p className="text-sm font-semibold text-gray-900">{selectedOrder.phone}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Order Items */}
-              <div>
-                <h4 className="font-semibold text-gray-900 mb-3 text-sm uppercase tracking-wide text-gray-600">Items ({selectedOrder.items?.length || 0})</h4>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {selectedOrder.items?.map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">{item.name}</p>
-                        <p className="text-xs text-gray-500">Qty: {item.quantity}</p>
-                      </div>
-                      <p className="text-sm font-semibold text-gray-900">{formatCurrency(item.price * item.quantity)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Payment Summary */}
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
-                <p className="text-xs text-gray-500 mb-3 uppercase tracking-wide">Total Amount</p>
-                <p className="text-4xl font-black text-green-600 mb-3">{formatCurrency(selectedOrder.total)}</p>
-                <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-600 text-white text-xs font-semibold rounded-full">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Payment Confirmed
-                </div>
-              </div>
-
-              {/* Close Button */}
+            <h2 className="text-xl font-bold text-center text-gray-900">Order Confirmed</h2>
+            <p className="text-center text-gray-600">
+              Order <span className="font-semibold">{selectedOrder.orderNumber}</span> has been confirmed and payment received.
+            </p>
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+              <p className="text-sm text-green-700">
+                <span className="font-semibold">Amount:</span> {formatCurrency(selectedOrder.total)}
+              </p>
+              <p className="text-xs text-green-600 mt-2">
+                Date: {formatDate(selectedOrder.createdAt)}
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
               <button
                 onClick={() => setSelectedOrder(null)}
-                className="w-full py-3 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition"
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition"
               >
                 Close
+              </button>
+              <button
+                onClick={() => {
+                  // TODO: Generate and download invoice
+                  console.log('Download invoice for:', selectedOrder.orderNumber);
+                  setSelectedOrder(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-lg transition"
+              >
+                Download Invoice
               </button>
             </div>
           </div>

@@ -5,7 +5,6 @@ import { FileText, Clock, CheckCircle, AlertCircle, Phone, Mail, DollarSign, Cal
 import { ChatModal } from "@/app/components/ChatModal";
 import { useAdmin } from "@/app/context/AdminContext";
 import { StatusTabs } from "./components/StatusTabs";
-import { ClientCard } from "./components/ClientCard";
 import { ApprovedOrderCard } from "./components/ApprovedOrderCard";
 import { OtherStatusOrderCard } from "./components/OtherStatusOrderCard";
 import { CompletedOrderCard } from "./components/CompletedOrderCard";
@@ -13,7 +12,6 @@ import { RejectedOrderCard } from "./components/RejectedOrderCard";
 import { ReadyOrderCard } from "./components/ReadyOrderCard";
 import { InProgressOrderCard } from "./components/InProgressOrderCard";
 import { ImageModal } from "./components/ImageModal";
-import { ClientStatusModal } from "./components/ClientStatusModal";
 import { ConfirmationModal } from "./components/ConfirmationModal";
 
 interface CustomOrder {
@@ -46,14 +44,13 @@ export function CustomOrdersPanel() {
   const [orders, setOrders] = useState<CustomOrder[]>([]);
   const [filteredOrders, setFilteredOrders] = useState<CustomOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [selectedStatus, setSelectedStatus] = useState<string>("pending");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ type: 'decline' | 'delete' | 'cancel'; orderId: string } | null>(null);
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({});
   const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
   const [messageCountPerOrder, setMessageCountPerOrder] = useState<Record<string, { total: number; unread: number }>>({});
-  const [clientStatusModal, setClientStatusModal] = useState<{ email: string; status: string } | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -71,21 +68,21 @@ export function CustomOrdersPanel() {
         console.log('[CustomOrdersPanel] Tab hidden - pausing polling');
       } else {
         console.log('[CustomOrdersPanel] Tab visible - resuming polling');
-        fetchOrders();
+        // Don't fetch on tab return, wait for next interval
       }
     };
 
     // Add visibility change listener
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
-    // Set up polling to refresh orders every 5 seconds for real-time updates
-    // Only poll when tab is visible
+    // Set up polling to refresh orders every 8 seconds for real-time updates
+    // Only poll when tab is visible and use background fetch (no loading state)
     const pollingInterval = setInterval(() => {
       if (!document.hidden) {
-        console.log('[CustomOrdersPanel] Polling for message updates...');
-        pollMessageCounts();
+        console.log('[CustomOrdersPanel] Polling for order updates...');
+        fetchOrdersBackground();
       }
-    }, 5000);
+    }, 8000);
 
     return () => {
       clearInterval(pollingInterval);
@@ -111,7 +108,6 @@ export function CustomOrdersPanel() {
       const response = await fetch("/api/custom-orders");
       console.log("[CustomOrdersPanel] Response status:", response.status);
       const data = await response.json();
-      console.log("[CustomOrdersPanel] Response data:", data);
       
       if (!response.ok) throw new Error(data.message || "Failed to fetch custom orders");
       setOrders(data.orders || []);
@@ -124,6 +120,46 @@ export function CustomOrdersPanel() {
       console.error("Error fetching custom orders:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Background fetch - no loading state, only updates if data changed
+  const fetchOrdersBackground = async () => {
+    try {
+      console.log("[CustomOrdersPanel] 📋 Background polling for order updates...");
+      const response = await fetch("/api/custom-orders");
+      
+      if (!response.ok) {
+        console.error("[CustomOrdersPanel] Background fetch failed:", response.status);
+        return;
+      }
+      
+      const data = await response.json();
+      const newOrders = data.orders || [];
+      
+      // Only update if orders actually changed
+      setOrders(prevOrders => {
+        const hasChanged = prevOrders.length !== newOrders.length ||
+          prevOrders.some((p, i) => 
+            p._id !== newOrders[i]?._id || 
+            p.status !== newOrders[i]?.status ||
+            p.quotedPrice !== newOrders[i]?.quotedPrice
+          );
+        
+        if (hasChanged) {
+          console.log("[CustomOrdersPanel] ✅ Orders changed, updating...");
+          // Only fetch message counts if orders actually changed
+          if (newOrders && Array.isArray(newOrders)) {
+            fetchMessageCounts(newOrders);
+          }
+          return newOrders;
+        } else {
+          console.log("[CustomOrdersPanel] ℹ️ No changes detected, keeping current data");
+          return prevOrders;
+        }
+      });
+    } catch (error) {
+      console.error("[CustomOrdersPanel] Error in background polling:", error);
     }
   };
 
@@ -478,25 +514,7 @@ export function CustomOrdersPanel() {
         </div>
       )}
 
-      {/* Clients Grid View - Only when "Clients" tab is selected */}
-      {!isLoading && selectedStatus === "all" && filteredOrders.length > 0 && (
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from(new Map(
-            filteredOrders.map(order => [order.email, order])
-          ).entries()).map(([email, firstOrder]) => {
-            const clientOrders = filteredOrders.filter(o => o.email === email);
-            return (
-              <ClientCard
-                key={email}
-                email={email}
-                firstOrder={firstOrder}
-                clientOrders={clientOrders}
-                onStatusClick={(status) => setClientStatusModal({ email, status })}
-              />
-            );
-          })}
-        </div>
-      )}
+
 
       {/* Orders List View - When a status tab is selected */}
       {!isLoading && selectedStatus !== "all" && filteredOrders.length > 0 && (
@@ -592,21 +610,6 @@ export function CustomOrdersPanel() {
             ))
           )}
         </div>
-      )}
-
-      {/* Client Status Modal - Show orders for selected client and status */}
-      {clientStatusModal && (
-        <ClientStatusModal
-          open={true}
-          onClose={() => setClientStatusModal(null)}
-          customerEmail={clientStatusModal.email}
-          selectedStatus={clientStatusModal.status}
-          orders={orders.filter(o => o.email === clientStatusModal.email && o.status === clientStatusModal.status) as any}
-          onChatClick={(order) => {
-            setChatModalOpen(order._id);
-            setClientStatusModal(null);
-          }}
-        />
       )}
 
       {/* Chat Modal */}

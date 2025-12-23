@@ -10,6 +10,7 @@ export interface IOrderItem {
   mode: 'buy' | 'rent';
   selectedSize?: string;
   rentalDays: number;
+  imageUrl?: string; // Product image URL for display in pending orders
 }
 
 export interface IRentalSchedule {
@@ -40,9 +41,15 @@ export interface IOrder extends Document {
   vatRate: number; // VAT rate percentage (7.5)
   total: number;
   paymentMethod: string;
-  status: string;
+  status: string; // 'pending', 'awaiting_payment', 'payment_confirmed', 'completed', 'cancelled'
   items: IOrderItem[];
   isOffline?: boolean; // Mark as offline/manual order
+  // Payment tracking
+  paymentStatus?: 'pending' | 'awaiting_payment' | 'confirmed' | 'failed';
+  paymentProofUrl?: string; // URL to payment proof screenshot
+  paymentProofUploadedAt?: Date;
+  paymentConfirmedAt?: Date;
+  paymentConfirmedBy?: string; // Admin ID
   // Delivery fields
   deliveryState?: string;
   deliveryFee?: number;
@@ -64,6 +71,7 @@ const orderItemSchema = new Schema<IOrderItem>({
   mode: { type: String, enum: ['buy', 'rent'], required: true },
   selectedSize: String,
   rentalDays: { type: Number, default: 0 },
+  imageUrl: String, // Product image URL for display
 });
 
 const rentalScheduleSchema = new Schema<IRentalSchedule>({
@@ -95,9 +103,15 @@ const orderSchema = new Schema<IOrder>(
     vatRate: { type: Number, default: 7.5 }, // VAT rate percentage
     total: { type: Number, required: true },
     paymentMethod: { type: String, required: true },
-    status: { type: String, default: 'confirmed' },
+    status: { type: String, default: 'pending' }, // 'pending', 'awaiting_payment', 'payment_confirmed', 'completed', 'cancelled'
     items: [orderItemSchema],
     isOffline: { type: Boolean, default: false }, // Mark as offline/manual order
+    // Payment tracking
+    paymentStatus: { type: String, enum: ['pending', 'awaiting_payment', 'confirmed', 'failed'], default: 'pending' },
+    paymentProofUrl: String,
+    paymentProofUploadedAt: Date,
+    paymentConfirmedAt: Date,
+    paymentConfirmedBy: { type: Schema.Types.ObjectId, ref: 'Admin' },
     // Delivery fields
     deliveryState: String,
     deliveryFee: { type: Number, default: 0 },

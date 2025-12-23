@@ -7,19 +7,64 @@ import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { getBuyerInvoices, StoredInvoice } from "@/lib/invoiceStorage";
+import { useBuyer } from "../context/BuyerContext";
 import { Download, Printer, ArrowLeft, Check, Truck, MapPin } from "lucide-react";
 
 export default function MyInvoicesPage() {
+  const { buyer } = useBuyer();
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [currency, setCurrency] = useState("NGN");
   const [category, setCategory] = useState("adults");
   const [selectedInvoice, setSelectedInvoice] = useState<StoredInvoice | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     setIsHydrated(true);
-    setInvoices(getBuyerInvoices());
-  }, []);
+    fetchInvoices();
+  }, [buyer?.id]);
+
+  const fetchInvoices = async () => {
+    try {
+      setIsLoading(true);
+      
+      // Try to fetch from database first
+      let fetchUrl = '';
+      
+      if (buyer?.id) {
+        // Logged-in user - fetch by buyerId
+        fetchUrl = `/api/invoices?buyerId=${buyer.id}`;
+      } else if (typeof window !== 'undefined' && localStorage.getItem('guest_email')) {
+        // Guest user - fetch by email
+        const guestEmail = localStorage.getItem('guest_email');
+        if (guestEmail) {
+          fetchUrl = `/api/invoices?email=${encodeURIComponent(guestEmail)}`;
+        }
+      }
+
+      if (fetchUrl) {
+        console.log('📥 Fetching invoices from database:', fetchUrl);
+        const response = await fetch(fetchUrl);
+        
+        if (response.ok) {
+          const data = await response.json();
+          console.log('✅ Invoices fetched from database:', data.length);
+          setInvoices(Array.isArray(data) ? data : []);
+          return;
+        }
+      }
+      
+      // Fallback to localStorage
+      console.log('⚠️ Falling back to localStorage invoices');
+      setInvoices(getBuyerInvoices(buyer?.id));
+    } catch (error) {
+      console.error('❌ Error fetching invoices:', error);
+      // Fallback to localStorage on error
+      setInvoices(getBuyerInvoices(buyer?.id));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handlePrintInvoice = (invoice: StoredInvoice) => {
     const html = generateProfessionalInvoiceHTML(invoice);
@@ -47,147 +92,97 @@ export default function MyInvoicesPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
       {/* No Header - Hidden */}
 
-      <main className="flex-1 max-w-6xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8 w-full">
-        {/* Breadcrumb */}
-        <div className="mb-4 sm:mb-6 md:mb-8">
-          <Link href="/cart" className="inline-flex items-center gap-2 text-lime-600 hover:text-lime-700 font-medium text-xs sm:text-sm md:text-base">
-            <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
-            Back
-          </Link>
-          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2 md:mt-4">My Invoices</h1>
-        </div>
-
-        {invoices.length === 0 ? (
-          <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 md:p-12 text-center">
-            <div className="text-gray-600 mb-4">No invoices yet. Your purchase invoices will appear here.</div>
-            <Link href="/" className="inline-block bg-lime-600 hover:bg-lime-700 text-white px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-lg font-semibold transition text-xs sm:text-sm md:text-base">
-              Continue Shopping
+      <main className="flex-1 w-full px-3 sm:px-4 md:px-6 py-4 sm:py-6 md:py-8">
+        {/* Page Header */}
+        <div className="max-w-7xl mx-auto">
+          <div className="mb-6 md:mb-8">
+            <Link href="/cart" className="inline-flex items-center gap-2 text-lime-600 hover:text-lime-700 font-medium text-xs sm:text-sm md:text-base">
+              <ArrowLeft className="h-3 w-3 sm:h-4 sm:w-4" />
+              Back
             </Link>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mt-2 md:mt-4">My Invoices</h1>
           </div>
-        ) : (
-          <div className="space-y-4 md:space-y-6">
-            {invoices.map((invoice) => (
-              <div key={invoice.invoiceNumber} className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-lg transition">
-                {/* Receipt Header */}
-                <div className="bg-gradient-to-r from-lime-600 to-lime-700 text-white p-4 sm:p-6 md:p-8">
-                  <div className="flex items-start justify-between mb-4">
-                    <div>
-                      <h3 className="text-lg md:text-xl font-bold">Invoice</h3>
-                      <p className="text-xs md:text-sm text-lime-100 mt-1">{invoice.invoiceNumber}</p>
-                    </div>
-                    <div className="flex items-center gap-2 bg-white bg-opacity-20 px-3 py-2 rounded-lg">
-                      <Check className="h-4 w-4 md:h-5 md:w-5" />
-                      <span className="text-xs md:text-sm font-semibold">PAID</span>
-                    </div>
-                  </div>
-                  <p className="text-xs md:text-sm text-lime-100">Date: {new Date(invoice.invoiceDate).toLocaleDateString()}</p>
-                </div>
 
-                {/* Receipt Body */}
-                <div className="p-4 sm:p-6 md:p-8 space-y-6">
-                  {/* Shipping Method Section */}
-                  {invoice.shippingMethod && (
-                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        {invoice.shippingMethod === "empi" ? (
-                          <Truck className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        ) : (
-                          <MapPin className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-blue-900 mb-1">DELIVERY METHOD</p>
-                          <p className="text-sm md:text-base font-bold text-blue-900">
-                            {invoice.shippingMethod === "empi" ? "EMPI Delivery" : "Self Pickup"}
-                          </p>
-                          <p className="text-xs text-blue-700 mt-1">
-                            {invoice.shippingMethod === "empi" 
-                              ? "Est. Delivery: 2-5 business days" 
-                              : "Ready within 24 hours"}
-                          </p>
-                        </div>
+          {isLoading ? (
+            <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 md:p-12 text-center">
+              <div className="animate-pulse">
+                <div className="h-4 bg-gray-300 rounded w-3/4 mx-auto mb-4"></div>
+                <div className="h-4 bg-gray-300 rounded w-1/2 mx-auto"></div>
+              </div>
+              <p className="text-gray-600 mt-4">Loading your invoices...</p>
+            </div>
+          ) : invoices.length === 0 ? (
+            <div className="bg-white rounded-lg sm:rounded-xl md:rounded-2xl shadow-sm border border-gray-200 p-6 sm:p-8 md:p-12 text-center">
+              <div className="text-gray-600 mb-4">No invoices yet. Your purchase invoices will appear here.</div>
+              <Link href="/" className="inline-block bg-lime-600 hover:bg-lime-700 text-white px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-lg font-semibold transition text-xs sm:text-sm md:text-base">
+                Continue Shopping
+              </Link>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {invoices.map((invoice) => (
+                <div key={invoice.invoiceNumber} className="bg-white rounded-lg shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-lime-300 transition-all">
+                  {/* Card Header */}
+                  <div className="mb-3">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div className="flex-1">
+                        <p className="font-bold text-gray-900 text-base">{invoice.invoiceNumber}</p>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Items Section */}
-                  <div>
-                    <p className="text-xs font-semibold text-gray-700 mb-3 uppercase">Items Ordered</p>
-                    <div className="space-y-2 pb-4 border-b border-gray-200">
-                      {invoice.items.map((item) => (
-                        <div key={`${item.id}-${item.mode}`} className="flex justify-between items-start text-xs md:text-sm">
-                          <div>
-                            <p className="font-semibold text-gray-900">{item.name}</p>
-                            <p className="text-gray-600">Qty: {item.quantity}</p>
-                          </div>
-                          <p className="font-semibold text-gray-900">
-                            {invoice.currencySymbol}{(item.quantity * item.price).toFixed(2)}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Pricing Summary */}
-                  <div className="bg-gray-50 rounded-lg p-4 space-y-3">
-                    <div className="flex justify-between text-xs md:text-sm">
-                      <span className="text-gray-600">Subtotal</span>
-                      <span className="font-semibold text-gray-900">{invoice.currencySymbol}{invoice.subtotal?.toFixed(2) || invoice.totalAmount.toFixed(2)}</span>
-                    </div>
-                    {invoice.shippingCost !== undefined && (
-                      <div className="flex justify-between text-xs md:text-sm">
-                        <span className="text-gray-600">
-                          Shipping ({invoice.shippingMethod === "empi" ? "EMPI" : "Pickup"})
-                        </span>
-                        <span className="font-semibold text-gray-900">
-                          {invoice.shippingCost === 0 ? "FREE" : `${invoice.currencySymbol}${invoice.shippingCost.toFixed(2)}`}
-                        </span>
+                      <div className="flex items-center gap-1 bg-lime-100 text-lime-700 px-2 py-1 rounded text-xs font-semibold whitespace-nowrap">
+                        <Check className="h-3 w-3" />
+                        Paid
                       </div>
-                    )}
-                    {invoice.taxAmount && (
-                      <div className="flex justify-between text-xs md:text-sm">
-                        <span className="text-gray-600">Tax</span>
-                        <span className="font-semibold text-gray-900">{invoice.currencySymbol}{invoice.taxAmount.toFixed(2)}</span>
-                      </div>
-                    )}
-                    <div className="pt-3 border-t-2 border-gray-300 flex justify-between text-sm md:text-base font-bold">
-                      <span className="text-gray-900">Total</span>
-                      <span className="text-lime-600">{invoice.currencySymbol}{invoice.totalAmount.toFixed(2)}</span>
                     </div>
                   </div>
 
                   {/* Customer Info */}
-                  {invoice.customerEmail && (
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <p className="text-xs font-semibold text-gray-700 mb-2 uppercase">Customer Info</p>
-                      <p className="text-xs md:text-sm text-gray-600">Email: {invoice.customerEmail}</p>
-                      {invoice.customerPhone && (
-                        <p className="text-xs md:text-sm text-gray-600 mt-1">Phone: {invoice.customerPhone}</p>
-                      )}
+                  <div className="mb-3 pb-3 border-b border-gray-200">
+                    <p className="font-semibold text-gray-900 text-sm mb-1">{invoice.customerEmail?.split('@')[0] || 'Customer'}</p>
+                    <p className="text-xs text-gray-600 truncate">{invoice.customerEmail || 'No email'}</p>
+                  </div>
+
+                  {/* Quick Info */}
+                  <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+                    <div>
+                      <p className="text-xs text-gray-600 font-semibold">Date</p>
+                      <p className="text-gray-900 text-sm">{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
                     </div>
-                  )}
+                    <div className="text-right">
+                      <p className="text-xs text-gray-600 font-semibold">Items</p>
+                      <p className="text-gray-900 text-sm">{invoice.items.length}</p>
+                    </div>
+                  </div>
+
+                  {/* Total Amount - Highlighted */}
+                  <div className="bg-gradient-to-r from-lime-50 to-lime-100 rounded-lg p-3 mb-3 border border-lime-200">
+                    <p className="text-xs text-lime-700 font-semibold mb-1">Amount</p>
+                    <p className="text-xl font-bold text-lime-600">
+                      {invoice.currencySymbol}{invoice.totalAmount.toLocaleString("en-NG", { maximumFractionDigits: 0 })}
+                    </p>
+                  </div>
 
                   {/* Action Buttons */}
-                  <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-200">
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => handlePrintInvoice(invoice)}
-                      className="flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold transition text-xs sm:text-sm flex-1 sm:flex-none"
+                      className="bg-blue-50 hover:bg-blue-100 text-blue-600 px-3 py-2 rounded text-xs font-semibold transition flex items-center justify-center gap-1"
                     >
-                      <Printer className="h-4 w-4" />
-                      Print Receipt
+                      <Printer className="h-3.5 w-3.5" />
+                      Print
                     </button>
                     <button
                       onClick={() => handleDownloadInvoice(invoice)}
-                      className="flex items-center justify-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-semibold transition text-xs sm:text-sm flex-1 sm:flex-none"
+                      className="bg-purple-50 hover:bg-purple-100 text-purple-600 px-3 py-2 rounded text-xs font-semibold transition flex items-center justify-center gap-1"
                     >
-                      <Download className="h-4 w-4" />
+                      <Download className="h-3.5 w-3.5" />
                       Download
                     </button>
                   </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        )}
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
       <Footer />

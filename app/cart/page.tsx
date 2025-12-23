@@ -515,34 +515,8 @@ export default function CartPage() {
                 <div className="flex justify-between items-center mb-6 text-xl">
                   <span className="font-semibold">Total</span><span className="font-bold text-lime-600">{formatPrice(totalAmount)}</span>
                 </div>
-                <div className="space-y-4 mb-6">
-                  <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-700">
-                    <p className="font-semibold">Select Delivery Option</p>
-                  </div>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <label 
-                      className={`block p-4 rounded-lg border-2 mb-3 cursor-pointer ${shippingOption === "empi" ? "border-lime-600 bg-lime-50" : "border-gray-300"}`}
-                      onClick={() => { handleShippingChange("empi"); setShowDeliveryModal(true); }}
-                    >
-                      <input type="radio" name="shipping" value="empi" checked={shippingOption === "empi"} readOnly className="mt-1 w-4 h-4 accent-lime-600" />
-                      <div className="font-semibold text-gray-900 flex items-center gap-2 mt-2">
-                        <Truck className="h-4 w-4 text-lime-600" /> EMPI Delivery
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">Fast & reliable delivery</p>
-                    </label>
-                    <label 
-                      className={`block p-4 rounded-lg border-2 cursor-pointer ${shippingOption === "self" ? "border-lime-600 bg-lime-50" : "border-gray-300"}`}
-                      onClick={() => handleShippingChange("self")}
-                    >
-                      <input type="radio" name="shipping" value="self" checked={shippingOption === "self"} readOnly className="mt-1 w-4 h-4 accent-lime-600" />
-                      <div className="font-semibold text-gray-900 flex items-center gap-2 mt-2">
-                        <MapPin className="h-4 w-4 text-blue-600" /> Self Pickup
-                      </div>
-                      <p className="text-sm text-gray-600 mt-1">Pick up yourself - FREE</p>
-                    </label>
-                  </div>
-                </div>
-                <button onClick={() => { if (shippingOption === "empi" && !deliveryQuote) { alert("Please select delivery state and location"); return; } buyer ? router.push("/checkout") : setShowAuthModal(true); }} className="block w-full bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-4 rounded-lg text-center transition mb-3 disabled:opacity-50 disabled:cursor-not-allowed" disabled={items.some(i => i.mode === 'rent') && !rentalSchedule ? true : (shippingOption === "empi" && !deliveryQuote ? true : false)}>
+
+                <button onClick={() => { buyer ? router.push("/checkout") : setShowAuthModal(true); }} className="block w-full bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-4 rounded-lg text-center transition mb-3 disabled:opacity-50 disabled:cursor-not-allowed" disabled={items.some(i => i.mode === 'rent') && !rentalSchedule ? true : false}>
                   Proceed to Checkout
                 </button>
                 
@@ -551,14 +525,6 @@ export default function CartPage() {
                   <div className="bg-purple-50 border-l-4 border-purple-600 p-3 mb-3 rounded">
                     <p className="text-sm text-purple-900 font-semibold">
                       ⏰ Please fill the Rental Schedule form to proceed to checkout
-                    </p>
-                  </div>
-                )}
-                
-                {(shippingOption === "empi" && !deliveryQuote) && (
-                  <div className="bg-green-50 border-l-4 border-green-600 p-3 mb-3 rounded">
-                    <p className="text-sm text-green-900 font-semibold">
-                      🚚 Please fill the EMPI Delivery form to proceed to checkout
                     </p>
                   </div>
                 )}

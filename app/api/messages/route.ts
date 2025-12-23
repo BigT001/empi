@@ -223,6 +223,27 @@ export async function POST(request: NextRequest) {
 
       console.log('✅ Message created:', message._id);
       
+      // Emit Socket.IO notification
+      try {
+        const { getSocket } = await import('@/lib/socket');
+        const io = getSocket();
+        if (io) {
+          io.emit('new-message', {
+            orderId: finalOrderId,
+            orderNumber,
+            senderName,
+            senderEmail,
+            senderType,
+            text: content,
+            messageType,
+            timestamp: new Date(),
+          });
+          console.log('[API:POST /messages] 📡 Socket.IO notification emitted');
+        }
+      } catch (socketError) {
+        console.warn('[API:POST /messages] ⚠️ Could not emit Socket.IO notification:', socketError);
+      }
+      
       // If customer selects delivery option, update the order with that preference
       if (senderType === 'customer' && deliveryOption && (deliveryOption === 'pickup' || deliveryOption === 'delivery')) {
         console.log('[API:POST /messages] 📦 Customer selected delivery option:', deliveryOption, 'for order:', finalOrderId);

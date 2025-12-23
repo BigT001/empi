@@ -11,9 +11,9 @@ export async function PUT(
     await connectDB();
 
     // Get admin_session cookie
-    const adminId = request.cookies.get('admin_session')?.value;
+    const sessionToken = request.cookies.get('admin_session')?.value;
 
-    if (!adminId) {
+    if (!sessionToken) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -21,7 +21,7 @@ export async function PUT(
     }
 
     // Verify requesting admin is super_admin
-    const requestingAdmin = await Admin.findById(adminId);
+    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
 
     if (!requestingAdmin || requestingAdmin.role !== 'super_admin') {
       return NextResponse.json(
@@ -33,7 +33,7 @@ export async function PUT(
     const { isActive, permissions } = await request.json();
 
     // Prevent deactivating self
-    if (adminIdParam === adminId && isActive === false) {
+    if (adminIdParam === requestingAdmin._id.toString() && isActive === false) {
       return NextResponse.json(
         { error: 'You cannot deactivate your own account' },
         { status: 400 }
@@ -91,9 +91,9 @@ export async function DELETE(
     await connectDB();
 
     // Get admin_session cookie
-    const adminId = request.cookies.get('admin_session')?.value;
+    const sessionToken = request.cookies.get('admin_session')?.value;
 
-    if (!adminId) {
+    if (!sessionToken) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -101,7 +101,7 @@ export async function DELETE(
     }
 
     // Verify requesting admin is super_admin
-    const requestingAdmin = await Admin.findById(adminId);
+    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
 
     if (!requestingAdmin || requestingAdmin.role !== 'super_admin') {
       return NextResponse.json(
@@ -111,7 +111,7 @@ export async function DELETE(
     }
 
     // Prevent deleting self
-    if (adminIdParam === adminId) {
+    if (adminIdParam === requestingAdmin._id.toString()) {
       return NextResponse.json(
         { error: 'You cannot delete your own account' },
         { status: 400 }

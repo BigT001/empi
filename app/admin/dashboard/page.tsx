@@ -55,11 +55,11 @@ function PanelSkeleton() {
 // ⚡ Tab configuration for easy maintenance
 const TABS = [
   { id: 'overview', label: 'Overview', icon: BarChart3, color: 'text-blue-600' },
-  { id: 'users', label: 'Users', icon: Users, color: 'text-purple-600' },
   { id: 'pending', label: 'Pending', icon: Clock, color: 'text-red-600' },
   { id: 'approved', label: 'Approved', icon: CheckCircle2, color: 'text-green-600' },
-  { id: 'products', label: 'Products', icon: Package, color: 'text-indigo-600' },
   { id: 'custom', label: 'Custom Orders', icon: Paintbrush, color: 'text-orange-600' },
+  { id: 'users', label: 'Users', icon: Users, color: 'text-purple-600' },
+  { id: 'products', label: 'Products', icon: Package, color: 'text-indigo-600' },
 ] as const;
 
 export default function AdminDashboardPage() {

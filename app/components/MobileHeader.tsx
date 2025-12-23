@@ -9,6 +9,7 @@ import { useCart } from "./CartContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useBuyer } from "../context/BuyerContext";
 import { CURRENCY_RATES } from "./constants";
+import { NotificationBell } from "./NotificationBell";
 
 export function MobileHeader() {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -100,7 +101,7 @@ export function MobileHeader() {
   return (
     <>
       {/* Mobile Header */}
-      <div className={`block md:hidden fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-100 transition-transform duration-300 ${
+      <div className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-100 transition-transform duration-300 ${
         headerVisible ? "translate-y-0" : "-translate-y-full"
       }`}>
         <div className="flex items-center justify-between px-3 py-3 gap-2">
@@ -157,6 +158,7 @@ export function MobileHeader() {
             >
               <Search className="h-5 w-5" />
             </button>
+            <NotificationBell />
             <Link href="/cart" className="relative inline-flex items-center justify-center">
               <button className="bg-lime-600 hover:bg-lime-700 text-white p-2 rounded-lg transition relative">
                 <ShoppingCart className="h-5 w-5" />

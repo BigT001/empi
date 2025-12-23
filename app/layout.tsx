@@ -7,9 +7,11 @@ import { AdminProvider } from "./context/AdminContext";
 import { ModeProvider } from "./context/ModeContext";
 import { HomeModeProvider } from "./context/HomeModeContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
+import { NotificationProvider } from "./context/NotificationContext";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { FloatingSupport } from "./components/FloatingSupport";
 import { MobileHeader } from "./components/MobileHeader";
+import { PaymentApprovedModal } from "./components/PaymentApprovedModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -69,26 +71,28 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/favicon.ico" />
-        {/* Paystack Payment Gateway Script */}
-        <script src="https://js.paystack.co/v1/inline.js" async></script>
+        <script src="https://js.paystack.co/v1/inline.js"></script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <CartProvider>
           <BuyerProvider>
-            <CurrencyProvider>
-              <MobileHeader />
-              <ScrollToTop />
-              <FloatingSupport />
-              <HomeModeProvider>
-                <ModeProvider>
-                  <AdminProvider>
-                    {children}
-                  </AdminProvider>
-                </ModeProvider>
-              </HomeModeProvider>
-            </CurrencyProvider>
+            <NotificationProvider>
+              <CurrencyProvider>
+                <MobileHeader />
+                <ScrollToTop />
+                <FloatingSupport />
+                <PaymentApprovedModal />
+                <HomeModeProvider>
+                  <ModeProvider>
+                    <AdminProvider>
+                      {children}
+                    </AdminProvider>
+                  </ModeProvider>
+                </HomeModeProvider>
+              </CurrencyProvider>
+            </NotificationProvider>
           </BuyerProvider>
         </CartProvider>
       </body>

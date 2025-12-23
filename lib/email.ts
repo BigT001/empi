@@ -147,3 +147,75 @@ export async function sendOrderDeletedEmail(
     html,
   });
 }
+
+/**
+ * Send invoice to customer and admin
+ */
+export async function sendInvoiceEmail(
+  customerEmail: string,
+  customerName: string,
+  invoiceNumber: string,
+  invoiceHtml: string,
+  orderNumber?: string
+): Promise<{ customerSent: boolean; adminSent: boolean }> {
+  const subject = `Your Invoice ${invoiceNumber} | EMPI Costumes`;
+  
+  const emailHtml = `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">📄 Invoice ${invoiceNumber}</h1>
+        <p style="color: #d1fae5; margin: 10px 0 0 0;">Your order invoice from EMPI Costumes</p>
+      </div>
+      
+      <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb;">
+        <p style="color: #374151;">Hi <strong>${customerName}</strong>,</p>
+        
+        <p style="color: #374151;">Thank you for your purchase! Your invoice is ready and attached below.</p>
+        
+        <div style="background: white; padding: 20px; border-radius: 8px; border: 1px solid #e5e7eb; margin: 20px 0;">
+          <h2 style="color: #059669; margin-top: 0;">Invoice Details</h2>
+          <p style="color: #6b7280; margin: 5px 0;"><strong>Invoice Number:</strong> ${invoiceNumber}</p>
+          ${orderNumber ? `<p style="color: #6b7280; margin: 5px 0;"><strong>Order Number:</strong> ${orderNumber}</p>` : ''}
+          <p style="color: #6b7280; margin: 5px 0;"><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+        </div>
+        
+        <div style="background: #f0fdf4; padding: 15px; border-left: 4px solid #10b981; margin: 20px 0; border-radius: 4px;">
+          <p style="color: #166534; margin: 0;"><strong>✅ Invoice Confirmed</strong></p>
+          <p style="color: #166534; margin: 5px 0;">Your purchase has been completed and this invoice confirms your transaction.</p>
+        </div>
+        
+        <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+          <p style="color: #6b7280; font-size: 14px; margin: 0;">
+            <strong>EMPI Costumes</strong><br>
+            Email: ${process.env.STORE_EMAIL || "admin@empicostumes.com"}<br>
+            Phone: ${process.env.STORE_PHONE || "+234 123 456 7890"}
+          </p>
+        </div>
+        
+        <p style="color: #9ca3af; font-size: 12px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+          This is an automated message. Please do not reply to this email. Contact us directly if you have questions.
+        </p>
+      </div>
+    </div>
+  `;
+
+  // Send to customer
+  const customerSent = await sendEmail({
+    to: customerEmail,
+    subject,
+    html: emailHtml,
+  });
+
+  // Send to admin
+  const adminEmail = process.env.STORE_EMAIL || "admin@empicostumes.com";
+  const adminSent = await sendEmail({
+    to: adminEmail,
+    subject: `[Admin] ${subject}`,
+    html: `<p style="font-family: Arial, sans-serif;">Invoice sent to: <strong>${customerEmail}</strong></p>${emailHtml}`,
+  });
+
+  console.log(`📧 Invoice email results - Customer: ${customerSent ? '✅' : '❌'}, Admin: ${adminSent ? '✅' : '❌'}`);
+
+  return { customerSent, adminSent };
+}
+

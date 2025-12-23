@@ -58,6 +58,7 @@ interface ChatModalProps {
   adminName?: string;
   onMessageSent?: () => void;
   orderStatus?: string; // Current tab/status: pending, approved, in-progress, ready, completed, rejected
+  paymentStatus?: 'pending' | 'paid' | 'approved'; // Payment status for smart button disabling
 }
 
 
@@ -73,6 +74,7 @@ export function ChatModal({
   adminName = "Empi Costumes",
   onMessageSent,
   orderStatus: currentOrderStatus = 'pending',
+  paymentStatus = 'pending',
 }: ChatModalProps) {
   const router = useRouter();
   const { buyer } = useBuyer();
@@ -161,7 +163,7 @@ export function ChatModal({
         console.warn('[ChatModal] ⚠️ Failed to fetch order status:', res.status, res.statusText);
       }
     } catch (error) {
-      console.error('[ChatModal] ❌ Error fetching order status:', error);
+      console.error('[ChatModal] ❌ Error fetching order status:', error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -259,7 +261,7 @@ export function ChatModal({
     const interval = setInterval(() => {
       fetchMessages();
       fetchOrderStatus();
-    }, 1500);
+    }, 5000); // Poll every 5 seconds (increased from 1.5s to reduce blinking)
     return () => {
       console.log('[ChatModal] Cleaning up polling interval');
       clearInterval(interval);
@@ -373,7 +375,7 @@ export function ChatModal({
         console.warn('[ChatModal] ⚠️ Response format unexpected:', data);
       }
     } catch (error) {
-      console.error('[ChatModal] Error fetching messages:', error);
+      console.error('[ChatModal] Error fetching messages:', error instanceof Error ? error.message : String(error));
     }
   };
 
@@ -417,9 +419,24 @@ export function ChatModal({
       if (isAdmin && (messageType === 'quote' || messageType === 'negotiation')) {
         payload.isFinalPrice = isFinalPrice;
         payload.quotedPrice = parseFloat(quotePrice);
+        
+        // Calculate and include quote details
+        const quoteDetails = calculateQuoteDetails();
+        payload.discountPercentage = quoteDetails.discountPercentage;
+        payload.discountAmount = quoteDetails.discountAmount;
+        payload.quotedVAT = quoteDetails.vat;
+        payload.quotedTotal = quoteDetails.total;
+        
         if (quotedDeliveryDate) {
           payload.quotedDeliveryDate = quotedDeliveryDate;
         }
+        
+        console.log('[ChatModal] Sending quote payload:', {
+          quotedPrice: payload.quotedPrice,
+          quotedVAT: payload.quotedVAT,
+          quotedTotal: payload.quotedTotal,
+          discountPercentage: payload.discountPercentage,
+        });
       }
 
       const response = await fetch('/api/messages', {
@@ -1442,9 +1459,72 @@ Thank you for choosing Empi! 👖✨`;
                                       </div>
                                     </div>
 
-                                    <div className="bg-lime-100 border-l-4 border-lime-600 p-2 rounded text-center">
-                                      <p className="text-xs font-semibold text-lime-900">✓ Confirm to proceed</p>
-                                    </div>
+                                    <button
+                                      onClick={async () => {
+                                        try {
+                                          console.log('[ChatModal] 🚚 Delivery confirmation button clicked');
+                                          console.log('[ChatModal] Order ID:', order?._id);
+                                          console.log('[ChatModal] Quote data:', quoteData);
+                                          
+                                          if (!order?._id) {
+                                            console.error('[ChatModal] ❌ Order ID is missing');
+                                            alert('Error: Order ID not found');
+                                            return;
+                                          }
+                                          
+                                          if (!buyer?.fullName || !buyer?.email) {
+                                            console.error('[ChatModal] ❌ Buyer information is missing');
+                                            alert('Error: Buyer information not available');
+                                            return;
+                                          }
+                                          
+                                          // Send automated confirmation message
+                                          const confirmMessage = {
+                                            orderId: order._id,
+                                            orderNumber: order.orderNumber,
+                                            senderEmail: buyer.email,
+                                            senderName: buyer.fullName,
+                                            senderType: 'customer',
+                                            content: `📍 Please hold on while logistics confirms payment\n\n💰 Amount: ₦${parseInt(quoteData.amount).toLocaleString()}\n🚚 Type: ${quoteData.transportType}\n🏦 Bank: ${quoteData.bankName}\n\nWe'll update you once payment is verified.`,
+                                            messageType: 'text',
+                                            deliveryConfirmed: true,
+                                            quoteId: msg._id,
+                                          };
+                                          
+                                          console.log('[ChatModal] 📤 Sending confirmation message:', confirmMessage);
+                                          
+                                          // Send message via API
+                                          const res = await fetch(`/api/messages`, {
+                                            method: 'POST',
+                                            headers: { 'Content-Type': 'application/json' },
+                                            body: JSON.stringify(confirmMessage),
+                                          });
+                                          
+                                          console.log('[ChatModal] Response status:', res.status);
+                                          
+                                          if (res.ok) {
+                                            const responseData = await res.json();
+                                            console.log('[ChatModal] ✅ Delivery confirmation sent:', responseData);
+                                            // Refresh messages to show the new confirmation
+                                            if (onMessageSent) {
+                                              console.log('[ChatModal] 🔄 Calling onMessageSent callback');
+                                              onMessageSent();
+                                            }
+                                            alert('✅ Message sent! Please wait for logistics to confirm payment.');
+                                          } else {
+                                            const errorData = await res.json();
+                                            console.error('[ChatModal] ❌ Failed to send confirmation:', res.status, errorData);
+                                            alert('Error sending confirmation: ' + (errorData?.message || 'Unknown error'));
+                                          }
+                                        } catch (err) {
+                                          console.error('[ChatModal] ❌ Failed to send confirmation:', err);
+                                          alert('Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
+                                        }
+                                      }}
+                                      className="w-full bg-gradient-to-r from-lime-500 to-green-500 hover:from-lime-600 hover:to-green-600 text-white font-bold py-2.5 px-3 rounded-lg transition transform hover:scale-105 active:scale-95 text-sm"
+                                    >
+                                      ✓ Confirm to proceed
+                                    </button>
                                   </div>
                                 </div>
                               );
@@ -2024,19 +2104,32 @@ Thank you for choosing Empi! 👖✨`;
                   </button>
                 </div>
               ) : (
-                // Show Send Quote / Decline for statuses where it's allowed
-                currentOrderStatus !== 'ready' && currentOrderStatus !== 'approved' && currentOrderStatus !== 'in-progress' && (
+                // Hide Send Quote / Decline for regular orders from pending page
+                // Only show for custom orders when isLogisticsTeam is false
+                !isLogisticsTeam && currentOrderStatus !== 'ready' && currentOrderStatus !== 'approved' && currentOrderStatus !== 'in-progress' && (
                   <div className="grid grid-cols-2 gap-2 w-full">
                     <button
                       onClick={() => setShowQuoteForm(true)}
-                      className="py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-blue-100 hover:bg-blue-200 text-blue-700 border border-blue-300"
+                      disabled={paymentStatus !== 'paid'}
+                      className={`py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 border ${
+                        paymentStatus === 'paid'
+                          ? 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 cursor-pointer'
+                          : 'bg-gray-100 hover:bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed opacity-50'
+                      }`}
+                      title={paymentStatus !== 'paid' ? 'Payment required to send quote' : 'Send quote to customer'}
                     >
                       <DollarSign className="h-4 w-4" />
                       Send Quote
                     </button>
                     <button
                       onClick={() => setShowDeclineModal(true)}
-                      className="py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 bg-red-100 hover:bg-red-200 text-red-700 border border-red-300"
+                      disabled={paymentStatus !== 'paid'}
+                      className={`py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 border ${
+                        paymentStatus === 'paid'
+                          ? 'bg-red-100 hover:bg-red-200 text-red-700 border-red-300 cursor-pointer'
+                          : 'bg-gray-100 hover:bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed opacity-50'
+                      }`}
+                      title={paymentStatus !== 'paid' ? 'Payment required to decline' : 'Decline this order'}
                     >
                       <X className="h-4 w-4" />
                       Decline

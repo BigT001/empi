@@ -1,7 +1,18 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Clock, AlertTriangle, Search, Calendar, AlertCircle } from "lucide-react";
+import { Clock, AlertTriangle, Search, Calendar, AlertCircle, Check, X, DollarSign, Mail, Phone, Package, MessageCircle, Trash2 } from "lucide-react";
+import Image from "next/image";
+import { ChatModal } from "@/app/components/ChatModal";
+
+interface OrderItem {
+  productId?: string;
+  name: string;
+  quantity: number;
+  price: number;
+  mode?: string;
+  imageUrl?: string; // Product image URL from order
+}
 
 interface PendingOrderData {
   _id: string;
@@ -12,8 +23,15 @@ interface PendingOrderData {
   phone?: string;
   total: number;
   status: string;
+  paymentStatus?: string;
   createdAt: string;
-  items: any[];
+  items: OrderItem[];
+}
+
+interface ProductWithImage {
+  name: string;
+  imageUrl?: string;
+  sellPrice?: number;
 }
 
 export function PendingPanel() {
@@ -22,6 +40,57 @@ export function PendingPanel() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'amount'>('newest');
+  const [approvingOrderId, setApprovingOrderId] = useState<string | null>(null);
+  const [productImages, setProductImages] = useState<Record<string, ProductWithImage>>({});
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
+  const [confirmModalOpen, setConfirmModalOpen] = useState<string | null>(null);
+  const [paymentStatus, setPaymentStatus] = useState<Record<string, 'pending' | 'paid' | 'approved'>>({});
+
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  // Function to detect if payment has been made by checking for associated invoice
+  const detectPaymentStatus = async (orders: PendingOrderData[]) => {
+    try {
+      const statusMap: Record<string, 'pending' | 'paid' | 'approved'> = {};
+      
+      // Fetch all invoices to check which orders have been paid
+      const invoicesRes = await fetch('/api/invoices?limit=500');
+      if (invoicesRes.ok) {
+        const invoicesData = await invoicesRes.json();
+        const invoices = Array.isArray(invoicesData) ? invoicesData : (invoicesData.invoices || []);
+        
+        // Create a map of order references to invoice status
+        const invoicesByReference = new Map();
+        invoices.forEach((inv: any) => {
+          if (inv.orderNumber || inv.customOrderId) {
+            invoicesByReference.set(inv.orderNumber, inv.status || 'paid');
+          }
+        });
+        
+        console.log('[PendingPanel] Invoice map:', Array.from(invoicesByReference.entries()));
+        
+        // Check each order for payment
+        orders.forEach(order => {
+          if (invoicesByReference.has(order.orderNumber)) {
+            statusMap[order._id] = 'paid'; // Invoice exists = payment was made
+            console.log(`[PendingPanel] ✅ Order ${order.orderNumber} has invoice - marked as PAID`);
+          } else {
+            statusMap[order._id] = 'pending'; // No invoice = still pending
+            console.log(`[PendingPanel] ⏳ Order ${order.orderNumber} has NO invoice - still PENDING`);
+          }
+        });
+      }
+      
+      setPaymentStatus(statusMap);
+      console.log('[PendingPanel] Payment status map:', statusMap);
+    } catch (err) {
+      console.error('[PendingPanel] Error detecting payment status:', err);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
@@ -33,10 +102,18 @@ export function PendingPanel() {
         if (!res.ok) throw new Error('Failed to load orders');
         const data = await res.json();
         const ordersList = Array.isArray(data) ? data : (data.orders || []);
+        console.log('[PendingPanel] First order:', ordersList[0]);
+        console.log('[PendingPanel] First item:', ordersList[0]?.items?.[0]);
         const pendingList = ordersList.filter((o: any) => 
-          o.status === 'pending' || o.status === 'unpaid' || o.status === 'processing'
+          o.status === 'pending' || o.status === 'unpaid' || o.status === 'processing' || o.paymentStatus === 'pending'
         );
-        if (mounted) setPending(pendingList);
+        if (mounted) {
+          setPending(pendingList);
+          // Fetch product images
+          fetchProductImages(pendingList);
+          // Detect payment status by checking for invoices
+          detectPaymentStatus(pendingList);
+        }
       } catch (err: any) {
         console.error('[PendingPanel] Error loading pending orders:', err);
         if (mounted) setError(err.message || 'Failed to load pending orders');
@@ -48,6 +125,98 @@ export function PendingPanel() {
       mounted = false;
     };
   }, []);
+
+  const fetchProductImages = async (orders: PendingOrderData[]) => {
+    // Extract images directly from order items instead of fetching from products API
+    const images: Record<string, ProductWithImage> = {};
+    
+    orders.forEach(order => {
+      order.items.forEach(item => {
+        if (item.productId && item.imageUrl) {
+          images[item.productId] = {
+            name: item.name,
+            imageUrl: item.imageUrl,
+            sellPrice: item.price,
+          };
+        }
+      });
+    });
+
+    setProductImages(images);
+  };
+
+  const approvePayment = async (orderId: string) => {
+    try {
+      setApprovingOrderId(orderId);
+      // Resolve the current admin from the session so we send a valid ObjectId
+      const adminRes = await fetch('/api/admin/me', { method: 'GET', cache: 'no-store' });
+      if (!adminRes.ok) {
+        const err = await adminRes.json().catch(() => ({ error: 'Not authenticated' }));
+        throw new Error(err.error || 'Failed to resolve admin identity');
+      }
+      const adminData = await adminRes.json();
+      const adminId = adminData._id || adminData.id;
+
+      const res = await fetch('/api/admin/orders/confirm-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId, adminId }),
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to approve payment');
+      }
+
+      setPending(pending.filter(o => o._id !== orderId));
+      showToast('Payment approved successfully!', 'success');
+    } catch (err: any) {
+      console.error('[PendingPanel] Error approving payment:', err);
+      showToast(err.message || 'Failed to approve payment', 'error');
+    } finally {
+      setApprovingOrderId(null);
+    }
+  };
+
+  const deleteAllPendingOrders = async () => {
+    if (!window.confirm(`Are you sure you want to delete all ${pending.length} pending orders? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      let deletedCount = 0;
+      let failedCount = 0;
+
+      for (const order of pending) {
+        try {
+          const res = await fetch(`/api/orders/${order._id}`, {
+            method: 'DELETE',
+          });
+
+          if (res.ok) {
+            deletedCount++;
+          } else {
+            failedCount++;
+          }
+        } catch (err) {
+          console.error(`Failed to delete order ${order._id}:`, err);
+          failedCount++;
+        }
+      }
+
+      setPending([]);
+      const message = failedCount > 0 
+        ? `Deleted ${deletedCount} orders, ${failedCount} failed`
+        : `All ${deletedCount} pending orders deleted successfully!`;
+      showToast(message, failedCount > 0 ? 'error' : 'success');
+    } catch (err: any) {
+      console.error('[PendingPanel] Error deleting all pending orders:', err);
+      showToast(err.message || 'Failed to delete pending orders', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Filter and sort pending orders
   const filteredPending = useMemo(() => {
@@ -105,41 +274,69 @@ export function PendingPanel() {
   const totalPendingAmount = pending.reduce((sum, o) => sum + o.total, 0);
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-red-600 to-red-700 p-6 text-white">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-2xl font-bold">Pending / Unpaid Orders</h2>
-            <p className="text-red-100 mt-1">⚠️ {pending.length} orders awaiting action</p>
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Total Pending Amount Card */}
+        <div className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-red-600 text-sm font-semibold uppercase tracking-wide">Total Pending Amount</p>
+              <p className="text-3xl font-bold text-red-900 mt-2">{formatCurrency(totalPendingAmount)}</p>
+            </div>
+            <div className="bg-red-100 rounded-lg p-3">
+              <DollarSign className="h-6 w-6 text-red-600" />
+            </div>
           </div>
-          <Clock className="h-8 w-8 opacity-20" />
+          <p className="text-red-700 text-xs">Awaiting payment confirmation</p>
         </div>
 
-        {/* Summary Stats */}
-        <div className="grid grid-cols-2 gap-4 pt-4 border-t border-red-400">
-          <div>
-            <p className="text-red-100 text-sm">Total Pending Amount</p>
-            <p className="font-bold text-lg">{formatCurrency(totalPendingAmount)}</p>
+        {/* Orders Count Card */}
+        <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-orange-600 text-sm font-semibold uppercase tracking-wide">Pending Orders</p>
+              <p className="text-3xl font-bold text-orange-900 mt-2">{pending.length}</p>
+            </div>
+            <div className="bg-orange-100 rounded-lg p-3">
+              <AlertTriangle className="h-6 w-6 text-orange-600" />
+            </div>
           </div>
-          <div>
-            <p className="text-red-100 text-sm">Orders Count</p>
-            <p className="font-bold text-lg">{pending.length}</p>
-          </div>
+          <p className="text-orange-700 text-xs">Orders awaiting action</p>
         </div>
 
-        {/* Search Bar */}
-        <div className="relative mt-4">
-          <Search className="absolute left-3 top-3 h-5 w-5 text-red-200" />
-          <input
-            type="text"
-            placeholder="Search by order #, email, or name..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 rounded-lg bg-red-500 placeholder-red-200 text-white outline-none focus:ring-2 focus:ring-white focus:bg-red-600 transition"
-          />
+        {/* Avg Order Value Card */}
+        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
+          <div className="flex items-start justify-between mb-3">
+            <div>
+              <p className="text-amber-600 text-sm font-semibold uppercase tracking-wide">Avg Order Value</p>
+              <p className="text-3xl font-bold text-amber-900 mt-2">
+                {pending.length > 0 ? formatCurrency(totalPendingAmount / pending.length) : '₦0'}
+              </p>
+            </div>
+            <div className="bg-amber-100 rounded-lg p-3">
+              <Package className="h-6 w-6 text-amber-600" />
+            </div>
+          </div>
+          <p className="text-amber-700 text-xs">Per order</p>
         </div>
       </div>
+
+      {/* Main Container */}
+      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+        {/* Search Bar */}
+        <div className="bg-gradient-to-r from-red-50 to-rose-50 border-b border-red-200 p-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-3 h-5 w-5 text-red-400" />
+            <input
+              type="text"
+              placeholder="Search by order #, email, or name..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 rounded-lg border border-red-200 bg-white placeholder-gray-400 text-gray-900 outline-none focus:ring-2 focus:ring-red-600 focus:border-red-600 transition"
+            />
+          </div>
+        </div>
 
       {/* Content */}
       <div className="p-6">
@@ -177,90 +374,258 @@ export function PendingPanel() {
           </div>
         )}
 
-        {/* Pending Orders List */}
+        {/* Pending Orders Cards Grid */}
         {!loading && !error && pending.length > 0 && (
           <>
             {/* Sort Controls */}
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-sm font-semibold text-gray-700">Sort:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600"
-              >
-                <option value="newest">Newest First</option>
-                <option value="oldest">Oldest First</option>
-                <option value="amount">Highest Amount</option>
-              </select>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-gray-700">Sort:</span>
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as any)}
+                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600"
+                  >
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="amount">Highest Amount</option>
+                  </select>
+                </div>
+                <button
+                  onClick={deleteAllPendingOrders}
+                  disabled={pending.length === 0 || loading}
+                  className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete All
+                </button>
+              </div>
+              <p className="text-sm text-gray-600">
+                {filteredPending.length} of {pending.length} orders
+              </p>
             </div>
 
-            {/* Orders List */}
-            <div className="space-y-3">
-              {filteredPending.length === 0 ? (
-                <div className="text-center py-8">
-                  <p className="text-gray-500">No pending orders found</p>
-                </div>
-              ) : (
-                filteredPending.map((order) => {
+            {/* Cards Grid */}
+            {filteredPending.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 font-semibold">No pending orders found</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filteredPending.map((order) => {
                   const daysOld = getDaysOld(order.createdAt);
+                  
                   return (
                     <div
                       key={order._id}
-                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition hover:border-red-300"
+                      className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl border-2 border-red-200 overflow-hidden shadow-md hover:shadow-xl hover:border-red-300 transition-all flex flex-col"
                     >
-                      <div className="flex items-start justify-between gap-4">
-                        {/* Left: Order Info */}
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <span className="font-semibold text-gray-900 font-mono text-sm">
-                              {order.orderNumber || order._id.slice(-8).toUpperCase()}
-                            </span>
-                            <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${getUrgencyColor(daysOld)}`}>
-                              {daysOld === 0 ? 'Today' : daysOld === 1 ? '1 day old' : `${daysOld} days old`}
-                            </span>
-                          </div>
+                      {/* Header - Customer Info */}
+                      <div className="bg-gradient-to-r from-red-600 to-rose-600 p-5 text-white">
+                        <h3 className="font-bold text-lg">{order.firstName} {order.lastName}</h3>
+                        <p className="text-sm text-red-100 truncate">{order.email}</p>
+                        {order.phone && <p className="text-sm text-red-100">{order.phone}</p>}
+                      </div>
 
-                          <div className="text-sm text-gray-600 mb-2">
-                            <p className="font-semibold text-gray-900">
-                              {order.firstName} {order.lastName}
+                      {/* Content */}
+                      <div className="p-5 space-y-4 flex-1 flex flex-col">
+                        {/* Product Images Gallery */}
+                        {order.items && order.items.length > 0 && (
+                          <div className="space-y-2">
+                            <div className="flex justify-between items-center">
+                              <p className="text-xs font-semibold text-gray-600 uppercase">Product Images</p>
+                            </div>
+                            <div className="overflow-x-auto pb-2">
+                              <div className="flex gap-2 min-w-min">
+                                {order.items.map((item, idx) => (
+                                  <div
+                                    key={`${order._id}-item-${idx}`}
+                                    className="relative aspect-square bg-gray-100 rounded border border-red-300 overflow-hidden flex-shrink-0 w-20 h-20"
+                                  >
+                                    {item.imageUrl ? (
+                                      <Image
+                                        src={item.imageUrl}
+                                        alt={item.name}
+                                        fill
+                                        className="object-cover"
+                                        unoptimized={true}
+                                      />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                                        <span className="text-xs text-gray-600">No Image</span>
+                                      </div>
+                                    )}
+                                    {item.quantity > 1 && (
+                                      <div className="absolute bottom-0 right-0 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-tl">
+                                        ×{item.quantity}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <p className="text-xs text-gray-500 text-center">← Scroll to see more items →</p>
+                          </div>
+                        )}
+
+                        {/* Stats - 3 column grid */}
+                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-red-200">
+                          <div className="bg-red-50 rounded-lg p-2 text-center border border-red-300">
+                            <p className="text-2xl font-bold text-red-700">{order.items?.length || '—'}</p>
+                            <p className="text-xs text-red-600 font-medium">Items</p>
+                          </div>
+                          <div className={`rounded-lg p-2 text-center border ${
+                            paymentStatus[order._id] === 'paid'
+                              ? 'bg-green-50 border-green-300'
+                              : 'bg-yellow-50 border-yellow-300'
+                          }`}>
+                            <p className="text-lg font-bold text-yellow-700">
+                              ₦{order.total < 1000000 ? (order.total / 1000).toFixed(0) + 'K' : (order.total / 1000000).toFixed(1) + 'M'}
                             </p>
-                            <p className="text-gray-500">{order.email}</p>
+                            <p className={`text-xs font-medium ${
+                              paymentStatus[order._id] === 'paid'
+                                ? 'text-green-600'
+                                : 'text-yellow-600'
+                            }`}>
+                              {paymentStatus[order._id] === 'paid' ? 'PAID' : 'Awaiting'}
+                            </p>
                           </div>
-
-                          <div className="flex items-center gap-2 text-xs text-gray-500">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(order.createdAt)}
+                          <div className="bg-orange-50 rounded-lg p-2 text-center border border-orange-300">
+                            <p className="text-xs font-bold text-orange-700">{formatDate(order.createdAt)}</p>
+                            <p className="text-xs text-orange-600 font-medium">{daysOld === 0 ? 'Today' : daysOld === 1 ? '1 day' : `${daysOld} days`}</p>
                           </div>
                         </div>
 
-                        {/* Right: Amount & Status */}
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-gray-900 mb-1">
-                            {formatCurrency(order.total)}
-                          </p>
-                          <span className="inline-block px-3 py-1 bg-yellow-100 text-yellow-700 text-xs font-semibold rounded-full">
-                            {order.status?.charAt(0).toUpperCase() + order.status?.slice(1) || 'Pending'}
-                          </span>
-                          {order.items && (
-                            <p className="text-xs text-gray-500 mt-2">
-                              {order.items.length} item{order.items.length !== 1 ? 's' : ''}
-                            </p>
-                          )}
+                        {/* Order Details */}
+                        <div className="pt-3 border-t border-red-200">
+                          <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Order Info</p>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-xs text-gray-600">
+                              <Calendar className="h-3.5 w-3.5" />
+                              <span>Order: {order.orderNumber}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <Clock className="h-3.5 w-3.5" />
+                              {paymentStatus[order._id] === 'paid' ? (
+                                <span className="text-green-600 font-semibold flex items-center gap-1">
+                                  <span>✅ Payment Received</span>
+                                </span>
+                              ) : (
+                                <span className="text-yellow-600 font-semibold">Status: Awaiting Payment</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-2 pt-4 border-t border-red-200 mt-auto">
+                          <button
+                            onClick={() => setConfirmModalOpen(order._id)}
+                            disabled={approvingOrderId === order._id}
+                            className={`flex-1 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 ${
+                              paymentStatus[order._id] === 'paid'
+                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
+                                : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
+                            } disabled:from-gray-400 disabled:to-gray-400`}
+                          >
+                            {approvingOrderId === order._id ? (
+                              <>
+                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                                {paymentStatus[order._id] === 'paid' ? 'Confirming...' : 'Approving...'}
+                              </>
+                            ) : (
+                              <>
+                                <Check className="h-4 w-4" />
+                                Approve
+                              </>
+                            )}
+                          </button>
+                          <button
+                            onClick={() => setChatModalOpen(order._id)}
+                            className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
+                          >
+                            <MessageCircle className="h-4 w-4" />
+                            Chat
+                          </button>
                         </div>
                       </div>
                     </div>
                   );
-                })
-              )}
-            </div>
-
-            {searchQuery && (
-              <p className="text-sm text-gray-600 mt-4">
-                Showing {filteredPending.length} of {pending.length} pending orders
-              </p>
+                })}
+              </div>
             )}
           </>
         )}
+
+        {/* Confirmation Modal */}
+        {confirmModalOpen && (
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl shadow-2xl max-w-sm mx-4 p-6 space-y-4">
+              <div className="flex items-center justify-center w-12 h-12 bg-yellow-100 rounded-full mx-auto">
+                <AlertCircle className="h-6 w-6 text-yellow-600" />
+              </div>
+              <h2 className="text-xl font-bold text-center text-gray-900">Confirm Approval</h2>
+              <p className="text-center text-gray-600">
+                Are you sure you want to approve the payment for order <span className="font-semibold">{pending.find(o => o._id === confirmModalOpen)?.orderNumber}</span>?
+              </p>
+              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-700">
+                  <span className="font-semibold">Amount:</span> {formatCurrency(pending.find(o => o._id === confirmModalOpen)?.total || 0)}
+                </p>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setConfirmModalOpen(null)}
+                  className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (confirmModalOpen) {
+                      approvePayment(confirmModalOpen);
+                      setConfirmModalOpen(null);
+                    }
+                  }}
+                  className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-lg transition"
+                >
+                  Confirm Approval
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Chat Modal */}
+        {chatModalOpen && (
+          <ChatModal
+            isOpen={true}
+            onClose={() => setChatModalOpen(null)}
+            order={{
+              _id: chatModalOpen,
+              orderNumber: pending.find(o => o._id === chatModalOpen)?.orderNumber || 'Order',
+              email: pending.find(o => o._id === chatModalOpen)?.email || '',
+              phone: pending.find(o => o._id === chatModalOpen)?.phone || '',
+              fullName: pending.find(o => o._id === chatModalOpen) ? `${pending.find(o => o._id === chatModalOpen)?.firstName} ${pending.find(o => o._id === chatModalOpen)?.lastName}` : 'Customer',
+            }}
+            userEmail="admin@empi.com"
+            userName="Admin"
+            isAdmin={true}
+            paymentStatus={paymentStatus[chatModalOpen] || 'pending'}
+          />
+        )}
+
+        {/* Toast Notification */}
+        {toast && (
+          <div className={`fixed bottom-4 right-4 p-4 rounded-lg text-white font-semibold flex items-center gap-2 ${
+            toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+          }`}>
+            {toast.type === 'success' ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
+            {toast.message}
+          </div>
+        )}
+      </div>
       </div>
     </div>
   );

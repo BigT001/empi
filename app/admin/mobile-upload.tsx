@@ -448,7 +448,7 @@ export default function MobileAdminUpload() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white pb-4 px-0">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white pb-20 px-0">
       {/* Success Notification Modal */}
       {showNotification && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">

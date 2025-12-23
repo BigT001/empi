@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 import CustomOrder from '@/lib/models/CustomOrder';
+import Invoice from '@/lib/models/Invoice';
+import { sendInvoiceEmail } from '@/lib/email';
+import { generateProfessionalInvoiceHTML } from '@/lib/professionalInvoice';
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,7 +52,7 @@ export async function GET(request: NextRequest) {
     if (data.data?.status === 'success') {
       console.log("✅ Payment verified as successful for reference:", reference);
       
-      // Send payment notifications
+      // Send payment notifications and update status
       try {
         console.log('[verify-payment] 🔗 Connecting to database...');
         await connectDB();
@@ -57,8 +60,8 @@ export async function GET(request: NextRequest) {
         
         // Find order by reference
         console.log('[verify-payment] 🔍 Looking for order with reference:', reference);
-        const order = await Order.findOne({ orderNumber: reference });
-        const customOrder = await CustomOrder.findOne({ orderNumber: reference });
+        let order = await Order.findOne({ orderNumber: reference });
+        let customOrder = await CustomOrder.findOne({ orderNumber: reference });
         
         console.log('[verify-payment] 📊 Order lookup results:', {
           orderFound: !!order,
@@ -73,12 +76,118 @@ export async function GET(request: NextRequest) {
           const customerName = orderData.fullName || orderData.firstName || 'Valued Customer';
           const customerEmail = orderData.email || data.data.customer?.email;
           
-          console.log('[verify-payment] 📧 Preparing to send notifications:', {
+          console.log('[verify-payment] 📧 Preparing to process payment:', {
             orderNumber: reference,
             customerName,
             customerEmail,
             amount,
+            isCustomOrder: !!customOrder,
           });
+          
+          // Update custom order status to "approved" if it's a custom order
+          if (customOrder) {
+            console.log('[verify-payment] 📝 Updating custom order status to approved');
+            customOrder.status = 'approved';
+            await customOrder.save();
+            console.log('[verify-payment] ✅ Custom order status updated to approved');
+          }
+          
+          // Update regular order status if needed
+          if (order) {
+            console.log('[verify-payment] 📝 Updating order status to confirmed');
+            order.status = 'confirmed';
+            await order.save();
+            console.log('[verify-payment] ✅ Order status updated to confirmed');
+          }
+          
+          // Generate invoice automatically
+          try {
+            console.log('[verify-payment] 📄 Generating invoice for order:', reference);
+            
+            const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+            const invoiceDate = new Date();
+            const dueDate = new Date();
+            dueDate.setDate(dueDate.getDate() + 30);
+            
+            const actualOrder = order || customOrder;
+            
+            // Create invoice
+            const invoice = new Invoice({
+              invoiceNumber,
+              orderNumber: actualOrder.orderNumber,
+              buyerId: actualOrder.buyerId || null,
+              customerName: `${actualOrder.firstName || actualOrder.fullName || 'Customer'} ${actualOrder.lastName || ''}`.trim(),
+              customerEmail: actualOrder.email,
+              customerPhone: actualOrder.phone || '',
+              customerAddress: actualOrder.address || '',
+              customerCity: actualOrder.city || '',
+              customerState: actualOrder.state || '',
+              customerPostalCode: actualOrder.zipCode || '',
+              subtotal: actualOrder.subtotal || actualOrder.quotedPrice || 0,
+              shippingCost: actualOrder.shippingCost || 0,
+              taxAmount: actualOrder.vat || actualOrder.quotedVAT || 0,
+              totalAmount: actualOrder.total || actualOrder.quotedTotal || 0,
+              items: (actualOrder.items || []).map((item: any) => ({
+                productId: item.productId,
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price,
+                mode: item.mode,
+              })),
+              invoiceDate,
+              dueDate,
+              currency: 'NGN',
+              currencySymbol: '₦',
+              taxRate: actualOrder.vatRate || 7.5,
+              type: 'automatic',
+              status: 'sent',
+            });
+            
+            await invoice.save();
+            console.log('[verify-payment] ✅ Invoice created:', invoiceNumber);
+            
+            // Send invoice email to customer
+            try {
+              console.log('[verify-payment] 📧 Sending invoice email to customer');
+              const invoiceHtml = generateProfessionalInvoiceHTML({
+                invoiceNumber,
+                customerName: invoice.customerName,
+                customerEmail: invoice.customerEmail,
+                customerPhone: invoice.customerPhone,
+                customerAddress: invoice.customerAddress,
+                customerCity: invoice.customerCity,
+                customerState: invoice.customerState,
+                customerPostalCode: invoice.customerPostalCode,
+                subtotal: invoice.subtotal,
+                shippingCost: invoice.shippingCost,
+                taxAmount: invoice.taxAmount,
+                totalAmount: invoice.totalAmount,
+                items: invoice.items,
+                invoiceDate: invoice.invoiceDate,
+                dueDate: invoice.dueDate,
+                currency: 'NGN',
+                currencySymbol: '₦',
+                taxRate: invoice.taxRate,
+              });
+              
+              const emailResult = await sendInvoiceEmail(
+                customerEmail,
+                customerName,
+                invoiceNumber,
+                invoiceHtml,
+                reference
+              );
+              
+              console.log('[verify-payment] ✅ Invoice email sent:', {
+                customerEmail,
+                invoiceNumber,
+              });
+            } catch (emailError) {
+              console.warn('[verify-payment] ⚠️ Failed to send invoice email:', emailError);
+            }
+          } catch (invoiceError) {
+            console.error('[verify-payment] ❌ Invoice generation failed:', invoiceError);
+          }
           
           // Send success message to buyer
           console.log('[verify-payment] 📤 Sending success message to buyer...');

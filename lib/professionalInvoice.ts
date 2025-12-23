@@ -18,47 +18,9 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
       line-height: 1.6; 
       color: #1f2937; 
-      background: #f3f4f6; 
-      padding: 8px;
-    }
-    .back-button-container {
-      margin-bottom: 8px;
-      display: flex;
-      gap: 8px;
-    }
-    .back-button {
-      background: #3b82f6;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.2s;
-    }
-    .back-button:hover {
-      background: #2563eb;
-    }
-    .print-button-inline {
-      background: #10b981;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: background 0.2s;
-    }
-    .print-button-inline:hover {
-      background: #059669;
+      background: white; 
+      padding: 0;
+      margin: 0;
     }
     .invoice-container { 
       max-width: 900px; 
@@ -420,7 +382,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
     
     /* MEDIA QUERIES */
     @media (min-width: 640px) {
-      body { padding: 20px; }
+      body { padding: 0; margin: 0; }
       .invoice-container { border-radius: 24px; }
       .invoice-header { padding: 32px; }
       .header-info { grid-template-columns: 1fr 1fr 1fr; }
@@ -543,7 +505,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
     
     /* MOBILE-SPECIFIC ADJUSTMENTS */
     @media (max-width: 500px) {
-      body { padding: 8px; font-size: 14px; }
+      body { padding: 0; margin: 0; font-size: 14px; }
       .invoice-header { padding: 12px; }
       .invoice-content { padding: 12px; }
       .header-info { grid-template-columns: 1fr; gap: 8px; }
@@ -592,10 +554,6 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
   </style>
 </head>
 <body>
-  <div class="back-button-container">
-    <button class="back-button" onclick="window.history.back()">← Back to Chat</button>
-    <button class="print-button-inline" onclick="window.print()">🖨️ Print</button>
-  </div>
   <div class="invoice-container">
     <!-- HEADER -->
     <div class="invoice-header">

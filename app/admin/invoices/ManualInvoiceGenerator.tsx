@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Eye, Package } from "lucide-react";
+import { Plus, Trash2, Eye, Package, Share2 } from "lucide-react";
+import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
+import { StoredInvoice } from "@/lib/invoiceStorage";
 
 interface InvoiceItem {
   id: string;
@@ -9,6 +11,7 @@ interface InvoiceItem {
   quantity: number;
   price: number;
   productId?: string;
+  imageUrl?: string;
 }
 
 interface Product {
@@ -69,7 +72,7 @@ export function ManualInvoiceGenerator() {
       }
       const data = await response.json();
       console.log("Loaded products:", data);
-      const productList = Array.isArray(data) ? data : data.products || [];
+      const productList = Array.isArray(data) ? data : (data.data || data.products || []);
       setProducts(productList);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : "Failed to load products";
@@ -90,6 +93,7 @@ export function ManualInvoiceGenerator() {
         quantity,
         price: product.sellPrice,
         productId: product._id,
+        imageUrl: product.imageUrl,
       },
     ]);
     setSelectedProductQuantity({});
@@ -311,48 +315,61 @@ export function ManualInvoiceGenerator() {
               ) : (
                 <div className="space-y-3">
                   {items.map((item) => (
-                    <div key={item.id} className="flex gap-3 items-end">
-                      <div className="flex-1">
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Product Name</label>
-                        <input
-                          type="text"
-                          value={item.name}
-                          onChange={(e) => updateItem(item.id, "name", e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 text-sm"
-                          placeholder="Product name"
-                        />
+                    <div key={item.id} className="flex gap-3 items-start border border-gray-200 rounded-lg p-3">
+                      {item.imageUrl && (
+                        <div className="flex-shrink-0">
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-16 h-16 object-cover rounded"
+                          />
+                        </div>
+                      )}
+                      <div className="flex-1 space-y-3">
+                        <div>
+                          <label className="block text-xs font-semibold text-gray-700 mb-1">Product Name</label>
+                          <input
+                            type="text"
+                            value={item.name}
+                            onChange={(e) => updateItem(item.id, "name", e.target.value)}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 text-sm"
+                            placeholder="Product name"
+                          />
+                        </div>
+                        <div className="flex gap-3">
+                          <div className="w-20">
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Qty</label>
+                            <input
+                              type="number"
+                              value={item.quantity}
+                              onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 1)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 text-sm"
+                              min="1"
+                            />
+                          </div>
+                          <div className="w-24">
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Price</label>
+                            <input
+                              type="number"
+                              value={item.price}
+                              onChange={(e) => updateItem(item.id, "price", parseFloat(e.target.value) || 0)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 text-sm"
+                              min="0"
+                              step="0.01"
+                            />
+                          </div>
+                          <div className="w-24 text-right">
+                            <p className="text-xs text-gray-600 mb-1">Total</p>
+                            <p className="font-semibold text-gray-900">{currency.symbol}{(item.quantity * item.price).toFixed(2)}</p>
+                          </div>
+                          <button
+                            onClick={() => removeItem(item.id)}
+                            className="flex-shrink-0 bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg transition"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="w-20">
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Qty</label>
-                        <input
-                          type="number"
-                          value={item.quantity}
-                          onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 1)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 text-sm"
-                          min="1"
-                        />
-                      </div>
-                      <div className="w-24">
-                        <label className="block text-xs font-semibold text-gray-700 mb-1">Price</label>
-                        <input
-                          type="number"
-                          value={item.price}
-                          onChange={(e) => updateItem(item.id, "price", parseFloat(e.target.value) || 0)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 text-sm"
-                          min="0"
-                          step="0.01"
-                        />
-                      </div>
-                      <div className="w-24 text-right">
-                        <p className="text-xs text-gray-600 mb-1">Total</p>
-                        <p className="font-semibold text-gray-900">{currency.symbol}{(item.quantity * item.price).toFixed(2)}</p>
-                      </div>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className="flex-shrink-0 bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg transition"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
                     </div>
                   ))}
                 </div>
@@ -415,9 +432,10 @@ export function ManualInvoiceGenerator() {
               <button
                 onClick={handleSaveInvoice}
                 disabled={items.length === 0 || !formData.customerName}
-                className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition"
+                className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2"
               >
-                Save Invoice
+                <Share2 className="h-4 w-4" />
+                Share
               </button>
             </div>
           </div>
@@ -426,8 +444,8 @@ export function ManualInvoiceGenerator() {
 
       {/* Preview Modal */}
       {preview && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-lg max-w-2xl w-full my-8">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-lg max-w-2xl w-full my-8 max-h-[calc(100vh-100px)] flex flex-col">
             <div className="p-6 border-b border-gray-200 sticky top-0 bg-white flex justify-between items-center">
               <h3 className="text-xl font-bold text-gray-900">Invoice Preview</h3>
               <button
@@ -437,71 +455,36 @@ export function ManualInvoiceGenerator() {
                 ×
               </button>
             </div>
-            <div className="p-8 space-y-6 overflow-y-auto max-h-[calc(100vh-200px)]">
-              {/* Preview Content */}
-              <div className="border-b-2 border-lime-600 pb-6">
-                <h1 className="text-3xl font-bold text-lime-600">EMPI Invoice</h1>
-                <p className="text-sm text-gray-600">{formData.invoiceNumber}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                  <p className="text-xs text-gray-600 font-bold mb-2">INVOICE TO:</p>
-                  <p className="font-semibold">{formData.customerName}</p>
-                  <p className="text-sm">{formData.customerEmail}</p>
-                  <p className="text-sm">{formData.customerPhone}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-600 font-bold mb-2">DETAILS:</p>
-                  <p><strong>Invoice Date:</strong> {new Date().toLocaleDateString()}</p>
-                  <p><strong>Due Date:</strong> {new Date(formData.dueDate).toLocaleDateString()}</p>
-                  {formData.orderNumber && <p><strong>Order #:</strong> {formData.orderNumber}</p>}
-                </div>
-              </div>
-
-              <div>
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b-2 border-gray-300">
-                      <th className="text-left py-2 font-bold">Item</th>
-                      <th className="text-center py-2 font-bold">Qty</th>
-                      <th className="text-right py-2 font-bold">Price</th>
-                      <th className="text-right py-2 font-bold">Amount</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.map((item, idx) => (
-                      <tr key={idx} className="border-b border-gray-200">
-                        <td className="py-3">{item.name}</td>
-                        <td className="text-center py-3">{item.quantity}</td>
-                        <td className="text-right py-3">{currency.symbol}{item.price.toFixed(2)}</td>
-                        <td className="text-right py-3">{currency.symbol}{(item.quantity * item.price).toFixed(2)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="flex justify-end">
-                <div className="w-64 space-y-2 text-sm bg-gray-50 p-4 rounded-lg">
-                  <div className="flex justify-between">
-                    <span>Subtotal:</span>
-                    <span>{currency.symbol}{subtotal.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Tax ({formData.taxRate}%):</span>
-                    <span>{currency.symbol}{taxAmount.toFixed(2)}</span>
-                  </div>
-                  <div className="border-t-2 border-lime-600 pt-2 flex justify-between font-bold text-base">
-                    <span>Total:</span>
-                    <span className="text-lime-600">{currency.symbol}{totalAmount.toFixed(2)}</span>
-                  </div>
-                </div>
-              </div>
-
-              <p className="text-center text-xs text-gray-500 mt-8">
-                Thank you for your business! For inquiries, contact: support@empi.com
-              </p>
+            <div className="flex-1 overflow-y-auto p-4">
+              {/* Professional Invoice Preview */}
+              <div dangerouslySetInnerHTML={{ 
+                __html: generateProfessionalInvoiceHTML({
+                  _id: '',
+                  invoiceNumber: formData.invoiceNumber,
+                  customerName: formData.customerName || 'Customer Name',
+                  customerEmail: formData.customerEmail || 'customer@email.com',
+                  customerPhone: formData.customerPhone || 'Phone',
+                  orderNumber: formData.orderNumber || '',
+                  items: items.map(item => ({
+                    name: item.name,
+                    quantity: item.quantity,
+                    price: item.price,
+                  })),
+                  subtotal,
+                  tax: taxAmount,
+                  taxAmount: taxAmount,
+                  taxRate: formData.taxRate,
+                  totalAmount,
+                  currency: formData.currency,
+                  currencySymbol: currency.symbol,
+                  invoiceDate: new Date().toISOString(),
+                  dueDate: formData.dueDate,
+                  shippingCost: 0,
+                  notes: 'Thank you for your business!',
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                } as StoredInvoice)
+              }} className="w-full" />
             </div>
           </div>
         </div>

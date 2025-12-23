@@ -269,3 +269,12 @@
 /* Input fields in modals already have 16px font size to prevent iOS zoom */
 /* No need for body-level scroll restrictions as they cause issues */
 
+/* Hide scrollbars while maintaining scroll functionality */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

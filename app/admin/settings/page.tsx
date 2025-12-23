@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useAdmin } from "@/app/context/AdminContext";
-import { Save, Bell, Lock, User, Shield, Users, Trash2, AlertTriangle } from "lucide-react";
+import { Save, Bell, Lock, User, Shield, Users, Trash2, AlertTriangle, DollarSign } from "lucide-react";
 
 // Mobile components
 const MobileSettingsPage = dynamic(() => import("../mobile-settings"), { ssr: false });
@@ -17,7 +17,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"store" | "notifications" | "security">("store");
+  const [activeTab, setActiveTab] = useState<"store" | "notifications" | "security" | "bank">("store");
   const [adminName, setAdminName] = useState("Admin");
   const [adminEmail, setAdminEmail] = useState("admin@empi.com");
   const [storeName, setStoreName] = useState("EMPI Costumes");
@@ -175,6 +175,19 @@ export default function SettingsPage() {
             <span className="flex items-center gap-2">
               <Lock className="h-5 w-5" />
               Security
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab("bank")}
+            className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === "bank"
+                ? "border-lime-600 text-lime-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+            }`}
+          >
+            <span className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Bank Details
             </span>
           </button>
         </div>
@@ -360,6 +373,31 @@ export default function SettingsPage() {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Bank Details Tab */}
+        {activeTab === "bank" && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 mb-6 animate-fadeIn">
+            <div className="flex items-center justify-between mb-8">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">Bank Account Details</h2>
+                <p className="text-gray-600 mt-1">Manage bank accounts for customer payments</p>
+              </div>
+              <Link
+                href="/admin/settings/bank-details"
+                className="px-6 py-3 bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 text-white font-semibold rounded-lg transition flex items-center gap-2"
+              >
+                <DollarSign className="h-5 w-5" />
+                Manage Bank Accounts
+              </Link>
+            </div>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <p className="text-sm text-blue-800">
+                <span className="font-semibold">💡 Tip:</span> Click "Manage Bank Accounts" above to add, edit, delete, or switch between up to 3 bank accounts. Only the active account will be displayed to customers during checkout.
+              </p>
             </div>
           </div>
         )}

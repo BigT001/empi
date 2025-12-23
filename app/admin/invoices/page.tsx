@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Footer } from "../../components/Footer";
-import { AutomaticInvoiceGenerator } from "./AutomaticInvoiceGenerator";
 import { ManualInvoiceGenerator } from "./ManualInvoiceGenerator";
 import { SavedInvoices } from "./SavedInvoices";
 
@@ -14,7 +13,7 @@ import MobileAdminLayout from "../mobile-layout";
 export default function AdminInvoicesPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [activeTab, setActiveTab] = useState<"automatic" | "manual" | "saved">("automatic");
+  const [activeTab, setActiveTab] = useState<"manual" | "saved">("saved");
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -56,16 +55,6 @@ export default function AdminInvoicesPage() {
           {/* Tab Navigation */}
           <div className="flex gap-2 border-b border-gray-200 overflow-x-auto">
             <button
-              onClick={() => setActiveTab("automatic")}
-              className={`px-4 py-3 font-semibold transition-colors border-b-2 whitespace-nowrap ${
-                activeTab === "automatic"
-                  ? "border-lime-600 text-lime-600 bg-lime-50"
-                  : "border-transparent text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              Automatic Invoices
-            </button>
-            <button
               onClick={() => setActiveTab("manual")}
               className={`px-4 py-3 font-semibold transition-colors border-b-2 whitespace-nowrap ${
                 activeTab === "manual"
@@ -73,7 +62,7 @@ export default function AdminInvoicesPage() {
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              Manual Invoices
+              Generate Invoice
             </button>
             <button
               onClick={() => setActiveTab("saved")}
@@ -83,14 +72,13 @@ export default function AdminInvoicesPage() {
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              Saved Invoices (DB)
+              Invoice
             </button>
           </div>
         </div>
 
         {/* Tab Content */}
         <div className="animate-fadeIn">
-          {activeTab === "automatic" && <AutomaticInvoiceGenerator />}
           {activeTab === "manual" && <ManualInvoiceGenerator />}
           {activeTab === "saved" && <SavedInvoices />}
         </div>

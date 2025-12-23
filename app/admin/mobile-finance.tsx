@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { TrendingUp, Users, Package, DollarSign } from "lucide-react";
+import { DollarSign, BarChart3, Calendar, ShoppingCart, TrendingDown } from "lucide-react";
+import VATTab from "./vat-tab";
+import TransactionHistory from "./transaction-history";
+import DailyExpenses from "./daily-expenses";
 
 interface FinanceStats {
   totalRevenue: number;
@@ -20,6 +23,7 @@ export default function MobileFinancePage() {
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "vat" | "analytics" | "expenses">("overview");
 
   useEffect(() => {
     loadFinanceData();
@@ -125,153 +129,58 @@ export default function MobileFinancePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-4">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-4">
-        <h1 className="text-xl font-bold text-gray-900">📊 Finance & Analytics</h1>
+    <div className="min-h-screen bg-gray-50 pb-20">
+      {/* Tab Navigation */}
+      <div className="sticky top-0 z-30 bg-white border-b border-gray-200 overflow-x-auto">
+        <div className="flex gap-3 px-4 py-2 min-w-max">
+          <button onClick={() => setActiveTab("overview")} className={`flex items-center gap-1 py-3 px-3 whitespace-nowrap border-b-2 font-medium transition text-sm ${activeTab === "overview" ? "border-lime-600 text-lime-600" : "border-transparent text-gray-600"}`}>
+            <DollarSign className="h-4 w-4" />
+            Overview
+          </button>
+          <button onClick={() => setActiveTab("transactions")} className={`flex items-center gap-1 py-3 px-3 whitespace-nowrap border-b-2 font-medium transition text-sm ${activeTab === "transactions" ? "border-lime-600 text-lime-600" : "border-transparent text-gray-600"}`}>
+            <ShoppingCart className="h-4 w-4" />
+            History
+          </button>
+          <button onClick={() => setActiveTab("vat")} className={`flex items-center gap-1 py-3 px-3 whitespace-nowrap border-b-2 font-medium transition text-sm ${activeTab === "vat" ? "border-lime-600 text-lime-600" : "border-transparent text-gray-600"}`}>
+            <Calendar className="h-4 w-4" />
+            VAT
+          </button>
+          <button onClick={() => setActiveTab("analytics")} className={`flex items-center gap-1 py-3 px-3 whitespace-nowrap border-b-2 font-medium transition text-sm ${activeTab === "analytics" ? "border-lime-600 text-lime-600" : "border-transparent text-gray-600"}`}>
+            <BarChart3 className="h-4 w-4" />
+            Analytics
+          </button>
+          <button onClick={() => setActiveTab("expenses")} className={`flex items-center gap-1 py-3 px-3 whitespace-nowrap border-b-2 font-medium transition text-sm ${activeTab === "expenses" ? "border-lime-600 text-lime-600" : "border-transparent text-gray-600"}`}>
+            <TrendingDown className="h-4 w-4" />
+            Expenses
+          </button>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="px-4 py-6 space-y-3">
-        {/* Total Revenue - Hero Card */}
-        <div className="bg-gradient-to-br from-lime-50 to-lime-100 rounded-2xl p-6 border border-lime-200">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">
-                Total Revenue
-              </p>
-              <p className="text-4xl font-black text-lime-700">
-                {formatNaira(stats?.totalRevenue || 0)}
-              </p>
+      <main className="px-4 py-6">
+        {activeTab === "overview" && (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-br from-lime-50 to-lime-100 rounded-2xl p-6 border border-lime-200">
+              <p className="text-xs font-bold text-gray-700 uppercase mb-1">Total Revenue</p>
+              <p className="text-3xl font-black text-lime-700">{formatNaira(stats?.totalRevenue || 0)}</p>
+              <p className="text-xs text-gray-700 mt-2">📈 {stats?.totalOrders || 0} orders</p>
             </div>
-            <DollarSign className="h-12 w-12 text-lime-600 opacity-30" />
-          </div>
-          <p className="text-xs text-gray-700">
-            📈 {stats?.totalOrders || 0} orders processed
-          </p>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Total Sales */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-200">
-            <p className="text-xs font-bold text-gray-600 mb-2">SALES</p>
-            <p className="text-2xl font-black text-blue-600">
-              {formatNaira(stats?.totalSales || 0)}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">🛍️ Direct sales</p>
-          </div>
-
-          {/* Total Rents */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-200">
-            <p className="text-xs font-bold text-gray-600 mb-2">RENTALS</p>
-            <p className="text-2xl font-black text-purple-600">
-              {formatNaira(stats?.totalRents || 0)}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">👗 Rental revenue</p>
-          </div>
-
-          {/* Total Orders */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-200">
-            <p className="text-xs font-bold text-gray-600 mb-2">ORDERS</p>
-            <p className="text-2xl font-black text-orange-600">{stats?.totalOrders || 0}</p>
-            <p className="text-xs text-gray-500 mt-2">📦 Total transactions</p>
-          </div>
-
-          {/* Average Order Value */}
-          <div className="bg-white rounded-2xl p-4 border border-gray-200">
-            <p className="text-xs font-bold text-gray-600 mb-2">AVG ORDER</p>
-            <p className="text-2xl font-black text-emerald-600">
-              {formatNaira(stats?.averageOrderValue || 0)}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">💰 Per order</p>
-          </div>
-        </div>
-
-        {/* Revenue Breakdown */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-200">
-          <h3 className="font-bold text-lg text-gray-900 mb-4">Revenue Breakdown</h3>
-
-          {/* Sales Bar */}
-          <div className="mb-6">
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-sm font-semibold text-gray-700">Sales</p>
-              <p className="text-sm font-bold text-blue-600">
-                {((stats?.totalSales || 0) / (stats?.totalRevenue || 1) * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-500"
-                style={{
-                  width: `${((stats?.totalSales || 0) / (stats?.totalRevenue || 1) * 100)}%`,
-                }}
-              ></div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">{formatNaira(stats?.totalSales || 0)}</p>
-          </div>
-
-          {/* Rentals Bar */}
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <p className="text-sm font-semibold text-gray-700">Rentals</p>
-              <p className="text-sm font-bold text-purple-600">
-                {((stats?.totalRents || 0) / (stats?.totalRevenue || 1) * 100).toFixed(1)}%
-              </p>
-            </div>
-            <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-purple-500"
-                style={{
-                  width: `${((stats?.totalRents || 0) / (stats?.totalRevenue || 1) * 100)}%`,
-                }}
-              ></div>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">{formatNaira(stats?.totalRents || 0)}</p>
-          </div>
-        </div>
-
-        {/* Top Products */}
-        {stats?.topProducts && stats.topProducts.length > 0 && (
-          <div className="bg-white rounded-2xl p-6 border border-gray-200">
-            <h3 className="font-bold text-lg text-gray-900 mb-4">🔥 Top Products</h3>
-            <div className="space-y-3">
-              {stats.topProducts.map((product, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-200"
-                >
-                  <div className="flex-1">
-                    <p className="font-semibold text-gray-900 line-clamp-1">{product.name}</p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {product.sales} item{product.sales > 1 ? "s" : ""} sold
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-lime-600">{formatNaira(product.revenue)}</p>
-                  </div>
-                </div>
-              ))}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <p className="text-xs font-bold text-gray-600 mb-2">SALES</p>
+                <p className="text-xl font-black text-blue-600">{formatNaira(stats?.totalSales || 0)}</p>
+              </div>
+              <div className="bg-white rounded-xl p-4 border border-gray-200">
+                <p className="text-xs font-bold text-gray-600 mb-2">RENTALS</p>
+                <p className="text-xl font-black text-purple-600">{formatNaira(stats?.totalRents || 0)}</p>
+              </div>
             </div>
           </div>
         )}
-
-        {/* Empty State */}
-        {(!stats?.topProducts || stats.topProducts.length === 0) && (
-          <div className="bg-white rounded-2xl p-8 border border-gray-200 text-center">
-            <p className="text-gray-500 font-semibold">📭 No sales data yet</p>
-            <p className="text-xs text-gray-400 mt-2">Products will appear here once customers start ordering</p>
-          </div>
-        )}
-
-        {/* Refresh Button */}
-        <button
-          onClick={loadFinanceData}
-          className="w-full py-3 px-4 bg-lime-600 hover:bg-lime-700 text-white rounded-xl font-bold transition active:scale-95"
-        >
-          🔄 Refresh Data
-        </button>
-      </div>
+        {activeTab === "transactions" && <TransactionHistory />}
+        {activeTab === "vat" && <VATTab />}
+        {activeTab === "analytics" && <div className="bg-white rounded-xl p-6 text-center"><p className="text-gray-600">Analytics Coming Soon</p></div>}
+        {activeTab === "expenses" && <DailyExpenses />}
+      </main>
     </div>
   );
 }

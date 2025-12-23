@@ -195,10 +195,7 @@ export function OtherStatusOrderCard({
                 {(() => {
                   const price = order.quotedPrice || order.price || 0;
                   if (price <= 0) return 'Awaiting';
-                  if (price < 1000000) {
-                    return (price / 1000) + 'K';
-                  }
-                  return (price / 1000000) + 'M';
+                  return '₦' + Math.round(price).toLocaleString('en-NG');
                 })()}
               </p>
             </div>
@@ -296,12 +293,7 @@ export function OtherStatusOrderCard({
                 {(() => {
                   const price = order.quotedPrice || order.price || 0;
                   if (price <= 0) return 'Pending';
-                  // If price is less than 1 million, show exact amount with K suffix
-                  if (price < 1000000) {
-                    return (price / 1000) + 'K';
-                  }
-                  // If price is 1 million or more, show exact amount in millions
-                  return (price / 1000000) + 'M';
+                  return '₦' + Math.round(price).toLocaleString('en-NG');
                 })()}
               </p>
             </div>
