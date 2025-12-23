@@ -51,6 +51,7 @@ export default function LogisticsPage() {
   
   // ChatModal state
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
+  const [selectedOrderForChat, setSelectedOrderForChat] = useState<LogisticsOrder | null>(null);
   
   // Quote modal state
   const [quoteModalOrder, setQuoteModalOrder] = useState<LogisticsOrder | null>(null);
@@ -94,6 +95,12 @@ export default function LogisticsPage() {
 
   const joinConversation = async (order: LogisticsOrder) => {
     try {
+      console.log('[Logistics] 💬 Opening chat for order:', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        fullName: order.fullName,
+      });
+      
       const response = await fetch('/api/orders/handoff', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,12 +110,36 @@ export default function LogisticsPage() {
         }),
       });
 
+      console.log('[Logistics] Handoff response status:', response.status);
+      
       if (response.ok) {
-        // Open ChatModal after successful handoff
+        const data = await response.json();
+        console.log('[Logistics] ✅ Handoff successful:', data);
+        // Open ChatModal after successful handoff - store both order ID and the order object
+        console.log('[Logistics] 🔓 Opening chat modal for order:', order._id);
+        setSelectedOrderForChat(order); // Store the order object
         setChatModalOpen(order._id);
+      } else {
+        const error = await response.json();
+        console.error('[Logistics] ❌ Handoff failed:', {
+          status: response.status,
+          message: error.message,
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+        });
+        
+        // If order not found in handoff system, just open chat directly
+        if (response.status === 404) {
+          console.log('[Logistics] ℹ️ Order not in handoff system, opening chat directly...');
+          setSelectedOrderForChat(order);
+          setChatModalOpen(order._id);
+        } else {
+          alert(`Error opening chat: ${error.message || 'Failed to join conversation'}`);
+        }
       }
     } catch (error) {
-      console.error('Error joining conversation:', error);
+      console.error('[Logistics] ❌ Error joining conversation:', error);
+      alert('Error opening chat. Check console for details.');
     }
   };
 
@@ -923,20 +954,21 @@ export default function LogisticsPage() {
 
       {/* Message Modal */}
       {/* ChatModal for selected order */}
-      {chatModalOpen && orders.find(o => o._id === chatModalOpen) && (
+      {chatModalOpen && selectedOrderForChat && (
         <ChatModal
           isOpen={!!chatModalOpen}
           onClose={() => {
             setChatModalOpen(null);
+            setSelectedOrderForChat(null);
             // Refresh orders when modal closes
             fetchLogisticsOrders();
           }}
-          order={orders.find(o => o._id === chatModalOpen)!}
+          order={selectedOrderForChat}
           userEmail="logistics@empi.com"
           userName="Logistics Team"
           isAdmin={true}
           isLogisticsTeam={true}
-          deliveryOption={orders.find(o => o._id === chatModalOpen)?.deliveryOption}
+          deliveryOption={selectedOrderForChat?.deliveryOption}
           adminName="Logistics Team"
           orderStatus="ready" // Logistics always has orders in ready status
           onMessageSent={() => {
