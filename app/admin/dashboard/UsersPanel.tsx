@@ -193,35 +193,70 @@ export function UsersPanel() {
   return (
     <div className="space-y-6">
       {/* Header Section */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 md:p-8 text-white relative overflow-hidden shadow-lg">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-purple-600 opacity-10 rounded-full -mr-24 -mt-24"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-600 opacity-5 rounded-full -ml-24 -mb-24"></div>
-        <div className="relative z-10">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-black">Registered Users</h2>
-              <p className="text-slate-300 text-base mt-2">{buyers.length} total customers in your store</p>
-            </div>
-            <button
-              onClick={loadData}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition"
-            >
-              Refresh
-            </button>
+      <div className="bg-gradient-to-br from-purple-600 via-purple-500 to-indigo-600 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
+        <div className="relative z-10 flex items-start justify-between">
+          <div>
+            <h2 className="text-4xl font-black text-white mb-2">Users</h2>
+            <p className="text-white/90 text-lg">Manage customer accounts and view activity</p>
           </div>
-
-          {/* Search Bar */}
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-5 w-5 text-slate-400" />
-            <input
-              type="text"
-              placeholder="Search by name, email, or phone..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-3 rounded-lg bg-slate-700 placeholder-slate-400 text-white outline-none focus:ring-2 focus:ring-purple-500 focus:bg-slate-600 transition"
-            />
+          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 border border-white/30">
+            <p className="text-white/80 text-sm font-semibold uppercase tracking-wide">Total Users</p>
+            <p className="text-5xl font-black text-white mt-2">{buyers.length}</p>
           </div>
         </div>
+      </div>
+
+      {/* Search Bar */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="relative">
+          <Search className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by name, email, or phone..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-2 rounded-lg border border-gray-300 bg-white placeholder-gray-400 text-gray-900 outline-none focus:ring-2 focus:ring-purple-600 focus:border-purple-600 transition"
+          />
+        </div>
+      </div>
+
+      {/* Sort Controls */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm flex flex-wrap gap-3 items-center justify-between">
+        <div className="flex flex-wrap gap-2">
+          <span className="text-sm font-semibold text-gray-700">Sort by:</span>
+          {(['name', 'email', 'joined', 'orders'] as const).map(option => (
+            <button
+              key={option}
+              onClick={() => {
+                if (sortBy === option) {
+                  setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                } else {
+                  setSortBy(option);
+                  setSortOrder('desc');
+                }
+              }}
+              className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                sortBy === option
+                  ? 'bg-purple-100 text-purple-700 border border-purple-300'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {option === 'name' && 'Name'}
+              {option === 'email' && 'Email'}
+              {option === 'joined' && 'Joined'}
+              {option === 'orders' && 'Orders'}
+              {sortBy === option && (sortOrder === 'asc' ? ' ↑' : ' ↓')}
+            </button>
+          ))}
+        </div>
+        <button
+          onClick={loadData}
+          className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition"
+        >
+          Refresh
+        </button>
       </div>
 
       {/* Error State */}
@@ -267,34 +302,11 @@ export function UsersPanel() {
       {/* Users List */}
       {!loading && !error && buyers.length > 0 && (
         <div className="space-y-4">
-          {/* Sort Controls */}
-          <div className="flex flex-wrap gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-black text-gray-700 uppercase">Sort:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-purple-600 hover:border-gray-400 transition"
-              >
-                <option value="joined">Joined Date</option>
-                <option value="name">Name (A-Z)</option>
-                <option value="email">Email</option>
-                <option value="orders">Orders Count</option>
-              </select>
-              <button
-                onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                className="px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition font-semibold"
-                title={sortOrder === 'asc' ? 'Ascending' : 'Descending'}
-              >
-                {sortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
+          {searchQuery && (
+            <div className="px-4 py-2 bg-purple-50 border border-purple-200 rounded-lg text-sm text-purple-700 font-semibold">
+              Found {filteredAndSortedBuyers.length} of {buyers.length} users
             </div>
-            {searchQuery && (
-              <span className="text-sm text-gray-600 px-3 py-2 bg-gray-100 rounded-lg font-semibold">
-                Found {filteredAndSortedBuyers.length} of {buyers.length} users
-              </span>
-            )}
-          </div>
+          )}
 
           {/* Users Table */}
           <div className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
@@ -318,17 +330,17 @@ export function UsersPanel() {
                       return (
                         <Fragment key={buyer._id}>
                           {/* Main Row */}
-                          <tr className="hover:bg-purple-50 transition border-b border-gray-200">
+                          <tr className="hover:bg-purple-50/50 transition">
                             {/* User Info */}
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-3">
-                                <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-base ${getAvatarColor(buyer._id)} shadow-sm`}>
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm ${getAvatarColor(buyer._id)} shadow-sm`}>
                                   {getInitials(buyer.fullName)}
                                 </div>
                                 <div>
-                                  <p className="font-bold text-gray-900">{buyer.fullName}</p>
+                                  <p className="font-bold text-gray-900 text-sm">{buyer.fullName}</p>
                                   {buyer.isAdmin && (
-                                    <span className="inline-block mt-1 px-2 py-1 bg-purple-100 text-purple-700 text-xs font-black rounded-full">
+                                    <span className="inline-block mt-0.5 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-bold rounded-full">
                                       Admin
                                     </span>
                                   )}
@@ -338,7 +350,7 @@ export function UsersPanel() {
 
                             {/* Contact */}
                             <td className="px-6 py-4">
-                              <div className="space-y-2">
+                              <div className="space-y-1.5">
                                 <div className="flex items-center gap-2 text-sm text-gray-700 font-medium">
                                   <Mail className="h-4 w-4 text-gray-400" />
                                   <span className="truncate">{buyer.email}</span>
@@ -356,7 +368,7 @@ export function UsersPanel() {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-2">
                                 <ShoppingBag className="h-4 w-4 text-purple-600" />
-                                <span className="font-black text-gray-900 text-lg">{buyer.orderCount}</span>
+                                <span className="font-bold text-gray-900">{buyer.orderCount}</span>
                               </div>
                             </td>
 
@@ -371,7 +383,7 @@ export function UsersPanel() {
                             {/* Last Active */}
                             <td className="px-6 py-4">
                               {buyer.lastLogin ? (
-                                <span className="inline-block px-3 py-1.5 bg-green-100 text-green-700 text-xs font-black rounded-full">
+                                <span className="inline-block px-2.5 py-1 bg-green-100 text-green-700 text-xs font-bold rounded-full">
                                   {formatDate(buyer.lastLogin)}
                                 </span>
                               ) : (
@@ -380,25 +392,25 @@ export function UsersPanel() {
                             </td>
 
                             {/* Actions */}
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => toggleExpand(buyer._id)}
-                                  className="p-1.5 hover:bg-gray-200 rounded-lg transition text-gray-600"
+                                  className="p-1.5 hover:bg-purple-100 rounded-lg transition text-purple-600 font-semibold"
                                   title={isExpanded ? 'Hide details' : 'View details'}
                                 >
                                   {isExpanded ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                 </button>
                                 <button
                                   onClick={() => openConfirm('reset', buyer._id, buyer.fullName)}
-                                  className="p-1.5 hover:bg-blue-100 rounded-lg transition text-blue-600"
+                                  className="p-1.5 hover:bg-blue-100 rounded-lg transition text-blue-600 font-semibold"
                                   title="Reset password"
                                 >
                                   <RotateCcw className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={() => openConfirm('delete', buyer._id, buyer.fullName)}
-                                  className="p-1.5 hover:bg-red-100 rounded-lg transition text-red-600"
+                                  className="p-1.5 hover:bg-red-100 rounded-lg transition text-red-600 font-semibold"
                                   title="Delete user"
                                 >
                                   <Trash2 className="h-4 w-4" />
@@ -409,22 +421,22 @@ export function UsersPanel() {
 
                           {/* Expanded Details Row */}
                           {isExpanded && (
-                            <tr className="bg-gray-50 border-t-2 border-purple-200">
-                              <td colSpan={6} className="px-4 py-4">
+                            <tr className="bg-purple-50/50 border-t border-purple-200">
+                              <td colSpan={6} className="px-6 py-4">
                                 <div className="space-y-4">
                                   {/* User Info Cards */}
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                    <div className="bg-white border border-gray-200 rounded-lg p-3">
-                                      <p className="text-xs font-semibold text-gray-600 uppercase">Email</p>
-                                      <p className="text-sm text-gray-900 mt-1 break-all">{buyer.email}</p>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Email</p>
+                                      <p className="text-sm text-gray-900 mt-2 break-all font-medium">{buyer.email}</p>
                                     </div>
-                                    <div className="bg-white border border-gray-200 rounded-lg p-3">
-                                      <p className="text-xs font-semibold text-gray-600 uppercase">Phone</p>
-                                      <p className="text-sm text-gray-900 mt-1">{buyer.phone || '—'}</p>
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Phone</p>
+                                      <p className="text-sm text-gray-900 mt-2 font-medium">{buyer.phone || '—'}</p>
                                     </div>
-                                    <div className="bg-white border border-gray-200 rounded-lg p-3">
-                                      <p className="text-xs font-semibold text-gray-600 uppercase">Member for</p>
-                                      <p className="text-sm text-gray-900 mt-1">
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Member for</p>
+                                      <p className="text-sm text-gray-900 mt-2 font-medium">
                                         {Math.floor((Date.now() - new Date(buyer.createdAt).getTime()) / (1000 * 60 * 60 * 24))} days
                                       </p>
                                     </div>
@@ -432,22 +444,25 @@ export function UsersPanel() {
 
                                   {/* Recent Orders */}
                                   <div className="bg-white border border-gray-200 rounded-lg p-4">
-                                    <h4 className="font-semibold text-gray-900 mb-3">Recent Orders ({userOrders.length})</h4>
+                                    <h4 className="font-bold text-gray-900 mb-3 flex items-center gap-2">
+                                      <ShoppingBag className="h-4 w-4 text-purple-600" />
+                                      Recent Orders ({userOrders.length})
+                                    </h4>
                                     {userOrders.length === 0 ? (
-                                      <p className="text-sm text-gray-500">No orders yet</p>
+                                      <p className="text-sm text-gray-500 font-medium">No orders yet</p>
                                     ) : (
                                       <div className="space-y-2 max-h-48 overflow-y-auto">
                                         {userOrders.slice(0, 5).map((order: any) => (
-                                          <div key={order._id} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
+                                          <div key={order._id} className="flex items-center justify-between py-2.5 px-2 border-b border-gray-100 last:border-0 hover:bg-gray-50 rounded transition">
                                             <div className="flex-1">
                                               <p className="text-sm font-semibold text-gray-900">
                                                 Order #{order.orderNumber || order._id.slice(-8).toUpperCase()}
                                               </p>
-                                              <p className="text-xs text-gray-500">{formatDateTime(order.createdAt)}</p>
+                                              <p className="text-xs text-gray-500 mt-0.5">{formatDateTime(order.createdAt)}</p>
                                             </div>
                                             <div className="text-right">
-                                              <p className="font-semibold text-gray-900">₦{Number(order.total || order.totalAmount || 0).toLocaleString()}</p>
-                                              <span className={`inline-block mt-1 px-2 py-0.5 text-xs font-semibold rounded-full ${
+                                              <p className="font-semibold text-gray-900 text-sm">₦{Number(order.total || order.totalAmount || 0).toLocaleString()}</p>
+                                              <span className={`inline-block mt-0.5 px-2 py-0.5 text-xs font-bold rounded-full ${
                                                 order.status === 'completed' ? 'bg-green-100 text-green-700' :
                                                 order.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
                                                 'bg-gray-100 text-gray-700'

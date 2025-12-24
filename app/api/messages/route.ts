@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Message from '@/lib/models/Message';
 import CustomOrder from '@/lib/models/CustomOrder';
+import Order from '@/lib/models/Order';
 import { calculateQuote } from '@/lib/discountCalculator';
 
 /**
@@ -115,6 +116,12 @@ export async function POST(request: NextRequest) {
     } = body;
 
     console.log('[API:POST /messages] Received:', { orderId, orderNumber, senderType, messageType, contentLength: content?.length, deliveryOption });
+    console.log('[API:POST /messages] orderId details:', { 
+      value: orderId, 
+      type: typeof orderId, 
+      length: String(orderId).length,
+      isEmpty: !orderId
+    });
     console.log('[API:POST /messages] quantityChangeData:', quantityChangeData);
 
     // Validate required fields
@@ -145,23 +152,121 @@ export async function POST(request: NextRequest) {
     // Find the order to get its ID if only orderNumber is provided
     let finalOrderId = orderId;
     let orderQuantity = 1;
+    let orderType = 'custom'; // 'custom' or 'regular'
+    
     if (!orderId && orderNumber) {
       console.log('[API:POST /messages] Looking up order by orderNumber:', orderNumber);
-      const order = await CustomOrder.findOne({ orderNumber });
+      // Try custom order first
+      let order = await CustomOrder.findOne({ orderNumber });
+      if (!order) {
+        // Try regular order
+        order = await Order.findOne({ orderNumber });
+        if (order) {
+          orderType = 'regular';
+        }
+      }
       if (!order) {
         console.log('[API:POST /messages] ❌ Order not found with orderNumber:', orderNumber);
         return NextResponse.json(
-          { message: 'Order not found' },
+          { error: `Order not found with orderNumber: ${orderNumber}` },
           { status: 404 }
         );
       }
       finalOrderId = order._id;
       orderQuantity = order.quantity || 1;
-      console.log('[API:POST /messages] ✅ Found order, _id:', finalOrderId, 'quantity:', orderQuantity);
+      console.log('[API:POST /messages] ✅ Found order, _id:', finalOrderId, 'quantity:', orderQuantity, 'type:', orderType);
     } else if (orderId) {
-      const order = await CustomOrder.findById(orderId);
-      if (order) {
+      console.log('[API:POST /messages] Looking up order by orderId:', orderId, 'type:', typeof orderId);
+      
+      let order: any = null;
+      
+      // Try custom order first
+      try {
+        order = await CustomOrder.findById(orderId);
+      } catch (e) {
+        console.log('[API:POST /messages] ⚠️ Error finding custom order by ID:', e);
+      }
+      
+      if (!order) {
+        // Try regular order
+        try {
+          order = await Order.findById(orderId);
+          if (order) {
+            orderType = 'regular';
+          }
+        } catch (e) {
+          console.log('[API:POST /messages] ⚠️ Error finding regular order by ID:', e);
+        }
+      }
+      
+      if (!order) {
+        console.log('[API:POST /messages] ❌ Order not found with orderId:', orderId);
+        
+        // Try alternate ID field names in case it's stored differently
+        console.log('[API:POST /messages] 💡 Trying alternate lookup strategies...');
+        
+        // Try as string query on both custom and regular orders
+        try {
+          let altOrder = await CustomOrder.findOne({ _id: orderId });
+          if (!altOrder) {
+            altOrder = await Order.findOne({ _id: orderId });
+            if (altOrder) {
+              orderType = 'regular';
+            }
+          }
+          if (altOrder) {
+            order = altOrder;
+            console.log('[API:POST /messages] ✅ Found order using alternate string lookup');
+          }
+        } catch (e) {
+          console.log('[API:POST /messages] ⚠️ Alternate string lookup failed:', e);
+        }
+      }
+      
+      if (!order) {
+        console.log('[API:POST /messages] ❌ Order still not found, trying orderNumber fallback:', orderNumber);
+        
+        // Try one more time with orderNumber as fallback
+        if (orderNumber) {
+          let orderByNumber: any = null;
+          try {
+            orderByNumber = await CustomOrder.findOne({ orderNumber });
+          } catch (e) {
+            console.log('[API:POST /messages] ⚠️ Error finding custom order by orderNumber:', e);
+          }
+          
+          if (!orderByNumber) {
+            try {
+              orderByNumber = await Order.findOne({ orderNumber });
+              if (orderByNumber) {
+                orderType = 'regular';
+              }
+            } catch (e) {
+              console.log('[API:POST /messages] ⚠️ Error finding regular order by orderNumber:', e);
+            }
+          }
+          
+          if (orderByNumber) {
+            finalOrderId = orderByNumber._id;
+            orderQuantity = orderByNumber.quantity || 1;
+            console.log('[API:POST /messages] ✅ Found order by orderNumber fallback:', finalOrderId, 'type:', orderType);
+          } else {
+            console.log('[API:POST /messages] ❌ Order also not found with fallback orderNumber:', orderNumber);
+            return NextResponse.json(
+              { error: `Order not found with orderId: ${orderId} or orderNumber: ${orderNumber}` },
+              { status: 404 }
+            );
+          }
+        } else {
+          console.log('[API:POST /messages] ❌ No orderNumber provided for fallback');
+          return NextResponse.json(
+            { error: `Order not found with orderId: ${orderId}` },
+            { status: 404 }
+          );
+        }
+      } else {
         orderQuantity = order.quantity || 1;
+        console.log('[API:POST /messages] ✅ Found order by ID, _id:', orderId, 'quantity:', orderQuantity, 'type:', orderType);
       }
     }
 

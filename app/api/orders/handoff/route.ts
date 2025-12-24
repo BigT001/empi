@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
 
     const query = orderId ? { _id: orderId } : { orderNumber };
     
+    console.log('[API:POST /orders/handoff] 🔍 Looking up order with query:', query);
+
     // Get the latest delivery option message from customer
     const latestDeliveryMessageDoc = await Message.findOne({
       ...query,
@@ -36,11 +38,14 @@ export async function POST(request: NextRequest) {
     const currentOrder = await CustomOrder.findOne(query);
     
     if (!currentOrder) {
+      console.error('[API:POST /orders/handoff] ❌ Order not found with query:', query);
       return NextResponse.json(
-        { message: 'Order not found' },
+        { message: 'Order not found', error: `No order found with query: ${JSON.stringify(query)}` },
         { status: 404 }
       );
     }
+
+    console.log('[API:POST /orders/handoff] ✅ Order found:', currentOrder._id);
 
     // Check if logistics handoff message already exists (only send once)
     const existingHandoffMessage = await Message.findOne({
@@ -106,8 +111,9 @@ export async function POST(request: NextRequest) {
     );
   } catch (error) {
     console.error('❌ Error handing off order:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { message: 'Failed to hand off order' },
+      { message: 'Failed to hand off order', error: errorMessage },
       { status: 500 }
     );
   }
@@ -171,8 +177,9 @@ export async function PATCH(request: NextRequest) {
     );
   } catch (error) {
     console.error('❌ Error updating handoff permissions:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { message: 'Failed to update permissions' },
+      { message: 'Failed to update permissions', error: errorMessage },
       { status: 500 }
     );
   }

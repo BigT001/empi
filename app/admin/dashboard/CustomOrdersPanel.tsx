@@ -1,7 +1,7 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { FileText, Clock, CheckCircle, AlertCircle, Phone, Mail, DollarSign, Calendar, MessageCircle, MapPin, ChevronDown, Trash2, XCircle } from "lucide-react";
+import { FileText, Clock, CheckCircle, AlertCircle, Phone, Mail, DollarSign, Calendar, MessageCircle, MapPin, ChevronDown, Trash2, XCircle, Search } from "lucide-react";
 import { ChatModal } from "@/app/components/ChatModal";
 import { useAdmin } from "@/app/context/AdminContext";
 import { StatusTabs } from "./components/StatusTabs";
@@ -45,6 +45,7 @@ export function CustomOrdersPanel() {
   const [filteredOrders, setFilteredOrders] = useState<CustomOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedStatus, setSelectedStatus] = useState<string>("pending");
+  const [searchQuery, setSearchQuery] = useState("");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ type: 'decline' | 'delete' | 'cancel'; orderId: string } | null>(null);
@@ -91,15 +92,27 @@ export function CustomOrdersPanel() {
   }, []);
 
   useEffect(() => {
+    let filtered: CustomOrder[];
+    
     if (selectedStatus === "all") {
-      setFilteredOrders(orders);
+      filtered = orders;
     } else if (selectedStatus === "rejected") {
-      // Show rejected orders in the rejected tab
-      setFilteredOrders(orders.filter((o) => o.status === "rejected"));
+      filtered = orders.filter((o) => o.status === "rejected");
     } else {
-      setFilteredOrders(orders.filter((o) => o.status === selectedStatus));
+      filtered = orders.filter((o) => o.status === selectedStatus);
     }
-  }, [orders, selectedStatus]);
+
+    // Apply search filter
+    if (searchQuery) {
+      filtered = filtered.filter((o) =>
+        o.orderNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.fullName?.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setFilteredOrders(filtered);
+  }, [orders, selectedStatus, searchQuery]);
 
   const fetchOrders = async () => {
     try {
@@ -489,6 +502,20 @@ export function CustomOrdersPanel() {
         </div>
       </div>
 
+      {/* Search Bar */}
+      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm">
+        <div className="relative">
+          <Search className="absolute left-4 top-4 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by order #, email, or name..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-12 pr-4 py-2 rounded-lg border border-gray-300 bg-white placeholder-gray-400 text-gray-900 outline-none focus:ring-2 focus:ring-lime-600 focus:border-lime-600 transition"
+          />
+        </div>
+      </div>
+
       {/* Filter Bar - Status Tabs */}
       <StatusTabs 
         orders={orders}
@@ -631,6 +658,7 @@ export function CustomOrdersPanel() {
           isAdmin={true}
           adminName="Empi Costumes"
           orderStatus={selectedStatus}
+          isCustomOrder={true}
         />
       )}
 

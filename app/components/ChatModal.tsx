@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useBuyer } from "@/app/context/BuyerContext";
 import { calculateQuote } from "@/lib/discountCalculator";
 import { formatPrice } from "@/lib/priceCalculations";
+import DeliveryDetailsForm from "@/app/components/DeliveryDetailsForm";
 
 interface Message {
   _id: string;
@@ -40,10 +41,13 @@ interface CustomOrder {
   orderNumber: string;
   email: string;
   phone: string;
-  fullName: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   quantity?: number;
   quotedPrice?: number;
   buyerAgreedToDate?: boolean; // Whether buyer agreed to proposed delivery date
+  items?: any[]; // For regular orders
 }
 
 interface ChatModalProps {
@@ -59,6 +63,7 @@ interface ChatModalProps {
   onMessageSent?: () => void;
   orderStatus?: string; // Current tab/status: pending, approved, in-progress, ready, completed, rejected
   paymentStatus?: 'pending' | 'paid' | 'approved'; // Payment status for smart button disabling
+  isCustomOrder?: boolean; // True if this is a custom order (from CustomOrdersPanel), False if regular order
 }
 
 
@@ -75,6 +80,7 @@ export function ChatModal({
   onMessageSent,
   orderStatus: currentOrderStatus = 'pending',
   paymentStatus = 'pending',
+  isCustomOrder = false,
 }: ChatModalProps) {
   const router = useRouter();
   const { buyer } = useBuyer();
@@ -106,10 +112,18 @@ export function ChatModal({
   const [logisticsAccountNumber, setLogisticsAccountNumber] = useState('');
   const [logisticsAccountHolder, setLogisticsAccountHolder] = useState('');
   const [isSubmittingLogisticsQuote, setIsSubmittingLogisticsQuote] = useState(false);
+  const [paymentCards, setPaymentCards] = useState<any[]>([]);
+  const [selectedPaymentCard, setSelectedPaymentCard] = useState<any>(null);
+  const [loadingPaymentCards, setLoadingPaymentCards] = useState(false);
 
   // Logistics pickup address modal state
   const [showAddressModal, setShowAddressModal] = useState(false);
   const [selectedPickupAddress, setSelectedPickupAddress] = useState<string>('');
+  
+  // Delivery details form state (for EMPI delivery)
+  const [showDeliveryDetailsForm, setShowDeliveryDetailsForm] = useState(false);
+  const [selectedDeliveryOption, setSelectedDeliveryOption] = useState<'pickup' | 'delivery' | null>(null);
+  const [isSubmittingDeliveryDetails, setIsSubmittingDeliveryDetails] = useState(false);
   const [isSubmittingAddress, setIsSubmittingAddress] = useState(false);
 
   // Pickup confirmation modal state
@@ -307,6 +321,37 @@ export function ChatModal({
       markAsRead(unreadIds);
     }
   }, [messages, isOpen, isAdmin]);
+
+  // Fetch logistics payment cards when quote form opens
+  useEffect(() => {
+    if (!showLogisticsQuoteForm) return;
+
+    const fetchPaymentCards = async () => {
+      try {
+        setLoadingPaymentCards(true);
+        const response = await fetch('/api/logistics/payment-settings');
+        if (response.ok) {
+          const data = await response.json();
+          setPaymentCards(data.paymentCards || []);
+          
+          // Auto-select first card if available
+          if (data.paymentCards && data.paymentCards.length > 0) {
+            const card = data.paymentCards[0];
+            setSelectedPaymentCard(card);
+            setLogisticsBankName(card.bankName);
+            setLogisticsAccountNumber(card.accountNumber);
+            setLogisticsAccountHolder(card.accountHolderName);
+          }
+        }
+      } catch (error) {
+        console.error('[ChatModal] Error fetching payment cards:', error);
+      } finally {
+        setLoadingPaymentCards(false);
+      }
+    };
+
+    fetchPaymentCards();
+  }, [showLogisticsQuoteForm]);
 
   const fetchMessages = async () => {
     try {
@@ -514,6 +559,14 @@ export function ChatModal({
   // Handle delivery option selection by buyer
   const selectDeliveryOption = async (option: 'pickup' | 'delivery') => {
     try {
+      // If EMPI delivery is selected, show delivery details form first
+      if (option === 'delivery') {
+        setSelectedDeliveryOption(option);
+        setShowDeliveryDetailsForm(true);
+        return;
+      }
+
+      // For self-pickup, proceed directly
       const optionLabel = option === 'pickup' ? '📍 Personal Pickup' : '🚚 Empi Delivery';
       const optionMessage = `I choose: ${optionLabel}`;
       
@@ -564,6 +617,80 @@ export function ChatModal({
     }
   };
 
+  // Handle delivery details form submission
+  const handleDeliveryDetailsSubmit = async (details: any) => {
+    try {
+      setIsSubmittingDeliveryDetails(true);
+
+      // Update the custom order with delivery details
+      const updateResponse = await fetch(`/api/custom-orders/${order._id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          deliveryOption: selectedDeliveryOption,
+          deliveryDetails: details,
+        }),
+      });
+
+      if (!updateResponse.ok) {
+        throw new Error('Failed to save delivery details');
+      }
+
+      console.log('[ChatModal] ✅ Delivery details saved successfully');
+
+      // Close form
+      setShowDeliveryDetailsForm(false);
+
+      // Now send the delivery option message
+      const optionLabel = selectedDeliveryOption === 'pickup' ? '📍 Personal Pickup' : '🚚 Empi Delivery';
+      const optionMessage = `I choose: ${optionLabel}`;
+      
+      const messageResponse = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+          senderEmail: userEmail,
+          senderName: userName,
+          senderType: 'customer',
+          content: optionMessage,
+          messageType: 'system',
+          deliveryOption: selectedDeliveryOption,
+          recipientType: 'all'
+        })
+      });
+
+      if (!messageResponse.ok) {
+        throw new Error('Failed to send delivery choice message');
+      }
+
+      // Hand off order to logistics
+      console.log('[ChatModal] 🚀 TRIGGER: Handing off order to logistics...');
+      const handoffResponse = await fetch('/api/orders/handoff', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order._id,
+          orderNumber: order.orderNumber,
+        })
+      });
+
+      if (!handoffResponse.ok) {
+        console.error('Failed to hand off order to logistics:', await handoffResponse.text());
+      } else {
+        console.log('[ChatModal] ✅ Order successfully handed off to logistics');
+      }
+
+      // Refresh messages
+      fetchMessages();
+    } catch (error) {
+      console.error('Error submitting delivery details:', error);
+      alert(error instanceof Error ? error.message : 'Failed to save delivery details');
+      setIsSubmittingDeliveryDetails(false);
+    }
+  };
+
   // Send delivery quote from chat (Logistics team)
   const sendLogisticsQuote = async () => {
     if (!logisticsQuoteAmount.trim()) {
@@ -579,6 +706,26 @@ export function ChatModal({
     setIsSubmittingLogisticsQuote(true);
 
     try {
+      console.log('[ChatModal] 📤 Sending logistics quote:', {
+        orderId: order._id,
+        orderNumberField: order.orderNumber,
+        senderEmail: userEmail,
+        orderKeys: Object.keys(order),
+      });
+
+      // Validate order data
+      if (!order._id && !order.orderNumber) {
+        throw new Error('Order ID and order number are both missing. Please refresh and try again.');
+      }
+
+      // Use _id if available, otherwise use id
+      const effectiveOrderId = order._id || (order as any).id;
+      console.log('[ChatModal] 🔍 effectiveOrderId:', effectiveOrderId, 'type:', typeof effectiveOrderId, 'length:', String(effectiveOrderId).length);
+      
+      if (!effectiveOrderId) {
+        throw new Error('Order ID is missing. Please refresh and try again.');
+      }
+
       const quoteData = {
         amount: logisticsQuoteAmount,
         transportType: logisticsDeliveryType,
@@ -591,10 +738,10 @@ export function ChatModal({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderId: order._id,
+          orderId: effectiveOrderId,
           orderNumber: order.orderNumber,
           senderEmail: userEmail,
-          senderName: userName,
+          senderName: userName || 'Logistics Team',
           senderType: 'admin',
           content: JSON.stringify(quoteData),
           messageType: 'quote',
@@ -604,6 +751,12 @@ export function ChatModal({
 
       if (!response.ok) {
         const error = await response.text();
+        console.error('[ChatModal] ❌ Quote response error:', {
+          status: response.status,
+          errorText: error,
+          orderId: effectiveOrderId,
+          orderNumber: order.orderNumber,
+        });
         throw new Error(`Failed to send quote: ${response.status} - ${error}`);
       }
 
@@ -621,7 +774,7 @@ export function ChatModal({
       console.log('[ChatModal] ✅ Logistics quote sent successfully');
     } catch (error) {
       console.error('[ChatModal] Error sending logistics quote:', error);
-      alert('Failed to send quote. Please try again.');
+      alert(`Failed to send quote: ${error instanceof Error ? error.message : 'Please try again.'}`);
     } finally {
       setIsSubmittingLogisticsQuote(false);
     }
@@ -1164,35 +1317,66 @@ Thank you for choosing Empi! 👖✨`;
                 <div>
                   <h4 className="font-semibold text-gray-900 text-sm md:text-base mb-3">🏦 Bank Details</h4>
                   
-                  {/* Bank Name */}
-                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Bank Name</label>
-                  <input
-                    type="text"
-                    value={logisticsBankName}
-                    onChange={(e) => setLogisticsBankName(e.target.value)}
-                    placeholder="E.g., First Bank"
-                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm mb-3"
-                  />
+                  {loadingPaymentCards ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="text-gray-600 text-sm">Loading payment cards...</div>
+                    </div>
+                  ) : paymentCards.length > 0 ? (
+                    <>
+                      {/* Payment Card Selection Dropdown */}
+                      <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Select Payment Card</label>
+                      <select
+                        value={selectedPaymentCard?._id || ''}
+                        onChange={(e) => {
+                          const card = paymentCards.find(c => c._id === e.target.value);
+                          if (card) {
+                            setSelectedPaymentCard(card);
+                            setLogisticsBankName(card.bankName);
+                            setLogisticsAccountNumber(card.accountNumber);
+                            setLogisticsAccountHolder(card.accountHolderName);
+                          }
+                        }}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm mb-3"
+                      >
+                        {paymentCards.map((card) => (
+                          <option key={card._id} value={card._id}>
+                            {card.bankName} - {card.accountNumber}
+                          </option>
+                        ))}
+                      </select>
 
-                  {/* Account Number */}
-                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Account Number</label>
-                  <input
-                    type="text"
-                    value={logisticsAccountNumber}
-                    onChange={(e) => setLogisticsAccountNumber(e.target.value)}
-                    placeholder="Account number"
-                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm mb-3"
-                  />
+                      {/* Bank Name (Read-only) */}
+                      <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Bank Name</label>
+                      <input
+                        type="text"
+                        value={logisticsBankName}
+                        readOnly
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 text-sm mb-3 cursor-not-allowed"
+                      />
 
-                  {/* Account Holder */}
-                  <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Account Holder</label>
-                  <input
-                    type="text"
-                    value={logisticsAccountHolder}
-                    onChange={(e) => setLogisticsAccountHolder(e.target.value)}
-                    placeholder="Account holder name"
-                    className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-transparent text-sm"
-                  />
+                      {/* Account Number (Read-only) */}
+                      <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Account Number</label>
+                      <input
+                        type="text"
+                        value={logisticsAccountNumber}
+                        readOnly
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 text-sm mb-3 cursor-not-allowed font-mono"
+                      />
+
+                      {/* Account Holder (Read-only) */}
+                      <label className="block text-xs md:text-sm font-medium text-gray-700 mb-2">Account Holder</label>
+                      <input
+                        type="text"
+                        value={logisticsAccountHolder}
+                        readOnly
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-700 text-sm cursor-not-allowed"
+                      />
+                    </>
+                  ) : (
+                    <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                      ⚠️ No payment cards configured. Please add bank details in Settings first.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -1220,6 +1404,23 @@ Thank you for choosing Empi! 👖✨`;
                 <DollarSign className="h-4 w-4" />
                 Send Quote
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delivery Details Form Modal */}
+      {!isAdmin && showDeliveryDetailsForm && selectedDeliveryOption === 'delivery' && (
+        <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-2 md:p-4 pointer-events-auto overflow-y-auto" onClick={() => setShowDeliveryDetailsForm(false)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
+            <div className="p-4 md:p-6">
+              <DeliveryDetailsForm
+                onSubmit={handleDeliveryDetailsSubmit}
+                onCancel={() => setShowDeliveryDetailsForm(false)}
+                isLoading={isSubmittingDeliveryDetails}
+                buyerPhone={order.phone}
+                title="Empi Delivery Details"
+              />
             </div>
           </div>
         </div>
@@ -2110,26 +2311,26 @@ Thank you for choosing Empi! 👖✨`;
                   <div className="grid grid-cols-2 gap-2 w-full">
                     <button
                       onClick={() => setShowQuoteForm(true)}
-                      disabled={paymentStatus !== 'paid'}
+                      disabled={!isCustomOrder}
                       className={`py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 border ${
-                        paymentStatus === 'paid'
+                        isCustomOrder
                           ? 'bg-blue-100 hover:bg-blue-200 text-blue-700 border-blue-300 cursor-pointer'
                           : 'bg-gray-100 hover:bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed opacity-50'
                       }`}
-                      title={paymentStatus !== 'paid' ? 'Payment required to send quote' : 'Send quote to customer'}
+                      title={isCustomOrder ? 'Send quote to customer' : 'Not available for regular orders'}
                     >
                       <DollarSign className="h-4 w-4" />
                       Send Quote
                     </button>
                     <button
                       onClick={() => setShowDeclineModal(true)}
-                      disabled={paymentStatus !== 'paid'}
+                      disabled={!isCustomOrder}
                       className={`py-2 px-4 rounded-lg font-medium text-sm md:text-base transition flex items-center justify-center gap-2 border ${
-                        paymentStatus === 'paid'
+                        isCustomOrder
                           ? 'bg-red-100 hover:bg-red-200 text-red-700 border-red-300 cursor-pointer'
                           : 'bg-gray-100 hover:bg-gray-100 text-gray-500 border-gray-300 cursor-not-allowed opacity-50'
                       }`}
-                      title={paymentStatus !== 'paid' ? 'Payment required to decline' : 'Decline this order'}
+                      title={isCustomOrder ? 'Decline this order' : 'Not available for regular orders'}
                     >
                       <X className="h-4 w-4" />
                       Decline

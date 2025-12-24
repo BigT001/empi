@@ -36,6 +36,11 @@ const ApprovedOrdersPanel = dynamic(() => import("./ApprovedOrdersPanel").then(m
   ssr: false
 });
 
+const RegularOrdersPanel = dynamic(() => import("./RegularOrdersPanel").then(mod => ({ default: mod.RegularOrdersPanel })), {
+  loading: () => <PanelSkeleton />,
+  ssr: false
+});
+
 const CustomOrdersPanel = dynamic(() => import("./CustomOrdersPanel").then(mod => ({ default: mod.CustomOrdersPanel })), {
   loading: () => <PanelSkeleton />,
   ssr: false
@@ -55,8 +60,7 @@ function PanelSkeleton() {
 // ⚡ Tab configuration for easy maintenance
 const TABS = [
   { id: 'overview', label: 'Overview', icon: BarChart3, color: 'text-blue-600' },
-  { id: 'pending', label: 'Pending', icon: Clock, color: 'text-red-600' },
-  { id: 'approved', label: 'Approved', icon: CheckCircle2, color: 'text-green-600' },
+  { id: 'regular', label: 'Regular Orders', icon: ShoppingCart, color: 'text-amber-600' },
   { id: 'custom', label: 'Custom Orders', icon: Paintbrush, color: 'text-orange-600' },
   { id: 'users', label: 'Users', icon: Users, color: 'text-purple-600' },
   { id: 'products', label: 'Products', icon: Package, color: 'text-indigo-600' },
@@ -65,14 +69,21 @@ const TABS = [
 export default function AdminDashboardPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
+  const [tabCounts, setTabCounts] = useState<Record<string, number>>({
+    pending: 0,
+    approved: 0,
+    custom: 0,
+    users: 0,
+    products: 0,
+  });
   
   // ⚡ Initialize activeTab and loadedTabs together to prevent missing content on page refresh
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'users' | 'pending' | 'approved' | 'products' | 'custom'
+    'overview' | 'users' | 'regular' | 'products' | 'custom'
   >(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('adminDashboardActiveTab');
-      return (saved as 'overview' | 'users' | 'pending' | 'approved' | 'products' | 'custom') || 'overview';
+      return (saved as 'overview' | 'users' | 'regular' | 'products' | 'custom') || 'overview';
     }
     return 'overview';
   });
@@ -81,7 +92,7 @@ export default function AdminDashboardPage() {
   const [loadedTabs, setLoadedTabs] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('adminDashboardActiveTab');
-      const initialTab = (saved as 'overview' | 'users' | 'pending' | 'approved' | 'products' | 'custom') || 'overview';
+      const initialTab = (saved as 'overview' | 'users' | 'regular' | 'products' | 'custom') || 'overview';
       return new Set(['overview', initialTab]);
     }
     return new Set(['overview']);
@@ -98,6 +109,60 @@ export default function AdminDashboardPage() {
     checkMobile();
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
+  }, []);
+
+  // Fetch tab counts
+  useEffect(() => {
+    const fetchCounts = async () => {
+      try {
+        // Fetch pending orders count
+        const pendingRes = await fetch('/api/orders?limit=1');
+        const pendingData = pendingRes.ok ? await pendingRes.json() : { orders: [] };
+        const pendingOrders = Array.isArray(pendingData) ? pendingData : (pendingData.orders || []);
+        const pendingCount = pendingOrders.filter((o: any) => 
+          o.status === 'pending' || o.status === 'unpaid' || o.status === 'processing' || o.paymentStatus === 'pending'
+        ).length;
+
+        // Fetch approved orders count
+        const approvedRes = await fetch('/api/orders?limit=1');
+        const approvedData = approvedRes.ok ? await approvedRes.json() : { orders: [] };
+        const approvedOrders = Array.isArray(approvedData) ? approvedData : (approvedData.orders || []);
+        const approvedCount = approvedOrders.filter((o: any) => 
+          o.status === 'approved' || o.paymentStatus === 'paid'
+        ).length;
+
+        // Fetch custom orders count
+        const customRes = await fetch('/api/custom-orders?limit=1');
+        const customData = customRes.ok ? await customRes.json() : [];
+        const customOrders = Array.isArray(customData) ? customData : (customData.orders || []);
+        const customCount = customOrders.filter((o: any) => o.status === 'pending').length;
+
+        // Fetch users count
+        const usersRes = await fetch('/api/users?limit=1');
+        const usersData = usersRes.ok ? await usersRes.json() : [];
+        const usersCount = Array.isArray(usersData) ? usersData.length : (usersData.users || []).length;
+
+        // Fetch products count
+        const productsRes = await fetch('/api/products?limit=1');
+        const productsData = productsRes.ok ? await productsRes.json() : [];
+        const productsCount = Array.isArray(productsData) ? productsData.length : (productsData.products || []).length;
+
+        setTabCounts({
+          pending: pendingCount,
+          approved: approvedCount,
+          custom: customCount,
+          users: usersCount,
+          products: productsCount,
+        });
+      } catch (error) {
+        console.error('Failed to fetch tab counts:', error);
+      }
+    };
+
+    fetchCounts();
+    // Refresh counts every 10 seconds
+    const interval = setInterval(fetchCounts, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   // Persist active tab to localStorage
@@ -141,11 +206,14 @@ export default function AdminDashboardPage() {
         <nav className="flex gap-1 px-4 md:px-6 py-0">
           {TABS.map(tab => {
             const Icon = tab.icon;
+            const count = tabCounts[tab.id] || 0;
+            const showBadge = ['pending', 'approved', 'custom', 'users', 'products'].includes(tab.id) && count > 0;
+            
             return (
               <button
                 key={tab.id}
                 onClick={() => handleTabClick(tab.id)}
-                className={`px-3 md:px-4 py-3 font-semibold transition-all whitespace-nowrap flex items-center gap-1 md:gap-2 border-b-2 text-sm md:text-base ${
+                className={`px-3 md:px-4 py-3 font-semibold transition-all whitespace-nowrap flex items-center gap-1 md:gap-2 border-b-2 text-sm md:text-base relative ${
                   activeTab === tab.id
                     ? 'border-lime-600 text-lime-600 bg-lime-50/50'
                     : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -153,6 +221,11 @@ export default function AdminDashboardPage() {
               >
                 <Icon className="h-4 w-4 md:h-5 md:w-5" />
                 <span className="hidden sm:inline">{tab.label}</span>
+                {showBadge && (
+                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                    {count > 99 ? '99+' : count}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -175,17 +248,10 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Pending Tab - ⚡ Only loaded/rendered when clicked */}
-        {activeTab === 'pending' && loadedTabs.has('pending') && (
+        {/* Regular Orders Tab - ⚡ Only loaded/rendered when clicked */}
+        {activeTab === 'regular' && loadedTabs.has('regular') && (
           <div className="animate-fadeIn">
-            <PendingPanel />
-          </div>
-        )}
-
-        {/* Approved Tab - ⚡ Only loaded/rendered when clicked */}
-        {activeTab === 'approved' && loadedTabs.has('approved') && (
-          <div className="animate-fadeIn">
-            <ApprovedOrdersPanel />
+            <RegularOrdersPanel />
           </div>
         )}
 

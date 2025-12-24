@@ -35,7 +35,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await connectDB();
+    try {
+      await connectDB();
+    } catch (dbError) {
+      console.error('[Admin Login] ❌ Database connection failed:', dbError instanceof Error ? dbError.message : dbError);
+      return NextResponse.json(
+        { error: 'Database connection failed. Please try again in a moment.' },
+        { status: 503 }
+      );
+    }
+    
     const body = await request.json();
     const { email, password } = body;
 

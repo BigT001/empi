@@ -1,5 +1,13 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface IDeliveryDetails {
+  address: string; // Delivery address
+  location: string; // Chrome, Zest, or nearest bus stop
+  state: string; // State
+  localGovernment: string; // Local Government Area
+  phone?: string; // Optional alternative phone number
+}
+
 export interface ICustomOrder extends Document {
   orderNumber: string;
   fullName: string;
@@ -31,6 +39,7 @@ export interface ICustomOrder extends Document {
   handoffAt?: Date; // When logistics took over
   logisticsCanViewFullHistory?: boolean; // Super admin grants permission to view full chat history
   deliveryOption?: 'pickup' | 'delivery'; // Customer's delivery preference
+  deliveryDetails?: IDeliveryDetails; // Buyer's delivery details for EMPI delivery
   createdAt: Date;
   updatedAt: Date;
 }
@@ -112,6 +121,13 @@ const customOrderSchema = new Schema(
       type: String,
       enum: ['pickup', 'delivery'],
       default: null,
+    },
+    deliveryDetails: {
+      address: String,
+      location: String, // Chrome, Zest, or nearest bus stop
+      state: String,
+      localGovernment: String,
+      phone: String, // Optional alternative phone number
     },
   },
   {

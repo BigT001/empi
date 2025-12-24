@@ -34,11 +34,14 @@ interface ProductWithImage {
   sellPrice?: number;
 }
 
-export function PendingPanel() {
+interface PendingPanelProps {
+  searchQuery?: string;
+}
+
+export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const [pending, setPending] = useState<PendingOrderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'amount'>('newest');
   const [approvingOrderId, setApprovingOrderId] = useState<string | null>(null);
   const [productImages, setProductImages] = useState<Record<string, ProductWithImage>>({});
@@ -275,69 +278,8 @@ export function PendingPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Pending Amount Card */}
-        <div className="bg-gradient-to-br from-red-50 to-rose-50 border border-red-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-red-600 text-sm font-semibold uppercase tracking-wide">Total Pending Amount</p>
-              <p className="text-3xl font-bold text-red-900 mt-2">{formatCurrency(totalPendingAmount)}</p>
-            </div>
-            <div className="bg-red-100 rounded-lg p-3">
-              <DollarSign className="h-6 w-6 text-red-600" />
-            </div>
-          </div>
-          <p className="text-red-700 text-xs">Awaiting payment confirmation</p>
-        </div>
-
-        {/* Orders Count Card */}
-        <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-orange-600 text-sm font-semibold uppercase tracking-wide">Pending Orders</p>
-              <p className="text-3xl font-bold text-orange-900 mt-2">{pending.length}</p>
-            </div>
-            <div className="bg-orange-100 rounded-lg p-3">
-              <AlertTriangle className="h-6 w-6 text-orange-600" />
-            </div>
-          </div>
-          <p className="text-orange-700 text-xs">Orders awaiting action</p>
-        </div>
-
-        {/* Avg Order Value Card */}
-        <div className="bg-gradient-to-br from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow">
-          <div className="flex items-start justify-between mb-3">
-            <div>
-              <p className="text-amber-600 text-sm font-semibold uppercase tracking-wide">Avg Order Value</p>
-              <p className="text-3xl font-bold text-amber-900 mt-2">
-                {pending.length > 0 ? formatCurrency(totalPendingAmount / pending.length) : '₦0'}
-              </p>
-            </div>
-            <div className="bg-amber-100 rounded-lg p-3">
-              <Package className="h-6 w-6 text-amber-600" />
-            </div>
-          </div>
-          <p className="text-amber-700 text-xs">Per order</p>
-        </div>
-      </div>
-
       {/* Main Container */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-        {/* Search Bar */}
-        <div className="bg-gradient-to-r from-red-50 to-rose-50 border-b border-red-200 p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-5 w-5 text-red-400" />
-            <input
-              type="text"
-              placeholder="Search by order #, email, or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 rounded-lg border border-red-200 bg-white placeholder-gray-400 text-gray-900 outline-none focus:ring-2 focus:ring-red-600 focus:border-red-600 transition"
-            />
-          </div>
-        </div>
-
       {/* Content */}
       <div className="p-6">
         {/* Error State */}

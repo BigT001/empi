@@ -21,6 +21,14 @@ export interface IRentalSchedule {
   rentalDays: number; // Number of days
 }
 
+export interface IDeliveryDetails {
+  address: string; // Delivery address
+  location: string; // Chrome, Zest, or nearest bus stop
+  state: string; // State
+  localGovernment: string; // Local Government Area
+  phone?: string; // Optional alternative phone number
+}
+
 export interface IOrder extends Document {
   buyerId?: string;
   orderNumber: string;
@@ -55,6 +63,8 @@ export interface IOrder extends Document {
   deliveryFee?: number;
   estimatedDeliveryDays?: { min: number; max: number };
   vehicleType?: string;
+  deliveryOption?: 'pickup' | 'empi'; // Customer's delivery preference for regular orders
+  deliveryDetails?: IDeliveryDetails; // Buyer's delivery details for EMPI delivery
   // Rental schedule (shared for all rental items)
   rentalSchedule?: IRentalSchedule;
   cautionFee?: number; // 50% of total rental amount
@@ -120,6 +130,17 @@ const orderSchema = new Schema<IOrder>(
       max: Number,
     },
     vehicleType: String,
+    deliveryOption: {
+      type: String,
+      enum: ['pickup', 'empi'],
+    },
+    deliveryDetails: {
+      address: String,
+      location: String, // Chrome, Zest, or nearest bus stop
+      state: String,
+      localGovernment: String,
+      phone: String, // Optional alternative phone number
+    },
     // Rental schedule (shared for all rental items)
     rentalSchedule: rentalScheduleSchema,
     cautionFee: { type: Number, default: 0 }, // 50% of total rental amount

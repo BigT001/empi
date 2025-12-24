@@ -6,11 +6,11 @@ import { useRouter } from "next/navigation";
 import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
-import PaymentSuccessModal from "../components/PaymentSuccessModal";
 import AuthModal from "../components/AuthModal";
-import DeliveryMethodModal from "../components/DeliveryMethodModal";
 import { CheckoutValidationModal } from "../components/CheckoutValidationModal";
-import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin, Clock, Lock, CheckCircle2, FileText } from "lucide-react";
+import PaymentSuccessModal from "../components/PaymentSuccessModal";
+import DeliveryMethodModal from "../components/DeliveryMethodModal";
+import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin, Clock, Lock, CheckCircle2, FileText, ArrowRight } from "lucide-react";
 
 const SHIPPING_OPTIONS = {
   empi: { id: "empi", name: "EMPI Delivery", cost: 2500, estimatedDays: "2-5 business days" },
@@ -24,12 +24,10 @@ export default function CheckoutPage() {
 
   const [isHydrated, setIsHydrated] = useState(false);
   const [shippingOption, setShippingOption] = useState<"empi" | "self">("empi");
-  const [successModalOpen, setSuccessModalOpen] = useState(false);
-  const [successReference, setSuccessReference] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"card" | "transfer">("card");
+  const [paymentMethod, setPaymentMethod] = useState<"paystack">("paystack");
   const [validationModalOpen, setValidationModalOpen] = useState(false);
   const [validationType, setValidationType] = useState<"rental_schedule" | "delivery_info" | "buyer_info">("rental_schedule");
   const [validationMessage, setValidationMessage] = useState("");
@@ -37,35 +35,40 @@ export default function CheckoutPage() {
   const [isFromQuote, setIsFromQuote] = useState(false);
   const [customOrderDetails, setCustomOrderDetails] = useState<any>(null);
   const [loadingCustomOrder, setLoadingCustomOrder] = useState(false);
-  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
-  const [lastOrderId, setLastOrderId] = useState<string | null>(null);
+  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
+  const [paymentProofUrl, setPaymentProofUrl] = useState<string | null>(null);
+  const [orderSummary, setOrderSummary] = useState<any>(null);
+  const [paymentSuccessModalOpen, setPaymentSuccessModalOpen] = useState(false);
+  const [paymentReference, setPaymentReference] = useState<string | null>(null);
+  const [verifyingPayment, setVerifyingPayment] = useState(false);
+  const [deliveryMethodModalOpen, setDeliveryMethodModalOpen] = useState(false);
 
   // Calculate caution fee (50% of rental items total)
-  const rentalTotal = items.reduce((sum, item) => {
+  const rentalTotal = orderSummary?.rentalTotal ?? items.reduce((sum, item) => {
     if (item.mode === 'rent') {
       const days = rentalSchedule?.rentalDays || 1;
       return sum + (item.price * item.quantity * days);
     }
     return sum;
   }, 0);
-  const cautionFee = rentalTotal * 0.5;
+  const cautionFee = orderSummary?.cautionFee ?? (rentalTotal * 0.5);
 
   // Calculate bulk discount - Only for BUY items (not rentals)
-  const buyItems = items.filter(item => item.mode === 'buy');
-  const totalBuyQuantity = buyItems.reduce((sum, item) => sum + item.quantity, 0);
+  const buyItems = orderSummary?.items?.filter((item: any) => item.mode === 'buy') ?? items.filter(item => item.mode === 'buy');
+  const totalBuyQuantity = orderSummary?.totalBuyQuantity ?? buyItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
   
   // Discount tiers
-  let discountPercentage = 0;
-  if (totalBuyQuantity >= 10) {
+  let discountPercentage = orderSummary?.discountPercentage ?? 0;
+  if (!orderSummary && totalBuyQuantity >= 10) {
     discountPercentage = 10; // 10% for 10+ sets
-  } else if (totalBuyQuantity >= 6) {
+  } else if (!orderSummary && totalBuyQuantity >= 6) {
     discountPercentage = 7; // 7% for 6-9 sets
-  } else if (totalBuyQuantity >= 3) {
+  } else if (!orderSummary && totalBuyQuantity >= 3) {
     discountPercentage = 5; // 5% for 3-5 sets
   }
 
   // Calculate buy subtotal (before discount)
-  const buySubtotal = items.reduce((sum, item) => {
+  const buySubtotal = orderSummary?.buySubtotal ? (orderSummary.buySubtotal + orderSummary.discountAmount) : items.reduce((sum, item) => {
     if (item.mode === 'buy') {
       return sum + (item.price * item.quantity);
     }
@@ -73,8 +76,8 @@ export default function CheckoutPage() {
   }, 0);
 
   // Apply discount to buy items only
-  const discountAmount = buySubtotal * (discountPercentage / 100);
-  const buySubtotalAfterDiscount = buySubtotal - discountAmount;
+  const discountAmount = orderSummary?.discountAmount ?? (buySubtotal * (discountPercentage / 100));
+  const buySubtotalAfterDiscount = orderSummary?.buySubtotal ?? (buySubtotal - discountAmount);
 
   // Subtotal for VAT = goods/services only (buy with discount + rent, NO caution fee)
   const subtotalForVAT = buySubtotalAfterDiscount + rentalTotal;
@@ -129,7 +132,165 @@ export default function CheckoutPage() {
         setAuthModalOpen(true);
       }
     }
+
+    // Handle Paystack redirect with payment reference
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const reference = params.get('reference');
+      
+      if (reference) {
+        console.log('[Checkout] 🔗 Paystack redirect detected with reference:', reference);
+        setPaymentReference(reference);
+        setCreatedOrderId(reference); // Set orderId from reference for modal
+        setVerifyingPayment(true);
+        
+        // Verify payment with our API
+        const verifyPayment = async () => {
+          try {
+            console.log('[Checkout] 📡 Calling /api/verify-payment with reference:', reference);
+            const verifyRes = await fetch(`/api/verify-payment?reference=${reference}`);
+            console.log('[Checkout] Verify response status:', verifyRes.status);
+            const verifyData = await verifyRes.json();
+            console.log('[Checkout] Verify response data:', verifyData);
+            
+            if (verifyRes.ok && verifyData.success) {
+              console.log('[Checkout] ✅ Payment verified successfully');
+              console.log('[Checkout] Order details:', verifyData);
+              
+              // Clear cart now that payment is confirmed
+              clearCart();
+              console.log('[Checkout] ✅ Cart cleared after payment verification');
+              
+              // Show delivery method modal instead of success modal
+              console.log('[Checkout] 🚪 Opening delivery method modal');
+              setDeliveryMethodModalOpen(true);
+              
+              // Clean up URL (remove reference parameter)
+              window.history.replaceState({}, '', '/checkout');
+            } else {
+              console.error('[Checkout] ❌ Payment verification failed:', verifyData);
+              setOrderError('Payment verification failed: ' + (verifyData.error || 'Unknown error'));
+            }
+          } catch (error) {
+            console.error('[Checkout] ❌ Error verifying payment:', error);
+            setOrderError('Error verifying payment: ' + (error instanceof Error ? error.message : 'Unknown error'));
+          } finally {
+            console.log('[Checkout] Verification complete, setting verifyingPayment to false');
+            setVerifyingPayment(false);
+          }
+        };
+        
+        verifyPayment();
+      } else {
+        console.log('[Checkout] No reference parameter in URL');
+      }
+    }
   }, [buyer]);
+
+  // Auto-create order when checkout page loads with items and buyer is authenticated
+  useEffect(() => {
+    if (isHydrated && items.length > 0 && buyer && !createdOrderId && !isProcessing && !isFromQuote) {
+      const autoCreateOrder = async () => {
+        // Validate rental schedule if needed
+        if (items.some(i => i.mode === 'rent') && !rentalSchedule) {
+          console.log('[Checkout] Skipping auto-create: missing rental schedule');
+          return;
+        }
+
+        console.log('[Checkout] 🚀 Auto-creating order...');
+        setIsProcessing(true);
+        setOrderError(null);
+
+        try {
+          const shippingCost = shippingOption === "empi" ? 2500 : 0;
+          const taxEstimate = subtotalForVAT * 0.075;
+          const orderTotal = subtotalWithCaution + shippingCost + taxEstimate;
+
+          // Parse buyer name
+          const nameParts = (buyer?.fullName || "").trim().split(" ");
+          const firstName = nameParts[0] || buyer?.fullName || "Customer";
+          const lastName = nameParts.slice(1).join(" ") || (nameParts[0] || "");
+          
+          const orderData = {
+            buyerId: buyer?.id,
+            firstName: firstName,
+            lastName: lastName,
+            email: buyer?.email,
+            phone: buyer?.phone,
+            address: deliveryQuote?.deliveryPoint?.address || (shippingOption === "self" ? "EMPI Pickup Location - Lagos" : ""),
+            city: deliveryQuote?.deliveryPoint?.city || (shippingOption === "self" ? "Lagos" : ""),
+            state: deliveryQuote?.deliveryPoint?.state || (shippingOption === "self" ? "Lagos" : ""),
+            zipCode: deliveryQuote?.deliveryPoint?.zipCode || "",
+            country: "Nigeria",
+            shippingType: shippingOption,
+            items: items.map(item => ({
+              productId: item.id,
+              name: item.name,
+              quantity: item.quantity,
+              price: item.price,
+              mode: item.mode,
+              rentalDays: rentalSchedule?.rentalDays || 0,
+              selectedSize: item.size,
+              imageUrl: item.image,
+            })),
+            rentalSchedule: rentalSchedule || undefined,
+            deliveryQuote: shippingOption === "empi" ? deliveryQuote : null,
+            subtotal: buySubtotalAfterDiscount,
+            vat: taxEstimate,
+            total: orderTotal,
+            cautionFee: cautionFee || 0,
+            isFromQuote: false,
+            customOrderId: null,
+            discountAmount: discountAmount,
+            paymentMethod: "paystack", // Use Paystack instead of bank transfer
+          };
+
+          const createRes = await fetch('/api/orders', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(orderData),
+          });
+
+          if (!createRes.ok) {
+            const error = await createRes.json();
+            throw new Error(error.error || 'Failed to create order');
+          }
+
+          const orderRes = await createRes.json();
+          console.log('✅ Order auto-created:', orderRes);
+          
+          // Store order summary before clearing cart so we can display it
+          setOrderSummary({
+            items: items,
+            buySubtotal: buySubtotalAfterDiscount,
+            rentalTotal: rentalTotal,
+            cautionFee: cautionFee,
+            discountAmount: discountAmount,
+            discountPercentage: discountPercentage,
+            totalBuyQuantity: totalBuyQuantity,
+            shippingCost: shippingCost,
+            taxEstimate: taxEstimate,
+            totalAmount: subtotalWithCaution + shippingCost + taxEstimate,
+            rentalSchedule: rentalSchedule,
+            shippingOption: shippingOption,
+          });
+          
+          setCreatedOrderId(orderRes.orderId);
+          
+          // DON'T clear cart here - only clear it after payment is verified
+          // This allows users to keep shopping if they navigate away without paying
+          console.log('✅ Order auto-created (cart NOT cleared yet - will clear after payment)');
+        } catch (error) {
+          console.error('Auto-create order error:', error);
+          setOrderError(error instanceof Error ? error.message : 'Failed to create order');
+        } finally {
+          setIsProcessing(false);
+        }
+      };
+
+      autoCreateOrder();
+    }
+  }, [isHydrated, items, buyer, createdOrderId, isProcessing, isFromQuote, shippingOption, rentalSchedule, deliveryQuote, subtotalForVAT, subtotalWithCaution, cautionFee, buySubtotalAfterDiscount, discountAmount]);
 
   // Load custom order details when we have a quote
   useEffect(() => {
@@ -156,396 +317,116 @@ export default function CheckoutPage() {
     }
   }, [isFromQuote, customOrderQuote?.orderId]);
 
-  // Debug: Monitor delivery modal state
-  useEffect(() => {
-    console.log("🔍 Delivery modal state updated:", {
-      lastOrderId,
-      deliveryModalOpen,
-      successReference
-    });
-  }, [lastOrderId, deliveryModalOpen, successReference]);
+  // Handle Paystack payment initialization
+  const handleProceedToPayment = async () => {
+    if (!createdOrderId) {
+      setOrderError('Order not created yet');
+      return;
+    }
 
-  // Handle payment success - save order and invoice
-  const handlePaymentSuccess = async (response: any) => {
-    console.log("🟢 Payment success handler called");
-    console.log("Reference:", response?.reference);
-    console.log("Is from quote:", isFromQuote, "Quote data:", customOrderQuote);
+    console.log('[Checkout] 💳 Initializing Paystack payment...');
+    setIsProcessing(true);
+    setOrderError(null);
 
     try {
-      // Handle quote orders differently
-      if (isFromQuote && customOrderQuote) {
-        console.log("💬 Processing custom order quote payment...");
-        
-        // Update custom order status from pending to approved after payment
-        console.log("📮 Updating custom order status to approved...");
-        try {
-          const updateRes = await fetch(`/api/custom-orders/${customOrderQuote.orderId}`, {
-            method: "PATCH",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              status: "approved",
-              paymentReference: response.reference,
-            }),
-          });
+      const nameParts = (buyer?.fullName || "").trim().split(" ");
+      const firstName = nameParts[0] || buyer?.fullName || "Customer";
+      const lastName = nameParts.slice(1).join(" ") || (nameParts[0] || "");
 
-          if (updateRes.ok) {
-            console.log("✅ Custom order status updated to approved");
-          } else {
-            const error = await updateRes.json();
-            console.warn("⚠️ Custom order status update failed:", error);
-          }
-        } catch (error) {
-          console.warn("⚠️ Error updating custom order status:", error);
-        }
+      // Step 1: Initialize Paystack payment
+      const paymentInitRes = await fetch('/api/initialize-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: buyer?.email,
+          amount: Math.round(totalAmount * 100), // Convert to kobo
+          reference: createdOrderId,
+          firstname: firstName,
+          lastname: lastName,
+          phone: buyer?.phone,
+        }),
+      });
 
-        // Generate invoice for quote order
-        const shortRef = Math.random().toString(36).substring(2, 10).toUpperCase();
-        const invoiceNumber = `INV-${shortRef}`;
-        
-        // Validate buyer data exists
-        if (!buyer?.email || !buyer?.phone) {
-          console.error("❌ Missing buyer data - cannot generate invoice:", {
-            email: buyer?.email,
-            phone: buyer?.phone,
-            name: buyer?.fullName
-          });
-        }
-        
-        const quoteInvoiceData = {
-          invoiceNumber: invoiceNumber,
-          orderNumber: customOrderQuote.orderNumber,
-          buyerId: buyer?.id,
-          customerName: buyer?.fullName || "Guest Customer",
-          customerEmail: buyer?.email || "",
-          customerPhone: buyer?.phone || "",
-          customOrderId: customOrderQuote.orderId,
-          subtotal: customOrderQuote.quotedPrice * (customOrderQuote.quantity || 1),
-          bulkDiscountPercentage: customOrderQuote.discountPercentage || 0,
-          bulkDiscountAmount: customOrderQuote.discountAmount || 0,
-          shippingCost: 0,
-          taxAmount: customOrderQuote.quotedVAT || 0,
-          totalAmount: customOrderQuote.quotedTotal,
-          items: [{
-            name: `Custom Order - ${customOrderQuote.orderNumber}`,
-            quantity: customOrderQuote.quantity || 1,
-            price: customOrderQuote.quotedPrice,
-            mode: 'buy',
-          }],
-          invoiceDate: new Date().toISOString(),
-          type: 'automatic',
-          status: 'paid',
-          currency: 'NGN',
-          currencySymbol: '₦',
-          taxRate: 7.5,
+      if (!paymentInitRes.ok) {
+        const error = await paymentInitRes.json();
+        throw new Error(error.error || 'Failed to initialize payment');
+      }
+
+      const paymentData = await paymentInitRes.json();
+      console.log('✅ Paystack initialized:', paymentData);
+
+      // Use Paystack's JavaScript library if available, otherwise redirect
+      if (typeof window !== 'undefined' && (window as any).PaystackPop) {
+        const PaystackPop = (window as any).PaystackPop;
+        const paystackConfig = {
+          key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
+          email: buyer?.email,
+          amount: Math.round(totalAmount * 100),
+          ref: createdOrderId,
+          onClose: function() {
+            console.log('[Checkout] ❌ User closed payment modal without paying');
+            setOrderError('Payment cancelled. Please try again.');
+            setIsProcessing(false);
+          },
+          onSuccess: function(response: any) {
+            console.log('[Checkout] ✅ Paystack payment successful - response:', response);
+            console.log('[Checkout] Reference from Paystack:', response.reference);
+            setPaymentReference(response.reference);
+            setIsProcessing(false);
+            // Redirect to verify payment with the reference
+            const redirectUrl = `/checkout?reference=${response.reference}`;
+            console.log('[Checkout] 🔄 Redirecting to:', redirectUrl);
+            console.log('[Checkout] Setting location.href...');
+            window.location.href = redirectUrl;
+            // Fallback in case window.location.href doesn't work immediately
+            setTimeout(() => {
+              console.log('[Checkout] ⚠️ Fallback redirect attempt (window.location.href may not have worked)');
+              window.location.replace(redirectUrl);
+            }, 1000);
+          },
         };
-
-        console.log("📋 Generating quote invoice...");
-        console.log("📊 Quote invoice data:", quoteInvoiceData);
-        const invoiceRes = await fetch("/api/invoices", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(quoteInvoiceData),
-        });
-
-        let invoiceResData;
-        try {
-          invoiceResData = await invoiceRes.json();
-        } catch (parseError) {
-          invoiceResData = { error: 'Invalid JSON response from invoice API' };
-        }
         
-        console.log("📮 Quote invoice response status:", invoiceRes.status);
-        console.log("📮 Quote invoice response:", invoiceResData);
-
-        if (invoiceRes.ok) {
-          console.log("✅ Quote invoice generated successfully");
-        } else {
-          console.error("❌ Quote invoice generation failed:", {
-            status: invoiceRes.status,
-            statusText: invoiceRes.statusText,
-            error: invoiceResData?.error,
-            details: invoiceResData?.details,
-            message: invoiceResData?.message,
-            fullResponse: JSON.stringify(invoiceResData)
-          });
-          // Don't fail the payment, but log it for debugging
-        }
-
-        // Send payment notification messages to both user and admin
-        try {
-          console.log("📧 Sending payment success notifications (custom order)...");
-          const notificationPayload: any = {
-            type: "success",
-            orderNumber: customOrderQuote.orderNumber,
-            orderId: customOrderQuote.orderId,
-            buyerEmail: buyer?.email,
-            buyerName: buyer?.fullName,
-            amount: customOrderQuote.quotedTotal,
-            paymentReference: response.reference,
-          };
-          
-          // Add invoiceId if available for invoice links
-          if (invoiceResData?.invoice?._id) {
-            notificationPayload.invoiceId = invoiceResData.invoice._id;
-            console.log("✅ Invoice ID added to notification:", invoiceResData.invoice._id);
-          }
-          
-          await fetch("/api/send-payment-notification", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(notificationPayload),
-          });
-          console.log("✅ Payment notifications sent (custom order)");
-        } catch (notificationError) {
-          console.error("⚠️ Failed to send notifications:", notificationError);
-          // Don't fail the payment for notification issues
-        }
-        
-        // Show success and clear sessionStorage
-        sessionStorage.removeItem('customOrderQuote');
-        
-        setSuccessReference(response.reference);
-        setSuccessModalOpen(true);
+        console.log('[Checkout] Opening Paystack modal with config:', paystackConfig);
+        PaystackPop.setup(paystackConfig).openIframe();
+      } else if (paymentData.authorization_url) {
+        // Fallback: Direct redirect to Paystack
+        console.log('[Checkout] PaystackPop not available, using direct redirect to Paystack');
+        window.location.href = paymentData.authorization_url;
       } else {
-        // Regular cart checkout
-        const shippingCost = shippingOption === "empi" ? 2500 : 0;
-        // VAT is only on goods/services (NOT on caution fee)
-        const taxEstimate = subtotalForVAT * 0.075;
-        const totalAmount = subtotalWithCaution + shippingCost + taxEstimate;
-
-        const orderData = {
-          reference: response.reference,
-          buyerId: buyer?.id || undefined, // Add buyerId if user is logged in (registered), undefined for guest
-          customer: {
-            name: buyer?.fullName || "",
-            email: buyer?.email || "",
-            phone: buyer?.phone || "",
-          },
-          items,
-          shippingType: shippingOption, // Add shipping type so order appears in logistics
-          pricing: {
-            subtotal: total,
-            bulkDiscountPercentage: discountPercentage,
-            bulkDiscountAmount: discountAmount > 0 ? discountAmount : undefined,
-            subtotalAfterDiscount: buySubtotalAfterDiscount,
-            cautionFee: cautionFee > 0 ? cautionFee : undefined,
-            subtotalWithCaution,
-            tax: taxEstimate,
-            shipping: shippingCost,
-            total: totalAmount,
-          },
-          rentalSchedule: rentalSchedule || undefined, // Add rental schedule if rentals exist
-          status: "completed",
-          createdAt: new Date().toISOString(),
-        };
-
-        console.log("📮 Saving regular order...");
-        const res = await fetch("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(orderData),
-        });
-
-        if (res.ok) {
-          const orderResponse = await res.json();
-          const orderId = orderResponse.orderId || orderResponse._id || orderResponse.id;
-          console.log("✅ Order saved with ID:", orderId);
-          console.log("Full order response:", orderResponse);
-          
-          if (!orderId) {
-            console.error("❌ No orderId returned from order creation!");
-            setOrderError("Order created but couldn't retrieve ID. Refreshing page...");
-            // Reload page to refresh order state
-            setTimeout(() => window.location.reload(), 1500);
-            return;
-          }
-          
-          // Store orderId and reference for delivery method modal
-          console.log("🎯 Setting lastOrderId to:", orderId);
-          setLastOrderId(orderId);
-          setSuccessReference(response.reference);
-          
-          // Generate invoice - create a shorter unique reference
-          const shortRef = Math.random().toString(36).substring(2, 10).toUpperCase();
-          const invoiceNumber = `INV-${shortRef}`;
-          
-          const invoiceData = {
-            invoiceNumber: invoiceNumber,
-            orderNumber: invoiceNumber,  // Use same number to avoid duplication
-            buyerId: buyer?.id, // Add buyerId to link invoice to user
-            customerName: buyer?.fullName || "",
-            customerEmail: buyer?.email || "",
-            customerPhone: buyer?.phone || "",
-            subtotal: total,
-            bulkDiscountPercentage: discountPercentage,
-            bulkDiscountAmount: discountAmount > 0 ? discountAmount : undefined,
-            subtotalAfterDiscount: buySubtotalAfterDiscount,
-            cautionFee: cautionFee > 0 ? cautionFee : undefined,
-            subtotalWithCaution,
-            shippingCost,
-            taxAmount: taxEstimate,
-            totalAmount,
-            items: items.map((item: any) => ({
-              name: item.name,
-              quantity: item.quantity,
-              price: item.price,
-              mode: item.mode || 'buy',
-            })),
-            invoiceDate: new Date().toISOString(),
-            type: 'automatic',
-            status: 'paid',
-            currencySymbol: '₦',
-          };
-
-          console.log("📋 Generating invoice...");
-          console.log("📊 Invoice data:", invoiceData);
-          const invoiceRes = await fetch("/api/invoices", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(invoiceData),
-          });
-
-          let invoiceResData;
-          try {
-            invoiceResData = await invoiceRes.json();
-          } catch (parseError) {
-            invoiceResData = { error: 'Invalid JSON response from invoice API' };
-          }
-          
-          console.log("📮 Invoice response status:", invoiceRes.status);
-          console.log("📮 Invoice response:", invoiceResData);
-
-          if (invoiceRes.ok) {
-            console.log("✅ Invoice generated");
-          } else {
-            console.error("❌ Invoice generation failed:", {
-              status: invoiceRes.status,
-              statusText: invoiceRes.statusText,
-              error: invoiceResData?.error,
-              details: invoiceResData?.details,
-              message: invoiceResData?.message,
-              fullResponse: JSON.stringify(invoiceResData)
-            });
-          }
-
-          // Clear cart and show success modal AFTER both are saved
-          console.log("🧹 Showing delivery method modal");
-          
-          // Send payment notification messages to both user and admin
-          try {
-            console.log("📧 Sending payment success notifications...");
-            const notificationPayload: any = {
-              type: "success",
-              orderNumber: response.reference,
-              orderId: orderId,  // Include orderId for regular cart orders
-              buyerEmail: buyer?.email,
-              buyerName: buyer?.fullName,
-              amount: totalAmount,
-              paymentReference: response.reference,
-            };
-            
-            // Add invoiceId if available for invoice links
-            if (invoiceResData?.invoice?._id) {
-              notificationPayload.invoiceId = invoiceResData.invoice._id;
-              console.log("✅ Invoice ID added to notification:", invoiceResData.invoice._id);
-            }
-            
-            await fetch("/api/send-payment-notification", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(notificationPayload),
-            });
-            console.log("✅ Payment notifications sent");
-          } catch (notificationError) {
-            console.error("⚠️ Failed to send notifications:", notificationError);
-            // Don't fail the payment for notification issues
-          }
-          
-          // Show delivery method modal for user to choose delivery option
-          console.log("🎯 About to show delivery modal with orderId:", orderId);
-          // Show modal - this will work because we already set lastOrderId above
-          setDeliveryModalOpen(true);
-          console.log("✅ setDeliveryModalOpen(true) called");
-          console.log("📌 Delivery modal state should now be true");
-          
-          // Clear the success reference so success modal doesn't show instead
-          setSuccessModalOpen(false);
-        } else {
-          const errorData = await res.json().catch(() => ({}));
-          console.error("❌ Order save failed - response not OK");
-          console.error("Response status:", res.status);
-          console.error("Error data:", errorData);
-          console.error("Full error response:", JSON.stringify(errorData, null, 2));
-          
-          const errorMessage = errorData?.details || errorData?.error || "Failed to save order. Please contact support.";
-          setOrderError(errorMessage);
-        }
+        throw new Error('No authorization URL received from Paystack');
       }
     } catch (error) {
-      console.error("❌ Error saving order:", error);
-      setOrderError("An error occurred. Please try again.");
-    } finally {
+      console.error('Payment initialization error:', error);
+      setOrderError(error instanceof Error ? error.message : 'Failed to process payment');
       setIsProcessing(false);
-    }
-  };
-
-  // Helper function to poll for payment
-  const pollForPayment = (ref: string) => {
-    let pollCount = 0;
-    const maxPolls = 180;
-    const pollInterval = setInterval(async () => {
-      pollCount++;
-      try {
-        const verifyRes = await fetch(`/api/verify-payment?reference=${ref}`);
-        const verifyData = await verifyRes.json();
-        
-        if (verifyData.success && verifyData.status === 'success') {
-          console.log("✅ Payment verified!");
-          clearInterval(pollInterval);
-          handlePaymentSuccess({ reference: ref, ...verifyData });
-          return;
-        }
-      } catch (err) {
-        console.log("Polling...");
-      }
-      
-      if (pollCount >= maxPolls) {
-        clearInterval(pollInterval);
-        setIsProcessing(false);
-      }
-    }, 1000);
-  };
-
-  // Helper function to verify payment
-  const verifyAndProcessPayment = async (ref: string) => {
-    try {
-      const res = await fetch(`/api/verify-payment?reference=${ref}`);
-      const data = await res.json();
-      
-      if (data.success && data.status === 'success') {
-        console.log("✅ Payment confirmed!");
-        handlePaymentSuccess({ reference: ref, ...data });
-      } else {
-        console.log("Payment pending or failed");
-        pollForPayment(ref);
-      }
-    } catch (err) {
-      console.error("Verification error:", err);
-      pollForPayment(ref);
     }
   };
 
   if (!isHydrated) return null;
 
-  // ===== SHOW DELIVERY MODAL IF PAYMENT WAS SUCCESSFUL =====
-  // Don't show empty cart message if we have a delivery modal to show
-  if (deliveryModalOpen && lastOrderId) {
-    // Keep the page loaded while showing the delivery modal
-    // The modal will be rendered below
+  // ===== VERIFYING PAYMENT =====
+  if (verifyingPayment) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
+          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4">
+            <h1 className="text-2xl font-bold text-gray-900">💳 Checkout</h1>
+          </div>
+        </header>
+        <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full flex items-center justify-center">
+          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-lime-600 border-t-transparent mx-auto mb-6"></div>
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Verifying your payment...</h2>
+            <p className="text-gray-600">Please wait while we confirm your transaction with Paystack</p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
   }
-  
+
   // ===== EMPTY CART =====
-  if (items.length === 0 && !isFromQuote && !deliveryModalOpen) {
+  if (items.length === 0 && !isFromQuote && !createdOrderId) {
     return (
       <div className="min-h-screen flex flex-col">
         <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
@@ -596,14 +477,15 @@ export default function CheckoutPage() {
   }
 
   // ===== CALCULATE TOTALS =====
-  const itemCount = items.reduce((sum, i) => sum + i.quantity, 0);
-  const shippingCost = SHIPPING_OPTIONS[shippingOption].cost;
+  const itemCount = orderSummary?.items?.reduce((sum: number, i: any) => sum + i.quantity, 0) ?? items.reduce((sum, i) => sum + i.quantity, 0);
+  const shippingCost = orderSummary?.shippingCost ?? SHIPPING_OPTIONS[shippingOption].cost;
   // VAT is only on goods/services (NOT on caution fee)
-  const taxEstimate = subtotalForVAT * 0.075;
+  const taxEstimate = orderSummary?.taxEstimate ?? (subtotalForVAT * 0.075);
   // Use quote total if from quote, otherwise calculate regular checkout total
   const totalAmount = isFromQuote && customOrderQuote 
     ? customOrderQuote.quotedTotal 
-    : subtotalWithCaution + shippingCost + taxEstimate;
+    : (orderSummary?.totalAmount ?? (subtotalWithCaution + shippingCost + taxEstimate));
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-50">
       <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
@@ -615,11 +497,11 @@ export default function CheckoutPage() {
         {/* Page Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg p-3">
+            <div className="bg-gradient-to-br from-lime-600 to-green-600 rounded-lg p-3">
               <CreditCard className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">
                 Order Review
               </h1>
               <p className="text-gray-600">Step 2 of 2 - Review and Pay</p>
@@ -642,7 +524,7 @@ export default function CheckoutPage() {
               </div>
               
               <div className="space-y-3">
-                {items.map((item) => (
+                {(orderSummary?.items || items).map((item: any) => (
                   <div 
                     key={`${item.id}-${item.mode}`} 
                     className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-xl border border-gray-100 hover:border-blue-200 transition-all duration-200"
@@ -872,30 +754,6 @@ export default function CheckoutPage() {
               </div>
             )}
 
-            {/* Billing Information */}
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 hover:shadow-md transition-shadow duration-300">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="bg-blue-100 rounded-lg p-3">
-                  <Lock className="h-5 w-5 text-blue-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Billing Information</h3>
-              </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-lg border border-gray-100">
-                  <span className="text-sm font-medium text-gray-600">Name</span>
-                  <span className="font-semibold text-gray-900">{buyer?.fullName || "Guest Customer"}</span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-lg border border-gray-100">
-                  <span className="text-sm font-medium text-gray-600">Email</span>
-                  <span className="font-semibold text-gray-900 text-sm">{buyer?.email || "Not provided"}</span>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-lg border border-gray-100">
-                  <span className="text-sm font-medium text-gray-600">Phone</span>
-                  <span className="font-semibold text-gray-900">{buyer?.phone || "Not provided"}</span>
-                </div>
-              </div>
-            </div>
-
             {/* Error Message */}
             {orderError && (
               <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 flex items-start gap-3">
@@ -908,154 +766,31 @@ export default function CheckoutPage() {
             )}
 
             {/* Action Buttons */}
-            <div className="flex gap-3 pt-4">
-              <Link
-                href="/cart"
-                className="flex-1 inline-block text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-4 rounded-xl transition duration-200 flex items-center justify-center gap-2"
-              >
-                ← Back to Cart
-              </Link>
-              <button
-                onClick={async () => {
-                  console.log("🔍 Pay button clicked");
-                  console.log("🔍 Current state:");
-                  console.log("  - items:", items);
-                  console.log("  - rentalSchedule:", rentalSchedule);
-                  console.log("  - shippingOption:", shippingOption);
-                  console.log("  - deliveryQuote:", deliveryQuote);
-                  console.log("  - buyer:", buyer);
-                  
-                  // Skip delivery validation for custom orders (fromQuote)
-                  // Also skip delivery validation since delivery form was removed
-                  if (!isFromQuote) {
-                    // Only validate rental schedule, not delivery (delivery form removed)
-                    // Check if there are rental items that need validation
-                    const hasRentalItems = items.some((item: any) => item.mode === 'rent');
-                    if (hasRentalItems && !rentalSchedule?.pickupDate) {
-                      console.log("❌ Rental schedule validation failed");
-                      setValidationType("rental_schedule");
-                      setValidationMessage("⏰ Rental schedule not complete. Please fill the Rental Schedule form.");
-                      setValidationModalOpen(true);
-                      return;
-                    }
-                  } else {
-                    console.log("✅ Skipping validation for custom order (fromQuote)");
-                  }
-                  
-                  if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
-                    setOrderError("Payment service is not configured");
-                    return;
-                  }
-                  
-                  setIsProcessing(true);
-                  setOrderError(null);
+            {createdOrderId && !isProcessing && (
+              <div className="flex gap-3 pt-4">
+                <Link
+                  href="/cart"
+                  className="flex-1 inline-block text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-4 rounded-xl transition duration-200 flex items-center justify-center gap-2"
+                >
+                  ← Back to Cart
+                </Link>
+                <button
+                  onClick={handleProceedToPayment}
+                  className="flex-1 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-semibold px-6 py-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                >
+                  💳 Proceed to Payment <ArrowRight className="h-5 w-5" />
+                </button>
+              </div>
+            )}
 
-                  try {
-                    const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-                    
-                    // For quote orders, use the quoted amount; for regular orders, calculate the total
-                    let orderTotal: number;
-                    if (isFromQuote && customOrderQuote) {
-                      orderTotal = customOrderQuote.quotedTotal;
-                      console.log("💬 Using quote total for payment:", orderTotal);
-                    } else {
-                      const shippingCost = shippingOption === "empi" ? 2500 : 0;
-                      // VAT is only on goods/services (NOT on caution fee)
-                      const taxEstimate = subtotalForVAT * 0.075;
-                      orderTotal = subtotalWithCaution + shippingCost + taxEstimate;
-                      console.log("🛒 Using regular checkout total for payment:", orderTotal);
-                    }
-                    
-                    const amountInKobo = Math.round(orderTotal * 100);
-
-                    localStorage.setItem('empi_pending_payment', JSON.stringify({
-                      reference: ref,
-                      email: buyer!.email,
-                      amount: amountInKobo,
-                      timestamp: Date.now()
-                    }));
-
-                    let modalAttempted = false;
-                    if (typeof window !== "undefined" && (window as any).PaystackPop) {
-                      try {
-                        const handler = (window as any).PaystackPop.setup({
-                          key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
-                          email: buyer!.email,
-                          amount: amountInKobo,
-                          currency: "NGN",
-                          ref: ref,
-                          firstname: buyer!.fullName.split(" ")[0] || "Customer",
-                          lastname: buyer!.fullName.split(" ").slice(1).join(" ") || "",
-                          phone: buyer!.phone,
-                          onClose: () => {
-                            verifyAndProcessPayment(ref);
-                          },
-                          onSuccess: (response: any) => {
-                            handlePaymentSuccess(response);
-                          },
-                        });
-
-                        if (handler?.openIframe) {
-                          handler.openIframe();
-                          modalAttempted = true;
-                          pollForPayment(ref);
-                          return;
-                        }
-                      } catch (err) {
-                        console.warn("Modal failed, using redirect:", err);
-                      }
-                    }
-
-                    if (!modalAttempted) {
-                      try {
-                        const initRes = await fetch('/api/initialize-payment', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({
-                            email: buyer!.email,
-                            amount: amountInKobo,
-                            reference: ref,
-                            firstname: buyer!.fullName.split(" ")[0] || "Customer",
-                            lastname: buyer!.fullName.split(" ").slice(1).join(" ") || "",
-                            phone: buyer!.phone,
-                          }),
-                        });
-
-                        const initData = await initRes.json();
-                        if (initRes.ok && initData.authorization_url) {
-                          window.location.href = initData.authorization_url;
-                        } else {
-                          setOrderError(initData.error || "Failed to initialize payment");
-                          setIsProcessing(false);
-                        }
-                      } catch (err) {
-                        console.error("Payment initialization error:", err);
-                        setOrderError("Failed to initialize payment. Please try again.");
-                        setIsProcessing(false);
-                      }
-                    }
-                  } catch (error) {
-                    console.error("Payment error:", error);
-                    setIsProcessing(false);
-                    setOrderError("Failed to initialize payment. Please try again.");
-                  }
-                }}
-                disabled={isProcessing}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold px-6 py-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-              >
-                {isProcessing ? (
-                  <>
-                    <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full" />
-                    Processing...
-                  </>
-                ) : (
-                  <>
-                    <Lock className="h-4 w-4" />
-                    Pay ₦{totalAmount.toLocaleString()}
-                  </>
-                )}
-              </button>
-            </div>
+            {isProcessing && (
+              <div className="flex gap-3 pt-4">
+                <div className="flex-1 bg-gray-100 text-gray-600 font-semibold px-6 py-4 rounded-xl flex items-center justify-center gap-2">
+                  <div className="animate-spin h-5 w-5 border-2 border-lime-600 border-t-transparent rounded-full"></div>
+                  Processing...
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar */}
@@ -1133,21 +868,21 @@ export default function CheckoutPage() {
                       <div className="pb-4 border-b border-gray-200">
                         <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Items Breakdown</p>
                         <div className="space-y-3">
-                          {items.map((item) => (
+                          {(orderSummary?.items || items).map((item: any) => (
                             <div key={`${item.id}-${item.mode}`} className="text-sm bg-gray-50 p-3 rounded-lg">
                               <div className="flex justify-between mb-1">
                                 <span className="text-gray-700 font-medium">{item.name}</span>
                                 <span className="font-semibold text-gray-900">
                                   {item.mode === 'rent' 
-                                    ? `₦${(item.price * item.quantity * (rentalSchedule?.rentalDays || 1)).toLocaleString()}`
+                                    ? `₦${(item.price * item.quantity * (orderSummary?.rentalSchedule?.rentalDays || rentalSchedule?.rentalDays || 1)).toLocaleString()}`
                                     : `₦${(item.price * item.quantity).toLocaleString()}`
                                   }
                                 </span>
                               </div>
                               {item.mode === 'rent' ? (
                                 <div className="text-xs text-gray-600 mt-2 space-y-1">
-                                  <div>Qty: {item.quantity} × Price: ₦{item.price.toLocaleString()} × Days: {rentalSchedule?.rentalDays || 1}</div>
-                                  <div className="text-purple-700 font-semibold">= ₦{(item.price * item.quantity * (rentalSchedule?.rentalDays || 1)).toLocaleString()}</div>
+                                  <div>Qty: {item.quantity} × Price: ₦{item.price.toLocaleString()} × Days: {orderSummary?.rentalSchedule?.rentalDays || rentalSchedule?.rentalDays || 1}</div>
+                                  <div className="text-purple-700 font-semibold">= ₦{(item.price * item.quantity * (orderSummary?.rentalSchedule?.rentalDays || rentalSchedule?.rentalDays || 1)).toLocaleString()}</div>
                                 </div>
                               ) : (
                                 <div className="text-xs text-gray-600 mt-2">
@@ -1211,9 +946,9 @@ export default function CheckoutPage() {
                       </div>
 
                       {/* Total */}
-                      <div className="pt-4 bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-4">
+                      <div className="pt-4 bg-gradient-to-br from-lime-100 to-green-100 rounded-xl p-4">
                         <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Total Amount</p>
-                        <p className="font-black text-3xl bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+                        <p className="font-black text-3xl bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">
                           ₦{totalAmount.toLocaleString()}
                         </p>
                       </div>
@@ -1237,37 +972,12 @@ export default function CheckoutPage() {
                   <Lock className="h-4 w-4 text-green-600" />
                   <p className="text-xs font-bold text-green-900 uppercase tracking-wide">Secure Payment</p>
                 </div>
-                <p className="text-xs text-green-800">Your payment information is encrypted and secure. Powered by Paystack.</p>
+                <p className="text-xs text-green-800">Your payment is processed securely through Paystack.</p>
               </div>
             </div>
           </div>
         </div>
       </main>
-
-      {/* Success Modal */}
-      <PaymentSuccessModal
-        isOpen={successModalOpen && !deliveryModalOpen}
-        onClose={() => {
-          setSuccessModalOpen(false);
-          // Cart already cleared in handlePaymentSuccess
-        }}
-        orderReference={successReference}
-        total={totalAmount}
-      />
-
-      {/* Delivery Method Modal - Show after successful payment for regular orders */}
-      {lastOrderId && deliveryModalOpen && (
-        <DeliveryMethodModal
-          isOpen={true}
-          orderId={lastOrderId}
-          orderReference={successReference}
-          onClose={() => {
-            setDeliveryModalOpen(false);
-            clearCart();
-          }}
-          total={totalAmount}
-        />
-      )}
 
       {/* Validation Modal - Checkout Requirements */}
       <CheckoutValidationModal
@@ -1286,6 +996,48 @@ export default function CheckoutPage() {
           setAuthModalOpen(false);
         }}
       />
+
+      {/* Delivery Method Modal - Shows after payment verification */}
+      <DeliveryMethodModal
+        isOpen={deliveryMethodModalOpen}
+        orderId={createdOrderId || ''}
+        orderReference={paymentReference || ''}
+        onClose={() => {
+          setDeliveryMethodModalOpen(false);
+        }}
+        total={totalAmount}
+        buyerEmail={buyer?.email}
+        buyerPhone={buyer?.phone}
+        buyerName={buyer?.fullName}
+        onDeliveryConfirmed={() => {
+          // After delivery method is confirmed, close the delivery modal and show success modal
+          setDeliveryMethodModalOpen(false);
+          setPaymentSuccessModalOpen(true);
+        }}
+      />
+
+      {/* Payment Success Modal - Shows after delivery form is submitted */}
+      <PaymentSuccessModal
+        isOpen={paymentSuccessModalOpen}
+        orderReference={paymentReference || ''}
+        total={totalAmount}
+        onClose={() => {
+          setPaymentSuccessModalOpen(false);
+          // Navigate to orders dashboard after closing success modal
+          router.push("/dashboard?tab=orders");
+        }}
+      />
+
+      {/* Verifying Payment - Show loading state */}
+      {verifyingPayment && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
+          <div className="bg-white rounded-2xl p-8 text-center max-w-sm">
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-lime-200 border-t-lime-600 mx-auto mb-4"></div>
+            <p className="text-gray-900 font-semibold">Verifying your payment...</p>
+            <p className="text-sm text-gray-600 mt-2">Please wait while we confirm your transaction with Paystack</p>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

@@ -105,11 +105,29 @@ export async function POST(request: NextRequest) {
         total: order.total,
         status: order.status,
         shippingType: order.shippingType,
+        subtotal: order.subtotal,
+        vat: order.vat,
+        vatRate: order.vatRate,
+        paymentMethod: order.paymentMethod,
+        country: order.country,
       });
+      
+      // Log raw items to see what's wrong
+      console.error('Items details:', (order.items || []).map((item: any, idx: number) => ({
+        index: idx,
+        productId: item.productId,
+        name: item.name,
+        quantity: item.quantity,
+        price: item.price,
+        mode: item.mode,
+        rentalDays: item.rentalDays,
+      })));
+      
       return NextResponse.json({ 
         error: 'Order validation failed',
         details: validationError.message,
-        fieldErrors: fieldErrors
+        fieldErrors: fieldErrors,
+        failedFields: Object.keys(fieldErrors),
       }, { status: 400 });
     }
 

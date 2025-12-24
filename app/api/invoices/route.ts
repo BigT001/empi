@@ -49,6 +49,7 @@ export async function POST(request: NextRequest) {
         {
           error:
             "invoiceNumber, customerName, customerEmail, and customerPhone are required",
+          details: "Please provide all required customer information",
           received: {invoiceNumber, customerName, customerEmail, customerPhone}
         },
         { status: 400 }

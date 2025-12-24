@@ -16,6 +16,7 @@ export interface PaymentNotificationParams {
   amount: number;
   invoiceId?: string;
   paymentReference?: string;
+  isCustomOrder?: boolean; // Flag to identify if payment is for custom or regular order
 }
 
 /**
@@ -28,15 +29,18 @@ export async function sendPaymentSuccessMessageToBuyer(params: PaymentNotificati
 
     const { orderId, orderNumber, buyerName, amount, invoiceId, paymentReference } = params;
 
-    let content = `✅ Payment Successful!\n\n`;
-    content += `Your payment of ₦${Math.round(amount).toLocaleString()} for order #${orderNumber} has been confirmed.\n\n`;
-    content += `💳 Payment Reference: ${paymentReference || 'N/A'}\n`;
+    let content = `Thank you for choosing EMPI! 🎉\n\n`;
+    content += `We're pleased to confirm that your payment has been received and is being verified.\n\n`;
+    content += `💵 Amount: ₦${Math.round(amount).toLocaleString()}\n`;
+    content += `🔖 Payment Reference: ${paymentReference || 'N/A'}\n\n`;
+    content += `Once payment verification is complete, we would start production. You can always check your order status on your purchase card.\n\n`;
+    content += `💡 Pro Tip: Always check your order card for important messages and updates from our team.\n\n`;
     
     if (invoiceId) {
-      content += `\n📥 [View Your Invoice](/api/invoices/${invoiceId}/download)\n`;
+      content += `📄 [View Your Invoice](/api/invoices/${invoiceId}/download)\n\n`;
     }
     
-    content += `\nYour order will now be processed.\nThank you for your purchase! 🎉`;
+    content += `We appreciate your business and look forward to serving you!`;
 
     const message = await Message.create({
       orderId: orderId || null,
@@ -74,7 +78,7 @@ export async function sendPaymentSuccessMessageToAdmin(params: PaymentNotificati
   try {
     await connectDB();
 
-    const { orderId, orderNumber, buyerEmail, buyerName, amount, paymentReference, invoiceId } = params;
+    const { orderId, orderNumber, buyerEmail, buyerName, amount, paymentReference, invoiceId, isCustomOrder } = params;
 
     let content = `💰 Payment Received!\n\n`;
     content += `✅ Payment confirmed for order #${orderNumber}\n\n`;
@@ -85,6 +89,11 @@ export async function sendPaymentSuccessMessageToAdmin(params: PaymentNotificati
     
     if (invoiceId) {
       content += `\n📄 [View Admin Invoice](/api/invoices/${invoiceId}/download)\n`;
+    }
+    
+    // Add logistics message for regular orders only
+    if (!isCustomOrder) {
+      content += `\n📞 Logistics team will get in touch with you shortly to process your order.`;
     }
     
     content += `\nOrder is ready for processing. 🚀`;

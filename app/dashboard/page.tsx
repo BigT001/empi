@@ -494,43 +494,44 @@ export default function BuyerDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900 flex flex-col">
       <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-6 sm:py-8 w-full mt-20 md:mt-32">
-        {/* Welcome Header with Logo */}
-        <div className="mb-8 sm:mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="flex-1">
-            <h1 className="text-lg sm:text-3xl font-black text-gray-900">
-              {isFirstVisit ? "Welcome" : "Welcome back"}, {buyer.fullName}! 👋
-            </h1>
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-8 sm:py-12 w-full">
+        {/* Welcome Header - More Polished Design */}
+        <div className="bg-gradient-to-br from-lime-600 via-green-600 to-emerald-600 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden mb-8">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
+          <div className="relative z-10 flex items-start justify-between">
+            <div>
+              <p className="text-white/80 text-sm font-semibold uppercase tracking-widest mb-2">Dashboard</p>
+              <h1 className="text-4xl font-black text-white mb-2">
+                {isFirstVisit ? "Welcome" : "Welcome back"}, {buyer.fullName}! 👋
+              </h1>
+              <p className="text-white/90 text-lg">Manage your orders and track your purchases</p>
+            </div>
+            <Link href="/" className="hidden sm:flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-white/20 backdrop-blur-sm hover:bg-white/30 text-white font-bold transition border border-white/30 whitespace-nowrap">
+              <ShoppingBag className="h-5 w-5" />
+              <span>Shop</span>
+            </Link>
           </div>
-          <Link href="/" className="hidden sm:flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold transition shadow-md hover:shadow-lg whitespace-nowrap">
-            <ShoppingBag className="h-5 w-5" />
-            <span>Continue Shopping</span>
-          </Link>
         </div>
 
-        {/* Tab Navigation - Modern Design with Badges */}
-        <div className="mb-12 bg-white rounded-2xl p-2 shadow-md flex gap-2 overflow-x-auto max-w-full">
+        {/* Tab Navigation - Modern Design */}
+        <div className="mb-8 bg-white rounded-2xl p-2 shadow-md flex gap-2 overflow-x-auto max-w-full">
           {[
-            { id: "orders", label: "Orders", count: orders.length, color: "bg-green-50 text-green-700 border-green-300", badgeColor: "bg-green-100" },
-            { id: "custom-orders", label: "Custom Orders", count: customOrders.length, color: "bg-lime-50 text-lime-700 border-lime-300", badgeColor: "bg-lime-100" },
-            { id: "invoices", label: "Invoices", count: invoices.length, color: "bg-blue-50 text-blue-700 border-blue-300", badgeColor: "bg-blue-100" },
-            { id: "profile", label: "Profile", count: null, color: "bg-indigo-50 text-indigo-700 border-indigo-300", badgeColor: "bg-indigo-100" }
+            { id: "orders", label: "Orders", color: "bg-green-50 text-green-700 border-green-300" },
+            { id: "custom-orders", label: "Custom Orders", color: "bg-lime-50 text-lime-700 border-lime-300" },
+            { id: "invoices", label: "Invoices", color: "bg-blue-50 text-blue-700 border-blue-300" },
+            { id: "profile", label: "Profile", color: "bg-indigo-50 text-indigo-700 border-indigo-300" }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as "invoices" | "orders" | "custom-orders" | "profile")}
-              className={`px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 whitespace-nowrap ${
+              className={`px-4 py-2.5 rounded-xl font-semibold transition-all border-2 whitespace-nowrap ${
                 activeTab === tab.id
                   ? `${tab.color} border-current shadow-md scale-105`
                   : `${tab.color} border-transparent hover:shadow-md`
               }`}
             >
-              <span>{tab.label}</span>
-              {tab.count !== null && (
-                <span className={`${tab.badgeColor} px-2 py-0.5 rounded-full text-xs font-bold ml-1`}>
-                  {tab.count}
-                </span>
-              )}
+              {tab.label}
             </button>
           ))}
         </div>
@@ -538,20 +539,6 @@ export default function BuyerDashboardPage() {
         {/* ORDERS TAB */}
         {activeTab === "orders" && (
           <div className="space-y-8">
-            {/* Premium Header Section */}
-            <div className="bg-gradient-to-r from-green-600 via-emerald-600 to-green-700 rounded-3xl shadow-2xl p-12 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-4">
-                  <div>
-                    <p className="text-green-100 font-bold uppercase text-sm tracking-wider">📦 Orders</p>
-                  </div>
-                </div>
-                <p className="text-slate-300 text-lg mt-2">Track your product orders and delivery status</p>
-              </div>
-            </div>
-
             {orders.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-12 text-center">
                 <Package className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -564,70 +551,85 @@ export default function BuyerDashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {orders.map((order) => (
-                  <div key={order._id} className="bg-white rounded-lg shadow-sm border border-green-200 overflow-hidden hover:shadow-md hover:border-green-300 transition">
-                    {/* Header - Status and Buyer Info */}
-                    <div className={`p-3 text-white rounded-t-lg ${
-                      order.status === 'completed' ? 'bg-green-600' :
-                      order.status === 'ready' ? 'bg-blue-600' :
-                      order.status === 'in-progress' ? 'bg-purple-600' :
-                      order.status === 'pending' ? 'bg-yellow-600' :
-                      'bg-gray-600'
+                  <div key={order._id} className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl hover:border-green-300 transition-all duration-300 flex flex-col">
+                    {/* Status Badge Header */}
+                    <div className={`relative px-6 py-4 text-white rounded-t-2xl ${
+                      order.status === 'completed' ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
+                      order.status === 'ready' ? 'bg-gradient-to-r from-blue-500 to-cyan-600' :
+                      order.status === 'in-progress' ? 'bg-gradient-to-r from-purple-500 to-indigo-600' :
+                      order.status === 'pending' ? 'bg-gradient-to-r from-yellow-500 to-amber-600' :
+                      'bg-gradient-to-r from-gray-500 to-slate-600'
                     }`}>
-                      <p className="text-xxxs font-bold uppercase tracking-wider opacity-90">{order.status === 'completed' ? '✓ COMPLETED' : order.status.toUpperCase()} ORDER</p>
-                      <h3 className="text-xs font-black mt-1">{order.firstName} {order.lastName}</h3>
-                      <p className="text-xxxs opacity-90 truncate">{order.email}</p>
-                    </div>
-
-                    {/* What They Ordered */}
-                    <div className="p-3 border-b border-gray-100">
-                      <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1">Order</p>
-                      <p className="text-xs font-bold text-green-700 line-clamp-2">{order.items?.[0]?.name || 'Product'}</p>
-                    </div>
-
-                    {/* Product Images */}
-                    {order.items && order.items.length > 0 && (
-                      <div className="p-3 border-b border-gray-100">
-                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-2">Images</p>
-                        <div className="flex gap-2 flex-wrap">
-                          {order.items.slice(0, 3).map((item, idx) => (
-                            <div
-                              key={idx}
-                              className="w-14 h-14 bg-gray-200 rounded border border-gray-300 flex items-center justify-center overflow-hidden hover:border-green-400 transition cursor-pointer"
-                              onClick={() => setImageModalOpen({ orderId: order._id, index: idx })}
-                            >
-                              {item.imageUrl ? (
-                                <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
-                              ) : (
-                                <Package className="h-5 w-5 text-gray-400" />
-                              )}
-                            </div>
-                          ))}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-bold uppercase tracking-widest opacity-90">{order.status === 'completed' ? '✓ COMPLETED' : order.status.toUpperCase()}</p>
+                          <h3 className="text-lg font-black mt-2">{order.firstName} {order.lastName}</h3>
+                        </div>
+                        <div className="text-right">
+                          <ShoppingBag className="h-6 w-6 opacity-80" />
                         </div>
                       </div>
-                    )}
+                    </div>
 
-                    {/* Quantity and Price */}
-                    <div className="p-3 grid grid-cols-2 gap-2 border-b border-gray-100">
-                      <div className="bg-gray-50 p-2 rounded border border-gray-100">
-                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-0.5">Qty</p>
-                        <p className="text-lg font-black text-green-700">{order.items?.reduce((sum, item) => sum + item.quantity, 0) || 1}</p>
+                    {/* Content */}
+                    <div className="flex-1 flex flex-col p-6 space-y-4">
+                      {/* Email */}
+                      <div>
+                        <p className="text-xxxs font-bold text-gray-500 uppercase tracking-wider mb-1">Contact</p>
+                        <p className="text-sm text-gray-700 break-all">{order.email}</p>
                       </div>
-                      <div className="bg-gray-50 p-2 rounded border border-gray-100">
-                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-0.5">Total</p>
-                        <p className="text-lg font-black text-green-700 line-clamp-1">₦{(order.total || 0).toLocaleString()}</p>
+
+                      {/* Product */}
+                      <div>
+                        <p className="text-xxxs font-bold text-gray-500 uppercase tracking-wider mb-1">Product</p>
+                        <p className="text-sm font-semibold text-gray-900">{order.items?.[0]?.name || 'Product'}</p>
+                      </div>
+
+                      {/* Images */}
+                      {order.items && order.items.length > 0 && (
+                        <div>
+                          <p className="text-xxxs font-bold text-gray-500 uppercase tracking-wider mb-2">Images</p>
+                          <div className="flex gap-2 flex-wrap">
+                            {order.items.slice(0, 3).map((item, idx) => (
+                              <div
+                                key={idx}
+                                className="w-16 h-16 bg-gray-200 rounded-lg border border-gray-300 flex items-center justify-center overflow-hidden hover:border-green-400 transition cursor-pointer"
+                                onClick={() => setImageModalOpen({ orderId: order._id, index: idx })}
+                              >
+                                {item.imageUrl ? (
+                                  <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                                ) : (
+                                  <Package className="h-6 w-6 text-gray-400" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stats Grid */}
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <div className="bg-gradient-to-br from-green-50 to-emerald-50 p-4 rounded-xl border border-green-100">
+                          <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1">Qty</p>
+                          <p className="text-2xl font-black text-green-600">{order.items?.reduce((sum, item) => sum + item.quantity, 0) || 1}</p>
+                        </div>
+                        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-4 rounded-xl border border-blue-100">
+                          <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1">Total</p>
+                          <p className="text-xl font-black text-blue-600 line-clamp-1">₦{((order.total || 0) / 1000000).toFixed(1)}M</p>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="p-3 flex gap-2">
+                    {/* Footer Button */}
+                    <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
                       <button
                         onClick={() => setChatModalOpen(order._id)}
-                        className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-bold transition text-xs"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg"
                       >
-                        <MessageCircle className="h-4 w-4" />
-                        Chat
+                        <MessageCircle className="h-5 w-5" />
+                        <span>Message</span>
                       </button>
                     </div>
                   </div>
@@ -640,20 +642,6 @@ export default function BuyerDashboardPage() {
         {/* INVOICES TAB */}
         {activeTab === "invoices" && (
           <div className="space-y-8">
-            {/* Premium Header Section */}
-            <div className="bg-gradient-to-r from-lime-600 via-green-600 to-lime-700 rounded-3xl shadow-2xl p-12 text-white relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
-              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
-              <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-4">
-                  <div>
-                    <p className="text-lime-100 font-bold uppercase text-sm tracking-wider">📋 Invoice Management</p>
-                  </div>
-                </div>
-                <p className="text-slate-300 text-lg mt-2">View, manage and download all your purchase invoices</p>
-              </div>
-            </div>
-
             {invoices.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-12 text-center">
                 <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -801,8 +789,6 @@ export default function BuyerDashboardPage() {
         {/* CUSTOM ORDERS TAB */}
         {activeTab === "custom-orders" && (
           <div className="space-y-8">
-
-
             {customOrders.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-md border border-gray-200 p-12 text-center">
                 <Palette className="h-16 w-16 text-gray-300 mx-auto mb-4" />
@@ -815,91 +801,98 @@ export default function BuyerDashboardPage() {
                 </Link>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {customOrders.map((order) => {
                   const messageCount = messageCountPerOrder[order._id] || { total: 0, unread: 0 };
                   
                   return (
-                    <div key={order._id} className="bg-white rounded-lg shadow-sm border border-lime-200 overflow-hidden hover:shadow-md hover:border-lime-300 transition">
-                      {/* Header - Status and Buyer Info */}
-                      <div className={`p-3 text-white rounded-t-lg ${
-                        order.status === 'completed' ? 'bg-lime-600' :
-                        order.status === 'ready' ? 'bg-blue-600' :
-                        order.status === 'in-progress' ? 'bg-purple-600' :
-                        order.status === 'approved' ? 'bg-green-600' :
-                        order.status === 'pending' ? 'bg-yellow-600' :
-                        'bg-gray-600'
+                    <div key={order._id} className="bg-white rounded-2xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl hover:border-lime-300 transition-all duration-300 flex flex-col">
+                      {/* Status Badge Header */}
+                      <div className={`relative px-6 py-4 text-white rounded-t-2xl ${
+                        order.status === 'completed' ? 'bg-gradient-to-r from-lime-500 to-green-600' :
+                        order.status === 'ready' ? 'bg-gradient-to-r from-blue-500 to-cyan-600' :
+                        order.status === 'in-progress' ? 'bg-gradient-to-r from-purple-500 to-indigo-600' :
+                        order.status === 'approved' ? 'bg-gradient-to-r from-green-500 to-emerald-600' :
+                        order.status === 'pending' ? 'bg-gradient-to-r from-yellow-500 to-amber-600' :
+                        'bg-gradient-to-r from-gray-500 to-slate-600'
                       }`}>
-                        <p className="text-xxxs font-bold uppercase tracking-wider opacity-90">{order.status === 'completed' ? '✓ COMPLETED' : order.status.toUpperCase()} CUSTOM ORDER</p>
-                        <h3 className="text-xs font-black mt-1">{order.fullName}</h3>
-                        <p className="text-xxxs opacity-90 truncate">{order.email}</p>
-                      </div>
-
-                      {/* What They Ordered */}
-                      <div className="p-3 border-b border-gray-100">
-                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1">Order</p>
-                        <p className="text-xs font-bold text-lime-700 line-clamp-2">{order.description || 'Custom Order'}</p>
-                      </div>
-
-                      {/* Design Images */}
-                      {order.designUrls && order.designUrls.length > 0 && (
-                        <div className="p-3 border-b border-gray-100">
-                          <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-2">Design Images</p>
-                          <div className="flex gap-2 flex-wrap">
-                            {order.designUrls.slice(0, 3).map((url, idx) => (
-                              <div
-                                key={idx}
-                                className="w-14 h-14 bg-gray-200 rounded border border-gray-300 flex items-center justify-center overflow-hidden hover:border-lime-400 transition cursor-pointer"
-                                onClick={() => setImageModalOpen({ orderId: order._id, index: idx })}
-                              >
-                                <img src={url} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
-                              </div>
-                            ))}
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-xs font-bold uppercase tracking-widest opacity-90">{order.status === 'completed' ? '✓ COMPLETED' : order.status.toUpperCase()}</p>
+                            <h3 className="text-lg font-black mt-2">{order.fullName}</h3>
+                          </div>
+                          <div className="text-right">
+                            <Palette className="h-6 w-6 opacity-80" />
                           </div>
                         </div>
-                      )}
+                      </div>
 
-                      {/* Quantity and Price */}
-                      <div className="p-3 grid grid-cols-2 gap-2 border-b border-gray-100">
-                        <div className="bg-gray-50 p-2 rounded border border-gray-100">
-                          <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-0.5">Qty</p>
-                          <p className="text-lg font-black text-lime-700">{order.quantity || 1}</p>
+                      {/* Content */}
+                      <div className="flex-1 flex flex-col p-6 space-y-4">
+                        {/* Email */}
+                        <div>
+                          <p className="text-xxxs font-bold text-gray-500 uppercase tracking-wider mb-1">Contact</p>
+                          <p className="text-sm text-gray-700 break-all">{order.email}</p>
                         </div>
-                        <div className="bg-gray-50 p-2 rounded border border-gray-100">
-                          <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-0.5">Quote</p>
-                          <p className="text-lg font-black text-lime-700 line-clamp-1">₦{order.quotedPrice ? Math.round(calculateMainCardTotal(order)).toLocaleString() : 'Pending'}</p>
+
+                        {/* Order Description */}
+                        <div>
+                          <p className="text-xxxs font-bold text-gray-500 uppercase tracking-wider mb-1">Order</p>
+                          <p className="text-sm font-semibold text-gray-900 line-clamp-2">{order.description || 'Custom Order'}</p>
+                        </div>
+
+                        {/* Design Images */}
+                        {order.designUrls && order.designUrls.length > 0 && (
+                          <div>
+                            <p className="text-xxxs font-bold text-gray-500 uppercase tracking-wider mb-2">Design {order.designUrls.length > 1 ? 'Images' : 'Image'}</p>
+                            <div className="flex gap-2 flex-wrap">
+                              {order.designUrls.slice(0, 3).map((url, idx) => (
+                                <div
+                                  key={idx}
+                                  className="w-16 h-16 bg-gray-200 rounded-lg border border-gray-300 flex items-center justify-center overflow-hidden hover:border-lime-400 transition cursor-pointer"
+                                  onClick={() => setImageModalOpen({ orderId: order._id, index: idx })}
+                                >
+                                  <img src={url} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Stats Grid */}
+                        <div className="grid grid-cols-2 gap-3 pt-2">
+                          <div className="bg-gradient-to-br from-lime-50 to-green-50 p-4 rounded-xl border border-lime-100">
+                            <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1">Qty</p>
+                            <p className="text-2xl font-black text-lime-600">{order.quantity || 1}</p>
+                          </div>
+                          <div className="bg-gradient-to-br from-amber-50 to-orange-50 p-4 rounded-xl border border-amber-100">
+                            <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1">Quote</p>
+                            <p className="text-xl font-black text-amber-600 line-clamp-1">₦{order.quotedPrice ? Math.round(calculateMainCardTotal(order) / 1000) + 'K' : 'Pending'}</p>
+                          </div>
+                        </div>
+
+                        {/* Details */}
+                        <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm space-y-2">
+                          <p className="text-xxxs font-bold text-gray-500 uppercase tracking-wider">Details</p>
+                          <div className="space-y-1 text-xs text-gray-700">
+                            {order.buyerAgreedToDate && order.proposedDeliveryDate && (
+                              <p>📆 Delivery: {new Date(order.proposedDeliveryDate).toLocaleDateString()}</p>
+                            )}
+                            {messageCount.total > 0 && (
+                              <p className="text-lime-600 font-semibold">💬 {messageCount.total} messages</p>
+                            )}
+                          </div>
                         </div>
                       </div>
 
-                      {/* Status Details */}
-                      <div className="p-3 border-b border-gray-100">
-                        <p className="text-xxxs font-bold text-gray-600 uppercase tracking-wider mb-1.5">Details</p>
-                        <div className="space-y-1 text-xxxs">
-                          <p><span className={`inline-block px-1.5 py-0.5 rounded text-xxxs font-bold ${
-                            order.status === "pending" ? "bg-yellow-100 text-yellow-700" :
-                            order.status === "approved" ? "bg-green-100 text-green-700" :
-                            order.status === "in-progress" ? "bg-purple-100 text-purple-700" :
-                            order.status === "ready" ? "bg-blue-100 text-blue-700" :
-                            order.status === "completed" ? "bg-gray-100 text-gray-700" :
-                            "bg-red-100 text-red-700"
-                          }`}>{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span></p>
-                          {order.buyerAgreedToDate && order.proposedDeliveryDate && (
-                            <p className="text-gray-600">📆 Delivery: {new Date(order.proposedDeliveryDate).toLocaleDateString()}</p>
-                          )}
-                          {messageCount.total > 0 && (
-                            <p className="text-lime-600 font-semibold">💬 {messageCount.total} messages</p>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Action Buttons */}
-                      <div className="p-3 flex gap-2">
+                      {/* Footer Button */}
+                      <div className="px-6 py-4 border-t border-gray-100 bg-gray-50">
                         <button
                           onClick={() => setChatModalOpen(order._id)}
-                          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-lime-600 hover:bg-lime-700 text-white rounded font-bold transition text-xs relative"
+                          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-600 hover:to-green-700 text-white rounded-xl font-bold transition-all shadow-md hover:shadow-lg relative"
                         >
-                          <MessageCircle className="h-4 w-4" />
-                          Chat
+                          <MessageCircle className="h-5 w-5" />
+                          <span>Chat</span>
                           {messageCount.unread > 0 && (
                             <span className="absolute -top-2 -right-2 inline-flex items-center justify-center h-5 w-5 rounded-full bg-red-500 text-white text-xxxs font-bold">
                               {messageCount.unread > 9 ? '9+' : messageCount.unread}
@@ -918,32 +911,31 @@ export default function BuyerDashboardPage() {
         {/* PROFILE TAB */}
         {activeTab === "profile" && (
           <div className="space-y-6 md:space-y-8">
-            {/* ACCOUNT OWNER CARD */}
-            <div className="bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 rounded-2xl md:rounded-3xl shadow-lg p-4 md:p-8 text-white relative overflow-hidden">
+            {/* Profile Header */}
+            <div className="bg-gradient-to-br from-indigo-600 via-purple-600 to-indigo-700 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden">
               <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
-              <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 md:gap-6">
+              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
+              <div className="relative z-10 flex items-start justify-between">
                 <div className="flex-1">
-                  <p className="text-blue-100 text-xs md:text-sm font-bold uppercase tracking-widest mb-1 md:mb-2">👤 Account Owner</p>
-                  <h2 className="text-xl sm:text-2xl md:text-4xl lg:text-5xl font-black mb-1 md:mb-2 leading-tight break-words">{buyer?.fullName}</h2>
-                  <p className="text-blue-100 text-xs sm:text-sm md:text-base font-semibold break-all">{buyer?.email}</p>
+                  <p className="text-white/80 text-sm font-semibold uppercase tracking-widest mb-2">Account Information</p>
+                  <h2 className="text-4xl font-black text-white mb-2">{buyer?.fullName}</h2>
+                  <p className="text-white/90 text-lg break-all">{buyer?.email}</p>
                 </div>
-                
-                {/* ACTION BUTTONS */}
-                <div className="flex flex-row items-center gap-2 md:gap-3 lg:gap-4 w-full lg:w-auto lg:flex-col xl:flex-row">
+                <div className="flex flex-col gap-3">
                   {!isEditingProfile && (
                     <button
                       onClick={() => setIsEditingProfile(true)}
-                      className="flex items-center justify-center gap-1 md:gap-2 bg-white hover:bg-slate-100 text-slate-900 px-3 md:px-5 py-2 md:py-2.5 lg:py-3 rounded-lg md:rounded-xl font-bold transition shadow-lg hover:shadow-xl text-xs md:text-sm lg:text-base flex-1 lg:flex-none lg:whitespace-nowrap"
+                      className="flex items-center justify-center gap-2 bg-white hover:bg-indigo-50 text-indigo-700 px-6 py-3 rounded-xl font-bold transition shadow-lg hover:shadow-xl"
                     >
-                      <Edit3 className="h-3 md:h-4 lg:h-5 w-3 md:w-4 lg:w-5" />
+                      <Edit3 className="h-5 w-5" />
                       <span>Edit</span>
                     </button>
                   )}
                   <button
                     onClick={handleLogout}
-                    className="flex items-center justify-center gap-1 md:gap-2 text-white bg-red-600 hover:bg-red-700 font-bold transition-all duration-200 px-3 md:px-5 py-2 md:py-2.5 lg:py-3 rounded-lg md:rounded-xl shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 text-xs md:text-sm lg:text-base flex-1 lg:flex-none lg:whitespace-nowrap"
+                    className="flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-xl font-bold transition shadow-lg hover:shadow-xl"
                   >
-                    <LogOut className="h-3 md:h-4 lg:h-5 w-3 md:w-4 lg:w-5" />
+                    <LogOut className="h-5 w-5" />
                     <span>Logout</span>
                   </button>
                 </div>

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { CheckCircle2, Search, Calendar, Package, User, Mail, DollarSign, AlertCircle, Eye, ChevronRight, TrendingUp, Download, Trash2 } from "lucide-react";
+import { CheckCircle2, Search, Calendar, Package, User, Mail, DollarSign, AlertCircle, Eye, ChevronRight, TrendingUp, Download, Trash2, MessageSquare } from "lucide-react";
 import Image from "next/image";
+import { ChatModal } from "@/app/components/ChatModal";
 
 interface OrderItem {
   productId?: string;
@@ -16,8 +17,10 @@ interface OrderItem {
 interface ApprovedOrderData {
   _id: string;
   orderNumber: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
+  fullName?: string;
+  buyerName?: string;
   email: string;
   phone?: string;
   total: number;
@@ -27,13 +30,17 @@ interface ApprovedOrderData {
   paymentReference?: string;
 }
 
-export function ApprovedOrdersPanel() {
+interface ApprovedOrdersPanelProps {
+  searchQuery?: string;
+}
+
+export function ApprovedOrdersPanel({ searchQuery = "" }: ApprovedOrdersPanelProps) {
   const [approved, setApproved] = useState<ApprovedOrderData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<ApprovedOrderData | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [chatModalOpen, setChatModalOpen] = useState(false);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -99,6 +106,13 @@ export function ApprovedOrdersPanel() {
     }
   };
 
+  const getCustomerName = (order: ApprovedOrderData) => {
+    if (order.fullName) return order.fullName;
+    if (order.firstName && order.lastName) return `${order.firstName} ${order.lastName}`;
+    if (order.buyerName) return order.buyerName;
+    return 'Customer';
+  };
+
   const totalApprovedAmount = approved.reduce((sum, o) => sum + o.total, 0);
 
   const deleteAllApprovedOrders = async () => {
@@ -143,69 +157,8 @@ export function ApprovedOrdersPanel() {
 
   return (
     <div className="space-y-6">
-      {/* Top Stats Row */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Total Revenue Card */}
-        <div className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-green-600 text-sm font-semibold uppercase tracking-wide">Total Revenue</p>
-              <p className="text-3xl font-black text-green-900 mt-2">{formatCurrency(totalApprovedAmount)}</p>
-              <p className="text-xs text-green-600 mt-2">From {approved.length} confirmed orders</p>
-            </div>
-            <div className="bg-green-600 text-white p-3 rounded-xl">
-              <TrendingUp className="h-6 w-6" />
-            </div>
-          </div>
-        </div>
-
-        {/* Orders Count Card */}
-        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 border border-blue-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-blue-600 text-sm font-semibold uppercase tracking-wide">Confirmed</p>
-              <p className="text-3xl font-black text-blue-900 mt-2">{approved.length}</p>
-              <p className="text-xs text-blue-600 mt-2">Ready for fulfillment</p>
-            </div>
-            <div className="bg-blue-600 text-white p-3 rounded-xl">
-              <CheckCircle2 className="h-6 w-6" />
-            </div>
-          </div>
-        </div>
-
-        {/* Average Order Card */}
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 border border-purple-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition">
-          <div className="flex items-start justify-between">
-            <div>
-              <p className="text-purple-600 text-sm font-semibold uppercase tracking-wide">Avg Value</p>
-              <p className="text-3xl font-black text-purple-900 mt-2">
-                {formatCurrency(approved.length > 0 ? totalApprovedAmount / approved.length : 0)}
-              </p>
-              <p className="text-xs text-purple-600 mt-2">Per order</p>
-            </div>
-            <div className="bg-purple-600 text-white p-3 rounded-xl">
-              <Package className="h-6 w-6" />
-            </div>
-          </div>
-        </div>
-      </div>
-
       {/* Main Content */}
       <div className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-        {/* Search Header */}
-        <div className="p-6 border-b border-gray-200 bg-gray-50/50">
-          <div className="flex items-center gap-3">
-            <Search className="h-5 w-5 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search by order #, email, or name..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1 bg-transparent outline-none text-gray-900 placeholder-gray-500 text-sm"
-            />
-          </div>
-        </div>
-
         {/* Content */}
         <div className="p-6">
           {/* Error State */}
@@ -276,7 +229,7 @@ export function ApprovedOrdersPanel() {
                       >
                         {/* Header - Customer Info */}
                         <div className="bg-gradient-to-r from-green-600 to-emerald-600 p-5 text-white">
-                          <h3 className="font-bold text-lg">{order.firstName} {order.lastName}</h3>
+                          <h3 className="font-bold text-lg">{getCustomerName(order)}</h3>
                           <p className="text-sm text-green-100 truncate">{order.email}</p>
                           {order.phone && <p className="text-sm text-green-100">{order.phone}</p>}
                         </div>
@@ -358,11 +311,14 @@ export function ApprovedOrdersPanel() {
                           {/* Action Button */}
                           <div className="flex gap-2 pt-4 border-t border-green-200 mt-auto">
                             <button
-                              onClick={() => setSelectedOrder(order)}
-                              className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setChatModalOpen(true);
+                              }}
+                              className="flex-1 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
                             >
-                              <Download className="h-4 w-4" />
-                              Invoice
+                              <MessageSquare className="h-4 w-4" />
+                              Chat
                             </button>
                           </div>
                         </div>
@@ -376,45 +332,33 @@ export function ApprovedOrdersPanel() {
         </div>
       </div>
 
-      {/* Detail Modal */}
-      {selectedOrder && (
-        <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl shadow-2xl max-w-sm mx-4 p-6 space-y-4">
-            <div className="flex items-center justify-center w-12 h-12 bg-green-100 rounded-full mx-auto">
-              <CheckCircle2 className="h-6 w-6 text-green-600" />
-            </div>
-            <h2 className="text-xl font-bold text-center text-gray-900">Order Confirmed</h2>
-            <p className="text-center text-gray-600">
-              Order <span className="font-semibold">{selectedOrder.orderNumber}</span> has been confirmed and payment received.
-            </p>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <p className="text-sm text-green-700">
-                <span className="font-semibold">Amount:</span> {formatCurrency(selectedOrder.total)}
-              </p>
-              <p className="text-xs text-green-600 mt-2">
-                Date: {formatDate(selectedOrder.createdAt)}
-              </p>
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  // TODO: Generate and download invoice
-                  console.log('Download invoice for:', selectedOrder.orderNumber);
-                  setSelectedOrder(null);
-                }}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold rounded-lg transition"
-              >
-                Download Invoice
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Chat Modal */}
+      {chatModalOpen && selectedOrder && (
+        <ChatModal
+          isOpen={chatModalOpen}
+          onClose={() => {
+            setChatModalOpen(false);
+            setSelectedOrder(null);
+          }}
+          order={{
+            _id: selectedOrder._id,
+            orderNumber: selectedOrder.orderNumber,
+            fullName: getCustomerName(selectedOrder),
+            email: selectedOrder.email,
+            phone: (selectedOrder.phone as string) || '',
+            items: selectedOrder.items,
+            quantity: selectedOrder.items?.length || 1,
+          }}
+          userEmail="logistics@empi.com"
+          userName="Logistics Team"
+          isAdmin={true}
+          isLogisticsTeam={true}
+          adminName="Logistics Team"
+          orderStatus="confirmed"
+          onMessageSent={() => {
+            console.log('[ApprovedOrdersPanel] Message sent by logistics team');
+          }}
+        />
       )}
     </div>
   );

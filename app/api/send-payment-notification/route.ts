@@ -12,13 +12,14 @@ export async function POST(request: NextRequest) {
     await connectDB();
     
     const body = await request.json();
-    const { type, orderNumber, orderId, buyerEmail, buyerName, amount, paymentReference, invoiceId } = body;
+    const { type, orderNumber, orderId, buyerEmail, buyerName, amount, paymentReference, invoiceId, isCustomOrder } = body;
 
     console.log('[send-payment-notification] Processing:', {
       type,
       orderNumber,
       buyerName,
       amount,
+      isCustomOrder,
     });
 
     if (type === 'success') {
@@ -31,6 +32,7 @@ export async function POST(request: NextRequest) {
         amount,
         paymentReference,
         invoiceId,
+        isCustomOrder,
       });
 
       // Send ADMIN message
@@ -42,6 +44,7 @@ export async function POST(request: NextRequest) {
         amount,
         paymentReference,
         invoiceId,
+        isCustomOrder,
       });
 
       console.log('[send-payment-notification] ✅ Payment success notifications sent');

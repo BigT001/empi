@@ -11,7 +11,6 @@ import { NotificationProvider } from "./context/NotificationContext";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { FloatingSupport } from "./components/FloatingSupport";
 import { MobileHeader } from "./components/MobileHeader";
-import { PaymentApprovedModal } from "./components/PaymentApprovedModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -83,7 +82,6 @@ export default function RootLayout({
                 <MobileHeader />
                 <ScrollToTop />
                 <FloatingSupport />
-                <PaymentApprovedModal />
                 <HomeModeProvider>
                   <ModeProvider>
                     <AdminProvider>
