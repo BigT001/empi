@@ -8,25 +8,28 @@ import { generateProfessionalInvoiceHTML } from '@/lib/professionalInvoice';
 
 export async function GET(request: NextRequest) {
   try {
+    console.log('\n========== PAYMENT VERIFICATION START ==========');
     const reference = request.nextUrl.searchParams.get('reference');
     
     if (!reference) {
-      console.error("❌ No reference provided");
+      console.error("❌ [verify-payment] No reference provided");
       return NextResponse.json({ error: 'No reference provided' }, { status: 400 });
     }
 
-    console.log("🔍 Verifying payment for reference:", reference);
+    console.log("[verify-payment] 📋 Reference:", reference);
+    console.log("[verify-payment] 🔍 Verifying payment for reference:", reference);
 
     // Verify with Paystack API
     const verifyUrl = `https://api.paystack.co/transaction/verify/${reference}`;
     const secretKey = process.env.PAYSTACK_SECRET_KEY;
 
     if (!secretKey) {
-      console.error("❌ PAYSTACK_SECRET_KEY not configured");
+      console.error("❌ [verify-payment] PAYSTACK_SECRET_KEY not configured");
       return NextResponse.json({ error: 'Payment verification service not configured' }, { status: 500 });
     }
-
-    console.log("📡 Making request to Paystack API:", verifyUrl);
+    
+    console.log("[verify-payment] 🔑 Secret key found:", !!secretKey);
+    console.log("[verify-payment] 📡 Making request to Paystack API:", verifyUrl);
 
     const response = await fetch(verifyUrl, {
       method: 'GET',
@@ -37,11 +40,12 @@ export async function GET(request: NextRequest) {
     });
 
     const data = await response.json();
-    console.log("📊 Paystack response status:", response.status);
-    console.log("📋 Paystack response data:", data);
+    console.log("[verify-payment] ✅ Got response from Paystack");
+    console.log("[verify-payment] 📊 Response status:", response.status);
+    console.log("[verify-payment] 📋 Response data:", JSON.stringify(data, null, 2));
 
     if (!response.ok) {
-      console.error("❌ Paystack API error:", data);
+      console.error("❌ [verify-payment] Paystack API error:", data);
       return NextResponse.json(
         { error: data.message || 'Payment verification failed' },
         { status: response.status }
@@ -49,8 +53,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if payment was successful
+    console.log("[verify-payment] 🔎 Checking payment status...");
+    console.log("[verify-payment] Payment status from Paystack:", data.data?.status);
+    
     if (data.data?.status === 'success') {
-      console.log("✅ Payment verified as successful for reference:", reference);
+      console.log("[verify-payment] ✅✅✅ PAYMENT VERIFIED AS SUCCESSFUL!");
       
       // Send payment notifications and update status
       try {
@@ -63,26 +70,24 @@ export async function GET(request: NextRequest) {
         let order = await Order.findOne({ orderNumber: reference });
         let customOrder = await CustomOrder.findOne({ orderNumber: reference });
         
-        console.log('[verify-payment] 📊 Order lookup results:', {
-          orderFound: !!order,
-          customOrderFound: !!customOrder,
-          reference,
-        });
+        console.log('[verify-payment] 📊 Order lookup results:');
+        console.log('[verify-payment]   - Regular order found:', !!order);
+        console.log('[verify-payment]   - Custom order found:', !!customOrder);
         
         const orderData = order || customOrder;
         
         if (orderData) {
+          console.log('[verify-payment] ✅ Order found!');
           const amount = data.data.amount / 100; // Paystack returns amount in kobo
           const customerName = orderData.fullName || orderData.firstName || 'Valued Customer';
           const customerEmail = orderData.email || data.data.customer?.email;
           
-          console.log('[verify-payment] 📧 Preparing to process payment:', {
-            orderNumber: reference,
-            customerName,
-            customerEmail,
-            amount,
-            isCustomOrder: !!customOrder,
-          });
+          console.log('[verify-payment] 📧 Order details:');
+          console.log('[verify-payment]   - Order number:', reference);
+          console.log('[verify-payment]   - Customer name:', customerName);
+          console.log('[verify-payment]   - Customer email:', customerEmail);
+          console.log('[verify-payment]   - Amount:', amount);
+          console.log('[verify-payment]   - Is custom order:', !!customOrder);
           
           // Update custom order status to "approved" if it's a custom order
           if (customOrder) {
@@ -178,10 +183,7 @@ export async function GET(request: NextRequest) {
                 reference
               );
               
-              console.log('[verify-payment] ✅ Invoice email sent:', {
-                customerEmail,
-                invoiceNumber,
-              });
+              console.log('[verify-payment] ✅ Invoice email sent to:', customerEmail);
             } catch (emailError) {
               console.warn('[verify-payment] ⚠️ Failed to send invoice email:', emailError);
             }
@@ -189,52 +191,34 @@ export async function GET(request: NextRequest) {
             console.error('[verify-payment] ❌ Invoice generation failed:', invoiceError);
           }
           
-          // Send success message to buyer
-          console.log('[verify-payment] 📤 Sending success message to buyer...');
-          /*
-          await sendPaymentSuccessMessage({
-            orderId: orderData._id?.toString(),
-            orderNumber: reference,
-            buyerEmail: customerEmail,
-            buyerName: customerName,
-            amount: amount,
-            paymentReference: reference,
-          });
-          console.log('[verify-payment] ✅ Success message sent');
-          
-          // Send notification to admin
-          console.log('[verify-payment] 📤 Sending notification to admin...');
-          await sendPaymentSuccessNotificationToAdmin({
-            orderId: orderData._id?.toString(),
-            orderNumber: reference,
-            buyerEmail: customerEmail,
-            buyerName: customerName,
-            amount: amount,
-            paymentReference: reference,
-          });
-          console.log('[verify-payment] ✅ Admin notification sent');
-          */
+          console.log('[verify-payment] 📤 Preparing success response...');
         } else {
           console.warn('[verify-payment] ⚠️ Order not found for reference:', reference);
+          console.warn('[verify-payment] Payment is verified but order record not found in database');
           console.warn('[verify-payment] Available data:', {
             paymentReference: reference,
             paymentStatus: data.data?.status,
           });
         }
       } catch (notificationError) {
-        console.error('[verify-payment] ⚠️ Failed to send payment notifications:', notificationError);
-        // Don't fail the payment verification if notifications fail
+        console.error('[verify-payment] ⚠️ Failed to process order data:', notificationError);
+        // Don't fail the payment verification if order processing fails
       }
       
-      return NextResponse.json({
+      console.log('[verify-payment] ✅✅✅ Sending SUCCESS response to frontend');
+      const successResponse = {
         success: true,
         reference: data.data.reference,
         amount: data.data.amount,
         status: data.data.status,
         customer: data.data.customer,
-      });
+      };
+      console.log('[verify-payment] Response:', JSON.stringify(successResponse, null, 2));
+      console.log('========== PAYMENT VERIFICATION SUCCESS ==========\n');
+      return NextResponse.json(successResponse);
     } else {
-      console.log("⚠️ Payment status is not success:", data.data?.status);
+      console.log("⚠️ [verify-payment] Payment status is not success:", data.data?.status);
+      console.log('========== PAYMENT VERIFICATION FAILED ==========\n');
       
       // Send failure notification
       try {
@@ -244,33 +228,10 @@ export async function GET(request: NextRequest) {
         const orderData = order || customOrder;
         
         if (orderData) {
-          /*
-          const { sendPaymentFailedMessage, sendPaymentFailedNotificationToAdmin } = await import('@/lib/paymentNotifications');
-          const amount = data.data.amount / 100;
-          const customerName = orderData.fullName || orderData.firstName || 'Valued Customer';
-          const customerEmail = orderData.email;
-          
-          await sendPaymentFailedMessage({
-            orderId: orderData._id?.toString(),
-            orderNumber: reference,
-            buyerEmail: customerEmail,
-            buyerName: customerName,
-            amount: amount,
-            reason: data.data?.status,
-          });
-          
-          await sendPaymentFailedNotificationToAdmin({
-            orderId: orderData._id?.toString(),
-            orderNumber: reference,
-            buyerEmail: customerEmail,
-            buyerName: customerName,
-            amount: amount,
-            reason: data.data?.status,
-          });
-          */
+          console.log('[verify-payment] Found order for failed payment, but notifications disabled');
         }
       } catch (notificationError) {
-        console.error('⚠️ Failed to send payment failure notifications:', notificationError);
+        console.error('⚠️ Failed to process failed payment:', notificationError);
       }
       
       return NextResponse.json({
@@ -280,7 +241,9 @@ export async function GET(request: NextRequest) {
       });
     }
   } catch (error) {
-    console.error("❌ Error verifying payment:", error);
+    console.error("❌❌❌ [verify-payment] Exception in payment verification!");
+    console.error("[verify-payment] Error:", error);
+    console.log('========== PAYMENT VERIFICATION ERROR ==========\n');
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Verification failed' },
       { status: 500 }

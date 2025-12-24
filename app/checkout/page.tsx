@@ -138,51 +138,77 @@ export default function CheckoutPage() {
       const params = new URLSearchParams(window.location.search);
       const reference = params.get('reference');
       
+      console.log('[Checkout] 🔍 Checking for payment reference in URL...');
+      console.log('[Checkout] Current URL:', window.location.href);
+      console.log('[Checkout] Reference from URL:', reference);
+      
       if (reference) {
+        console.log('[Checkout] ✅ Found payment reference:', reference);
         console.log('[Checkout] 🔗 Paystack redirect detected with reference:', reference);
         setPaymentReference(reference);
         setCreatedOrderId(reference); // Set orderId from reference for modal
+        
+        console.log('[Checkout] 📊 Setting verifyingPayment to TRUE');
         setVerifyingPayment(true);
         
         // Verify payment with our API
         const verifyPayment = async () => {
+          console.log('[Checkout] 🚀 Starting payment verification process...');
           try {
             console.log('[Checkout] 📡 Calling /api/verify-payment with reference:', reference);
             const verifyRes = await fetch(`/api/verify-payment?reference=${reference}`);
+            console.log('[Checkout] ✅ Got response from verify-payment API');
             console.log('[Checkout] Verify response status:', verifyRes.status);
             const verifyData = await verifyRes.json();
-            console.log('[Checkout] Verify response data:', verifyData);
+            console.log('[Checkout] Verify response data:', JSON.stringify(verifyData, null, 2));
             
             if (verifyRes.ok && verifyData.success) {
-              console.log('[Checkout] ✅ Payment verified successfully');
+              console.log('[Checkout] ✅✅✅ Payment verified successfully!');
+              console.log('[Checkout] verifyData.success:', verifyData.success);
               console.log('[Checkout] Order details:', verifyData);
               
               // Clear cart now that payment is confirmed
+              console.log('[Checkout] 🛒 Clearing cart...');
               clearCart();
               console.log('[Checkout] ✅ Cart cleared after payment verification');
               
-              // Show delivery method modal instead of success modal
-              console.log('[Checkout] 🚪 Opening delivery method modal');
+              // CRITICAL FIX: Clear verifying state BEFORE opening modal
+              // This prevents the early return that blocks the modal from rendering
+              console.log('[Checkout] 🛑 Setting verifyingPayment to FALSE');
+              setVerifyingPayment(false);
+              
+              // Then open the delivery modal in the next render
+              console.log('[Checkout] 🚪 Setting deliveryMethodModalOpen to TRUE');
               setDeliveryMethodModalOpen(true);
+              console.log('[Checkout] ✅ deliveryMethodModalOpen state should now be TRUE');
               
               // Clean up URL (remove reference parameter)
+              console.log('[Checkout] 🧹 Cleaning up URL...');
               window.history.replaceState({}, '', '/checkout');
+              console.log('[Checkout] ✅ URL cleaned');
             } else {
-              console.error('[Checkout] ❌ Payment verification failed:', verifyData);
+              console.error('[Checkout] ❌ Payment verification failed!');
+              console.error('[Checkout] verifyRes.ok:', verifyRes.ok);
+              console.error('[Checkout] verifyData.success:', verifyData.success);
+              console.error('[Checkout] verifyData:', verifyData);
               setOrderError('Payment verification failed: ' + (verifyData.error || 'Unknown error'));
+              setVerifyingPayment(false);
+              console.log('[Checkout] 📊 Set verifyingPayment to FALSE (error case)');
             }
           } catch (error) {
-            console.error('[Checkout] ❌ Error verifying payment:', error);
+            console.error('[Checkout] ❌❌❌ Exception during payment verification!');
+            console.error('[Checkout] Error:', error);
             setOrderError('Error verifying payment: ' + (error instanceof Error ? error.message : 'Unknown error'));
-          } finally {
-            console.log('[Checkout] Verification complete, setting verifyingPayment to false');
             setVerifyingPayment(false);
+            console.log('[Checkout] 📊 Set verifyingPayment to FALSE (exception)');
           }
         };
         
+        console.log('[Checkout] ⏰ Calling verifyPayment function...');
         verifyPayment();
+        console.log('[Checkout] ✅ verifyPayment function called');
       } else {
-        console.log('[Checkout] No reference parameter in URL');
+        console.log('[Checkout] ℹ️ No reference parameter in URL - normal checkout flow');
       }
     }
   }, [buyer]);
@@ -358,36 +384,81 @@ export default function CheckoutPage() {
       // Use Paystack's JavaScript library if available, otherwise redirect
       if (typeof window !== 'undefined' && (window as any).PaystackPop) {
         const PaystackPop = (window as any).PaystackPop;
+        
+        console.log('[Checkout] Opening Paystack modal with config for reference:', createdOrderId);
+        
+        // Set up polling that will check for payment verification
+        // Start after short delay to give Paystack time to process
+        console.log('[Checkout] ⏳ Will start polling for payment verification after 3 seconds...');
+        
+        let pollAttempts = 0;
+        const maxAttempts = 30; // Poll for up to 60 seconds (30 attempts × 2 seconds)
+        let pollingStarted = false;
+        
+        const startPolling = () => {
+          if (pollingStarted) return;
+          pollingStarted = true;
+          
+          console.log('[Checkout] 🔍 STARTING PAYMENT VERIFICATION POLLING for reference:', createdOrderId);
+          
+          const pollPayment = async () => {
+            pollAttempts++;
+            console.log('[Checkout] 📡 Poll attempt', pollAttempts, 'of', maxAttempts, 'for reference:', createdOrderId);
+            
+            try {
+              const verifyRes = await fetch(`/api/verify-payment?reference=${createdOrderId}`);
+              const verifyData = await verifyRes.json();
+              console.log('[Checkout] Response status:', verifyRes.status, 'Success:', verifyData.success);
+              
+              if (verifyRes.ok && verifyData.success) {
+                console.log('[Checkout] ✅✅✅ PAYMENT VERIFIED! Opening delivery modal now');
+                setPaymentReference(createdOrderId);
+                setIsProcessing(false);
+                clearCart();
+                setVerifyingPayment(false);
+                setDeliveryMethodModalOpen(true);
+                return; // Stop polling
+              }
+            } catch (error) {
+              console.error('[Checkout] Poll error:', error);
+            }
+            
+            // Keep polling
+            if (pollAttempts < maxAttempts) {
+              console.log('[Checkout] ⏳ Payment not yet verified, polling again in 2 seconds...');
+              setTimeout(pollPayment, 2000);
+            } else {
+              console.error('[Checkout] ❌ Payment polling timeout after', maxAttempts, 'attempts');
+              setOrderError('Payment verification timeout. Please refresh the page.');
+              setIsProcessing(false);
+            }
+          };
+          
+          pollPayment(); // Start first poll immediately
+        };
+        
         const paystackConfig = {
           key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
           email: buyer?.email,
           amount: Math.round(totalAmount * 100),
           ref: createdOrderId,
           onClose: function() {
-            console.log('[Checkout] ❌ User closed payment modal without paying');
-            setOrderError('Payment cancelled. Please try again.');
-            setIsProcessing(false);
+            console.log('[Checkout] 🔴 Paystack modal closed by user');
+            startPolling();
           },
           onSuccess: function(response: any) {
-            console.log('[Checkout] ✅ Paystack payment successful - response:', response);
-            console.log('[Checkout] Reference from Paystack:', response.reference);
-            setPaymentReference(response.reference);
-            setIsProcessing(false);
-            // Redirect to verify payment with the reference
-            const redirectUrl = `/checkout?reference=${response.reference}`;
-            console.log('[Checkout] 🔄 Redirecting to:', redirectUrl);
-            console.log('[Checkout] Setting location.href...');
-            window.location.href = redirectUrl;
-            // Fallback in case window.location.href doesn't work immediately
-            setTimeout(() => {
-              console.log('[Checkout] ⚠️ Fallback redirect attempt (window.location.href may not have worked)');
-              window.location.replace(redirectUrl);
-            }, 1000);
+            console.log('[Checkout] ✅ Paystack onSuccess callback triggered!');
+            console.log('[Checkout] Response:', response);
+            startPolling();
           },
         };
         
-        console.log('[Checkout] Opening Paystack modal with config:', paystackConfig);
         PaystackPop.setup(paystackConfig).openIframe();
+        console.log('[Checkout] ✅ Paystack modal opened - polling will start in 3 seconds');
+        
+        // Start polling after 3 seconds regardless of callbacks
+        // This ensures we check for payment even if callbacks don't fire
+        setTimeout(startPolling, 3000);
       } else if (paymentData.authorization_url) {
         // Fallback: Direct redirect to Paystack
         console.log('[Checkout] PaystackPop not available, using direct redirect to Paystack');
@@ -405,7 +476,8 @@ export default function CheckoutPage() {
   if (!isHydrated) return null;
 
   // ===== VERIFYING PAYMENT =====
-  if (verifyingPayment) {
+  // Only show the verifying spinner if we don't have a delivery method modal to show
+  if (verifyingPayment && !deliveryMethodModalOpen) {
     return (
       <div className="min-h-screen flex flex-col">
         <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
