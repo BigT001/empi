@@ -151,16 +151,16 @@ export function MobileHeader() {
           </div>
 
           {/* Right Actions */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          <div className="flex items-center gap-0.5 flex-shrink-0">
             <button 
               onClick={() => setShowSearchModal(true)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              className="p-1.5 text-gray-600 hover:bg-gray-100 rounded-lg transition"
             >
               <Search className="h-5 w-5" />
             </button>
             <NotificationBell />
             <Link href="/cart" className="relative inline-flex items-center justify-center">
-              <button className="bg-lime-600 hover:bg-lime-700 text-white p-2 rounded-lg transition relative">
+              <button className="bg-lime-600 hover:bg-lime-700 text-white p-1.5 rounded-lg transition relative">
                 <ShoppingCart className="h-5 w-5" />
                 {items.length > 0 && (
                   <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
@@ -169,7 +169,7 @@ export function MobileHeader() {
                 )}
               </button>
             </Link>
-            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-700 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition" data-menu-toggle title="Menu">
+            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-1.5 text-gray-700 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition" data-menu-toggle title="Menu">
               <Menu className="h-6 w-6" />
             </button>
           </div>

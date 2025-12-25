@@ -129,9 +129,10 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
         credentials: "include", // Include HTTP-only session cookie
       });
 
-      if (!response.ok) {
+      if (!response.ok && response.status !== 401) {
+        // 401 is fine - means session was already invalid/expired
         console.error("Server logout failed, but clearing local session");
-      } else {
+      } else if (response.ok) {
         console.log("✅ Server session cleared");
       }
     } catch (error) {

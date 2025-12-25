@@ -494,7 +494,7 @@ export default function BuyerDashboardPage() {
     <div className="min-h-screen bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900 flex flex-col">
       <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-8 sm:py-12 w-full">
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-8 sm:py-12 w-full pt-20 md:pt-8">
         {/* Welcome Header - More Polished Design */}
         <div className="bg-gradient-to-br from-lime-600 via-green-600 to-emerald-600 rounded-3xl shadow-2xl p-8 text-white relative overflow-hidden mb-8">
           <div className="absolute top-0 right-0 w-96 h-96 bg-white opacity-10 rounded-full -mr-48 -mt-48"></div>
