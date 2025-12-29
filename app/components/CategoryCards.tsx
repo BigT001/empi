@@ -1,0 +1,97 @@
+"use client";
+
+import { useRouter } from "next/navigation";
+
+interface CategoryCardsProps {
+  currentCategory: string;
+  onCategoryChange: (category: string) => void;
+}
+
+export function CategoryCards({ currentCategory, onCategoryChange }: CategoryCardsProps) {
+  const router = useRouter();
+
+  const categories = [
+    {
+      id: "adults",
+      label: "Adults",
+      icon: "🧥",
+      color: "from-blue-600 to-cyan-600",
+      lightBg: "from-blue-50 to-cyan-50",
+      borderColor: "border-blue-200"
+    },
+    {
+      id: "kids",
+      label: "Kids",
+      icon: "🧒",
+      color: "from-rose-600 to-pink-600",
+      lightBg: "from-rose-50 to-pink-50",
+      borderColor: "border-rose-200"
+    },
+    {
+      id: "custom",
+      label: "Custom",
+      icon: "✨",
+      color: "from-purple-600 to-indigo-600",
+      lightBg: "from-purple-50 to-indigo-50",
+      borderColor: "border-purple-200"
+    }
+  ];
+
+  const handleCategoryClick = (categoryId: string) => {
+    onCategoryChange(categoryId);
+    let href = "/";
+    if (categoryId === "custom") {
+      href = "/custom-costumes";
+    } else if (categoryId === "kids") {
+      href = "/kids";
+    }
+    router.push(href);
+  };
+
+  return (
+    <div className="md:hidden w-full px-4 py-0 bg-white -mb-4 mt-4">
+      <div className="flex gap-2 justify-between items-stretch">
+        {categories.map((category) => {
+          const isActive = currentCategory === category.id;
+          
+          return (
+            <button
+              key={category.id}
+              onClick={() => handleCategoryClick(category.id)}
+              className={`flex-1 rounded-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-visible group cursor-pointer relative border-2 ${
+                isActive
+                  ? `bg-gradient-to-br ${category.color} text-white shadow-xl border-transparent`
+                  : `bg-gradient-to-br ${category.lightBg} text-gray-800 hover:shadow-lg ${category.borderColor}`
+              }`}
+            >
+              <div className="flex flex-col items-center justify-end pt-1 pb-4 px-4 relative" style={{ minHeight: "95px" }}>
+                <div 
+                  style={{
+                    position: "absolute",
+                    top: "-28px",
+                    left: "50%",
+                    transform: "translateX(-50%) perspective(1200px) rotateX(15deg) rotateY(-12deg) rotateZ(8deg)",
+                    transformStyle: "preserve-3d",
+                    zIndex: 10,
+                    transition: "transform 0.3s ease-out",
+                    fontSize: "48px",
+                    lineHeight: "1",
+                    filter: "drop-shadow(0 8px 12px rgba(0, 0, 0, 0.2))"
+                  }}
+                  className="transition-all duration-300 hover:scale-110 group-hover:drop-shadow-lg"
+                >
+                  {category.icon}
+                </div>
+                <div className="text-center mt-1">
+                  <p className={`text-base font-bold leading-tight tracking-wide ${isActive ? "text-white" : "text-gray-800"}`}>
+                    {category.label}
+                  </p>
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

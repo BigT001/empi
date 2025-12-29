@@ -3,14 +3,12 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
-import AuthModal from "../components/AuthModal";
-import { CheckoutValidationModal } from "../components/CheckoutValidationModal";
-import PaymentSuccessModal from "../components/PaymentSuccessModal";
 import DeliveryMethodModal from "../components/DeliveryMethodModal";
-import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin, Clock, Lock, CheckCircle2, FileText, ArrowRight } from "lucide-react";
+import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin } from "lucide-react";
 
 const SHIPPING_OPTIONS = {
   empi: { id: "empi", name: "EMPI Delivery", cost: 2500, estimatedDays: "2-5 business days" },
@@ -18,494 +16,246 @@ const SHIPPING_OPTIONS = {
 };
 
 export default function CheckoutPage() {
-  const { items, clearCart, total, rentalSchedule, deliveryQuote, validateCheckoutRequirements } = useCart();
+  const { items, clearCart, total } = useCart();
   const { buyer } = useBuyer();
   const router = useRouter();
 
   const [isHydrated, setIsHydrated] = useState(false);
-  const [shippingOption, setShippingOption] = useState<"empi" | "self">("empi");
+  const shippingOption = "empi"; // Fixed to EMPI Delivery only
+  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
+  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [successReference, setSuccessReference] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"paystack">("paystack");
-  const [validationModalOpen, setValidationModalOpen] = useState(false);
-  const [validationType, setValidationType] = useState<"rental_schedule" | "delivery_info" | "buyer_info">("rental_schedule");
-  const [validationMessage, setValidationMessage] = useState("");
-  const [customOrderQuote, setCustomOrderQuote] = useState<any>(null);
-  const [isFromQuote, setIsFromQuote] = useState(false);
-  const [customOrderDetails, setCustomOrderDetails] = useState<any>(null);
-  const [loadingCustomOrder, setLoadingCustomOrder] = useState(false);
-  const [createdOrderId, setCreatedOrderId] = useState<string | null>(null);
-  const [paymentProofUrl, setPaymentProofUrl] = useState<string | null>(null);
-  const [orderSummary, setOrderSummary] = useState<any>(null);
-  const [paymentSuccessModalOpen, setPaymentSuccessModalOpen] = useState(false);
-  const [paymentReference, setPaymentReference] = useState<string | null>(null);
-  const [verifyingPayment, setVerifyingPayment] = useState(false);
-  const [deliveryMethodModalOpen, setDeliveryMethodModalOpen] = useState(false);
-
-  // Calculate caution fee (50% of rental items total)
-  const rentalTotal = orderSummary?.rentalTotal ?? items.reduce((sum, item) => {
-    if (item.mode === 'rent') {
-      const days = rentalSchedule?.rentalDays || 1;
-      return sum + (item.price * item.quantity * days);
-    }
-    return sum;
-  }, 0);
-  const cautionFee = orderSummary?.cautionFee ?? (rentalTotal * 0.5);
-
-  // Calculate bulk discount - Only for BUY items (not rentals)
-  const buyItems = orderSummary?.items?.filter((item: any) => item.mode === 'buy') ?? items.filter(item => item.mode === 'buy');
-  const totalBuyQuantity = orderSummary?.totalBuyQuantity ?? buyItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
-  
-  // Discount tiers
-  let discountPercentage = orderSummary?.discountPercentage ?? 0;
-  if (!orderSummary && totalBuyQuantity >= 10) {
-    discountPercentage = 10; // 10% for 10+ sets
-  } else if (!orderSummary && totalBuyQuantity >= 6) {
-    discountPercentage = 7; // 7% for 6-9 sets
-  } else if (!orderSummary && totalBuyQuantity >= 3) {
-    discountPercentage = 5; // 5% for 3-5 sets
-  }
-
-  // Calculate buy subtotal (before discount)
-  const buySubtotal = orderSummary?.buySubtotal ? (orderSummary.buySubtotal + orderSummary.discountAmount) : items.reduce((sum, item) => {
-    if (item.mode === 'buy') {
-      return sum + (item.price * item.quantity);
-    }
-    return sum;
-  }, 0);
-
-  // Apply discount to buy items only
-  const discountAmount = orderSummary?.discountAmount ?? (buySubtotal * (discountPercentage / 100));
-  const buySubtotalAfterDiscount = orderSummary?.buySubtotal ?? (buySubtotal - discountAmount);
-
-  // Subtotal for VAT = goods/services only (buy with discount + rent, NO caution fee)
-  const subtotalForVAT = buySubtotalAfterDiscount + rentalTotal;
-  
-  // Total with caution fee (for order summary display)
-  const subtotalWithCaution = subtotalForVAT + cautionFee;
+  const [customQuote, setCustomQuote] = useState<any>(null);
+  const [paymentSuccessful, setPaymentSuccessful] = useState(false);
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [guestCustomer, setGuestCustomer] = useState({
+    fullName: '',
+    email: '',
+    phone: '',
+  });
 
   useEffect(() => {
     setIsHydrated(true);
-    // Load shipping preference from localStorage
-    const saved = localStorage.getItem("empi_shipping_option");
-    if (saved) setShippingOption(saved as "empi" | "self");
-    
-    // Load custom order quote from sessionStorage (from chat Pay Now button)
-    // Check URL parameter first to get the orderId
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const orderId = params.get('orderId');
-      const quoteData = sessionStorage.getItem('customOrderQuote');
-      
-      if (quoteData) {
-        try {
-          const parsedQuote = JSON.parse(quoteData);
-          
-          // Validate that the quote has essential fields
-          if (!parsedQuote.orderId || !parsedQuote.quotedTotal) {
-            console.error('[Checkout] ❌ Invalid quote data - missing orderId or quotedTotal:', parsedQuote);
-            sessionStorage.removeItem('customOrderQuote');
-            setCustomOrderQuote(null);
-            setIsFromQuote(false);
-          } else {
-            setCustomOrderQuote(parsedQuote);
-            setIsFromQuote(true);
-            console.log('[Checkout] ✅ Loaded quote from chat:', {
-              orderId: parsedQuote.orderId,
-              orderNumber: parsedQuote.orderNumber,
-              quotedTotal: parsedQuote.quotedTotal,
-              quantity: parsedQuote.quantity
-            });
-          }
-        } catch (error) {
-          console.error('[Checkout] Error parsing quote data:', error);
-          sessionStorage.removeItem('customOrderQuote');
-        }
-      }
-    }
-    
-    // Check if user is logged in on mobile - show auth modal if not
-    if (!buyer && typeof window !== "undefined") {
-      const isMobile = window.innerWidth < 768; // md breakpoint
-      if (isMobile) {
-        setAuthModalOpen(true);
-      }
-    }
-
-    // Handle Paystack redirect with payment reference
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const reference = params.get('reference');
-      
-      console.log('[Checkout] 🔍 Checking for payment reference in URL...');
-      console.log('[Checkout] Current URL:', window.location.href);
-      console.log('[Checkout] Reference from URL:', reference);
-      
-      if (reference) {
-        console.log('[Checkout] ✅ Found payment reference:', reference);
-        console.log('[Checkout] 🔗 Paystack redirect detected with reference:', reference);
-        setPaymentReference(reference);
-        setCreatedOrderId(reference); // Set orderId from reference for modal
+    // Load custom order quote if coming from chat
+    const savedQuote = sessionStorage.getItem('customOrderQuote');
+    if (savedQuote) {
+      try {
+        const quote = JSON.parse(savedQuote);
+        console.log('[Checkout] Loaded custom quote from sessionStorage:', quote);
         
-        console.log('[Checkout] 📊 Setting verifyingPayment to TRUE');
-        setVerifyingPayment(true);
-        
-        // Verify payment with our API
-        const verifyPayment = async () => {
-          console.log('[Checkout] 🚀 Starting payment verification process...');
-          try {
-            console.log('[Checkout] 📡 Calling /api/verify-payment with reference:', reference);
-            const verifyRes = await fetch(`/api/verify-payment?reference=${reference}`);
-            console.log('[Checkout] ✅ Got response from verify-payment API');
-            console.log('[Checkout] Verify response status:', verifyRes.status);
-            const verifyData = await verifyRes.json();
-            console.log('[Checkout] Verify response data:', JSON.stringify(verifyData, null, 2));
-            
-            if (verifyRes.ok && verifyData.success) {
-              console.log('[Checkout] ✅✅✅ Payment verified successfully!');
-              console.log('[Checkout] verifyData.success:', verifyData.success);
-              console.log('[Checkout] Order details:', verifyData);
-              
-              // Clear cart now that payment is confirmed
-              console.log('[Checkout] 🛒 Clearing cart...');
-              clearCart();
-              console.log('[Checkout] ✅ Cart cleared after payment verification');
-              
-              // CRITICAL FIX: Clear verifying state BEFORE opening modal
-              // This prevents the early return that blocks the modal from rendering
-              console.log('[Checkout] 🛑 Setting verifyingPayment to FALSE');
-              setVerifyingPayment(false);
-              
-              // Then open the delivery modal in the next render
-              console.log('[Checkout] 🚪 Setting deliveryMethodModalOpen to TRUE');
-              setDeliveryMethodModalOpen(true);
-              console.log('[Checkout] ✅ deliveryMethodModalOpen state should now be TRUE');
-              
-              // Clean up URL (remove reference parameter)
-              console.log('[Checkout] 🧹 Cleaning up URL...');
-              window.history.replaceState({}, '', '/checkout');
-              console.log('[Checkout] ✅ URL cleaned');
-            } else {
-              console.error('[Checkout] ❌ Payment verification failed!');
-              console.error('[Checkout] verifyRes.ok:', verifyRes.ok);
-              console.error('[Checkout] verifyData.success:', verifyData.success);
-              console.error('[Checkout] verifyData:', verifyData);
-              setOrderError('Payment verification failed: ' + (verifyData.error || 'Unknown error'));
-              setVerifyingPayment(false);
-              console.log('[Checkout] 📊 Set verifyingPayment to FALSE (error case)');
-            }
-          } catch (error) {
-            console.error('[Checkout] ❌❌❌ Exception during payment verification!');
-            console.error('[Checkout] Error:', error);
-            setOrderError('Error verifying payment: ' + (error instanceof Error ? error.message : 'Unknown error'));
-            setVerifyingPayment(false);
-            console.log('[Checkout] 📊 Set verifyingPayment to FALSE (exception)');
-          }
+        // Ensure all required quote fields have proper values
+        const completeQuote = {
+          orderId: quote.orderId,
+          orderNumber: quote.orderNumber,
+          quotedPrice: quote.quotedPrice || 0,
+          quotedVAT: quote.quotedVAT || 0,
+          quotedTotal: quote.quotedTotal || (quote.quotedPrice || 0) + (quote.quotedVAT || 0),
+          quantity: quote.quantity || 1,
+          discountPercentage: quote.discountPercentage || 0,
+          discountAmount: quote.discountAmount || 0,
         };
         
-        console.log('[Checkout] ⏰ Calling verifyPayment function...');
-        verifyPayment();
-        console.log('[Checkout] ✅ verifyPayment function called');
-      } else {
-        console.log('[Checkout] ℹ️ No reference parameter in URL - normal checkout flow');
+        console.log('[Checkout] Processed quote with values:', completeQuote);
+        setCustomQuote(completeQuote);
+      } catch (err) {
+        console.error('[Checkout] Error parsing quote:', err);
       }
     }
-  }, [buyer]);
+  }, []);
 
-  // Auto-create order when checkout page loads with items and buyer is authenticated
-  useEffect(() => {
-    if (isHydrated && items.length > 0 && buyer && !createdOrderId && !isProcessing && !isFromQuote) {
-      const autoCreateOrder = async () => {
-        // Validate rental schedule if needed
-        if (items.some(i => i.mode === 'rent') && !rentalSchedule) {
-          console.log('[Checkout] Skipping auto-create: missing rental schedule');
-          return;
-        }
-
-        console.log('[Checkout] 🚀 Auto-creating order...');
-        setIsProcessing(true);
-        setOrderError(null);
-
-        try {
-          const shippingCost = shippingOption === "empi" ? 2500 : 0;
-          const taxEstimate = subtotalForVAT * 0.075;
-          const orderTotal = subtotalWithCaution + shippingCost + taxEstimate;
-
-          // Parse buyer name
-          const nameParts = (buyer?.fullName || "").trim().split(" ");
-          const firstName = nameParts[0] || buyer?.fullName || "Customer";
-          const lastName = nameParts.slice(1).join(" ") || (nameParts[0] || "");
-          
-          const orderData = {
-            buyerId: buyer?.id,
-            firstName: firstName,
-            lastName: lastName,
-            email: buyer?.email,
-            phone: buyer?.phone,
-            address: deliveryQuote?.deliveryPoint?.address || (shippingOption === "self" ? "EMPI Pickup Location - Lagos" : ""),
-            city: deliveryQuote?.deliveryPoint?.city || (shippingOption === "self" ? "Lagos" : ""),
-            state: deliveryQuote?.deliveryPoint?.state || (shippingOption === "self" ? "Lagos" : ""),
-            zipCode: deliveryQuote?.deliveryPoint?.zipCode || "",
-            country: "Nigeria",
-            shippingType: shippingOption,
-            items: items.map(item => ({
-              productId: item.id,
-              name: item.name,
-              quantity: item.quantity,
-              price: item.price,
-              mode: item.mode,
-              rentalDays: rentalSchedule?.rentalDays || 0,
-              selectedSize: item.size,
-              imageUrl: item.image,
-            })),
-            rentalSchedule: rentalSchedule || undefined,
-            deliveryQuote: shippingOption === "empi" ? deliveryQuote : null,
-            subtotal: buySubtotalAfterDiscount,
-            vat: taxEstimate,
-            total: orderTotal,
-            cautionFee: cautionFee || 0,
-            isFromQuote: false,
-            customOrderId: null,
-            discountAmount: discountAmount,
-            paymentMethod: "paystack", // Use Paystack instead of bank transfer
-          };
-
-          const createRes = await fetch('/api/orders', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(orderData),
-          });
-
-          if (!createRes.ok) {
-            const error = await createRes.json();
-            throw new Error(error.error || 'Failed to create order');
-          }
-
-          const orderRes = await createRes.json();
-          console.log('✅ Order auto-created:', orderRes);
-          
-          // Store order summary before clearing cart so we can display it
-          setOrderSummary({
-            items: items,
-            buySubtotal: buySubtotalAfterDiscount,
-            rentalTotal: rentalTotal,
-            cautionFee: cautionFee,
-            discountAmount: discountAmount,
-            discountPercentage: discountPercentage,
-            totalBuyQuantity: totalBuyQuantity,
-            shippingCost: shippingCost,
-            taxEstimate: taxEstimate,
-            totalAmount: subtotalWithCaution + shippingCost + taxEstimate,
-            rentalSchedule: rentalSchedule,
-            shippingOption: shippingOption,
-          });
-          
-          setCreatedOrderId(orderRes.orderId);
-          
-          // DON'T clear cart here - only clear it after payment is verified
-          // This allows users to keep shopping if they navigate away without paying
-          console.log('✅ Order auto-created (cart NOT cleared yet - will clear after payment)');
-        } catch (error) {
-          console.error('Auto-create order error:', error);
-          setOrderError(error instanceof Error ? error.message : 'Failed to create order');
-        } finally {
-          setIsProcessing(false);
-        }
-      };
-
-      autoCreateOrder();
-    }
-  }, [isHydrated, items, buyer, createdOrderId, isProcessing, isFromQuote, shippingOption, rentalSchedule, deliveryQuote, subtotalForVAT, subtotalWithCaution, cautionFee, buySubtotalAfterDiscount, discountAmount]);
-
-  // Load custom order details when we have a quote
-  useEffect(() => {
-    if (isFromQuote && customOrderQuote?.orderId) {
-      const fetchCustomOrder = async () => {
-        try {
-          setLoadingCustomOrder(true);
-          const response = await fetch(`/api/custom-orders/${customOrderQuote.orderId}`);
-          if (response.ok) {
-            const data = await response.json();
-            setCustomOrderDetails(data);
-            console.log('[Checkout] Loaded custom order details:', data);
-          } else {
-            console.warn('[Checkout] Failed to load custom order details');
-          }
-        } catch (error) {
-          console.error('[Checkout] Error loading custom order:', error);
-        } finally {
-          setLoadingCustomOrder(false);
-        }
-      };
-      
-      fetchCustomOrder();
-    }
-  }, [isFromQuote, customOrderQuote?.orderId]);
-
-  // Handle Paystack payment initialization
-  const handleProceedToPayment = async () => {
-    if (!createdOrderId) {
-      setOrderError('Order not created yet');
-      return;
-    }
-
-    console.log('[Checkout] 💳 Initializing Paystack payment...');
-    setIsProcessing(true);
-    setOrderError(null);
+  // Handle payment success - save order (invoice auto-generated via API)
+  const handlePaymentSuccess = async (response: any) => {
+    console.log("✅ Payment success handler called");
+    console.log("Reference:", response?.reference);
 
     try {
-      const nameParts = (buyer?.fullName || "").trim().split(" ");
-      const firstName = nameParts[0] || buyer?.fullName || "Customer";
-      const lastName = nameParts.slice(1).join(" ") || (nameParts[0] || "");
+      // Use buyer info or guest customer info
+      const customerInfo = buyer || guestCustomer;
+      
+      if (!customerInfo.fullName || !customerInfo.email || !customerInfo.phone) {
+        setOrderError("Customer information is incomplete. Please fill in all required fields.");
+        setIsProcessing(false);
+        return;
+      }
 
-      // Step 1: Initialize Paystack payment
-      const paymentInitRes = await fetch('/api/initialize-payment', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: buyer?.email,
-          amount: Math.round(totalAmount * 100), // Convert to kobo
-          reference: createdOrderId,
-          firstname: firstName,
-          lastname: lastName,
-          phone: buyer?.phone,
-        }),
+      let orderData;
+      
+      // Check if this is a custom order quote
+      if (customQuote) {
+        console.log('[Checkout] Processing custom order payment:', customQuote);
+        orderData = {
+          reference: response.reference,
+          buyerId: buyer?.id || null,
+          customer: {
+            name: customerInfo.fullName,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+          },
+          items: [{
+            id: customQuote.orderId,
+            name: `Custom Order #${customQuote.orderNumber}`,
+            quantity: customQuote.quantity || 1,
+            price: customQuote.quotedPrice || 0,
+            mode: 'buy'
+          }],
+          shippingType: 'standard',
+          shippingCost: 0,
+          pricing: {
+            subtotal: customQuote.quotedPrice || 0,
+            discount: customQuote.discountAmount || 0,
+            tax: customQuote.quotedVAT || 0,
+            shipping: 0,
+            total: customQuote.quotedTotal || 0,
+          },
+          status: "confirmed",
+          isCustomOrder: true,
+          customOrderId: customQuote.orderId,
+          createdAt: new Date().toISOString(),
+        };
+      } else {
+        // Regular cart checkout
+        const shippingCost = shippingOption === "empi" ? 2500 : 0;
+        const taxEstimate = total * 0.075;
+        const totalAmount = total + shippingCost + taxEstimate;
+
+        orderData = {
+          reference: response.reference,
+          buyerId: buyer?.id || null,
+          customer: {
+            name: customerInfo.fullName,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+          },
+          shippingType: shippingOption || 'standard',
+          shippingCost: shippingCost,
+          items,
+          pricing: {
+            subtotal: total,
+            tax: taxEstimate,
+            shipping: shippingCost,
+            total: totalAmount,
+          },
+          status: "confirmed",
+          createdAt: new Date().toISOString(),
+        };
+      }
+
+      console.log("💾 Saving order...");
+      console.log("Order data:", JSON.stringify(orderData, null, 2));
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(orderData),
       });
 
-      if (!paymentInitRes.ok) {
-        const error = await paymentInitRes.json();
-        throw new Error(error.error || 'Failed to initialize payment');
-      }
-
-      const paymentData = await paymentInitRes.json();
-      console.log('✅ Paystack initialized:', paymentData);
-
-      // Use Paystack's JavaScript library if available, otherwise redirect
-      if (typeof window !== 'undefined' && (window as any).PaystackPop) {
-        const PaystackPop = (window as any).PaystackPop;
+      if (res.ok) {
+        const orderRes = await res.json();
+        console.log("✅ Order saved");
+        console.log("Invoice generated:", orderRes.invoice?.invoiceNumber || "N/A");
+        console.log("Order ID:", orderRes.orderId);
         
-        console.log('[Checkout] Opening Paystack modal with config for reference:', createdOrderId);
+        // Store the paid amount before clearing cart
+        const amountToPay = customQuote 
+          ? customQuote.quotedTotal 
+          : (total + (shippingOption === "empi" ? 2500 : 0) + (total * 0.075));
+        setPaidAmount(amountToPay);
         
-        // Set up polling that will check for payment verification
-        // Start after short delay to give Paystack time to process
-        console.log('[Checkout] ⏳ Will start polling for payment verification after 3 seconds...');
+        // Capture order ID and show delivery method modal
+        console.log("🎉 Showing delivery method selection modal");
+        setPaymentSuccessful(true);
+        setSelectedOrderId(orderRes.orderId);
+        setSuccessReference(response.reference);
+        setDeliveryModalOpen(true);
         
-        let pollAttempts = 0;
-        const maxAttempts = 30; // Poll for up to 60 seconds (30 attempts × 2 seconds)
-        let pollingStarted = false;
+        if (!customQuote) {
+          clearCart();
+        }
         
-        const startPolling = () => {
-          if (pollingStarted) return;
-          pollingStarted = true;
-          
-          console.log('[Checkout] 🔍 STARTING PAYMENT VERIFICATION POLLING for reference:', createdOrderId);
-          
-          const pollPayment = async () => {
-            pollAttempts++;
-            console.log('[Checkout] 📡 Poll attempt', pollAttempts, 'of', maxAttempts, 'for reference:', createdOrderId);
-            
-            try {
-              const verifyRes = await fetch(`/api/verify-payment?reference=${createdOrderId}`);
-              const verifyData = await verifyRes.json();
-              console.log('[Checkout] Response status:', verifyRes.status, 'Success:', verifyData.success);
-              
-              if (verifyRes.ok && verifyData.success) {
-                console.log('[Checkout] ✅✅✅ PAYMENT VERIFIED! Opening delivery modal now');
-                setPaymentReference(createdOrderId);
-                setIsProcessing(false);
-                clearCart();
-                setVerifyingPayment(false);
-                setDeliveryMethodModalOpen(true);
-                return; // Stop polling
-              }
-            } catch (error) {
-              console.error('[Checkout] Poll error:', error);
-            }
-            
-            // Keep polling
-            if (pollAttempts < maxAttempts) {
-              console.log('[Checkout] ⏳ Payment not yet verified, polling again in 2 seconds...');
-              setTimeout(pollPayment, 2000);
-            } else {
-              console.error('[Checkout] ❌ Payment polling timeout after', maxAttempts, 'attempts');
-              setOrderError('Payment verification timeout. Please refresh the page.');
-              setIsProcessing(false);
-            }
-          };
-          
-          pollPayment(); // Start first poll immediately
-        };
-        
-        const paystackConfig = {
-          key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
-          email: buyer?.email,
-          amount: Math.round(totalAmount * 100),
-          ref: createdOrderId,
-          onClose: function() {
-            console.log('[Checkout] 🔴 Paystack modal closed by user');
-            startPolling();
-          },
-          onSuccess: function(response: any) {
-            console.log('[Checkout] ✅ Paystack onSuccess callback triggered!');
-            console.log('[Checkout] Response:', response);
-            startPolling();
-          },
-        };
-        
-        PaystackPop.setup(paystackConfig).openIframe();
-        console.log('[Checkout] ✅ Paystack modal opened - polling will start in 3 seconds');
-        
-        // Start polling after 3 seconds regardless of callbacks
-        // This ensures we check for payment even if callbacks don't fire
-        setTimeout(startPolling, 3000);
-      } else if (paymentData.authorization_url) {
-        // Fallback: Direct redirect to Paystack
-        console.log('[Checkout] PaystackPop not available, using direct redirect to Paystack');
-        window.location.href = paymentData.authorization_url;
+        // Clear custom quote from sessionStorage
+        sessionStorage.removeItem('customOrderQuote');
       } else {
-        throw new Error('No authorization URL received from Paystack');
+        let errorData: any = {};
+        try {
+          const text = await res.text();
+          console.error("Raw response:", text);
+          if (text) {
+            errorData = JSON.parse(text);
+          }
+        } catch (e) {
+          console.error("Could not parse error response as JSON");
+        }
+        console.error("❌ Order save failed with status:", res.status);
+        console.error("Error details:", errorData);
+        console.error("Full error object:", { status: res.status, statusText: res.statusText, body: errorData });
+        
+        // Log the orderData being sent for debugging
+        console.error("Order data that was sent:", JSON.stringify(orderData, null, 2));
+        
+        setOrderError(errorData?.error || errorData?.details || "Failed to save order. Please contact support.");
       }
     } catch (error) {
-      console.error('Payment initialization error:', error);
-      setOrderError(error instanceof Error ? error.message : 'Failed to process payment');
+      console.error("❌ Error saving order:", error);
+      setOrderError("An error occurred. Please try again.");
+    } finally {
       setIsProcessing(false);
+    }
+  };
+
+  // Helper function to poll for payment
+  const pollForPayment = (ref: string) => {
+    let pollCount = 0;
+    const maxPolls = 180;
+    const pollInterval = setInterval(async () => {
+      pollCount++;
+      try {
+        const verifyRes = await fetch(`/api/verify-payment?reference=${ref}`);
+        const verifyData = await verifyRes.json();
+        
+        if (verifyData.success && verifyData.status === 'success') {
+          console.log("✅ Payment verified!");
+          clearInterval(pollInterval);
+          handlePaymentSuccess({ reference: ref, ...verifyData });
+          return;
+        }
+      } catch (err) {
+        console.log("Polling...");
+      }
+      
+      if (pollCount >= maxPolls) {
+        clearInterval(pollInterval);
+        setIsProcessing(false);
+      }
+    }, 1000);
+  };
+
+  // Helper function to verify payment
+  const verifyAndProcessPayment = async (ref: string) => {
+    try {
+      const res = await fetch(`/api/verify-payment?reference=${ref}`);
+      const data = await res.json();
+      
+      if (data.success && data.status === 'success') {
+        console.log("✅ Payment confirmed!");
+        handlePaymentSuccess({ reference: ref, ...data });
+      } else {
+        console.log("Payment pending or failed");
+        pollForPayment(ref);
+      }
+    } catch (err) {
+      console.error("Verification error:", err);
+      pollForPayment(ref);
     }
   };
 
   if (!isHydrated) return null;
 
-  // ===== VERIFYING PAYMENT =====
-  // Only show the verifying spinner if we don't have a delivery method modal to show
-  if (verifyingPayment && !deliveryMethodModalOpen) {
+  // ===== EMPTY CART - But allow if custom order quote exists or payment was successful =====
+  if (items.length === 0 && !customQuote && !paymentSuccessful) {
     return (
       <div className="min-h-screen flex flex-col">
-        <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
-          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4">
-            <h1 className="text-2xl font-bold text-gray-900">💳 Checkout</h1>
-          </div>
-        </header>
-        <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full flex items-center justify-center">
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-lime-600 border-t-transparent mx-auto mb-6"></div>
-            <h2 className="text-xl font-bold text-gray-900 mb-2">Verifying your payment...</h2>
-            <p className="text-gray-600">Please wait while we confirm your transaction with Paystack</p>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // ===== EMPTY CART =====
-  if (items.length === 0 && !isFromQuote && !createdOrderId) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
-          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4">
-            <h1 className="text-2xl font-bold text-gray-900">🛒 Checkout</h1>
-          </div>
-        </header>
+        <Header />
         <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
           <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12">
             <div className="text-center mb-8">
@@ -528,590 +278,326 @@ export default function CheckoutPage() {
     );
   }
 
-  // Loading state for custom order
-  if (isFromQuote && loadingCustomOrder) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
-          <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4">
-            <h1 className="text-2xl font-bold text-gray-900">⏳ Loading Quote...</h1>
-          </div>
-        </header>
-        <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
-          <div className="bg-white rounded-lg shadow-md border border-gray-200 p-12 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-600 mx-auto"></div>
-            <p className="text-gray-600 mt-4">Loading quote details...</p>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
+  // ===== CALCULATE TOTALS =====
+  let shippingCost, taxEstimate, totalAmount, displayItems, displayTotal, displaySubtotal;
+  
+  if (customQuote) {
+    // Custom order totals - ensure all values are numbers
+    const quotedPrice = typeof customQuote.quotedPrice === 'number' ? customQuote.quotedPrice : parseFloat(customQuote.quotedPrice) || 0;
+    const quotedVAT = typeof customQuote.quotedVAT === 'number' ? customQuote.quotedVAT : parseFloat(customQuote.quotedVAT) || 0;
+    const quotedTotal = typeof customQuote.quotedTotal === 'number' ? customQuote.quotedTotal : parseFloat(customQuote.quotedTotal) || 0;
+    
+    shippingCost = 0;
+    taxEstimate = quotedVAT;
+    totalAmount = quotedTotal || (quotedPrice + quotedVAT);
+    displayItems = [{
+      name: `Custom Order #${customQuote.orderNumber}`,
+      quantity: customQuote.quantity || 1,
+      price: quotedPrice,
+      total: quotedPrice * (customQuote.quantity || 1)
+    }];
+    displaySubtotal = quotedPrice;
+    displayTotal = totalAmount;
+    
+    console.log('[Checkout] Calculated custom quote totals:', {
+      quotedPrice,
+      quotedVAT,
+      quotedTotal,
+      displaySubtotal,
+      displayTotal,
+    });
+  } else {
+    // Cart totals
+    shippingCost = SHIPPING_OPTIONS[shippingOption].cost;
+    taxEstimate = total * 0.075;
+    totalAmount = total + shippingCost + taxEstimate;
+    displayItems = items;
+    displaySubtotal = total;
+    displayTotal = totalAmount;
   }
 
-  // ===== CALCULATE TOTALS =====
-  const itemCount = orderSummary?.items?.reduce((sum: number, i: any) => sum + i.quantity, 0) ?? items.reduce((sum, i) => sum + i.quantity, 0);
-  const shippingCost = orderSummary?.shippingCost ?? SHIPPING_OPTIONS[shippingOption].cost;
-  // VAT is only on goods/services (NOT on caution fee)
-  const taxEstimate = orderSummary?.taxEstimate ?? (subtotalForVAT * 0.075);
-  // Use quote total if from quote, otherwise calculate regular checkout total
-  const totalAmount = isFromQuote && customOrderQuote 
-    ? customOrderQuote.quotedTotal 
-    : (orderSummary?.totalAmount ?? (subtotalWithCaution + shippingCost + taxEstimate));
-
+  // ===== CHECKOUT FORM =====
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-slate-50 via-white to-slate-50">
-      <header className="border-b border-gray-200 sticky top-0 z-40 bg-white shadow-sm">
-        <div className="mx-auto w-full px-2 md:px-6 py-2 md:py-4">
-          <h1 className="text-2xl font-bold text-gray-900">💳 Checkout</h1>
-        </div>
-      </header>
-      <main className="flex-1 max-w-6xl mx-auto px-4 py-8 md:py-12 w-full">
-        {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="bg-gradient-to-br from-lime-600 to-green-600 rounded-lg p-3">
-              <CreditCard className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">
-                Order Review
-              </h1>
-              <p className="text-gray-600">Step 2 of 2 - Review and Pay</p>
-            </div>
-          </div>
-        </div>
-
+    <div className="min-h-screen flex flex-col">
+      <Header />
+      <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            
-            {/* Order Items */}
-            {!isFromQuote && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 hover:shadow-md transition-shadow duration-300">
+          {/* Payment Form */}
+          <div className="lg:col-span-2">
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-8">
               <div className="flex items-center gap-3 mb-6">
-                <div className="bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg p-3">
-                  <ShoppingBag className="h-5 w-5 text-blue-600" />
-                </div>
-                <h2 className="text-xl font-bold text-gray-900">Order Items ({itemCount})</h2>
+                <CreditCard className="h-6 w-6 text-purple-600" />
+                <h1 className="text-3xl font-bold">Order Summary</h1>
               </div>
-              
-              <div className="space-y-3">
-                {(orderSummary?.items || items).map((item: any) => (
-                  <div 
-                    key={`${item.id}-${item.mode}`} 
-                    className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-xl border border-gray-100 hover:border-blue-200 transition-all duration-200"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3">
-                        <div className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
-                          item.mode === 'rent' 
-                            ? 'bg-purple-100 text-purple-700' 
-                            : 'bg-green-100 text-green-700'
-                        }`}>
-                          {item.mode === 'rent' ? '🔄 Rental' : '🛍️ Buy'}
-                        </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{item.name}</p>
-                          <p className="text-xs text-gray-500">Quantity: {item.quantity}</p>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right ml-4">
-                      {item.mode === 'rent' ? (
-                        <>
-                          <p className="font-bold text-gray-900">₦{(item.price * item.quantity * (rentalSchedule?.rentalDays || 1)).toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">₦{item.price.toLocaleString()} × {item.quantity} qty × {rentalSchedule?.rentalDays || 1} days</p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="font-bold text-gray-900">₦{(item.price * item.quantity).toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">₦{item.price.toLocaleString()} each</p>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            )}
 
-            {/* Custom Order Details with Image (Quote Mode) */}
-            {isFromQuote && customOrderDetails && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 hover:shadow-md transition-shadow duration-300">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-gradient-to-br from-blue-100 to-blue-50 rounded-lg p-3">
-                    <ShoppingBag className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Order Item (1)</h2>
-                    <p className="text-xs text-gray-500 mt-1">Custom Order</p>
-                  </div>
-                </div>
-                
-                <div className="grid md:grid-cols-3 gap-8">
-                  {/* Image Section - Main Picture Only */}
-                  <div className="md:col-span-1">
-                    <div className="bg-gray-100 rounded-xl overflow-hidden">
-                      {customOrderDetails.designUrl || customOrderDetails.designUrls?.[0] ? (
-                        <img
-                          src={customOrderDetails.designUrl || customOrderDetails.designUrls?.[0]}
-                          alt={customOrderDetails.description}
-                          className="w-full h-64 object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-64 flex items-center justify-center bg-gray-200 text-gray-500">
-                          <div className="text-center">
-                            <ShoppingBag className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                            <p className="text-sm">No image available</p>
-                          </div>
-                        </div>
-                      )}
+              {/* Order Summary */}
+              <div className="bg-gray-50 rounded-lg p-6 mb-8">
+                <h2 className="font-bold text-gray-900 mb-4">Items in {customQuote ? 'Order' : 'Cart'}</h2>
+                <div className="space-y-3">
+                  {displayItems.map((item: any, idx: number) => (
+                    <div key={idx} className="flex justify-between">
+                      <span>{item.name} {item.quantity && item.quantity > 1 ? `(x${item.quantity})` : ''}</span>
+                      <span className="font-semibold">₦{((item.total || item.price * (item.quantity || 1)) || 0).toLocaleString()}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-2 text-center">Main design image</p>
-                  </div>
-
-                  {/* Details Section */}
-                  <div className="md:col-span-2 space-y-4">
-                    {/* Order Number & Name */}
-                    <div>
-                      <p className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Order Number</p>
-                      <p className="text-lg font-bold text-gray-900">{customOrderDetails.orderNumber}</p>
-                      <p className="text-sm text-gray-600 mt-2">Customer: {customOrderDetails.fullName}</p>
-                    </div>
-
-                    {/* Description */}
-                    <div className="pt-2 border-t border-gray-200">
-                      <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Description</p>
-                      <p className="text-sm text-gray-700 leading-relaxed">{customOrderDetails.description}</p>
-                    </div>
-
-                    {/* Quantity & Location */}
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-gray-200">
-                      <div>
-                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Quantity</p>
-                        <p className="text-lg font-bold text-gray-900">{customOrderDetails.quantity} unit(s)</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Location</p>
-                        <p className="text-sm text-gray-900">{customOrderDetails.city}</p>
-                        {customOrderDetails.state && (
-                          <p className="text-sm text-gray-600">{customOrderDetails.state}</p>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Contact Info */}
-                    <div className="bg-gradient-to-r from-blue-50 to-transparent rounded-lg p-4 pt-4 border-t border-gray-200 mt-4">
-                      <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Contact Information</p>
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-600 font-medium">Email:</span>
-                          <span className="text-sm text-gray-900">{customOrderDetails.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-600 font-medium">Phone:</span>
-                          <span className="text-sm text-gray-900">{customOrderDetails.phone}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               </div>
-            )}
 
-            {/* Custom Order Quote (from chat Pay Now) */}
-            {isFromQuote && customOrderQuote && (
-              <div className="bg-gradient-to-br from-lime-50 to-green-50 rounded-2xl shadow-sm border border-lime-300 p-8 hover:shadow-md transition-shadow duration-300">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="bg-lime-100 rounded-lg p-3">
-                    <FileText className="h-5 w-5 text-lime-600" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Custom Order Quote</h2>
-                    <p className="text-sm text-gray-600 mt-1">{customOrderQuote.orderNumber}</p>
-                  </div>
+              {/* Pricing */}
+              <div className="bg-white border border-gray-200 rounded-lg p-6 mb-8 space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal</span>
+                  <span>₦{displaySubtotal.toLocaleString()}</span>
                 </div>
-                
-                <div className="space-y-4">
-                  {/* Unit Price */}
-                  <div className="flex justify-between items-center p-4 bg-white/60 rounded-xl border border-lime-200">
-                    <div>
-                      <p className="text-sm font-semibold text-gray-600">Unit Price</p>
-                      <p className="text-xs text-gray-500 mt-1">Per item quoted by admin</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-lg text-gray-900">₦{customOrderQuote.quotedPrice?.toLocaleString() || '0'}</p>
-                      <p className="text-xs text-gray-600">× {customOrderQuote.quantity || 1}</p>
-                    </div>
+                {customQuote && customQuote.discountAmount > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount</span>
+                    <span>-₦{customQuote.discountAmount.toLocaleString()}</span>
                   </div>
-
-                  {/* Discount (if applicable) */}
-                  {customOrderQuote.discountPercentage > 0 && (
-                    <div className="flex justify-between items-center p-4 bg-green-50 rounded-xl border border-green-200">
-                      <div>
-                        <p className="text-sm font-semibold text-green-700">Discount ({customOrderQuote.discountPercentage}%)</p>
-                        <p className="text-xs text-green-600 mt-1">Special offer from admin</p>
-                      </div>
-                      <p className="font-bold text-lg text-green-700">-₦{customOrderQuote.discountAmount?.toLocaleString() || '0'}</p>
-                    </div>
-                  )}
-
-                  {/* VAT */}
-                  <div className="flex justify-between items-center p-4 bg-blue-50 rounded-xl border border-blue-200">
-                    <div>
-                      <p className="text-sm font-semibold text-blue-700">VAT (7.5%)</p>
-                      <p className="text-xs text-blue-600 mt-1">Tax on quoted amount</p>
-                    </div>
-                    <p className="font-bold text-lg text-blue-700">₦{customOrderQuote.quotedVAT?.toLocaleString() || '0'}</p>
+                )}
+                {!customQuote && (
+                  <div className="flex justify-between text-sm">
+                    <span>Shipping ({shippingOption === "empi" ? "EMPI" : "Pickup"})</span>
+                    <span>{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</span>
                   </div>
-
-                  {/* Total Amount */}
-                  <div className="pt-4 bg-gradient-to-br from-lime-100 to-green-100 rounded-xl p-4 border border-lime-400">
-                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Total Amount to Pay</p>
-                    <p className="font-black text-4xl bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">
-                      ₦{customOrderQuote.quotedTotal?.toLocaleString() || '0'}
-                    </p>
-                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span>Tax (7.5%)</span>
+                  <span>₦{taxEstimate.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between text-lg font-bold pt-3 border-t-2 border-gray-200">
+                  <span>Total Amount</span>
+                  <span className="text-purple-600">₦{displayTotal.toLocaleString()}</span>
                 </div>
               </div>
-            )}
 
-            {/* Rental Schedule (if applicable) */}
-            {rentalSchedule && items.some(i => i.mode === 'rent') && (
-              <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-sm border border-purple-200 p-6 hover:shadow-md transition-shadow duration-300">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-purple-100 rounded-lg p-3">
-                    <Clock className="h-5 w-5 text-purple-600" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">Rental Schedule</h3>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="bg-white/60 rounded-lg p-4">
-                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Pickup</p>
-                    <p className="font-bold text-gray-900">{rentalSchedule.pickupDate}</p>
-                    <p className="text-sm text-gray-700 font-semibold">at {rentalSchedule.pickupTime}</p>
-                  </div>
-                  <div className="bg-white/60 rounded-lg p-4">
-                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Return</p>
-                    <p className="font-bold text-gray-900">{rentalSchedule.returnDate}</p>
-                    <p className="text-sm text-gray-700 font-semibold">{rentalSchedule.rentalDays} {rentalSchedule.rentalDays === 1 ? 'day' : 'days'}</p>
-                  </div>
+              {/* Customer Info */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <p className="text-xs font-semibold text-blue-900 mb-3 uppercase">Billing Information</p>
+                <div className="text-sm text-blue-800 space-y-1">
+                  <p><span className="font-semibold">Name:</span> {buyer?.fullName || "Guest Customer"}</p>
+                  <p><span className="font-semibold">Email:</span> {buyer?.email || "Not provided"}</p>
+                  <p><span className="font-semibold">Phone:</span> {buyer?.phone || "Not provided"}</p>
                 </div>
               </div>
-            )}
 
-            {/* Delivery Information (if EMPI delivery) */}
-            {shippingOption === "empi" && deliveryQuote && (
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl shadow-sm border border-green-200 p-6 hover:shadow-md transition-shadow duration-300">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="bg-green-100 rounded-lg p-3">
-                    <Truck className="h-5 w-5 text-green-600" />
-                  </div>
-                  <h3 className="text-lg font-bold text-gray-900">Delivery Details</h3>
+              {/* Payment Notice */}
+              {orderError && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-red-800">
+                    <strong>⚠️ Error:</strong> {orderError}
+                  </p>
                 </div>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-white/60 rounded-lg p-4">
-                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Distance</p>
-                    <p className="font-bold text-gray-900 text-lg">{deliveryQuote.distance?.toFixed(1) || 'N/A'} km</p>
-                  </div>
-                  <div className="bg-white/60 rounded-lg p-4">
-                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Estimated Time</p>
-                    <p className="font-bold text-gray-900 text-lg">{deliveryQuote.duration || 'N/A'}</p>
-                  </div>
-                  <div className="md:col-span-2 bg-white/60 rounded-lg p-4">
-                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Delivery Address</p>
-                    <p className="font-semibold text-gray-900">{deliveryQuote.deliveryPoint?.address || 'Not specified'}</p>
-                  </div>
-                </div>
-              </div>
-            )}
+              )}
 
-            {/* Error Message */}
-            {orderError && (
-              <div className="bg-red-50 border-l-4 border-red-500 rounded-lg p-4 flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-semibold text-red-900">Payment Error</p>
-                  <p className="text-red-800 text-sm">{orderError}</p>
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            {createdOrderId && !isProcessing && (
-              <div className="flex gap-3 pt-4">
+              {/* Action Buttons */}
+              <div className="flex gap-3">
                 <Link
                   href="/cart"
-                  className="flex-1 inline-block text-center bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold px-6 py-4 rounded-xl transition duration-200 flex items-center justify-center gap-2"
+                  className="flex-1 inline-block text-center bg-gray-600 hover:bg-gray-700 text-white font-semibold px-6 py-3 rounded-lg transition"
                 >
                   ← Back to Cart
                 </Link>
                 <button
-                  onClick={handleProceedToPayment}
-                  className="flex-1 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-semibold px-6 py-4 rounded-xl transition duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
+                  onClick={async () => {
+                    console.log("Pay button clicked");
+                    
+                    // Use buyer info if logged in, otherwise use guest customer info
+                    const customerInfo = buyer || guestCustomer;
+                    
+                    if (!customerInfo?.fullName || !customerInfo?.email || !customerInfo?.phone) {
+                      setOrderError("Please provide your full name, email, and phone number");
+                      console.log("Incomplete customer info:", { fullName: customerInfo?.fullName, email: customerInfo?.email, phone: customerInfo?.phone });
+                      return;
+                    }
+                    
+                    // Validate email format
+                    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!emailRegex.test(customerInfo.email)) {
+                      setOrderError("Please provide a valid email address");
+                      console.log("Invalid email format:", customerInfo.email);
+                      return;
+                    }
+                    
+                    if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
+                      setOrderError("Payment service is not configured");
+                      return;
+                    }
+                    
+                    setIsProcessing(true);
+                    setOrderError(null);
+
+                    try {
+                      const ref = `EMPI-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                      const amountInKobo = Math.round(displayTotal * 100);
+
+                      console.log("💳 Payment Details:", { ref, amount: displayTotal, email: customerInfo.email });
+
+                      // Store payment info in localStorage
+                      localStorage.setItem('empi_pending_payment', JSON.stringify({
+                        reference: ref,
+                        email: customerInfo.email,
+                        amount: amountInKobo,
+                        timestamp: Date.now()
+                      }));
+
+                      // Attempt modal first if Paystack is available
+                      let modalAttempted = false;
+                      if (typeof window !== "undefined" && (window as any).PaystackPop) {
+                        try {
+                          console.log("Attempting Paystack modal...");
+                          const handler = (window as any).PaystackPop.setup({
+                            key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
+                            email: buyer?.email || customerInfo.email,
+                            amount: amountInKobo,
+                            currency: "NGN",
+                            ref: ref,
+                            firstname: customerInfo.fullName.split(" ")[0] || "Customer",
+                            lastname: customerInfo.fullName.split(" ").slice(1).join(" ") || "",
+                            phone: customerInfo.phone,
+                            onClose: () => {
+                              console.log("Paystack modal closed - verifying payment...");
+                              // Small delay to ensure payment is processed
+                              setTimeout(() => {
+                                verifyAndProcessPayment(ref);
+                              }, 1500);
+                            },
+                            onSuccess: (response: any) => {
+                              console.log("Paystack onSuccess called with response:", response);
+                              // Immediately handle success
+                              handlePaymentSuccess({ reference: ref, ...response });
+                            },
+                          });
+
+                          if (handler?.openIframe) {
+                            console.log("Opening Paystack iframe...");
+                            handler.openIframe();
+                            modalAttempted = true;
+                            // Start polling in case onSuccess doesn't fire
+                            setTimeout(() => {
+                              console.log("Starting payment verification poll...");
+                              pollForPayment(ref);
+                            }, 2000);
+                            return;
+                          } else if (handler?.pay) {
+                            // Fallback to pay() method
+                            console.log("Using pay() method...");
+                            handler.pay();
+                            modalAttempted = true;
+                            setTimeout(() => {
+                              console.log("Starting payment verification poll (pay method)...");
+                              pollForPayment(ref);
+                            }, 2000);
+                            return;
+                          }
+                        } catch (err) {
+                          console.warn("Modal failed, using redirect:", err);
+                        }
+                      }
+
+                      // Fallback to backend initialization
+                      if (!modalAttempted) {
+                        console.log("Using backend payment initialization");
+                        try {
+                          const initRes = await fetch('/api/initialize-payment', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              email: customerInfo.email,
+                              amount: amountInKobo,
+                              reference: ref,
+                              firstname: customerInfo.fullName.split(" ")[0] || "Customer",
+                              lastname: customerInfo.fullName.split(" ").slice(1).join(" ") || "",
+                              phone: customerInfo.phone,
+                            }),
+                          });
+
+                          const initData = await initRes.json();
+                          if (initRes.ok && initData.authorization_url) {
+                            console.log("✅ Payment initialized, redirecting to:", initData.authorization_url);
+                            window.location.href = initData.authorization_url;
+                          } else {
+                            setOrderError(initData.error || "Failed to initialize payment");
+                            setIsProcessing(false);
+                          }
+                        } catch (err) {
+                          console.error("Payment initialization error:", err);
+                          setOrderError("Failed to initialize payment. Please try again.");
+                          setIsProcessing(false);
+                        }
+                      }
+                    } catch (error) {
+                      console.error("Payment error:", error);
+                      setIsProcessing(false);
+                      setOrderError("Failed to initialize payment. Please try again.");
+                    }
+                  }}
+                  disabled={isProcessing}
+                  className="flex-1 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold px-6 py-3 rounded-lg transition"
                 >
-                  💳 Proceed to Payment <ArrowRight className="h-5 w-5" />
+                  {isProcessing ? "Processing..." : `Pay ₦${displayTotal.toLocaleString()}`}
                 </button>
               </div>
-            )}
 
-            {isProcessing && (
-              <div className="flex gap-3 pt-4">
-                <div className="flex-1 bg-gray-100 text-gray-600 font-semibold px-6 py-4 rounded-xl flex items-center justify-center gap-2">
-                  <div className="animate-spin h-5 w-5 border-2 border-lime-600 border-t-transparent rounded-full"></div>
-                  Processing...
-                </div>
+              {/* Secured by Paystack Badge */}
+              <div className="mt-4 text-center">
+                <p className="text-xs text-gray-500 flex items-center justify-center gap-2">
+                  🔒 Secured by{" "}
+                  <span className="font-semibold text-gray-700">Paystack</span>
+                </p>
               </div>
-            )}
+            </div>
           </div>
 
-          {/* Sidebar */}
+          {/* Order Sidebar */}
           <div className="lg:col-span-1">
-            <div className="sticky top-24 space-y-6">
-              {/* Order Summary Sidebar */}
-              <div className={`${isFromQuote ? 'bg-gradient-to-br from-lime-50 to-green-50 border-lime-300' : 'bg-white border-gray-100'} rounded-2xl shadow-sm border p-6 hover:shadow-md transition-shadow duration-300`}>
-                <h3 className="font-bold text-gray-900 mb-6 text-lg">{isFromQuote ? 'Quote Summary' : 'Order Summary'}</h3>
-                
-                <div className="space-y-4">
-                  {isFromQuote && customOrderQuote ? (
-                    <>
-                      {/* Quote Summary */}
-                      <div className="pb-4 border-b border-lime-200">
-                        <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Quote Details</p>
-                        <div className="bg-white rounded-lg p-4 space-y-2">
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-700">Order Number:</span>
-                            <span className="font-semibold text-gray-900">{customOrderQuote.orderNumber}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-sm text-gray-700">Quantity:</span>
-                            <span className="font-semibold text-gray-900">{customOrderQuote.quantity || 1}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Pricing Breakdown for Quote */}
-                      <div className="pb-4 border-b border-lime-200">
-                        <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Pricing Breakdown</p>
-                        
-                        {/* Unit Price */}
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm text-gray-600">Unit Price</p>
-                          <p className="font-bold text-gray-900">₦{customOrderQuote.quotedPrice?.toLocaleString() || '0'}</p>
-                        </div>
-
-                        {/* Discount */}
-                        {customOrderQuote.discountPercentage > 0 && (
-                          <div className="bg-green-50 p-3 rounded-lg mb-3 space-y-2">
-                            <div className="flex justify-between items-center">
-                              <p className="text-xs font-semibold text-green-700">Discount ({customOrderQuote.discountPercentage}%)</p>
-                              <p className="font-bold text-green-700">-₦{customOrderQuote.discountAmount?.toLocaleString() || '0'}</p>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* VAT */}
-                        <div className="flex justify-between items-center">
-                          <p className="text-sm text-gray-600">VAT (7.5%)</p>
-                          <p className="font-bold text-gray-900">₦{customOrderQuote.quotedVAT?.toLocaleString() || '0'}</p>
-                        </div>
-                      </div>
-
-                      {/* Total for Quote */}
-                      <div className="pt-4 bg-gradient-to-br from-lime-100 to-green-100 rounded-xl p-4 border border-lime-400">
-                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Total Amount</p>
-                        <p className="font-black text-3xl bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">
-                          ₦{customOrderQuote.quotedTotal?.toLocaleString() || '0'}
-                        </p>
-                      </div>
-
-                      {/* Status */}
-                      <div className="pt-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Status</p>
-                        </div>
-                        <p className="text-sm text-green-700 font-semibold">✅ Ready for Payment</p>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Item Breakdown */}
-                      <div className="pb-4 border-b border-gray-200">
-                        <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Items Breakdown</p>
-                        <div className="space-y-3">
-                          {(orderSummary?.items || items).map((item: any) => (
-                            <div key={`${item.id}-${item.mode}`} className="text-sm bg-gray-50 p-3 rounded-lg">
-                              <div className="flex justify-between mb-1">
-                                <span className="text-gray-700 font-medium">{item.name}</span>
-                                <span className="font-semibold text-gray-900">
-                                  {item.mode === 'rent' 
-                                    ? `₦${(item.price * item.quantity * (orderSummary?.rentalSchedule?.rentalDays || rentalSchedule?.rentalDays || 1)).toLocaleString()}`
-                                    : `₦${(item.price * item.quantity).toLocaleString()}`
-                                  }
-                                </span>
-                              </div>
-                              {item.mode === 'rent' ? (
-                                <div className="text-xs text-gray-600 mt-2 space-y-1">
-                                  <div>Qty: {item.quantity} × Price: ₦{item.price.toLocaleString()} × Days: {orderSummary?.rentalSchedule?.rentalDays || rentalSchedule?.rentalDays || 1}</div>
-                                  <div className="text-purple-700 font-semibold">= ₦{(item.price * item.quantity * (orderSummary?.rentalSchedule?.rentalDays || rentalSchedule?.rentalDays || 1)).toLocaleString()}</div>
-                                </div>
-                              ) : (
-                                <div className="text-xs text-gray-600 mt-2">
-                                  Qty: {item.quantity} × ₦{item.price.toLocaleString()}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Subtotal */}
-                      <div className="pb-4 border-b border-gray-200">
-                        <div className="flex justify-between items-center mb-2">
-                          <p className="text-sm text-gray-600">Subtotal</p>
-                          <p className="font-bold text-gray-900">₦{buySubtotal.toLocaleString()}</p>
-                        </div>
-                        
-                        {/* Bulk Discount (if applicable) */}
-                        {discountPercentage > 0 && (
-                          <div className="mt-3 pt-3 border-t border-green-200 bg-green-50 p-3 rounded-lg space-y-2">
-                            <div className="flex justify-between items-center">
-                              <p className="text-xs font-semibold text-green-700">🎉 Bulk Discount ({discountPercentage}%)</p>
-                              <p className="font-bold text-green-700">-₦{discountAmount.toLocaleString()}</p>
-                            </div>
-                            <p className="text-xs text-green-600">Applied on {totalBuyQuantity} buy items</p>
-                            
-                            {/* Subtotal after discount */}
-                            <div className="border-t border-green-300 pt-2 flex justify-between items-center">
-                              <p className="text-xs font-semibold text-green-800">After Discount</p>
-                              <p className="font-bold text-green-800">₦{buySubtotalAfterDiscount.toLocaleString()}</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Caution Fee (if applicable) */}
-                      {cautionFee > 0 && (
-                        <div className="pb-4 border-b border-gray-200">
-                          <p className="text-sm text-amber-700 font-semibold mb-1 flex items-center gap-2">
-                            🛡️ Caution Fee (50%)
-                          </p>
-                          <p className="font-bold text-amber-700 text-lg">₦{cautionFee.toLocaleString()}</p>
-                          <p className="text-xs text-amber-600 mt-1">Applied on rental items</p>
-                        </div>
-                      )}
-
-                      {/* Shipping */}
-                      <div className="pb-4 border-b border-gray-200">
-                        <p className="text-sm text-gray-600 mb-1">Shipping</p>
-                        <div className="flex justify-between items-center">
-                          <span className="font-semibold text-gray-900">{SHIPPING_OPTIONS[shippingOption].name}</span>
-                          <span className="font-bold text-gray-900">{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</span>
-                        </div>
-                      </div>
-
-                      {/* VAT */}
-                      <div className="pb-4 border-b border-gray-200">
-                        <p className="text-sm text-gray-600 mb-1">VAT (7.5%)</p>
-                        <p className="font-bold text-gray-900">₦{taxEstimate.toLocaleString()}</p>
-                      </div>
-
-                      {/* Total */}
-                      <div className="pt-4 bg-gradient-to-br from-lime-100 to-green-100 rounded-xl p-4">
-                        <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Total Amount</p>
-                        <p className="font-black text-3xl bg-gradient-to-r from-lime-600 to-green-600 bg-clip-text text-transparent">
-                          ₦{totalAmount.toLocaleString()}
-                        </p>
-                      </div>
-
-                      {/* Status */}
-                      <div className="pt-4">
-                        <div className="flex items-center gap-2 mb-2">
-                          <CheckCircle2 className="h-4 w-4 text-green-600" />
-                          <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Status</p>
-                        </div>
-                        <p className="text-sm text-green-700 font-semibold">✅ Ready for Payment</p>
-                      </div>
-                    </>
-                  )}
+            <div className="bg-white rounded-lg shadow-md border border-gray-200 p-6 sticky top-24">
+              <h3 className="font-bold text-gray-900 mb-4">Order Summary</h3>
+              <div className="space-y-4 text-sm">
+                {!customQuote && (
+                  <div className="pb-4 border-b border-gray-200">
+                    <p className="text-gray-600 mb-1">Items Count</p>
+                    <p className="font-semibold text-gray-900">{items.reduce((sum, i) => sum + i.quantity, 0)} items</p>
+                  </div>
+                )}
+                <div className="pb-4 border-b border-gray-200">
+                  <p className="text-gray-600 mb-1">Subtotal</p>
+                  <p className="font-semibold text-gray-900">₦{displaySubtotal.toLocaleString()}</p>
                 </div>
-              </div>
-
-              {/* Security Badge */}
-              <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <Lock className="h-4 w-4 text-green-600" />
-                  <p className="text-xs font-bold text-green-900 uppercase tracking-wide">Secure Payment</p>
+                {!customQuote && (
+                  <div className="pb-4 border-b border-gray-200">
+                    <p className="text-gray-600 mb-1">Shipping</p>
+                    <p className="font-semibold text-gray-900">{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</p>
+                  </div>
+                )}
+                <div className="pb-4 border-b border-gray-200">
+                  <p className="text-gray-600 mb-1">Tax</p>
+                  <p className="font-semibold text-gray-900">₦{taxEstimate.toLocaleString()}</p>
                 </div>
-                <p className="text-xs text-green-800">Your payment is processed securely through Paystack.</p>
+                <div className="pt-4">
+                  <p className="text-gray-600 text-xs mb-2">Total</p>
+                  <p className="font-bold text-gray-900 text-xl">₦{displayTotal.toLocaleString()}</p>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </main>
 
-      {/* Validation Modal - Checkout Requirements */}
-      <CheckoutValidationModal
-        isOpen={validationModalOpen}
-        onClose={() => setValidationModalOpen(false)}
-        validationType={validationType}
-        message={validationMessage}
-      />
-
-      {/* Auth Modal - Mobile Login/Signup */}
-      <AuthModal
-        isOpen={authModalOpen}
-        onClose={() => setAuthModalOpen(false)}
-        onAuthSuccess={(buyer) => {
-          console.log("✅ User authenticated:", buyer);
-          setAuthModalOpen(false);
-        }}
-      />
-
-      {/* Delivery Method Modal - Shows after payment verification */}
+      {/* Delivery Method Modal */}
       <DeliveryMethodModal
-        isOpen={deliveryMethodModalOpen}
-        orderId={createdOrderId || ''}
-        orderReference={paymentReference || ''}
+        isOpen={deliveryModalOpen}
         onClose={() => {
-          setDeliveryMethodModalOpen(false);
+          setDeliveryModalOpen(false);
+          // User can navigate manually or we can redirect after a delay
         }}
-        total={totalAmount}
-        buyerEmail={buyer?.email}
-        buyerPhone={buyer?.phone}
-        buyerName={buyer?.fullName}
-        onDeliveryConfirmed={() => {
-          // After delivery method is confirmed, close the delivery modal and show success modal
-          setDeliveryMethodModalOpen(false);
-          setPaymentSuccessModalOpen(true);
-        }}
+        orderId={selectedOrderId || ""}
+        orderReference={successReference}
+        total={paymentSuccessful ? paidAmount : displayTotal}
       />
-
-      {/* Payment Success Modal - Shows after delivery form is submitted */}
-      <PaymentSuccessModal
-        isOpen={paymentSuccessModalOpen}
-        orderReference={paymentReference || ''}
-        total={totalAmount}
-        onClose={() => {
-          setPaymentSuccessModalOpen(false);
-          // Navigate to orders dashboard after closing success modal
-          router.push("/dashboard?tab=orders");
-        }}
-      />
-
-      {/* Verifying Payment - Show loading state */}
-      {verifyingPayment && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999]">
-          <div className="bg-white rounded-2xl p-8 text-center max-w-sm">
-            <div className="animate-spin rounded-full h-12 w-12 border-4 border-lime-200 border-t-lime-600 mx-auto mb-4"></div>
-            <p className="text-gray-900 font-semibold">Verifying your payment...</p>
-            <p className="text-sm text-gray-600 mt-2">Please wait while we confirm your transaction with Paystack</p>
-          </div>
-        </div>
-      )}
 
       <Footer />
     </div>
   );
 }
+

@@ -472,7 +472,6 @@ export function ManualInvoiceGenerator() {
                   })),
                   subtotal,
                   tax: taxAmount,
-                  taxAmount: taxAmount,
                   taxRate: formData.taxRate,
                   totalAmount,
                   currency: formData.currency,

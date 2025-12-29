@@ -130,37 +130,3 @@ export async function GET(
     }, { status: 500 });
   }
 }
-
-// DELETE - Delete an order by ID
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    await connectDB();
-    const { id } = await params;
-
-    // Delete the order
-    const result = await Order.findByIdAndDelete(id);
-
-    if (!result) {
-      return NextResponse.json(
-        { error: 'Order not found' },
-        { status: 404 }
-      );
-    }
-
-    console.log(`[Orders API] ✅ Order ${id} deleted successfully`);
-
-    return NextResponse.json(
-      { message: 'Order deleted successfully', deletedOrder: result },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error('[Orders API] ❌ Error deleting order:', error);
-    return NextResponse.json(
-      { error: 'Failed to delete order' },
-      { status: 500 }
-    );
-  }
-}

@@ -50,37 +50,40 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
         <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">✨ Filter by Types</p>
       </div>
       
-      {/* Mobile - Grid Layout (5 per row) */}
+      {/* Mobile - Grid Layout (4 per row) */}
       <div className="md:hidden">
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-4 gap-3">
           {/* All Styles Button */}
-          <button
-            onClick={() => handleTypeSelect(null)}
-            className={`flex flex-col items-center justify-center py-3 px-1 rounded-lg font-semibold text-xs transition-all duration-200 border-2 ${ 
-              selectedType === null
-                ? "bg-lime-600 text-white border-lime-600 shadow-md"
-                : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-            }`}
-          >
-            <span className="text-xl mb-1">{COSTUME_ICONS["All Styles"]}</span>
-            <span className="line-clamp-1 text-center leading-tight text-xs">All</span>
-          </button>
+          <div className="flex flex-col items-center gap-2">
+            <button
+              onClick={() => handleTypeSelect(null)}
+              className={`flex items-center justify-center w-full py-5 rounded-2xl font-semibold transition-all duration-200 border-2 shadow-sm hover:shadow-md ${ 
+                selectedType === null
+                  ? "bg-gradient-to-br from-lime-500 to-lime-600 text-white border-lime-600 shadow-lg"
+                  : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
+              }`}
+            >
+              <span className="text-2xl">{COSTUME_ICONS["All Styles"]}</span>
+            </button>
+            <span className="text-xs font-bold text-gray-900 text-center">All</span>
+          </div>
 
           {/* Costume Type Buttons */}
           {typesToShow.map((type) => (
-            <button
-              key={type}
-              onClick={() => handleTypeSelect(type)}
-              className={`flex flex-col items-center justify-center py-3 px-1 rounded-lg font-semibold text-xs transition-all duration-200 border-2 ${
-                selectedType === type
-                  ? "bg-lime-600 text-white border-lime-600 shadow-md"
-                  : "bg-white text-gray-700 border-gray-200 hover:border-gray-300"
-              }`}
-              title={type}
-            >
-              <span className="text-xl mb-1">{COSTUME_ICONS[type] || "🎭"}</span>
-              <span className="line-clamp-1 text-center leading-tight text-xs">{type}</span>
-            </button>
+            <div key={type} className="flex flex-col items-center gap-2">
+              <button
+                onClick={() => handleTypeSelect(type)}
+                className={`flex items-center justify-center w-full py-5 rounded-2xl font-semibold transition-all duration-200 border-2 shadow-sm hover:shadow-md ${
+                  selectedType === type
+                    ? "bg-gradient-to-br from-lime-500 to-lime-600 text-white border-lime-600 shadow-lg"
+                    : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
+                }`}
+                title={type}
+              >
+                <span className="text-2xl">{COSTUME_ICONS[type] || "🎭"}</span>
+              </button>
+              <span className="text-xs font-bold text-gray-900 text-center leading-tight">{type}</span>
+            </div>
           ))}
         </div>
       </div>

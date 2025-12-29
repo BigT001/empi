@@ -8,8 +8,10 @@ import { Navigation } from "./components/Navigation";
 import { ProductGrid } from "./components/ProductGrid";
 import { Footer } from "./components/Footer";
 import { DiscountPopup } from "./components/DiscountPopup";
+import { MobileLogoTop } from "./components/MobileLogoTop";
 import { useHomeMode } from "./context/HomeModeContext";
 import { useCurrency } from "./context/CurrencyContext";
+import { CategoryCards } from "./components/CategoryCards";
 import CustomCostumesPage from "./custom-costumes/page";
 
 export default function Home() {
@@ -53,6 +55,9 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col animate-in fade-in duration-500">
+      {/* Mobile Logo Top - Part of page content, no background */}
+      <MobileLogoTop />
+
       {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
       <Navigation 
         category={category}
@@ -66,34 +71,16 @@ export default function Home() {
       {/* Discount Popup */}
       <DiscountPopup intervalMinutes={7} />
 
-      {/* Main Content - Add padding for both mobile and desktop headers */}
-      <div className="pt-20 md:pt-32">
-        {/* Hero Section with SEO Content */}
-        <section className="hidden bg-gradient-to-r from-lime-50 to-green-50 py-12 md:py-16 px-4">
-          <div className="max-w-6xl mx-auto text-center">
-            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Premium Costumes for Every Occasion in Lagos
-            </h1>
-            <p className="text-lg md:text-xl text-gray-700 mb-8">
-              EMPI is Lagos's leading costume maker, offering high-quality adult and kids costumes for rent and sale. 
-              Perfect for parties, events, themed celebrations, and special occasions.
-            </p>
-            <div className="flex flex-wrap justify-center gap-4">
-              <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
-                ✓ Professional Quality
-              </span>
-              <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
-                ✓ Fast Delivery
-              </span>
-              <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
-                ✓ Affordable Prices
-              </span>
-            </div>
-          </div>
-        </section>
+      {/* Category Cards - Mobile Only */}
+      <CategoryCards 
+        currentCategory={category}
+        onCategoryChange={setCategory}
+      />
 
-        {/* Premium Banner Card - Polished, Compact */}
-        <section className="mx-auto w-full max-w-7xl px-4 md:px-6 py-6 md:py-8">
+      {/* Main Content - Add padding for both mobile and desktop headers */}
+      <div className="pt-4 md:pt-20">
+        {/* Premium Banner Card - Desktop Only */}
+        <section className="hidden md:block mx-auto w-full max-w-7xl px-4 md:px-6 py-0 md:py-8">
         <div className="bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 border border-lime-200 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
           <div className="relative px-6 md:px-10 py-8 md:py-10">
             {/* Background decorative elements */}
@@ -118,6 +105,30 @@ export default function Home() {
           </div>
         </div>
       </section>
+
+        {/* Hero Section with SEO Content */}
+        <section className="hidden bg-gradient-to-r from-lime-50 to-green-50 py-12 md:py-16 px-4">
+          <div className="max-w-6xl mx-auto text-center">
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Premium Costumes for Every Occasion in Lagos
+            </h1>
+            <p className="text-lg md:text-xl text-gray-700 mb-8">
+              EMPI is Lagos's leading costume maker, offering high-quality adult and kids costumes for rent and sale. 
+              Perfect for parties, events, themed celebrations, and special occasions.
+            </p>
+            <div className="flex flex-wrap justify-center gap-4">
+              <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                ✓ Professional Quality
+              </span>
+              <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                ✓ Fast Delivery
+              </span>
+              <span className="inline-block bg-lime-600 text-white px-4 py-2 rounded-full text-sm font-semibold">
+                ✓ Affordable Prices
+              </span>
+            </div>
+          </div>
+        </section>
 
         {/* Custom Costumes CTA Section */}
         {/* Main Content */}

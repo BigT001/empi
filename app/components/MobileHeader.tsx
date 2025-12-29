@@ -100,129 +100,56 @@ export function MobileHeader() {
 
   return (
     <>
-      {/* Mobile Header */}
-      <div className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-white shadow-sm border-b border-gray-100 transition-transform duration-300 ${
-        headerVisible ? "translate-y-0" : "-translate-y-full"
+      {/* Mobile Bottom Navigation */}
+      <div className={`md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white shadow-lg border-t border-gray-200 transition-transform duration-300 ${
+        headerVisible ? "translate-y-0" : "translate-y-full"
       }`}>
-        <div className="flex items-center justify-between px-3 py-3 gap-2">
-          {/* Logo */}
-          <Link href="/" className="flex-shrink-0">
-            <Image
-              src="/logo/EMPI-2k24-LOGO-1.PNG"
-              alt="EMPI Logo"
-              width={48}
-              height={48}
-              className="h-12 w-auto"
-            />
+        <div className="flex items-center justify-between px-4 py-3 gap-2">
+          {/* About Button */}
+          <Link 
+            href="/about" 
+            className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition duration-300 font-semibold text-sm text-gray-700"
+            title="About Us"
+          >
+            About
           </Link>
 
-          {/* Category Buttons */}
-          <div className="flex gap-1 flex-1 justify-center">
-            <button
-              onClick={() => handleCategoryClick("adults")}
-              className={`px-3 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
-                currentCategory === "adults"
-                  ? "bg-lime-600 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              Adults
-            </button>
-            <button
-              onClick={() => handleCategoryClick("kids")}
-              className={`px-3 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
-                currentCategory === "kids"
-                  ? "bg-lime-600 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              Kids
-            </button>
-            <button
-              onClick={() => handleCategoryClick("custom")}
-              className={`px-3 py-2 text-sm font-semibold rounded-md transition-all duration-200 ${
-                currentCategory === "custom"
-                  ? "bg-lime-600 text-white shadow-sm"
-                  : "text-gray-600 hover:bg-gray-100"
-              }`}
-            >
-              Custom
-            </button>
-          </div>
-
-          {/* Right Actions */}
-          <div className="flex items-center gap-1 flex-shrink-0">
+          {/* Cart Button - Center */}
+          <Link href="/cart" className="relative inline-flex items-center justify-center">
             <button 
-              onClick={() => setShowSearchModal(true)}
-              className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition"
+              className="p-2 text-gray-700 hover:text-gray-900 transition-colors duration-200 transform hover:scale-110 active:scale-95 relative"
+              title="Cart"
             >
-              <Search className="h-5 w-5" />
+              <ShoppingCart className="h-6 w-6" strokeWidth={2} />
+              {items.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {items.length}
+                </span>
+              )}
             </button>
-            <NotificationBell />
-            <Link href="/cart" className="relative inline-flex items-center justify-center">
-              <button className="bg-lime-600 hover:bg-lime-700 text-white p-2 rounded-lg transition relative">
-                <ShoppingCart className="h-5 w-5" />
-                {items.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                    {items.length}
-                  </span>
-                )}
-              </button>
+          </Link>
+
+          {/* Login/Profile Button */}
+          {isHydrated && !isLoggedIn ? (
+            <Link 
+              href="/auth" 
+              className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition duration-300 font-semibold text-sm text-blue-700 gap-1"
+              title="Login"
+            >
+              <span>🔐</span> Login
             </Link>
-            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="p-2 text-gray-700 hover:bg-gray-100 active:bg-gray-200 rounded-lg transition" data-menu-toggle title="Menu">
-              <Menu className="h-6 w-6" />
-            </button>
-          </div>
+          ) : (
+            <Link 
+              href="/dashboard" 
+              className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-lime-100 hover:bg-lime-200 transition duration-300 font-semibold text-sm text-lime-700 gap-1"
+              title="Profile"
+            >
+              <User className="h-4 w-4" />
+              Profile
+            </Link>
+          )}
         </div>
       </div>
-
-      {/* Mobile Dropdown Menu */}
-      {showMobileMenu && (
-        <div className="md:hidden fixed top-16 left-0 right-0 bg-white border-b border-gray-200 shadow-lg z-40 animate-in slide-in-from-top duration-200" data-mobile-menu data-modal-trigger>
-          <div className="flex items-center justify-between px-4 py-3 gap-2">
-            {/* About Button */}
-            <Link 
-              href="/about" 
-              className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition duration-300 font-semibold text-sm text-gray-700"
-              title="About Us"
-              onClick={() => setShowMobileMenu(false)}
-            >
-              About
-            </Link>
-
-            {/* Currency Button */}
-            <button
-              onClick={() => setShowCurrencyModal(true)}
-              className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition duration-300 font-semibold text-sm text-gray-700"
-              title="Currency"
-            >
-              {CURRENCY_RATES[currency].symbol} {currency}
-            </button>
-
-            {/* Login/Profile Button */}
-            {isHydrated && !isLoggedIn ? (
-              <Link 
-                href="/auth" 
-                className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-blue-100 hover:bg-blue-200 transition duration-300 font-semibold text-sm text-blue-700 gap-1"
-                title="Login"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <span>🔐</span> Login
-              </Link>
-            ) : (
-              <Link 
-                href="/dashboard" 
-                className="flex-1 flex items-center justify-center px-3 py-2 rounded-lg bg-lime-100 hover:bg-lime-200 transition duration-300 font-semibold text-sm text-lime-700 gap-1"
-                title="Profile"
-                onClick={() => setShowMobileMenu(false)}
-              >
-                <User className="h-4 w-4" />
-                Profile
-              </Link>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Currency Modal */}
       {showCurrencyModal && (
@@ -262,60 +189,7 @@ export function MobileHeader() {
         </div>
       )}
 
-      {/* Search Modal */}
-      {showSearchModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-4" onClick={() => setShowSearchModal(false)}>
-          <div className="bg-white rounded-lg w-11/12 max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-            {/* Search Header */}
-            <div className="flex items-center gap-3 p-4 border-b border-gray-200">
-              <button
-                onClick={() => setShowSearchModal(false)}
-                className="text-gray-500 hover:text-gray-700"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </button>
-              <form onSubmit={handleSearch} className="flex-1 flex">
-                <input
-                  type="text"
-                  placeholder="Search costumes..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  autoFocus
-                  className="flex-1 outline-none text-sm font-medium"
-                />
-                <button
-                  type="submit"
-                  className="text-lime-600 hover:text-lime-700 font-semibold"
-                >
-                  Search
-                </button>
-              </form>
-            </div>
-
-            {/* Recent or Quick Search Options */}
-            <div className="p-4 space-y-2">
-              <p className="text-xs font-semibold text-gray-600 uppercase mb-3">Popular Searches</p>
-              {['Angel', 'Red', 'Carnival', 'Superhero', 'Gold'].map(term => (
-                <button
-                  key={term}
-                  onClick={() => {
-                    setSearchQuery(term);
-                    const params = new URLSearchParams();
-                    params.append('q', term);
-                    params.append('category', currentCategory);
-                    params.append('currency', currency);
-                    router.push(`/search?${params.toString()}`);
-                    setShowSearchModal(false);
-                  }}
-                  className="w-full text-left px-3 py-2 rounded-lg hover:bg-gray-100 transition text-sm text-gray-700 font-medium"
-                >
-                  {term}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Search Modal - Removed, search input now always visible in bottom bar */}
     </>
   );
 }

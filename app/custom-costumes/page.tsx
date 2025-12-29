@@ -6,6 +6,8 @@ import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
 import { Upload, AlertCircle, CheckCircle, Loader, X } from "lucide-react";
 import { useBuyer } from "../context/BuyerContext";
+import { CategoryCards } from "../components/CategoryCards";
+import { MobileLogoTop } from "../components/MobileLogoTop";
 
 interface CustomCostumesPageProps {
   category?: string;
@@ -196,6 +198,9 @@ export default function CustomCostumesPage({
 
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col">
+      {/* Mobile Logo Top - Part of page content, no background */}
+      <MobileLogoTop />
+
       {/* Navigation with Logo */}
       {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
       <Navigation 
@@ -205,11 +210,17 @@ export default function CustomCostumesPage({
         onCurrencyChange={onCurrencyChange}
       />
 
+      {/* Category Cards Navigation */}
+      <CategoryCards 
+        currentCategory="custom"
+        onCategoryChange={onCategoryChange}
+      />
+
       {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto px-0 md:px-6 py-12 md:py-16 mt-20 md:mt-32">
+      <main className="flex-1 max-w-4xl mx-auto px-0 md:px-6 py-12 md:py-16 mt-4 md:mt-20">
         <div className="space-y-12">
-          {/* Hero Section */}
-          <section className="text-center space-y-4 px-4 md:px-0">
+          {/* Hero Section - Desktop Only */}
+          <section className="hidden md:block text-center space-y-4 px-4 md:px-0 md:py-8">
             <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-lime-50 border border-purple-200 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
               <div className="relative px-5 md:px-10 py-8 md:py-12">
                 {/* Background decorative elements */}
@@ -235,127 +246,72 @@ export default function CustomCostumesPage({
             </div>
           </section>
 
-          {/* How It Works - Modern Card Design */}
-          <section className="space-y-8 px-0 sm:px-0">
-            <div className="text-center space-y-2">
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900">How It Works</h2>
-              <p className="text-gray-600 text-lg">4 Simple Steps to Your Perfect Costume</p>
-            </div>
+          {/* How It Works - Vertical Timeline on Mobile, Horizontal Grid on Desktop */}
+          <section className="space-y-8 overflow-hidden">
+            <h2 className="text-3xl font-bold text-gray-900 text-center">How It Works</h2>
             
-            {/* Steps Grid - Responsive */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 px-4 sm:px-0">
-              {/* Step 1 */}
-              <div className="group relative">
-                {/* Connection Arrow - Hidden on Mobile */}
-                <div className="hidden lg:block absolute -right-3 top-1/4 w-6 h-1 bg-gradient-to-r from-lime-600 to-lime-400 z-10"></div>
-                
-                <div className="bg-gradient-to-br from-lime-50 via-white to-white border-2 border-lime-200 rounded-2xl p-4 sm:p-6 md:p-7 shadow-md hover:shadow-xl hover:border-lime-400 transition-all duration-300 hover:-translate-y-2 h-full">
-                  {/* Mobile Layout: Icon and Text Side by Side */}
-                  <div className="flex sm:flex-col gap-4 sm:gap-0">
-                    <div className="w-14 h-14 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-lime-600 to-lime-500 flex items-center justify-center shadow-lg flex-shrink-0">
-                      <span className="text-2xl">📸</span>
-                    </div>
-                    
-                    {/* Mobile: Title and Description beside icon */}
-                    <div className="flex flex-col justify-center">
-                      <h3 className="font-bold text-gray-900 mb-1 text-sm sm:hidden">Submit Your Design</h3>
-                      <p className="text-gray-600 leading-relaxed text-xs sm:hidden">Upload a photo, sketch, or describe exactly what you want</p>
-                      
-                      {/* Desktop: Full layout */}
-                      <div className="hidden sm:block">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="text-xs font-bold bg-lime-200 text-lime-800 px-3 py-1 rounded-full">Step 1</div>
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-2 text-lg">Submit Your Design</h3>
-                        <p className="text-gray-600 leading-relaxed text-sm">Upload a photo, sketch, or describe exactly what you want</p>
-                      </div>
+            {/* Timeline Container */}
+            <div className="relative">
+              {/* Mobile Timeline Line */}
+              <div className="absolute left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-lime-600 via-lime-400 to-lime-600 md:hidden"></div>
+
+              {/* Desktop Horizontal Connector */}
+              <div className="hidden md:block absolute top-8 left-0 right-0 h-1 bg-gradient-to-r from-lime-600 via-lime-400 to-lime-600"></div>
+
+              {/* Steps Grid - Vertical on Mobile, Horizontal on Desktop */}
+              <div className="grid md:grid-cols-4 gap-8 md:gap-6">
+                {/* Step 1 */}
+                <div className="relative md:relative">
+                  {/* Dot Connector - Hidden on Mobile */}
+                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-14 h-14 bg-white border-4 border-lime-600 rounded-full items-center justify-center shadow-lg">
+                    <span className="text-xl font-bold text-lime-600">📸</span>
+                  </div>
+                  <div className="pl-16 md:pl-0 md:pt-24">
+                    <div className="bg-gradient-to-br from-lime-50 to-white rounded-none md:rounded-xl p-5 md:p-6 border-l-4 md:border-l-0 border-lime-600 md:border md:border-lime-200 shadow-sm md:text-center">
+                      <h3 className="font-bold text-gray-900 mb-2 text-base md:text-lg">Submit Your Design</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">Upload a photo, sketch, or describe exactly what you want</p>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Step 2 */}
-              <div className="group relative">
-                {/* Connection Arrow - Hidden on Mobile */}
-                <div className="hidden lg:block absolute -right-3 top-1/4 w-6 h-1 bg-gradient-to-r from-cyan-600 to-cyan-400 z-10"></div>
-                
-                <div className="bg-gradient-to-br from-cyan-50 via-white to-white border-2 border-cyan-200 rounded-2xl p-4 sm:p-6 md:p-7 shadow-md hover:shadow-xl hover:border-cyan-400 transition-all duration-300 hover:-translate-y-2 h-full">
-                  {/* Mobile Layout: Icon and Text Side by Side */}
-                  <div className="flex sm:flex-col gap-4 sm:gap-0">
-                    <div className="w-14 h-14 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-cyan-600 to-cyan-500 flex items-center justify-center shadow-lg flex-shrink-0">
-                      <span className="text-2xl">💬</span>
-                    </div>
-                    
-                    {/* Mobile: Title and Description beside icon */}
-                    <div className="flex flex-col justify-center">
-                      <h3 className="font-bold text-gray-900 mb-1 text-sm sm:hidden">Get a Quote</h3>
-                      <p className="text-gray-600 leading-relaxed text-xs sm:hidden">We review your request and send you a price quote</p>
-                      
-                      {/* Desktop: Full layout */}
-                      <div className="hidden sm:block">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="text-xs font-bold bg-cyan-200 text-cyan-800 px-3 py-1 rounded-full">Step 2</div>
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-2 text-lg">Get a Quote</h3>
-                        <p className="text-gray-600 leading-relaxed text-sm">We review your request and send you a price quote</p>
-                      </div>
+                {/* Step 2 */}
+                <div className="relative md:relative">
+                  {/* Dot Connector - Hidden on Mobile */}
+                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-14 h-14 bg-white border-4 border-lime-500 rounded-full items-center justify-center shadow-lg">
+                    <span className="text-xl font-bold text-lime-500">💬</span>
+                  </div>
+                  <div className="pl-16 md:pl-0 md:pt-24">
+                    <div className="bg-gradient-to-br from-cyan-50 to-white rounded-none md:rounded-xl p-5 md:p-6 border-l-4 md:border-l-0 border-cyan-500 md:border md:border-cyan-200 shadow-sm md:text-center">
+                      <h3 className="font-bold text-gray-900 mb-2 text-base md:text-lg">Get a Quote</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">We review your request and send you a price quote</p>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Step 3 */}
-              <div className="group relative">
-                {/* Connection Arrow - Hidden on Mobile */}
-                <div className="hidden lg:block absolute -right-3 top-1/4 w-6 h-1 bg-gradient-to-r from-purple-600 to-purple-400 z-10"></div>
-                
-                <div className="bg-gradient-to-br from-purple-50 via-white to-white border-2 border-purple-200 rounded-2xl p-4 sm:p-6 md:p-7 shadow-md hover:shadow-xl hover:border-purple-400 transition-all duration-300 hover:-translate-y-2 h-full">
-                  {/* Mobile Layout: Icon and Text Side by Side */}
-                  <div className="flex sm:flex-col gap-4 sm:gap-0">
-                    <div className="w-14 h-14 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-purple-600 to-purple-500 flex items-center justify-center shadow-lg flex-shrink-0">
-                      <span className="text-2xl">✨</span>
-                    </div>
-                    
-                    {/* Mobile: Title and Description beside icon */}
-                    <div className="flex flex-col justify-center">
-                      <h3 className="font-bold text-gray-900 mb-1 text-sm sm:hidden">We Create It</h3>
-                      <p className="text-gray-600 leading-relaxed text-xs sm:hidden">Our expert makers craft your custom costume to perfection</p>
-                      
-                      {/* Desktop: Full layout */}
-                      <div className="hidden sm:block">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="text-xs font-bold bg-purple-200 text-purple-800 px-3 py-1 rounded-full">Step 3</div>
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-2 text-lg">We Create It</h3>
-                        <p className="text-gray-600 leading-relaxed text-sm">Our expert makers craft your custom costume to perfection</p>
-                      </div>
+                {/* Step 3 */}
+                <div className="relative md:relative">
+                  {/* Dot Connector - Hidden on Mobile */}
+                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-14 h-14 bg-white border-4 border-purple-600 rounded-full items-center justify-center shadow-lg">
+                    <span className="text-xl font-bold text-purple-600">✨</span>
+                  </div>
+                  <div className="pl-16 md:pl-0 md:pt-24">
+                    <div className="bg-gradient-to-br from-purple-50 to-white rounded-none md:rounded-xl p-5 md:p-6 border-l-4 md:border-l-0 border-purple-600 md:border md:border-purple-200 shadow-sm md:text-center">
+                      <h3 className="font-bold text-gray-900 mb-2 text-base md:text-lg">We Create It</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">Our expert makers craft your custom costume to perfection</p>
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Step 4 */}
-              <div className="group relative">
-                <div className="bg-gradient-to-br from-green-50 via-white to-white border-2 border-green-200 rounded-2xl p-4 sm:p-6 md:p-7 shadow-md hover:shadow-xl hover:border-green-400 transition-all duration-300 hover:-translate-y-2 h-full">
-                  {/* Mobile Layout: Icon and Text Side by Side */}
-                  <div className="flex sm:flex-col gap-4 sm:gap-0">
-                    <div className="w-14 h-14 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-full bg-gradient-to-br from-green-600 to-green-500 flex items-center justify-center shadow-lg flex-shrink-0">
-                      <span className="text-2xl">🎁</span>
-                    </div>
-                    
-                    {/* Mobile: Title and Description beside icon */}
-                    <div className="flex flex-col justify-center">
-                      <h3 className="font-bold text-gray-900 mb-1 text-sm sm:hidden">Delivered to You</h3>
-                      <p className="text-gray-600 leading-relaxed text-xs sm:hidden">Receive your custom costume on your chosen delivery date</p>
-                      
-                      {/* Desktop: Full layout */}
-                      <div className="hidden sm:block">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="text-xs font-bold bg-green-200 text-green-800 px-3 py-1 rounded-full">Step 4</div>
-                        </div>
-                        <h3 className="font-bold text-gray-900 mb-2 text-lg">Delivered to You</h3>
-                        <p className="text-gray-600 leading-relaxed text-sm">Receive your custom costume on your chosen delivery date</p>
-                      </div>
+                {/* Step 4 */}
+                <div className="relative md:relative">
+                  {/* Dot Connector - Hidden on Mobile */}
+                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-14 h-14 bg-white border-4 border-green-600 rounded-full items-center justify-center shadow-lg">
+                    <span className="text-xl font-bold text-green-600">🎁</span>
+                  </div>
+                  <div className="pl-16 md:pl-0 md:pt-24">
+                    <div className="bg-gradient-to-br from-green-50 to-white rounded-none md:rounded-xl p-5 md:p-6 border-l-4 md:border-l-0 border-green-600 md:border md:border-green-200 shadow-sm md:text-center">
+                      <h3 className="font-bold text-gray-900 mb-2 text-base md:text-lg">Delivered to You</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed">Receive your custom costume on your chosen delivery date</p>
                     </div>
                   </div>
                 </div>
@@ -767,39 +723,27 @@ The more detail you provide, the better we can bring your vision to life!"
           </section>
 
           {/* FAQ */}
-          <section className="space-y-4 px-4 sm:px-0">
+          <section className="space-y-4">
             <h2 className="text-2xl font-bold text-gray-900">Frequently Asked Questions</h2>
             <div className="space-y-3">
-              <details className="bg-gradient-to-br from-blue-50 to-white rounded-2xl p-4 md:p-6 border-2 border-blue-200 hover:border-blue-300 transition group">
-                <summary className="font-semibold text-gray-900 cursor-pointer flex items-center justify-between group-open:text-blue-700">
-                  <span>How long does it take to create a custom costume?</span>
-                  <span className="text-blue-600 group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <p className="text-gray-700 mt-4 text-sm leading-relaxed">Turnaround time depends on the complexity of your design. Simple costumes typically take 3-7 days, while intricate designs may take 2-4 weeks. We'll confirm the timeline when we send your quote.</p>
+              <details className="bg-gray-50 rounded-none md:rounded-lg p-4 md:border border-gray-200 group">
+                <summary className="font-semibold text-gray-900 cursor-pointer">How long does it take to create a custom costume?</summary>
+                <p className="text-gray-700 mt-2 text-sm">Turnaround time depends on the complexity of your design. Simple costumes typically take 3-7 days, while intricate designs may take 2-4 weeks. We'll confirm the timeline when we send your quote.</p>
               </details>
 
-              <details className="bg-gradient-to-br from-green-50 to-white rounded-2xl p-4 md:p-6 border-2 border-green-200 hover:border-green-300 transition group">
-                <summary className="font-semibold text-gray-900 cursor-pointer flex items-center justify-between group-open:text-green-700">
-                  <span>Can I request revisions?</span>
-                  <span className="text-green-600 group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <p className="text-gray-700 mt-4 text-sm leading-relaxed">Yes! We offer up to 2 revisions during the creation process to ensure you're happy with your custom costume before final delivery.</p>
+              <details className="bg-gray-50 rounded-none md:rounded-lg p-4 md:border border-gray-200">
+                <summary className="font-semibold text-gray-900 cursor-pointer">Can I request revisions?</summary>
+                <p className="text-gray-700 mt-2 text-sm">Yes! We offer up to 2 revisions during the creation process to ensure you're happy with your custom costume before final delivery.</p>
               </details>
 
-              <details className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-4 md:p-6 border-2 border-purple-200 hover:border-purple-300 transition group">
-                <summary className="font-semibold text-gray-900 cursor-pointer flex items-center justify-between group-open:text-purple-700">
-                  <span>Do you offer rush orders?</span>
-                  <span className="text-purple-600 group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <p className="text-gray-700 mt-4 text-sm leading-relaxed">Yes, we can accommodate rush orders for an additional fee. Let us know your deadline in your order request, and we'll do our best to help!</p>
+              <details className="bg-gray-50 rounded-none md:rounded-lg p-4 md:border border-gray-200">
+                <summary className="font-semibold text-gray-900 cursor-pointer">Do you offer rush orders?</summary>
+                <p className="text-gray-700 mt-2 text-sm">Yes, we can accommodate rush orders for an additional fee. Let us know your deadline in your order request, and we'll do our best to help!</p>
               </details>
 
-              <details className="bg-gradient-to-br from-amber-50 to-white rounded-2xl p-4 md:p-6 border-2 border-amber-200 hover:border-amber-300 transition group">
-                <summary className="font-semibold text-gray-900 cursor-pointer flex items-center justify-between group-open:text-amber-700">
-                  <span>What about delivery?</span>
-                  <span className="text-amber-600 group-open:rotate-180 transition-transform">▼</span>
-                </summary>
-                <p className="text-gray-700 mt-4 text-sm leading-relaxed">We offer fast delivery to all areas of Lagos and nationwide shipping. Choose your preferred delivery method during checkout after receiving your quote.</p>
+              <details className="bg-gray-50 rounded-none md:rounded-lg p-4 md:border border-gray-200">
+                <summary className="font-semibold text-gray-900 cursor-pointer">What about delivery?</summary>
+                <p className="text-gray-700 mt-2 text-sm">We offer fast delivery to all areas of Lagos and nationwide shipping. Choose your preferred delivery method during checkout after receiving your quote.</p>
               </details>
             </div>
           </section>

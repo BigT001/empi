@@ -8,6 +8,8 @@ import { Footer } from "../components/Footer";
 import { DiscountPopup } from "../components/DiscountPopup";
 import { useHomeMode } from "../context/HomeModeContext";
 import { useCurrency } from "../context/CurrencyContext";
+import { CategoryCards } from "../components/CategoryCards";
+import { MobileLogoTop } from "../components/MobileLogoTop";
 
 export default function KidsPage() {
   const { currency, setCurrency } = useCurrency();
@@ -25,6 +27,9 @@ export default function KidsPage() {
 
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col animate-in fade-in duration-500">
+      {/* Mobile Logo Top - Part of page content, no background */}
+      <MobileLogoTop />
+
       {/* Navigation */}
       <Navigation 
         category="kids"
@@ -38,10 +43,16 @@ export default function KidsPage() {
       {/* Discount Popup */}
       <DiscountPopup intervalMinutes={7} />
 
+      {/* Category Cards Navigation */}
+      <CategoryCards 
+        currentCategory="kids"
+        onCategoryChange={() => {}}
+      />
+
       {/* Main Content - Add padding for both mobile and desktop headers */}
-      <div className="pt-20 md:pt-32">
-        {/* Premium Banner Card - Polished, Compact */}
-        <section className="mx-auto w-full max-w-7xl px-4 md:px-6 py-6 md:py-8">
+      <div className="pt-4 md:pt-20">
+        {/* Premium Banner Card - Desktop Only */}
+        <section className="hidden md:block mx-auto w-full max-w-7xl px-4 md:px-6 py-6 md:py-8">
           <div className="bg-gradient-to-br from-pink-50 via-purple-50 to-blue-50 border border-pink-200 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
             <div className="relative px-6 md:px-10 py-8 md:py-10">
               {/* Background decorative elements */}

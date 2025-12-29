@@ -73,7 +73,7 @@ export default function RootLayout({
         <script src="https://js.paystack.co/v1/inline.js"></script>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-20 md:pb-0`}
       >
         <CartProvider>
           <BuyerProvider>

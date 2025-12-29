@@ -86,16 +86,7 @@ export async function POST(request: NextRequest) {
     // Validate order before saving
     const validationError = order.validateSync();
     if (validationError) {
-      console.error('❌ Order validation error:', validationError.message);
-      
-      // Log detailed field errors
-      const fieldErrors: any = {};
-      for (const path in validationError.errors) {
-        const error = validationError.errors[path];
-        fieldErrors[path] = error.message;
-      }
-      console.error('Field validation errors:', fieldErrors);
-      
+      console.error('❌ Order validation error:', validationError);
       console.error('Order data being saved:', {
         orderNumber: order.orderNumber,
         items: order.items,
@@ -104,30 +95,10 @@ export async function POST(request: NextRequest) {
         email: order.email,
         total: order.total,
         status: order.status,
-        shippingType: order.shippingType,
-        subtotal: order.subtotal,
-        vat: order.vat,
-        vatRate: order.vatRate,
-        paymentMethod: order.paymentMethod,
-        country: order.country,
       });
-      
-      // Log raw items to see what's wrong
-      console.error('Items details:', (order.items || []).map((item: any, idx: number) => ({
-        index: idx,
-        productId: item.productId,
-        name: item.name,
-        quantity: item.quantity,
-        price: item.price,
-        mode: item.mode,
-        rentalDays: item.rentalDays,
-      })));
-      
       return NextResponse.json({ 
         error: 'Order validation failed',
-        details: validationError.message,
-        fieldErrors: fieldErrors,
-        failedFields: Object.keys(fieldErrors),
+        details: validationError.message
       }, { status: 400 });
     }
 
@@ -303,27 +274,6 @@ export async function POST(request: NextRequest) {
       }
     } else {
       console.log('[Orders API] Skipping invoice generation - order status is:', order.status);
-    }
-    
-    // Emit Socket.IO notification for new order
-    try {
-      const { getSocket } = await import('@/lib/socket');
-      const io = getSocket();
-      if (io) {
-        io.emit('new-order', {
-          orderId: order._id,
-          orderNumber: order.orderNumber,
-          customerName: `${order.firstName} ${order.lastName}`,
-          customerEmail: order.email,
-          totalAmount: order.total,
-          items: order.items,
-          status: order.status,
-          timestamp: new Date(),
-        });
-        console.log('[Orders API] 📡 Socket.IO notification emitted for new order');
-      }
-    } catch (socketError) {
-      console.warn('[Orders API] ⚠️ Could not emit Socket.IO notification:', socketError);
     }
     
     return NextResponse.json({
