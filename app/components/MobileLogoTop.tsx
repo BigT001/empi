@@ -23,7 +23,7 @@ export function MobileLogoTop() {
   };
 
   return (
-    <div className="md:hidden flex items-center px-4 py-3 gap-3">
+    <div className="md:hidden flex items-center px-0 pr-4 py-3 gap-3 relative z-[1000]">
       {/* Logo */}
       <Link href="/" className="flex-shrink-0">
         <Image
@@ -43,9 +43,9 @@ export function MobileLogoTop() {
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border-2 border-gray-300 bg-gray-50 px-4 py-3 pl-12 text-base font-medium focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition"
+            className="w-full rounded-2xl border-2 border-gray-300 bg-gray-50 px-4 py-2 pl-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition"
           />
-          <Search className="absolute left-4 top-3.5 h-6 w-6 text-gray-400 pointer-events-none" />
+          <Search className="absolute left-4 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
         </div>
       </form>
 

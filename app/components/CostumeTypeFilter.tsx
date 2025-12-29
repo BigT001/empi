@@ -46,7 +46,7 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
 
   return (
     <div className="mb-8 animate-in slide-in-from-top-4 fade-in duration-500">
-      <div className="mb-4">
+      <div className="mb-4 text-center md:text-left">
         <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">✨ Filter by Types</p>
       </div>
       

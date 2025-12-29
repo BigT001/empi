@@ -9,6 +9,7 @@ import { CURRENCY_RATES } from "./constants";
 import { useCart } from "./CartContext";
 import { useBuyer } from "../context/BuyerContext";
 import { useAdmin } from "../context/AdminContext";
+import { NotificationBell } from "./NotificationBell";
 
 interface NavigationProps {
   category: string;
@@ -309,6 +310,11 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
             <span className="text-sm">Login</span>
           </Link>
         )}
+
+        {/* Notification Bell for Desktop */}
+        <div className="hidden md:block">
+          <NotificationBell />
+        </div>
 
         <Link href="/cart" className="hidden md:flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2 rounded-lg font-medium transition relative">
           <ShoppingCart className="h-4 w-4" />

@@ -99,6 +99,7 @@ export default function BuyerDashboardPage() {
   const [lastScrollY, setLastScrollY] = useState(0);
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
   const [expandedCustomOrder, setExpandedCustomOrder] = useState<string | null>(null);
+  const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
   const [messageCountPerOrder, setMessageCountPerOrder] = useState<Record<string, { total: number; unread: number }>>({});
   const [pendingQuantityChange, setPendingQuantityChange] = useState<Record<string, number>>({});
@@ -244,6 +245,23 @@ export default function BuyerDashboardPage() {
       router.push("/auth");
     }
   }, [buyer, isHydrated, router]);
+
+  // Handle URL parameters for direct notification navigation
+  useEffect(() => {
+    const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
+    const orderId = params.get('orderId');
+    const section = params.get('section');
+    
+    if (orderId) {
+      setActiveTab('orders');
+      setExpandedOrder(orderId);
+      
+      // If section is messages, also open chat modal
+      if (section === 'messages') {
+        setChatModalOpen(orderId);
+      }
+    }
+  }, []);
 
   useEffect(() => {
     if (buyer?.id) {
@@ -559,7 +577,7 @@ export default function BuyerDashboardPage() {
         onCurrencyChange={setCurrency}
       />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-6 sm:py-8 w-full mt-20 md:mt-32">
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-6 sm:py-8 w-full mt-4 md:mt-6">
         {/* Welcome Header with Logo */}
         <div className="mb-8 sm:mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1">
@@ -572,6 +590,12 @@ export default function BuyerDashboardPage() {
             <span>Continue Shopping</span>
           </Link>
         </div>
+
+        {/* Mobile Continue Shopping Button */}
+        <Link href="/" className="sm:hidden flex items-center justify-center gap-2 px-6 py-3 mb-6 rounded-xl bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-bold transition shadow-md hover:shadow-lg w-full">
+          <ShoppingBag className="h-5 w-5" />
+          <span>← 🛍️ Continue Shopping</span>
+        </Link>
 
         {/* Tab Navigation - Mobile Optimized with Top-Left Badges */}
         <div className="mb-12 bg-white rounded-2xl p-1.5 shadow-md grid grid-cols-4 gap-1.5 sm:flex sm:gap-2 sm:overflow-x-auto max-w-full">
@@ -1006,7 +1030,6 @@ export default function BuyerDashboardPage() {
                               }`}>
                                 {order.status === "pending" && <Clock className="h-3 w-3" />}
                                 {order.status === "completed" && <Check className="h-3 w-3" />}
-                                {order.status === "rejected" && <AlertCircle className="h-3 w-3" />}
                                 {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
                               </span>
                             </div>
@@ -1262,7 +1285,7 @@ export default function BuyerDashboardPage() {
                                 </div>
                               )}
                               {order.buyerAgreedToDate && order.proposedDeliveryDate && (
-                                <div className="mt-3 bg-green-50 border-l-4 border-green-600 p-2 rounded">
+                                <div className="mt-3 bg-green-50 border-l-4 md:border-l-4 border-l-0 border-green-600 p-2 rounded">
                                   <dt className="text-green-700 font-semibold mb-1">✓ Agreed Delivery Date</dt>
                                   <dd className="font-bold text-green-800">{new Date(order.proposedDeliveryDate).toLocaleDateString()}</dd>
                                 </div>

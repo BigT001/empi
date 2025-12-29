@@ -248,28 +248,35 @@ export default function CustomCostumesPage({
 
           {/* How It Works - Vertical Timeline on Mobile, Horizontal Grid on Desktop */}
           <section className="space-y-8 overflow-hidden">
-            <h2 className="text-3xl font-bold text-gray-900 text-center">How It Works</h2>
+            <div className="text-center">
+              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-2">How It Works</h2>
+              <p className="text-gray-600 text-lg px-4 md:px-8">Four simple steps to your perfect custom costume</p>
+            </div>
             
             {/* Timeline Container */}
             <div className="relative">
               {/* Mobile Timeline Line */}
-              <div className="absolute left-4 top-0 bottom-0 w-1 bg-gradient-to-b from-lime-600 via-lime-400 to-lime-600 md:hidden"></div>
+              <div className="absolute left-8 top-0 bottom-0 w-1.5 bg-gradient-to-b from-lime-600 via-lime-400 to-lime-600 md:hidden"></div>
 
               {/* Desktop Horizontal Connector */}
-              <div className="hidden md:block absolute top-8 left-0 right-0 h-1 bg-gradient-to-r from-lime-600 via-lime-400 to-lime-600"></div>
+              <div className="hidden md:block absolute top-20 left-0 right-0 h-1.5 bg-gradient-to-r from-lime-600 via-lime-400 to-lime-600"></div>
 
               {/* Steps Grid - Vertical on Mobile, Horizontal on Desktop */}
               <div className="grid md:grid-cols-4 gap-8 md:gap-6">
                 {/* Step 1 */}
                 <div className="relative md:relative">
                   {/* Dot Connector - Hidden on Mobile */}
-                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-14 h-14 bg-white border-4 border-lime-600 rounded-full items-center justify-center shadow-lg">
-                    <span className="text-xl font-bold text-lime-600">📸</span>
+                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-lime-100 to-lime-50 border-4 border-lime-600 rounded-full items-center justify-center shadow-xl">
+                    <span className="text-4xl">📸</span>
                   </div>
-                  <div className="pl-16 md:pl-0 md:pt-24">
-                    <div className="bg-gradient-to-br from-lime-50 to-white rounded-none md:rounded-xl p-5 md:p-6 border-l-4 md:border-l-0 border-lime-600 md:border md:border-lime-200 shadow-sm md:text-center">
-                      <h3 className="font-bold text-gray-900 mb-2 text-base md:text-lg">Submit Your Design</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">Upload a photo, sketch, or describe exactly what you want</p>
+                  {/* Mobile Dot */}
+                  <div className="md:hidden absolute left-0 top-1 w-16 h-16 bg-gradient-to-br from-lime-100 to-lime-50 border-4 border-lime-600 rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-2xl">📸</span>
+                  </div>
+                  <div className="pl-24 md:pl-0 md:pt-40">
+                    <div className="bg-gradient-to-br from-lime-50 to-white rounded-2xl p-6 md:p-7 border-0 md:border-2 border-lime-200 shadow-lg md:shadow-md hover:shadow-xl transition-shadow md:text-center">
+                      <h3 className="font-bold text-gray-900 mb-2 text-lg md:text-xl">Submit Your Design</h3>
+                      <p className="text-sm md:text-base text-gray-600 leading-relaxed">Upload a photo, sketch, or describe exactly what you want</p>
                     </div>
                   </div>
                 </div>
@@ -277,13 +284,17 @@ export default function CustomCostumesPage({
                 {/* Step 2 */}
                 <div className="relative md:relative">
                   {/* Dot Connector - Hidden on Mobile */}
-                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-14 h-14 bg-white border-4 border-lime-500 rounded-full items-center justify-center shadow-lg">
-                    <span className="text-xl font-bold text-lime-500">💬</span>
+                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-cyan-100 to-cyan-50 border-4 border-cyan-600 rounded-full items-center justify-center shadow-xl">
+                    <span className="text-4xl">💬</span>
                   </div>
-                  <div className="pl-16 md:pl-0 md:pt-24">
-                    <div className="bg-gradient-to-br from-cyan-50 to-white rounded-none md:rounded-xl p-5 md:p-6 border-l-4 md:border-l-0 border-cyan-500 md:border md:border-cyan-200 shadow-sm md:text-center">
-                      <h3 className="font-bold text-gray-900 mb-2 text-base md:text-lg">Get a Quote</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">We review your request and send you a price quote</p>
+                  {/* Mobile Dot */}
+                  <div className="md:hidden absolute left-0 top-1 w-16 h-16 bg-gradient-to-br from-cyan-100 to-cyan-50 border-4 border-cyan-600 rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-2xl">💬</span>
+                  </div>
+                  <div className="pl-24 md:pl-0 md:pt-40">
+                    <div className="bg-gradient-to-br from-cyan-50 to-white rounded-2xl p-6 md:p-7 border-0 md:border-2 border-cyan-200 shadow-lg md:shadow-md hover:shadow-xl transition-shadow md:text-center">
+                      <h3 className="font-bold text-gray-900 mb-2 text-lg md:text-xl">Get a Quote</h3>
+                      <p className="text-sm md:text-base text-gray-600 leading-relaxed">We review your request and send you a price quote</p>
                     </div>
                   </div>
                 </div>
@@ -291,13 +302,17 @@ export default function CustomCostumesPage({
                 {/* Step 3 */}
                 <div className="relative md:relative">
                   {/* Dot Connector - Hidden on Mobile */}
-                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-14 h-14 bg-white border-4 border-purple-600 rounded-full items-center justify-center shadow-lg">
-                    <span className="text-xl font-bold text-purple-600">✨</span>
+                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-50 border-4 border-purple-600 rounded-full items-center justify-center shadow-xl">
+                    <span className="text-4xl">✨</span>
                   </div>
-                  <div className="pl-16 md:pl-0 md:pt-24">
-                    <div className="bg-gradient-to-br from-purple-50 to-white rounded-none md:rounded-xl p-5 md:p-6 border-l-4 md:border-l-0 border-purple-600 md:border md:border-purple-200 shadow-sm md:text-center">
-                      <h3 className="font-bold text-gray-900 mb-2 text-base md:text-lg">We Create It</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">Our expert makers craft your custom costume to perfection</p>
+                  {/* Mobile Dot */}
+                  <div className="md:hidden absolute left-0 top-1 w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-50 border-4 border-purple-600 rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-2xl">✨</span>
+                  </div>
+                  <div className="pl-24 md:pl-0 md:pt-40">
+                    <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-6 md:p-7 border-0 md:border-2 border-purple-200 shadow-lg md:shadow-md hover:shadow-xl transition-shadow md:text-center">
+                      <h3 className="font-bold text-gray-900 mb-2 text-lg md:text-xl">We Create It</h3>
+                      <p className="text-sm md:text-base text-gray-600 leading-relaxed">Our expert makers craft your custom costume to perfection</p>
                     </div>
                   </div>
                 </div>
@@ -305,13 +320,17 @@ export default function CustomCostumesPage({
                 {/* Step 4 */}
                 <div className="relative md:relative">
                   {/* Dot Connector - Hidden on Mobile */}
-                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-14 h-14 bg-white border-4 border-green-600 rounded-full items-center justify-center shadow-lg">
-                    <span className="text-xl font-bold text-green-600">🎁</span>
+                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-green-100 to-green-50 border-4 border-green-600 rounded-full items-center justify-center shadow-xl">
+                    <span className="text-4xl">🎁</span>
                   </div>
-                  <div className="pl-16 md:pl-0 md:pt-24">
-                    <div className="bg-gradient-to-br from-green-50 to-white rounded-none md:rounded-xl p-5 md:p-6 border-l-4 md:border-l-0 border-green-600 md:border md:border-green-200 shadow-sm md:text-center">
-                      <h3 className="font-bold text-gray-900 mb-2 text-base md:text-lg">Delivered to You</h3>
-                      <p className="text-sm text-gray-600 leading-relaxed">Receive your custom costume on your chosen delivery date</p>
+                  {/* Mobile Dot */}
+                  <div className="md:hidden absolute left-0 top-1 w-16 h-16 bg-gradient-to-br from-green-100 to-green-50 border-4 border-green-600 rounded-full flex items-center justify-center shadow-lg">
+                    <span className="text-2xl">🎁</span>
+                  </div>
+                  <div className="pl-24 md:pl-0 md:pt-40">
+                    <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl p-6 md:p-7 border-0 md:border-2 border-green-200 shadow-lg md:shadow-md hover:shadow-xl transition-shadow md:text-center">
+                      <h3 className="font-bold text-gray-900 mb-2 text-lg md:text-xl">Delivered to You</h3>
+                      <p className="text-sm md:text-base text-gray-600 leading-relaxed">Receive your custom costume on your chosen delivery date</p>
                     </div>
                   </div>
                 </div>

@@ -31,36 +31,43 @@ export default function About() {
       {/* Main Content */}
       <main className="flex-1 w-full">
         {/* Dramatic Hero Section */}
-        <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-lime-900 to-slate-900 py-24 md:py-32 px-4">
+        <section className="relative overflow-hidden bg-gradient-to-br from-slate-900 via-lime-900 to-slate-900 py-12 md:py-32 px-4">
           {/* Background pattern */}
           <div className="absolute inset-0 opacity-10">
             <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(68,68,68,.2)_25%,rgba(68,68,68,.2)_50%,transparent_50%,transparent_75%,rgba(68,68,68,.2)_75%,rgba(68,68,68,.2))] bg-[length:40px_40px]"></div>
           </div>
           
-          <div className="relative max-w-4xl mx-auto text-center space-y-6">
-            <div className="inline-block">
-              <span className="inline-block px-4 py-2 bg-lime-500/20 text-lime-300 rounded-full text-sm font-semibold border border-lime-500/40 backdrop-blur">
-                ✨ Est. 2019 | Award-Winning Costumes
-              </span>
-            </div>
-            <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight drop-shadow-lg">
-              The Art of <span className="bg-gradient-to-r from-lime-400 to-green-400 bg-clip-text text-transparent">Transformation</span>
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow">
-              Creating memories through exceptional costume design, craftsmanship, and creative excellence since 2019
-            </p>
-            <div className="flex gap-4 justify-center pt-4 flex-wrap">
-              <div className="text-center">
-                <div className="text-3xl font-bold text-lime-400">1000+</div>
-                <div className="text-gray-300 text-sm">Happy Clients</div>
+          <div className="relative max-w-4xl mx-auto">
+            {/* Mobile Continue Shopping Button */}
+            <Link href="/" className="md:hidden inline-flex items-center gap-2 mb-6 text-lime-400 hover:text-lime-300 transition-colors font-semibold">
+              <span>←</span> <span>🛍️</span> Continue Shopping
+            </Link>
+
+            <div className="text-center space-y-6">
+              <div className="inline-block">
+                <span className="inline-block px-4 py-2 bg-lime-500/20 text-lime-300 rounded-full text-sm font-semibold border border-lime-500/40 backdrop-blur">
+                  ✨ Est. 2019 | Award-Winning Costumes
+                </span>
               </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-lime-400">5+</div>
-                <div className="text-gray-300 text-sm">Years Excellence</div>
-              </div>
-              <div className="text-center">
-                <div className="text-3xl font-bold text-lime-400">∞</div>
-                <div className="text-gray-300 text-sm">Creative Designs</div>
+              <h1 className="text-5xl md:text-7xl font-bold text-white leading-tight drop-shadow-lg">
+                The Art of <span className="bg-gradient-to-r from-lime-400 to-green-400 bg-clip-text text-transparent">Transformation</span>
+              </h1>
+              <p className="text-xl md:text-2xl text-gray-200 max-w-2xl mx-auto leading-relaxed drop-shadow">
+                Creating memories through exceptional costume design, craftsmanship, and creative excellence since 2019
+              </p>
+              <div className="flex gap-4 justify-center pt-4 flex-wrap">
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-lime-400">1000+</div>
+                  <div className="text-gray-300 text-sm">Happy Clients</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-lime-400">5+</div>
+                  <div className="text-gray-300 text-sm">Years Excellence</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-3xl font-bold text-lime-400">∞</div>
+                  <div className="text-gray-300 text-sm">Creative Designs</div>
+                </div>
               </div>
             </div>
           </div>

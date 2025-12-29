@@ -99,8 +99,8 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
     <section className="flex-grow mx-auto w-full max-w-7xl px-6 py-12 animate-in fade-in duration-500" data-products-section>
       {/* Products Grid Header */}
       <div className="mb-8 animate-in slide-in-from-top-4 fade-in duration-500">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex-1">
+        <div className="flex items-start justify-between gap-4 md:justify-start">
+          <div className="flex-1 text-center md:text-left">
             <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">
               {category === "kids" ? "Kids' Collection" : category === "adults" ? "Adult Collection" : "All Costumes"}
             </h1>
