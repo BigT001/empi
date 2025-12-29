@@ -109,7 +109,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-lime-50">
       {/* Header */}
-      <header className="border-b border-gray-200 sticky top-0 z-40 bg-white/98 backdrop-blur-sm shadow-sm">
+      <header className="sticky top-0 z-40 bg-transparent backdrop-blur-md">
         <div className="mx-auto max-w-7xl px-4 md:px-6 py-4 flex items-center justify-between">
           <Link href="/product" className="flex items-center gap-2 text-gray-700 hover:text-lime-600 transition font-semibold text-sm md:text-base group">
             <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition" /> Back to Products

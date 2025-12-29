@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { CheckCircle2, Search, Calendar, Package, User, Mail, DollarSign, AlertCircle, Eye, ChevronRight, TrendingUp, Download, Trash2, MessageSquare } from "lucide-react";
+import { CheckCircle2, Search, Calendar, Package, User, Mail, DollarSign, AlertCircle, Eye, ChevronRight, TrendingUp, Download, Trash2, MessageSquare, Check, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { ChatModal } from "@/app/components/ChatModal";
 
@@ -41,6 +41,8 @@ export function ApprovedOrdersPanel({ searchQuery = "" }: ApprovedOrdersPanelPro
   const [selectedOrder, setSelectedOrder] = useState<ApprovedOrderData | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [chatModalOpen, setChatModalOpen] = useState(false);
+  const [completingOrderId, setCompletingOrderId] = useState<string | null>(null);
+  const [confirmCompletionOrder, setConfirmCompletionOrder] = useState<ApprovedOrderData | null>(null);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -152,6 +154,54 @@ export function ApprovedOrdersPanel({ searchQuery = "" }: ApprovedOrdersPanelPro
       showToast(err.message || 'Failed to delete approved orders', 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const markOrderAsCompleted = async (orderId: string, orderNumber: string) => {
+    setCompletingOrderId(orderId);
+    try {
+      // Update order status to completed
+      const updateRes = await fetch(`/api/orders/${orderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'completed',
+        }),
+      });
+
+      if (!updateRes.ok) {
+        const errorData = await updateRes.json();
+        throw new Error(errorData?.error || 'Failed to mark order as completed');
+      }
+
+      // Send message to buyer about order completion
+      const messageRes = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          orderNumber,
+          senderEmail: 'admin@empi.com',
+          senderName: 'Empi Admin',
+          senderType: 'admin',
+          content: 'Your order has been completed and is ready! The logistics team will contact you shortly with delivery details.',
+          messageType: 'system',
+          recipientType: 'buyer',
+        }),
+      });
+
+      if (!messageRes.ok) {
+        console.warn('Warning: Failed to send completion message, but order was marked as completed');
+      }
+
+      // Remove from approved list
+      setApproved(approved.filter(o => o._id !== orderId));
+      showToast(`Order ${orderNumber} marked as completed!`, 'success');
+    } catch (err: any) {
+      console.error('[ApprovedOrdersPanel] Error marking order as completed:', err);
+      showToast(err.message || 'Failed to mark order as completed', 'error');
+    } finally {
+      setCompletingOrderId(null);
     }
   };
 
@@ -320,6 +370,19 @@ export function ApprovedOrdersPanel({ searchQuery = "" }: ApprovedOrdersPanelPro
                               <MessageSquare className="h-4 w-4" />
                               Chat
                             </button>
+                            <button
+                              onClick={() => setConfirmCompletionOrder(order)}
+                              disabled={completingOrderId === order._id}
+                              className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all"
+                              title="Mark this order as completed - buyer will be notified"
+                            >
+                              {completingOrderId === order._id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Check className="h-4 w-4" />
+                              )}
+                              <span className="hidden sm:inline">Complete</span>
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -359,6 +422,77 @@ export function ApprovedOrdersPanel({ searchQuery = "" }: ApprovedOrdersPanelPro
             console.log('[ApprovedOrdersPanel] Message sent by logistics team');
           }}
         />
+      )}
+
+      {/* Confirmation Modal */}
+      {confirmCompletionOrder && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-2 md:p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden animate-in fade-in zoom-in duration-300">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-amber-500 to-orange-500 p-6 text-white">
+              <h2 className="text-2xl font-bold">Confirm Completion?</h2>
+              <p className="text-sm text-amber-100 mt-1">Please verify before marking as complete</p>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-4">
+              <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                <p className="text-sm text-gray-700 mb-3">
+                  <span className="font-semibold">Order:</span> {confirmCompletionOrder.orderNumber}
+                </p>
+                <p className="text-sm text-gray-700 mb-3">
+                  <span className="font-semibold">Customer:</span> {getCustomerName(confirmCompletionOrder)}
+                </p>
+                <p className="text-sm text-gray-700">
+                  <span className="font-semibold">Amount:</span> {formatCurrency(confirmCompletionOrder.total)}
+                </p>
+              </div>
+
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-sm text-blue-900">
+                  ✓ Order status will be marked as <span className="font-semibold">Completed</span>
+                </p>
+                <p className="text-sm text-blue-900 mt-2">
+                  ✓ Customer will receive a notification message
+                </p>
+                <p className="text-sm text-blue-900 mt-2">
+                  ✓ Card will be removed from Approved tab
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="bg-gray-50 px-6 py-4 border-t border-gray-200 flex gap-3">
+              <button
+                onClick={() => setConfirmCompletionOrder(null)}
+                disabled={completingOrderId === confirmCompletionOrder._id}
+                className="flex-1 py-2 px-4 bg-gray-200 hover:bg-gray-300 disabled:bg-gray-400 disabled:cursor-not-allowed text-gray-800 font-semibold rounded-lg transition"
+              >
+                No, Cancel
+              </button>
+              <button
+                onClick={() => {
+                  markOrderAsCompleted(confirmCompletionOrder._id, confirmCompletionOrder.orderNumber);
+                  setConfirmCompletionOrder(null);
+                }}
+                disabled={completingOrderId === confirmCompletionOrder._id}
+                className="flex-1 py-2 px-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
+              >
+                {completingOrderId === confirmCompletionOrder._id ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4" />
+                    Yes, Complete
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

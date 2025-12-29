@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { products, CURRENCY_RATES } from "./constants";
 import { ProductCard } from "./ProductCard";
 import { useProducts } from "@/lib/useProducts";
@@ -35,17 +35,28 @@ interface ProductGridProps {
   initialProducts?: Product[];
   mode?: "buy" | "rent";
   onModeChange?: (mode: "buy" | "rent") => void;
+  searchQuery?: string;
 }
 
-export function ProductGrid({ currency, category, initialProducts, mode, onModeChange }: ProductGridProps) {
+export function ProductGrid({ currency, category, initialProducts, mode, onModeChange, searchQuery = "" }: ProductGridProps) {
   const { products: cachedProducts, loading, error, pagination, loadMore } = useProducts(category);
   const [dbProducts, setDbProducts] = useState<Product[]>(initialProducts ?? (cachedProducts as Product[]));
   const [showError, setShowError] = useState(false);
   const [selectedCostumeType, setSelectedCostumeType] = useState<string | null>(null);
+  const productGridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setDbProducts(cachedProducts as Product[]);
   }, [cachedProducts]);
+
+  // Auto-scroll to product grid when search query changes
+  useEffect(() => {
+    if (searchQuery && productGridRef.current) {
+      setTimeout(() => {
+        productGridRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }, [searchQuery]);
 
   // Only show error after a delay to avoid flashing
   useEffect(() => {
@@ -85,6 +96,18 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
     );
   }
 
+  // Apply search query filter
+  if (searchQuery.trim()) {
+    const query = searchQuery.toLowerCase();
+    filteredProducts = filteredProducts.filter((product) =>
+      product.name.toLowerCase().includes(query) ||
+      product.description.toLowerCase().includes(query) ||
+      product.costumeType?.toLowerCase().includes(query) ||
+      product.color?.toLowerCase().includes(query) ||
+      product.material?.toLowerCase().includes(query)
+    );
+  }
+
   // Sort by newest first
   filteredProducts = filteredProducts.sort(
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -96,15 +119,20 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
   const availableCostumeTypes = COSTUME_TYPES;
 
   return (
-    <section className="flex-grow mx-auto w-full max-w-7xl px-6 py-12 animate-in fade-in duration-500" data-products-section>
+    <section ref={productGridRef} className="flex-grow mx-auto w-full max-w-7xl px-6 py-12 animate-in fade-in duration-500" data-products-section>
       {/* Products Grid Header */}
-      <div className="mb-8 animate-in slide-in-from-top-4 fade-in duration-500">
+      <div className={`animate-in slide-in-from-top-4 fade-in duration-500 ${category === "adults" ? "mb-0 md:mb-8" : "mb-8"}`}>
         <div className="flex items-start justify-between gap-4 md:justify-start">
           <div className="flex-1 text-center md:text-left">
-            <h1 className="text-3xl md:text-4xl font-black text-gray-900 mb-3">
+            <h1 className={`text-3xl md:text-4xl font-black text-gray-900 mb-3 ${category === "adults" ? "hidden md:block" : ""}`}>
               {category === "kids" ? "Kids' Collection" : category === "adults" ? "Adult Collection" : "All Costumes"}
             </h1>
-            <p className="text-gray-700 font-medium text-sm md:text-base">
+            {searchQuery && (
+              <p className="text-lime-600 font-bold text-sm md:text-base mb-2">
+                {filteredProducts.length} costume{filteredProducts.length !== 1 ? 's' : ''} found
+              </p>
+            )}
+            <p className={`text-gray-700 font-medium text-sm md:text-base ${category === "adults" ? "hidden md:block" : ""}`}>
               {category === "kids"
                 ? "Magical and enchanting costumes designed for kids. From superheroes to fairy tales, every costume tells a story."
                 : category === "adults"

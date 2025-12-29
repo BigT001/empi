@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { ShoppingCart, Search, Menu, ArrowLeft, User } from "lucide-react";
+import { Search, Menu, ArrowLeft, User, MessageCircle, Mail, Phone, Instagram } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "./CartContext";
 import { useCurrency } from "../context/CurrencyContext";
@@ -16,6 +16,7 @@ export function MobileHeader() {
   const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [showContactMenu, setShowContactMenu] = useState(false);
   const [headerVisible, setHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const pathname = usePathname();
@@ -92,7 +93,7 @@ export function MobileHeader() {
       params.append('q', searchQuery);
       params.append('category', currentCategory);
       params.append('currency', currency);
-      router.push(`/search?${params.toString()}`);
+      router.push(`/?${params.toString()}`);
       setSearchQuery("");
       setShowSearchModal(false);
     }
@@ -114,20 +115,80 @@ export function MobileHeader() {
             About
           </Link>
 
-          {/* Cart Button - Center */}
-          <Link href="/cart" className="relative inline-flex items-center justify-center">
-            <button 
-              className="p-2 text-gray-700 hover:text-gray-900 transition-colors duration-200 transform hover:scale-110 active:scale-95 relative"
-              title="Cart"
+          {/* Cart Button - REMOVED */}
+
+          {/* Contact Button with Popup Menu */}
+          <div className="flex-1 relative">
+            <button
+              onClick={() => setShowContactMenu(!showContactMenu)}
+              className="flex w-full items-center justify-center px-3 py-2 rounded-lg bg-green-100 hover:bg-green-200 transition duration-300 font-semibold text-sm text-green-700 gap-1"
+              title="Contact Us"
             >
-              <ShoppingCart className="h-6 w-6" strokeWidth={2} />
-              {items.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                  {items.length}
-                </span>
-              )}
+              <MessageCircle className="h-4 w-4" />
+              Contact
             </button>
-          </Link>
+            
+            {/* Contact Menu Popup */}
+            {showContactMenu && (
+              <>
+                {/* Backdrop */}
+                <div
+                  className="fixed inset-0 z-30"
+                  onClick={() => setShowContactMenu(false)}
+                ></div>
+                
+                {/* Menu Cards - Compact Width */}
+                <div className="fixed bottom-20 left-1/2 transform -translate-x-1/2 z-40 space-y-2 bg-transparent rounded-xl p-2 max-w-xs">
+                  {/* Email */}
+                  <a
+                    href="mailto:support@empi.ng"
+                    className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2.5 hover:bg-blue-50 hover:border-blue-400 transition group shadow-lg"
+                    onClick={() => setShowContactMenu(false)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center group-hover:bg-blue-600 transition flex-shrink-0">
+                      <Mail className="h-4 w-4 text-blue-600 group-hover:text-white transition" />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900">Email</p>
+                      <p className="text-xs text-gray-600">support@empi.ng</p>
+                    </div>
+                  </a>
+
+                  {/* Phone */}
+                  <a
+                    href="tel:+2348012345678"
+                    className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2.5 hover:bg-green-50 hover:border-green-400 transition group shadow-lg"
+                    onClick={() => setShowContactMenu(false)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center group-hover:bg-green-600 transition flex-shrink-0">
+                      <Phone className="h-4 w-4 text-green-600 group-hover:text-white transition" />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900">Call</p>
+                      <p className="text-xs text-gray-600">+234 801 234 5678</p>
+                    </div>
+                  </a>
+
+                  {/* Instagram */}
+                  <a
+                    href="https://www.instagram.com/empicostumes/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 bg-white rounded-lg border border-gray-200 p-2.5 hover:bg-pink-50 hover:border-pink-400 transition group shadow-lg"
+                    onClick={() => setShowContactMenu(false)}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-pink-100 flex items-center justify-center group-hover:bg-pink-600 transition flex-shrink-0">
+                      <Instagram className="h-4 w-4 text-pink-600 group-hover:text-white transition" />
+                    </div>
+                    <div className="text-left flex-1 min-w-0">
+                      <p className="text-xs font-semibold text-gray-900">Instagram</p>
+                      <p className="text-xs text-gray-600">@empicostumes</p>
+                    </div>
+                  </a>
+                </div>
+              </>
+            )}
+          </div>
 
           {/* Login/Profile Button */}
           {isHydrated && !isLoggedIn ? (

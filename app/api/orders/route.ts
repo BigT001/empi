@@ -102,6 +102,18 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Check if order with this orderNumber already exists (prevent duplicates)
+    const existingOrder = await Order.findOne({ orderNumber: order.orderNumber });
+    if (existingOrder) {
+      console.log(`⚠️ Order with orderNumber ${order.orderNumber} already exists. Returning existing order.`);
+      return NextResponse.json({ 
+        success: true,
+        message: 'Order already exists',
+        order: existingOrder,
+        orderNumber: existingOrder.orderNumber,
+      }, { status: 200 });
+    }
+
     await order.save();
     
     // If this is a custom order payment, update the custom order status to "approved"
@@ -380,6 +392,7 @@ export async function GET(request: NextRequest) {
     const id = searchParams.get('id');
     const ref = searchParams.get('ref');
     const email = searchParams.get('email');
+    const buyerId = searchParams.get('buyerId');
     const limit = parseInt(searchParams.get('limit') || '100');
 
     if (ref) {
@@ -411,13 +424,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, order: withImages });
     }
 
-    // Get orders - filter by email if provided
+    // Get orders - filter by buyerId or email
     let query: any = {};
-    if (email) {
+    if (buyerId) {
+      query.buyerId = buyerId;
+    } else if (email) {
       query.email = email;
     }
     let orders = await Order.find(query).sort({ createdAt: -1 }).limit(limit);
-    console.log(`[Orders API] Fetched ${orders.length} orders for email: ${email || 'all'} (limit: ${limit})`);
+    console.log(`[Orders API] Fetched ${orders.length} orders for buyerId: ${buyerId || 'N/A'}, email: ${email || 'N/A'} (limit: ${limit})`);
     const serialized = serializeDocs(orders);
     const withImages = await populateOrdersImages(serialized);
     return NextResponse.json({ success: true, orders: withImages });

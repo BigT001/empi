@@ -266,7 +266,7 @@ export function ChatModal({
 
   // Fetch messages
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen || !order) return;
 
     console.log('[ChatModal] Modal opened, fetching messages for order:', order._id);
     fetchMessages();
@@ -280,7 +280,7 @@ export function ChatModal({
       console.log('[ChatModal] Cleaning up polling interval');
       clearInterval(interval);
     };
-  }, [isOpen, order._id]);
+  }, [isOpen, order?._id]);
 
   // Smart auto-scroll: only scroll to bottom if user is already at the bottom
   useEffect(() => {

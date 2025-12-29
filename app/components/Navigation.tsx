@@ -149,7 +149,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         params.append('category', category);
       }
       params.append('currency', currency);
-      router.push(`/search?${params.toString()}`);
+      router.push(`/?${params.toString()}`);
       setSearchQuery("");
       setShowMobileMenu(false);
     }

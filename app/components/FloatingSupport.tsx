@@ -1,25 +1,111 @@
 "use client";
 
-import { useState } from "react";
-import { MessageCircle, Mail, Phone, Instagram } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { MessageCircle, Mail, Phone, Instagram, GripVertical } from "lucide-react";
 
 export function FloatingSupport() {
   const [isOpen, setIsOpen] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [scrollY, setScrollY] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Initialize position on mount
+  useEffect(() => {
+    const initializePosition = () => {
+      if (typeof window !== "undefined") {
+        const x = 30; // Position on left side
+        const y = 100;
+        setInitialPosition({ x, y });
+        setPosition({ x, y });
+      }
+    };
+
+    initializePosition();
+    window.addEventListener("resize", initializePosition);
+    return () => window.removeEventListener("resize", initializePosition);
+  }, []);
+
+  // Handle scroll
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrollY(window.scrollY);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (containerRef.current) {
+      setIsDragging(true);
+      const rect = containerRef.current.getBoundingClientRect();
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      setInitialPosition({
+        x: e.clientX - dragOffset.x,
+        y: e.clientY - dragOffset.y - scrollY,
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isDragging, dragOffset, scrollY]);
+
+  // Update position based on scroll
+  useEffect(() => {
+    setPosition({
+      x: initialPosition.x,
+      y: initialPosition.y - scrollY,
+    });
+  }, [scrollY, initialPosition]);
 
   return (
     <>
-      {/* Floating Support Button with Label */}
-      <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
-        {/* Contacts Label */}
-        <div className="bg-gray-900 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap shadow-lg">
-          Contacts
+      {/* Floating Support Button with Label - Now draggable and scrolls with page */}
+      <div
+        ref={containerRef}
+        className={`absolute z-40 flex flex-col items-end gap-2 transition-transform duration-100 ${
+          isDragging ? "cursor-grabbing" : "cursor-grab"
+        }`}
+        style={{
+          left: `${position.x}px`,
+          top: `${position.y}px`,
+        }}
+        onMouseDown={handleMouseDown}
+      >
+        {/* Drag Handle Label */}
+        <div className="bg-gray-900 text-white px-3 py-1 rounded-lg text-xs font-bold whitespace-nowrap shadow-lg flex items-center gap-1.5 pointer-events-none">
+          <GripVertical className="h-3 w-3" />
+          Drag to move
         </div>
-        
+
         {/* Button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          className="w-14 h-14 rounded-full bg-gradient-to-br from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center group hover:scale-110 active:scale-95"
+          className="w-14 h-14 rounded-full bg-gradient-to-br from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white shadow-lg hover:shadow-2xl transition-all duration-300 flex items-center justify-center group hover:scale-110 active:scale-95 pointer-events-auto"
           title="Contact Support"
+          onMouseDown={(e) => e.stopPropagation()}
         >
           <MessageCircle className="h-6 w-6 group-hover:rotate-12 transition-transform" />
         </button>
@@ -35,7 +121,13 @@ export function FloatingSupport() {
           ></div>
 
           {/* Menu Cards */}
-          <div className="fixed bottom-24 right-6 z-40 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div
+            className="absolute z-40 space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-300"
+            style={{
+              left: `${position.x}px`,
+              top: `${position.y + 100}px`,
+            }}
+          >
             {/* Email */}
             <a
               href="mailto:support@empi.ng"

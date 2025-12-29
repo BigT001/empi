@@ -9,7 +9,6 @@ import { HomeModeProvider } from "./context/HomeModeContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { ScrollToTop } from "./components/ScrollToTop";
-import { FloatingSupport } from "./components/FloatingSupport";
 import { MobileHeader } from "./components/MobileHeader";
 
 const geistSans = Geist({
@@ -81,7 +80,6 @@ export default function RootLayout({
               <CurrencyProvider>
                 <MobileHeader />
                 <ScrollToTop />
-                <FloatingSupport />
                 <HomeModeProvider>
                   <ModeProvider>
                     <AdminProvider>

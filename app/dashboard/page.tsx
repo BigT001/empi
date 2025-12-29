@@ -403,14 +403,14 @@ export default function BuyerDashboardPage() {
   // Background polling for orders - smart update only if data changed
   const pollOrdersBackground = async () => {
     try {
-      if (!buyer?.email) return;
+      if (!buyer?.id) return;
       
       console.log('[Dashboard] Background polling for order updates...');
-      const response = await fetch(`/api/custom-orders?email=${encodeURIComponent(buyer.email)}`);
+      const response = await fetch(`/api/custom-orders?buyerId=${buyer.id}`);
       const data = await response.json();
       
       if (data.orders && Array.isArray(data.orders)) {
-        const customerOrders = data.orders.filter((order: CustomOrder) => order.email === buyer.email);
+        const customerOrders = data.orders;
         
         // Only update if orders actually changed
         setCustomOrders(prevOrders => {
@@ -440,15 +440,15 @@ export default function BuyerDashboardPage() {
   // Fetch custom orders (full refresh - only on initial load)
   const fetchCustomOrders = async () => {
     try {
-      if (!buyer?.email) return;
+      if (!buyer?.id) return;
       
-      console.log('[Dashboard] Fetching custom orders for:', buyer.email);
-      const response = await fetch(`/api/custom-orders?email=${encodeURIComponent(buyer.email)}`);
+      console.log('[Dashboard] Fetching custom orders for:', buyer.id);
+      const response = await fetch(`/api/custom-orders?buyerId=${buyer.id}`);
       const data = await response.json();
       
       if (data.orders && Array.isArray(data.orders)) {
-        // Filter to only show orders from this customer
-        const customerOrders = data.orders.filter((order: CustomOrder) => order.email === buyer.email);
+        // Already filtered by buyerId on server, no need to filter again
+        const customerOrders = data.orders;
         console.log('[Dashboard] Got', customerOrders.length, 'orders, fetching message counts...');
         setCustomOrders(customerOrders);
 
@@ -462,14 +462,14 @@ export default function BuyerDashboardPage() {
 
   // Initial load
   useEffect(() => {
-    if (buyer?.email) {
+    if (buyer?.id) {
       console.log('[Dashboard] Initial load - fetching custom orders');
       const fetchAndProcess = async () => {
-        const response = await fetch(`/api/custom-orders?email=${encodeURIComponent(buyer.email)}`);
+        const response = await fetch(`/api/custom-orders?buyerId=${buyer.id}`);
         const data = await response.json();
         
         if (data.orders && Array.isArray(data.orders)) {
-          const customerOrders = data.orders.filter((order: CustomOrder) => order.email === buyer.email);
+          const customerOrders = data.orders;
           setCustomOrders(customerOrders);
           fetchMessageCounts(customerOrders);
 

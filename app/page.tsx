@@ -18,15 +18,22 @@ export default function Home() {
   const { currency, setCurrency } = useCurrency();
   const searchParams = useSearchParams();
   const [category, setCategory] = useState("adults");
+  const [searchQuery, setSearchQuery] = useState("");
   const { mode, setMode, isHydrated } = useHomeMode();
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    // Read category from URL params
+    // Read category and search query from URL params
     const categoryParam = searchParams.get("category");
+    const searchParam = searchParams.get("q");
+    
     if (categoryParam && (categoryParam === "adults" || categoryParam === "kids" || categoryParam === "custom")) {
       setCategory(categoryParam);
+    }
+    
+    if (searchParam) {
+      setSearchQuery(searchParam);
     }
   }, [searchParams]);
 
@@ -132,7 +139,7 @@ export default function Home() {
 
         {/* Custom Costumes CTA Section */}
         {/* Main Content */}
-        <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} />
+        <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} searchQuery={searchQuery} />
 
         {/* SEO Text Section */}
         <section className="hidden bg-gray-50 py-12 px-4">

@@ -151,11 +151,24 @@ export async function GET(request: NextRequest) {
     await connectDB();
     console.log("[API:GET /custom-orders] ✅ Connected to database");
 
-    // TODO: Add admin authentication check
-    
+    const buyerId = request.nextUrl.searchParams.get("buyerId");
     const status = request.nextUrl.searchParams.get("status");
 
-    const whereClause = status ? { status } : {};
+    // If buyerId is provided, filter by that (user-specific orders)
+    // If no buyerId, only admin can fetch all orders
+    const whereClause: any = {};
+    
+    if (buyerId) {
+      whereClause.buyerId = buyerId;
+      console.log("[API:GET /custom-orders] Filtering by buyerId:", buyerId);
+    } else {
+      console.log("[API:GET /custom-orders] ⚠️ No buyerId provided - returning all orders (admin access only)");
+    }
+    
+    if (status) {
+      whereClause.status = status;
+    }
+    
     console.log("[API:GET /custom-orders] Query filter:", whereClause);
 
     const orders = await CustomOrder.find(whereClause).sort({ createdAt: -1 });

@@ -190,6 +190,34 @@ export async function GET(request: NextRequest) {
           } catch (invoiceError) {
             console.error('[verify-payment] ❌ Invoice generation failed:', invoiceError);
           }
+
+          // Send automatic message to buyer about payment confirmation
+          try {
+            console.log('[verify-payment] 📨 Sending payment confirmation message to buyer');
+            const baseUrl = process.env.NEXTAUTH_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+            const messageRes = await fetch(`${baseUrl}/api/messages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: orderData._id?.toString(),
+                orderNumber: reference,
+                senderEmail: 'system@empi.com',
+                senderName: 'EMPI System',
+                senderType: 'admin',
+                content: `✅ Payment Confirmed!\n\nWe've received your payment of ₦${(data.data.amount / 100).toLocaleString()}.\n\nYour order is now confirmed and will be processed shortly. You'll be prompted to select your delivery method next.\n\nThank you for your order!`,
+                messageType: 'system',
+                recipientType: 'buyer',
+              }),
+            });
+
+            if (!messageRes.ok) {
+              console.warn('[verify-payment] ⚠️ Failed to send payment confirmation message');
+            } else {
+              console.log('[verify-payment] ✅ Payment confirmation message sent to buyer');
+            }
+          } catch (msgError) {
+            console.warn('[verify-payment] ⚠️ Error sending payment confirmation message:', msgError);
+          }
           
           console.log('[verify-payment] 📤 Preparing success response...');
         } else {
