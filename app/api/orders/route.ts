@@ -13,21 +13,6 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
-    // ⚠️ CUSTOM ORDER HANDLING: Skip creating regular order if this is a custom order payment
-    if (body.isCustomOrder && body.customOrderId) {
-      console.log('[Orders API] ✅ Custom order payment detected - skipping regular order creation');
-      console.log('[Orders API] 📝 Custom order ID:', body.customOrderId);
-      
-      // Just return success - the custom order will be updated via /api/verify-payment
-      return NextResponse.json({
-        success: true,
-        orderId: body.customOrderId,
-        orderNumber: body.reference,
-        message: 'Custom order payment registered. Order status will be updated after payment verification.',
-        isCustomOrder: true,
-      }, { status: 201 });
-    }
-
     await connectDB();
     
     // Extract customer info
@@ -95,12 +80,8 @@ export async function POST(request: NextRequest) {
       rentalSchedule: body.rentalSchedule || undefined,
       cautionFee: cautionFee > 0 ? cautionFee : undefined,
       
-      // Mark if this is a custom order payment
-      isCustomOrder: body.isCustomOrder || false,
-      customOrderId: body.customOrderId || undefined,
-      
       paymentMethod: body.paymentMethod || 'paystack',
-      status: body.status || 'confirmed',
+      status: body.status || 'pending', // Orders start in pending status
     });
 
     // Validate order before saving

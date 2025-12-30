@@ -7,8 +7,7 @@ import { Header } from "../components/Header";
 import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
-import DeliveryMethodModal from "../components/DeliveryMethodModal";
-import { ShoppingBag, AlertCircle, CreditCard, Truck, MapPin } from "lucide-react";
+import { ShoppingBag, AlertCircle, CreditCard } from "lucide-react";
 
 const SHIPPING_OPTIONS = {
   empi: { id: "empi", name: "EMPI Delivery", cost: 2500, estimatedDays: "2-5 business days" },
@@ -22,15 +21,11 @@ export default function CheckoutPage() {
 
   const [isHydrated, setIsHydrated] = useState(false);
   const shippingOption = "empi"; // Fixed to EMPI Delivery only
-  const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
-  const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [selectedOrderIsCustom, setSelectedOrderIsCustom] = useState(false);
   const [successReference, setSuccessReference] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
   const [customQuote, setCustomQuote] = useState<any>(null);
   const [paymentSuccessful, setPaymentSuccessful] = useState(false);
-  const [paidAmount, setPaidAmount] = useState(0);
   const [guestCustomer, setGuestCustomer] = useState({
     fullName: '',
     email: '',
@@ -83,65 +78,41 @@ export default function CheckoutPage() {
 
       let orderData;
       
-      // Check if this is a custom order quote
-      if (customQuote) {
-        console.log('[Checkout] Processing custom order payment:', customQuote);
-        orderData = {
-          reference: response.reference,
-          buyerId: buyer?.id || null,
-          customer: {
-            name: customerInfo.fullName,
-            email: customerInfo.email,
-            phone: customerInfo.phone,
-          },
-          items: [{
-            id: customQuote.orderId,
-            name: `Custom Order #${customQuote.orderNumber}`,
-            quantity: customQuote.quantity || 1,
-            price: customQuote.quotedPrice || 0,
-            mode: 'buy'
-          }],
-          shippingType: 'standard',
-          shippingCost: 0,
-          pricing: {
-            subtotal: customQuote.quotedPrice || 0,
-            discount: customQuote.discountAmount || 0,
-            tax: customQuote.quotedVAT || 0,
-            shipping: 0,
-            total: customQuote.quotedTotal || 0,
-          },
-          status: "confirmed",
-          isCustomOrder: true,
-          customOrderId: customQuote.orderId,
-          createdAt: new Date().toISOString(),
-        };
-      } else {
-        // Regular cart checkout
-        const shippingCost = shippingOption === "empi" ? 2500 : 0;
-        const taxEstimate = total * 0.075;
-        const totalAmount = total + shippingCost + taxEstimate;
+      // Consolidated order data - treat all orders the same way
+      const shippingCost = customQuote ? 0 : (shippingOption === "empi" ? 2500 : 0);
+      const subtotal = customQuote ? (customQuote.quotedPrice || 0) : total;
+      const taxAmount = customQuote ? (customQuote.quotedVAT || 0) : (subtotal * 0.075);
+      const totalAmount = customQuote ? (customQuote.quotedTotal || 0) : (subtotal + shippingCost + taxAmount);
 
-        orderData = {
-          reference: response.reference,
-          buyerId: buyer?.id || null,
-          customer: {
-            name: customerInfo.fullName,
-            email: customerInfo.email,
-            phone: customerInfo.phone,
-          },
-          shippingType: shippingOption || 'standard',
-          shippingCost: shippingCost,
-          items,
-          pricing: {
-            subtotal: total,
-            tax: taxEstimate,
-            shipping: shippingCost,
-            total: totalAmount,
-          },
-          status: "confirmed",
-          createdAt: new Date().toISOString(),
-        };
-      }
+      orderData = {
+        reference: response.reference,
+        buyerId: buyer?.id || null,
+        customer: {
+          name: customerInfo.fullName,
+          email: customerInfo.email,
+          phone: customerInfo.phone,
+        },
+        items: customQuote 
+          ? [{
+              id: customQuote.orderId,
+              name: `Order #${customQuote.orderNumber}`,
+              quantity: customQuote.quantity || 1,
+              price: customQuote.quotedPrice || 0,
+              mode: 'buy'
+            }]
+          : items,
+        shippingType: shippingOption || 'standard',
+        shippingCost: shippingCost,
+        pricing: {
+          subtotal: subtotal,
+          discount: customQuote?.discountAmount || 0,
+          tax: taxAmount,
+          shipping: shippingCost,
+          total: totalAmount,
+        },
+        status: "confirmed",
+        createdAt: new Date().toISOString(),
+      };
 
       console.log("💾 Saving order...");
       console.log("Order data:", JSON.stringify(orderData, null, 2));
@@ -165,25 +136,12 @@ export default function CheckoutPage() {
           return;
         }
         
-        // Store the paid amount before clearing cart
-        const amountToPay = customQuote 
-          ? customQuote.quotedTotal 
-          : (total + (shippingOption === "empi" ? 2500 : 0) + (total * 0.075));
-        setPaidAmount(amountToPay);
-        
-        // Capture order ID and show delivery method modal
-        console.log("🎉 Showing delivery method selection modal");
-        console.log("📋 Setting selectedOrderId to:", orderRes.orderId);
+        // Show success message
+        console.log("🎉 Payment successful!");
         setPaymentSuccessful(true);
-        setSelectedOrderId(orderRes.orderId);
-        setSelectedOrderIsCustom(!!customQuote);
         setSuccessReference(response.reference);
-        console.log("📋 State update scheduled - deliveryModalOpen will be set to true");
-        setDeliveryModalOpen(true);
         
-        if (!customQuote) {
-          clearCart();
-        }
+        clearCart();
         
         // Clear custom quote from sessionStorage
         sessionStorage.removeItem('customOrderQuote');
@@ -262,6 +220,54 @@ export default function CheckoutPage() {
   };
 
   if (!isHydrated) return null;
+
+  // ===== PAYMENT SUCCESS - Show success message =====
+  if (paymentSuccessful) {
+    return (
+      <div className="min-h-screen flex flex-col">
+        <Header />
+        <main className="flex-1 max-w-2xl mx-auto px-4 py-12 w-full">
+          <div className="bg-white rounded-lg shadow-md border border-green-200 p-12">
+            <div className="text-center">
+              {/* Success Icon */}
+              <div className="mb-6 flex justify-center">
+                <div className="h-20 w-20 bg-green-100 rounded-full flex items-center justify-center">
+                  <span className="text-5xl">📦</span>
+                </div>
+              </div>
+
+              {/* Title */}
+              <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Order</h1>
+
+              {/* Description */}
+              <p className="text-gray-600 text-lg mb-8">
+                Check messages on your product card and visit the dashboard to track your order progress in real-time
+              </p>
+
+              {/* Buttons */}
+              <div className="space-y-3 max-w-sm mx-auto">
+                <Link href="/dashboard?tab=orders" className="block w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white px-6 py-3 rounded-lg font-semibold transition shadow-md hover:shadow-lg">
+                  Go to Dashboard Orders
+                </Link>
+                <Link href="/" className="block w-full bg-gray-100 hover:bg-gray-200 text-gray-900 px-6 py-3 rounded-lg font-semibold transition">
+                  Continue Shopping
+                </Link>
+              </div>
+
+              {/* Reference Number */}
+              {successReference && (
+                <div className="mt-8 pt-8 border-t border-gray-200">
+                  <p className="text-sm text-gray-600 mb-1">Order Reference</p>
+                  <p className="text-xl font-semibold text-gray-900">{successReference}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   // ===== EMPTY CART - But allow if custom order quote exists or payment was successful =====
   if (items.length === 0 && !customQuote && !paymentSuccessful) {
@@ -595,19 +601,6 @@ export default function CheckoutPage() {
           </div>
         </div>
       </main>
-
-      {/* Delivery Method Modal */}
-      <DeliveryMethodModal
-        isOpen={deliveryModalOpen}
-        onClose={() => {
-          setDeliveryModalOpen(false);
-          // User can navigate manually or we can redirect after a delay
-        }}
-        orderId={selectedOrderId || ""}
-        orderReference={successReference}
-        total={paymentSuccessful ? paidAmount : displayTotal}
-        isCustomOrder={selectedOrderIsCustom}
-      />
 
       <Footer />
     </div>

@@ -89,20 +89,20 @@ export async function GET(request: NextRequest) {
           console.log('[verify-payment]   - Amount:', amount);
           console.log('[verify-payment]   - Is custom order:', !!customOrder);
           
-          // Update custom order status to "approved" if it's a custom order
+          // Update custom order status to "pending" - will move to approved when admin approves
           if (customOrder) {
-            console.log('[verify-payment] 📝 Updating custom order status to approved');
-            customOrder.status = 'approved';
+            console.log('[verify-payment] 📝 Updating custom order status to pending');
+            customOrder.status = 'pending';
             await customOrder.save();
-            console.log('[verify-payment] ✅ Custom order status updated to approved');
+            console.log('[verify-payment] ✅ Custom order status updated to pending');
           }
           
-          // Update regular order status if needed
+          // Update regular order status to "pending" - same flow as custom orders
           if (order) {
-            console.log('[verify-payment] 📝 Updating order status to confirmed');
-            order.status = 'confirmed';
+            console.log('[verify-payment] 📝 Updating order status to pending');
+            order.status = 'pending';
             await order.save();
-            console.log('[verify-payment] ✅ Order status updated to confirmed');
+            console.log('[verify-payment] ✅ Order status updated to pending');
           }
           
           // Generate invoice automatically

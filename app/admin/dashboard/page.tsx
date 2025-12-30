@@ -36,11 +36,6 @@ const ApprovedOrdersPanel = dynamic(() => import("./ApprovedOrdersPanel").then(m
   ssr: false
 });
 
-const RegularOrdersPanel = dynamic(() => import("./RegularOrdersPanel").then(mod => ({ default: mod.RegularOrdersPanel })), {
-  loading: () => <PanelSkeleton />,
-  ssr: false
-});
-
 const CustomOrdersPanel = dynamic(() => import("./CustomOrdersPanel").then(mod => ({ default: mod.CustomOrdersPanel })), {
   loading: () => <PanelSkeleton />,
   ssr: false
@@ -60,8 +55,7 @@ function PanelSkeleton() {
 // ⚡ Tab configuration for easy maintenance
 const TABS = [
   { id: 'overview', label: 'Overview', icon: BarChart3, color: 'text-blue-600' },
-  { id: 'regular', label: 'Regular Orders', icon: ShoppingCart, color: 'text-amber-600' },
-  { id: 'custom', label: 'Custom Orders', icon: Paintbrush, color: 'text-orange-600' },
+  { id: 'custom', label: 'Orders', icon: Paintbrush, color: 'text-orange-600' },
   { id: 'users', label: 'Users', icon: Users, color: 'text-purple-600' },
   { id: 'products', label: 'Products', icon: Package, color: 'text-indigo-600' },
 ] as const;
@@ -79,11 +73,11 @@ export default function AdminDashboardPage() {
   
   // ⚡ Initialize activeTab and loadedTabs together to prevent missing content on page refresh
   const [activeTab, setActiveTab] = useState<
-    'overview' | 'users' | 'regular' | 'products' | 'custom'
+    'overview' | 'users' | 'products' | 'custom'
   >(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('adminDashboardActiveTab');
-      return (saved as 'overview' | 'users' | 'regular' | 'products' | 'custom') || 'overview';
+      return (saved as 'overview' | 'users' | 'products' | 'custom') || 'overview';
     }
     return 'overview';
   });
@@ -92,7 +86,7 @@ export default function AdminDashboardPage() {
   const [loadedTabs, setLoadedTabs] = useState(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('adminDashboardActiveTab');
-      const initialTab = (saved as 'overview' | 'users' | 'regular' | 'products' | 'custom') || 'overview';
+      const initialTab = (saved as 'overview' | 'users' | 'products' | 'custom') || 'overview';
       return new Set(['overview', initialTab]);
     }
     return new Set(['overview']);
@@ -248,13 +242,6 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Regular Orders Tab - ⚡ Only loaded/rendered when clicked */}
-        {activeTab === 'regular' && loadedTabs.has('regular') && (
-          <div className="animate-fadeIn">
-            <RegularOrdersPanel />
-          </div>
-        )}
-
         {/* Products Tab - ⚡ Only loaded/rendered when clicked */}
         {activeTab === 'products' && loadedTabs.has('products') && (
           <div className="animate-fadeIn">
@@ -262,7 +249,7 @@ export default function AdminDashboardPage() {
           </div>
         )}
 
-        {/* Custom Orders Tab - ⚡ Only loaded/rendered when clicked */}
+        {/* Orders Tab - ⚡ Only loaded/rendered when clicked */}
         {activeTab === 'custom' && loadedTabs.has('custom') && (
           <div className="animate-fadeIn">
             <CustomOrdersPanel />
