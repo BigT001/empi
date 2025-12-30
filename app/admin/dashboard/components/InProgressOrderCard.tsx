@@ -1,6 +1,6 @@
 "use client";
 
-import { MessageSquare, Zap, Calendar, Clock, DollarSign, Wrench } from "lucide-react";
+import { MessageSquare, Zap, Calendar, Clock, DollarSign, Wrench, Trash2 } from "lucide-react";
 
 interface Order {
   _id: string;
@@ -37,9 +37,10 @@ interface InProgressOrderCardProps {
   onImageClick: () => void;
   onChatClick: () => void;
   onMarkReady?: () => void;
+  onDelete?: () => void;
 }
 
-export function InProgressOrderCard({ order, onImageClick, onChatClick, onMarkReady }: InProgressOrderCardProps) {
+export function InProgressOrderCard({ order, onImageClick, onChatClick, onMarkReady, onDelete }: InProgressOrderCardProps) {
   const handleMarkReady = () => {
     if (window.confirm('Is production ready for this order? Click OK to confirm.')) {
       onMarkReady?.();
@@ -201,7 +202,17 @@ export function InProgressOrderCard({ order, onImageClick, onChatClick, onMarkRe
             ✓ Ready?
           </button>
         </div>
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition w-full"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Order
+          </button>
+        )}
       </div>
     </div>
   );
 }
+

@@ -111,7 +111,7 @@ export async function PATCH(
     }
 
     // Only allow specific fields to be updated
-    const allowedUpdates = ["status", "paymentReference", "buyerAgreedToDate", "deliveryDate"];
+    const allowedUpdates = ["status", "paymentReference", "buyerAgreedToDate", "deliveryDate", "shippingType", "address", "busStop", "city", "state", "zipCode"];
     const updates: Record<string, any> = {};
 
     for (const key of Object.keys(body)) {

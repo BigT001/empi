@@ -31,7 +31,12 @@ export async function POST(request: NextRequest) {
     const description = formData.get("description") as string;
     const quantity = formData.get("quantity") as string;
     const deliveryDate = formData.get("deliveryDate") as string;
+    const buyerId = formData.get("buyerId") as string | null;
     
+    console.log("[API:POST /custom-orders] 📝 New custom order submission received");
+    console.log("[API:POST /custom-orders] Email from form:", email);
+    console.log("[API:POST /custom-orders] BuyerId from form:", buyerId || "(not provided)");
+
     // Get all design images
     const designImages = formData.getAll("designImages") as File[];
 
@@ -98,23 +103,44 @@ export async function POST(request: NextRequest) {
     const orderNumber = `${firstName}-${shortCode}`;
 
     // Create custom order in database
-    const customOrder = await CustomOrder.create({
+    const orderData: any = {
       orderNumber,
       fullName,
       email,
       phone,
-      address: address || undefined,
       city,
-      state: state || undefined,
       description,
       designUrl,
       designUrls, // Store all design image URLs
       quantity: parseInt(quantity) || 1,
-      deliveryDate: deliveryDate ? new Date(deliveryDate) : undefined,
       status: "pending",
+    };
+
+    // Add optional fields
+    if (address) orderData.address = address;
+    if (state) orderData.state = state;
+    if (deliveryDate) orderData.deliveryDate = new Date(deliveryDate);
+    if (buyerId) {
+      orderData.buyerId = buyerId;
+      console.log("[API:POST /custom-orders] ✅ Adding buyerId to database:", buyerId);
+    }
+
+    console.log("[API:POST /custom-orders] 📝 Order data to save:", {
+      orderNumber,
+      email,
+      buyerId: orderData.buyerId || "(not provided)",
+      fullName,
     });
 
+    const customOrder = await CustomOrder.create(orderData);
+
     console.log("✅ Custom order created:", customOrder._id);
+    console.log("📋 Order Details:");
+    console.log("  - Order Number:", customOrder.orderNumber);
+    console.log("  - BuyerId:", customOrder.buyerId || "(not set)");
+    console.log("  - Email:", customOrder.email);
+    console.log("  - Full Name:", customOrder.fullName);
+    console.log("  - Status:", customOrder.status);
 
     // TODO: Send email notification to admin and customer
     // For now, just log it
@@ -152,27 +178,40 @@ export async function GET(request: NextRequest) {
     console.log("[API:GET /custom-orders] ✅ Connected to database");
 
     const buyerId = request.nextUrl.searchParams.get("buyerId");
+    const email = request.nextUrl.searchParams.get("email");
     const status = request.nextUrl.searchParams.get("status");
 
+    console.log("[API:GET /custom-orders] 🔍 Query parameters received:", { buyerId, email, status });
+
     // If buyerId is provided, filter by that (user-specific orders)
-    // If no buyerId, only admin can fetch all orders
+    // If email is provided, use that as fallback
+    // If no buyerId or email, only admin can fetch all orders
     const whereClause: any = {};
     
     if (buyerId) {
       whereClause.buyerId = buyerId;
       console.log("[API:GET /custom-orders] Filtering by buyerId:", buyerId);
+    } else if (email) {
+      whereClause.email = email;
+      console.log("[API:GET /custom-orders] 📧 Filtering by email:", email);
     } else {
-      console.log("[API:GET /custom-orders] ⚠️ No buyerId provided - returning all orders (admin access only)");
+      console.log("[API:GET /custom-orders] ⚠️ No buyerId or email provided - returning all orders (admin access only)");
     }
     
     if (status) {
       whereClause.status = status;
     }
     
-    console.log("[API:GET /custom-orders] Query filter:", whereClause);
+    console.log("[API:GET /custom-orders] 🔎 MongoDB Query filter:", JSON.stringify(whereClause));
 
     const orders = await CustomOrder.find(whereClause).sort({ createdAt: -1 });
-    console.log("[API:GET /custom-orders] ✅ Found orders:", orders.length);
+    console.log("[API:GET /custom-orders] ✅ Found", orders.length, "orders");
+    
+    if (orders.length === 0 && email) {
+      console.log("[API:GET /custom-orders] 📊 Debugging: No orders found for email. Checking total custom orders in DB...");
+      const allOrders = await CustomOrder.find({}).limit(5);
+      console.log("[API:GET /custom-orders] 📊 Sample orders in DB:", allOrders.map(o => ({ orderNumber: o.orderNumber, email: o.email, buyerId: o.buyerId })));
+    }
 
     return NextResponse.json({ success: true, orders }, { status: 200 });
   } catch (error) {
@@ -210,7 +249,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     // Only allow specific fields to be updated
-    const allowedUpdates = ["status", "buyerAgreedToDate", "deliveryDate", "quantity"];
+    const allowedUpdates = ["status", "buyerAgreedToDate", "deliveryDate", "quantity", "shippingType", "address", "busStop", "city", "state", "zipCode"];
     const updates: Record<string, any> = {};
 
     for (const key of Object.keys(body)) {

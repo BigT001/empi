@@ -10,6 +10,7 @@ interface DeliveryMethodModalProps {
   orderReference: string;
   onClose: () => void;
   total: number;
+  isCustomOrder?: boolean;
 }
 
 export default function DeliveryMethodModal({
@@ -18,6 +19,7 @@ export default function DeliveryMethodModal({
   orderReference,
   onClose,
   total,
+  isCustomOrder = false,
 }: DeliveryMethodModalProps) {
   const router = useRouter();
   const [selectedMethod, setSelectedMethod] = useState<"empi" | "self" | null>(null);
@@ -51,9 +53,19 @@ export default function DeliveryMethodModal({
     setIsProcessing(true);
     setError(null);
 
+    if (!orderId) {
+      setError("Order ID is missing. Please try again or refresh the page.");
+      setIsProcessing(false);
+      console.error("❌ Cannot save delivery method - orderId is empty or undefined");
+      return;
+    }
+
     try {
-      // Update order with delivery method
-      const updateRes = await fetch(`/api/orders/${orderId}`, {
+      // Determine API endpoint based on order type
+      const apiEndpoint = isCustomOrder ? `/api/custom-orders/${orderId}` : `/api/orders/${orderId}`;
+      console.log("🔄 Updating order delivery method at:", apiEndpoint, { isCustomOrder });
+      
+      const updateRes = await fetch(apiEndpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -70,13 +82,30 @@ export default function DeliveryMethodModal({
       });
 
       if (!updateRes.ok) {
-        const errorData = await updateRes.json();
+        let errorData;
+        try {
+          const text = await updateRes.text();
+          if (text) {
+            errorData = JSON.parse(text);
+          }
+        } catch (parseErr) {
+          console.warn("⚠️ Could not parse error response as JSON");
+        }
         console.error("❌ Order update failed with status:", updateRes.status);
         console.error("Error details:", errorData);
-        throw new Error(errorData?.error || errorData?.details || "Failed to update order delivery method");
+        throw new Error(errorData?.error || errorData?.details || `Failed to update order delivery method (Status: ${updateRes.status})`);
       }
 
-      const responseData = await updateRes.json();
+      let responseData;
+      try {
+        const text = await updateRes.text();
+        if (text) {
+          responseData = JSON.parse(text);
+        }
+      } catch (parseErr) {
+        console.warn("⚠️ Could not parse response as JSON, treating as success");
+        responseData = null;
+      }
       console.log(`✅ Order updated with delivery method: ${method}`);
       console.log("Response:", responseData);
 

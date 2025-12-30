@@ -11,9 +11,25 @@ import { generateProfessionalInvoiceHTML } from '@/lib/professionalInvoice';
 // POST create/save order from Paystack
 export async function POST(request: NextRequest) {
   try {
-    await connectDB();
     const body = await request.json();
 
+    // ⚠️ CUSTOM ORDER HANDLING: Skip creating regular order if this is a custom order payment
+    if (body.isCustomOrder && body.customOrderId) {
+      console.log('[Orders API] ✅ Custom order payment detected - skipping regular order creation');
+      console.log('[Orders API] 📝 Custom order ID:', body.customOrderId);
+      
+      // Just return success - the custom order will be updated via /api/verify-payment
+      return NextResponse.json({
+        success: true,
+        orderId: body.customOrderId,
+        orderNumber: body.reference,
+        message: 'Custom order payment registered. Order status will be updated after payment verification.',
+        isCustomOrder: true,
+      }, { status: 201 });
+    }
+
+    await connectDB();
+    
     // Extract customer info
     const customerName = body.customer?.name || '';
     const [firstName, ...lastNameParts] = customerName.split(' ');
@@ -79,6 +95,10 @@ export async function POST(request: NextRequest) {
       rentalSchedule: body.rentalSchedule || undefined,
       cautionFee: cautionFee > 0 ? cautionFee : undefined,
       
+      // Mark if this is a custom order payment
+      isCustomOrder: body.isCustomOrder || false,
+      customOrderId: body.customOrderId || undefined,
+      
       paymentMethod: body.paymentMethod || 'paystack',
       status: body.status || 'confirmed',
     });
@@ -109,7 +129,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ 
         success: true,
         message: 'Order already exists',
-        order: existingOrder,
+        orderId: existingOrder._id,
         orderNumber: existingOrder.orderNumber,
       }, { status: 200 });
     }
@@ -424,13 +444,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: true, order: withImages });
     }
 
-    // Get orders - filter by buyerId or email
+    // Get orders - filter by buyerId or email, but EXCLUDE custom order payments
     let query: any = {};
     if (buyerId) {
       query.buyerId = buyerId;
     } else if (email) {
       query.email = email;
     }
+    // Exclude orders created for custom order payments
+    // Check both: isCustomOrder flag AND customOrderId reference
+    query.$and = [
+      { $or: [{ isCustomOrder: { $ne: true } }, { isCustomOrder: { $exists: false } }] },
+      { $or: [{ customOrderId: { $eq: null } }, { customOrderId: { $exists: false } }] }
+    ];
+    
     let orders = await Order.find(query).sort({ createdAt: -1 }).limit(limit);
     console.log(`[Orders API] Fetched ${orders.length} orders for buyerId: ${buyerId || 'N/A'}, email: ${email || 'N/A'} (limit: ${limit})`);
     const serialized = serializeDocs(orders);

@@ -50,6 +50,7 @@ export default function CustomCostumesPage({
   const [submitStatus, setSubmitStatus] = useState<"idle" | "success" | "error">("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [appliedDiscount, setAppliedDiscount] = useState(0);
+  const [currentStep, setCurrentStep] = useState<"info" | "design" | "description" | "review">("info");
 
   // Auto-populate form with buyer profile data
   useEffect(() => {
@@ -132,6 +133,11 @@ export default function CustomCostumesPage({
     setSubmitStatus("idle");
     setErrorMessage("");
 
+    console.log("[CustomCostumes] 📝 Form submission started");
+    console.log("[CustomCostumes] User logged in?", !!buyer?.id);
+    console.log("[CustomCostumes] Buyer ID:", buyer?.id);
+    console.log("[CustomCostumes] Buyer Email:", buyer?.email);
+
     // Validate that at least one image is uploaded
     if (selectedFiles.length === 0) {
       setErrorMessage("Please upload at least one design image before submitting your order.");
@@ -152,11 +158,20 @@ export default function CustomCostumesPage({
       uploadFormData.append("deliveryDate", formData.deliveryDate);
       uploadFormData.append("quantity", formData.quantity.toString());
 
+      // Add buyerId if user is logged in
+      if (buyer?.id) {
+        uploadFormData.append("buyerId", buyer.id);
+        console.log("[CustomCostumes] ✅ Adding buyerId to form:", buyer.id);
+      } else {
+        console.log("[CustomCostumes] ⚠️ No buyerId available, submitting with email fallback");
+      }
+
       // Append all selected images
       selectedFiles.forEach((file) => {
         uploadFormData.append("designImages", file);
       });
 
+      console.log("[CustomCostumes] 📤 Submitting custom order...");
       const response = await fetch("/api/custom-orders", {
         method: "POST",
         body: uploadFormData,
@@ -168,6 +183,10 @@ export default function CustomCostumesPage({
       }
 
       const data = await response.json();
+      
+      console.log("[CustomCostumes] ✅ Order submitted successfully!");
+      console.log("[CustomCostumes] Response:", data);
+      console.log("[CustomCostumes] Order Number:", data.orderNumber);
       
       setSubmitStatus("success");
       setSuccessOrderNumber(data.orderNumber || "");
@@ -188,6 +207,7 @@ export default function CustomCostumesPage({
       setSelectedFiles([]);
       setPreviewUrls([]);
     } catch (err: any) {
+      console.error("[CustomCostumes] ❌ Error submitting order:", err);
       setSubmitStatus("error");
       setErrorMessage(err.message || "Failed to submit your custom order. Please try again.");
       setShowErrorModal(true);
@@ -246,94 +266,68 @@ export default function CustomCostumesPage({
             </div>
           </section>
 
-          {/* How It Works - Vertical Timeline on Mobile, Horizontal Grid on Desktop */}
-          <section className="space-y-8 overflow-hidden">
-            <div className="text-center">
-              <h2 className="text-4xl md:text-5xl font-black text-gray-900 mb-2">How It Works</h2>
-              <p className="text-gray-600 text-lg px-4 md:px-8">Four simple steps to your perfect custom costume</p>
+          {/* How It Works */}
+          <section className="px-4 md:px-0 py-8">
+            <div className="mb-10">
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">How It Works</h2>
+              <p className="text-gray-600">Simple steps to get your perfect costume</p>
             </div>
             
-            {/* Timeline Container */}
-            <div className="relative">
-              {/* Mobile Timeline Line */}
-              <div className="absolute left-8 top-0 bottom-0 w-1.5 bg-gradient-to-b from-lime-600 via-lime-400 to-lime-600 md:hidden"></div>
+            {/* Mobile - Icons and titles only in horizontal line */}
+            <div className="md:hidden flex justify-between items-start gap-3">
+              {/* Step 1 */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="mb-2 text-3xl">📸</div>
+                <h3 className="font-semibold text-gray-900 text-center text-sm">Submit Design</h3>
+              </div>
 
-              {/* Desktop Horizontal Connector */}
-              <div className="hidden md:block absolute top-20 left-0 right-0 h-1.5 bg-gradient-to-r from-lime-600 via-lime-400 to-lime-600"></div>
+              {/* Step 2 */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="mb-2 text-3xl">💬</div>
+                <h3 className="font-semibold text-gray-900 text-center text-sm">Get Quote</h3>
+              </div>
 
-              {/* Steps Grid - Vertical on Mobile, Horizontal on Desktop */}
-              <div className="grid md:grid-cols-4 gap-8 md:gap-6">
-                {/* Step 1 */}
-                <div className="relative md:relative">
-                  {/* Dot Connector - Hidden on Mobile */}
-                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-lime-100 to-lime-50 border-4 border-lime-600 rounded-full items-center justify-center shadow-xl">
-                    <span className="text-4xl">📸</span>
-                  </div>
-                  {/* Mobile Dot */}
-                  <div className="md:hidden absolute left-0 top-1 w-16 h-16 bg-gradient-to-br from-lime-100 to-lime-50 border-4 border-lime-600 rounded-full flex items-center justify-center shadow-lg">
-                    <span className="text-2xl">📸</span>
-                  </div>
-                  <div className="pl-24 md:pl-0 md:pt-40">
-                    <div className="bg-gradient-to-br from-lime-50 to-white rounded-2xl p-6 md:p-7 border-0 md:border-2 border-lime-200 shadow-lg md:shadow-md hover:shadow-xl transition-shadow md:text-center">
-                      <h3 className="font-bold text-gray-900 mb-2 text-lg md:text-xl">Submit Your Design</h3>
-                      <p className="text-sm md:text-base text-gray-600 leading-relaxed">Upload a photo, sketch, or describe exactly what you want</p>
-                    </div>
-                  </div>
-                </div>
+              {/* Step 3 */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="mb-2 text-3xl">✨</div>
+                <h3 className="font-semibold text-gray-900 text-center text-sm">We Create</h3>
+              </div>
 
-                {/* Step 2 */}
-                <div className="relative md:relative">
-                  {/* Dot Connector - Hidden on Mobile */}
-                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-cyan-100 to-cyan-50 border-4 border-cyan-600 rounded-full items-center justify-center shadow-xl">
-                    <span className="text-4xl">💬</span>
-                  </div>
-                  {/* Mobile Dot */}
-                  <div className="md:hidden absolute left-0 top-1 w-16 h-16 bg-gradient-to-br from-cyan-100 to-cyan-50 border-4 border-cyan-600 rounded-full flex items-center justify-center shadow-lg">
-                    <span className="text-2xl">💬</span>
-                  </div>
-                  <div className="pl-24 md:pl-0 md:pt-40">
-                    <div className="bg-gradient-to-br from-cyan-50 to-white rounded-2xl p-6 md:p-7 border-0 md:border-2 border-cyan-200 shadow-lg md:shadow-md hover:shadow-xl transition-shadow md:text-center">
-                      <h3 className="font-bold text-gray-900 mb-2 text-lg md:text-xl">Get a Quote</h3>
-                      <p className="text-sm md:text-base text-gray-600 leading-relaxed">We review your request and send you a price quote</p>
-                    </div>
-                  </div>
-                </div>
+              {/* Step 4 */}
+              <div className="flex flex-col items-center flex-1">
+                <div className="mb-2 text-3xl">🎁</div>
+                <h3 className="font-semibold text-gray-900 text-center text-sm">Delivered</h3>
+              </div>
+            </div>
 
-                {/* Step 3 */}
-                <div className="relative md:relative">
-                  {/* Dot Connector - Hidden on Mobile */}
-                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-purple-100 to-purple-50 border-4 border-purple-600 rounded-full items-center justify-center shadow-xl">
-                    <span className="text-4xl">✨</span>
-                  </div>
-                  {/* Mobile Dot */}
-                  <div className="md:hidden absolute left-0 top-1 w-16 h-16 bg-gradient-to-br from-purple-100 to-purple-50 border-4 border-purple-600 rounded-full flex items-center justify-center shadow-lg">
-                    <span className="text-2xl">✨</span>
-                  </div>
-                  <div className="pl-24 md:pl-0 md:pt-40">
-                    <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-6 md:p-7 border-0 md:border-2 border-purple-200 shadow-lg md:shadow-md hover:shadow-xl transition-shadow md:text-center">
-                      <h3 className="font-bold text-gray-900 mb-2 text-lg md:text-xl">We Create It</h3>
-                      <p className="text-sm md:text-base text-gray-600 leading-relaxed">Our expert makers craft your custom costume to perfection</p>
-                    </div>
-                  </div>
-                </div>
+            {/* Desktop - Full details */}
+            <div className="hidden md:grid md:grid-cols-4 gap-6">
+              {/* Step 1 */}
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 text-4xl">📸</div>
+                <h3 className="font-semibold text-gray-900 mb-2">Submit Design</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">Upload images or describe your costume idea in detail</p>
+              </div>
 
-                {/* Step 4 */}
-                <div className="relative md:relative">
-                  {/* Dot Connector - Hidden on Mobile */}
-                  <div className="hidden md:flex absolute top-8 left-1/2 -translate-x-1/2 w-20 h-20 bg-gradient-to-br from-green-100 to-green-50 border-4 border-green-600 rounded-full items-center justify-center shadow-xl">
-                    <span className="text-4xl">🎁</span>
-                  </div>
-                  {/* Mobile Dot */}
-                  <div className="md:hidden absolute left-0 top-1 w-16 h-16 bg-gradient-to-br from-green-100 to-green-50 border-4 border-green-600 rounded-full flex items-center justify-center shadow-lg">
-                    <span className="text-2xl">🎁</span>
-                  </div>
-                  <div className="pl-24 md:pl-0 md:pt-40">
-                    <div className="bg-gradient-to-br from-green-50 to-white rounded-2xl p-6 md:p-7 border-0 md:border-2 border-green-200 shadow-lg md:shadow-md hover:shadow-xl transition-shadow md:text-center">
-                      <h3 className="font-bold text-gray-900 mb-2 text-lg md:text-xl">Delivered to You</h3>
-                      <p className="text-sm md:text-base text-gray-600 leading-relaxed">Receive your custom costume on your chosen delivery date</p>
-                    </div>
-                  </div>
-                </div>
+              {/* Step 2 */}
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 text-4xl">💬</div>
+                <h3 className="font-semibold text-gray-900 mb-2">Get Quote</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">We review and send you pricing & timeline</p>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 text-4xl">✨</div>
+                <h3 className="font-semibold text-gray-900 mb-2">We Create</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">Our makers craft your custom costume</p>
+              </div>
+
+              {/* Step 4 */}
+              <div className="flex flex-col items-center text-center">
+                <div className="mb-4 text-4xl">🎁</div>
+                <h3 className="font-semibold text-gray-900 mb-2">Delivered</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">Receive your costume on your chosen date</p>
               </div>
             </div>
           </section>
@@ -362,360 +356,401 @@ export default function CustomCostumesPage({
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Contact Information Section */}
-              <div className="bg-gradient-to-br from-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-slate-200 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  <span className="text-2xl">👤</span>
-                  Contact Information
-                </h3>
-                
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <label htmlFor="fullName" className="block text-sm font-semibold text-gray-700 mb-2">
-                      Full Name <span className="text-red-600 font-bold">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="fullName"
-                      name="fullName"
-                      value={formData.fullName}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition"
-                      placeholder="Your full name"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="email" className="block text-sm font-semibold text-gray-700 mb-2">
-                      Email <span className="text-red-600 font-bold">*</span>
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      name="email"
-                      value={formData.email}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition"
-                      placeholder="john@example.com"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="phone" className="block text-sm font-semibold text-gray-700 mb-2">
-                      Phone Number <span className="text-red-600 font-bold">*</span>
-                    </label>
-                    <input
-                      type="tel"
-                      id="phone"
-                      name="phone"
-                      value={formData.phone}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition"
-                      placeholder="+234 123 456 7890"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="city" className="block text-sm font-semibold text-gray-700 mb-2">
-                      City <span className="text-red-600 font-bold">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      id="city"
-                      name="city"
-                      value={formData.city}
-                      onChange={handleInputChange}
-                      required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition"
-                      placeholder="Lagos, Abuja, Ibadan..."
-                    />
-                  </div>
+            <form onSubmit={handleSubmit} className="space-y-0 md:space-y-8">
+              {/* Mobile Step Indicator */}
+              <div className="md:hidden mb-6">
+                <div className="flex justify-between items-center gap-2 mb-4">
+                  {(['info', 'design', 'description', 'review'] as const).map((step, idx) => (
+                    <div key={step} className="flex items-center">
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
+                          currentStep === step
+                            ? 'bg-gradient-to-r from-lime-600 to-green-600 text-white ring-2 ring-offset-2 ring-green-300'
+                            : idx < ['info', 'design', 'description', 'review'].indexOf(currentStep)
+                            ? 'bg-green-600 text-white'
+                            : 'bg-gray-200 text-gray-600'
+                        }`}
+                      >
+                        {idx + 1}
+                      </div>
+                      {idx < 3 && <div className="w-1 h-1 bg-gray-300 mx-1" />}
+                    </div>
+                  ))}
                 </div>
-
-                {/* Address and State - Full Width */}
-                <div className="grid md:grid-cols-2 gap-6 mt-6">
-                  <div>
-                    <label htmlFor="address" className="block text-sm font-semibold text-gray-700 mb-2">
-                      Delivery Address
-                    </label>
-                    <input
-                      type="text"
-                      id="address"
-                      name="address"
-                      value={formData.address}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition"
-                      placeholder="Street address, apartment, etc."
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="state" className="block text-sm font-semibold text-gray-700 mb-2">
-                      State
-                    </label>
-                    <input
-                      type="text"
-                      id="state"
-                      name="state"
-                      value={formData.state}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition"
-                      placeholder="State (optional)"
-                    />
-                  </div>
+                <div className="flex justify-between text-xs font-medium text-gray-600">
+                  <span>Info</span>
+                  <span>Design</span>
+                  <span>Details</span>
+                  <span>Review</span>
                 </div>
               </div>
 
-              {/* Order Details Section */}
-              <div className="bg-gradient-to-br from-blue-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-blue-200 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-2">
-                  <span className="text-2xl">📋</span>
-                  Order Details
-                </h3>
-                
-                {/* Top Row: Delivery Date and Quantity */}
-                <div className="grid md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                    <label htmlFor="deliveryDate" className="block text-sm font-semibold text-gray-700 mb-2">
-                      When Do You Need It?
-                    </label>
-                    <input
-                      type="date"
-                      id="deliveryDate"
-                      name="deliveryDate"
-                      value={formData.deliveryDate}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">Leave empty if no specific deadline</p>
+              {/* Step 1: Contact Information */}
+              {(currentStep === 'info' || window.innerWidth >= 768) && (
+                <div className="bg-gradient-to-br from-blue-50 via-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-blue-200 shadow-sm overflow-hidden">
+                  <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                    <span className="text-2xl">👤</span>
+                    <span className="hidden md:inline">Contact Information</span>
+                    <span className="md:hidden">Your Information</span>
+                  </h3>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                      <label htmlFor="fullName" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                        Full Name <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="fullName"
+                        name="fullName"
+                        value={formData.fullName}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        placeholder="Your name"
+                      />
+                    </div>
+                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                      <label htmlFor="email" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                        Email <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        value={formData.email}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        placeholder="your@email.com"
+                      />
+                    </div>
+                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                      <label htmlFor="phone" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                        Phone <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="tel"
+                        id="phone"
+                        name="phone"
+                        value={formData.phone}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        placeholder="+234 123 456 7890"
+                      />
+                    </div>
+                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                      <label htmlFor="city" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                        City <span className="text-red-600">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        id="city"
+                        name="city"
+                        value={formData.city}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        placeholder="Lagos, Abuja..."
+                      />
+                    </div>
                   </div>
 
-                  <div>
-                    <label htmlFor="quantity" className="block text-sm font-semibold text-gray-700 mb-2">
-                      Quantity <span className="text-red-600 font-bold">*</span>
-                    </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-6">
+                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                      <label htmlFor="address" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                        Address
+                      </label>
+                      <input
+                        type="text"
+                        id="address"
+                        name="address"
+                        value={formData.address}
+                        onChange={handleInputChange}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        placeholder="Street address"
+                      />
+                    </div>
+                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                      <label htmlFor="state" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                        State
+                      </label>
+                      <input
+                        type="text"
+                        id="state"
+                        name="state"
+                        value={formData.state}
+                        onChange={handleInputChange}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        placeholder="State"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 2: Design Upload */}
+              {(currentStep === 'design' || window.innerWidth >= 768) && (
+                <div className="bg-gradient-to-br from-purple-50 via-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-purple-200 shadow-sm overflow-hidden">
+                  <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                    <span className="text-2xl">🖼️</span>
+                    Design Pictures
+                  </h3>
+                  <p className="text-xs md:text-sm text-gray-600 mb-6">Upload up to 5 reference images, sketches, or designs</p>
+
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-purple-400 rounded-xl p-6 md:p-8 text-center cursor-pointer hover:bg-purple-50 transition duration-200 bg-white md:bg-transparent"
+                  >
                     <input
-                      type="number"
-                      id="quantity"
-                      name="quantity"
-                      value={formData.quantity}
-                      onChange={handleInputChange}
-                      min="1"
-                      max="100"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition"
-                      placeholder="1"
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleFileSelect}
+                      className="hidden"
                     />
+                    <Upload className="h-10 md:h-12 w-10 md:w-12 text-purple-600 mx-auto mb-2" />
+                    <p className="font-semibold text-gray-900 mb-1 text-sm md:text-base">Click or tap to upload</p>
+                    <p className="text-xs md:text-sm text-gray-600">JPG, PNG, WebP • Max 5MB each</p>
+                  </div>
+
+                  {previewUrls.length > 0 && (
+                    <div className="mt-6 space-y-4">
+                      <p className="text-sm font-semibold text-gray-700">
+                        📸 Uploaded: <span className="text-purple-600">{previewUrls.length}/5</span>
+                      </p>
+                      
+                      {/* Carousel */}
+                      <div className="relative bg-gray-900 rounded-xl overflow-hidden border border-gray-700 shadow-lg">
+                        <div className="aspect-video w-full flex items-center justify-center bg-gray-900">
+                          <img
+                            src={previewUrls[currentImageIndex]}
+                            alt={`Design ${currentImageIndex + 1}`}
+                            className="h-full w-full object-contain"
+                          />
+                        </div>
+
+                        {previewUrls.length > 1 && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCurrentImageIndex(
+                                  currentImageIndex === 0 ? previewUrls.length - 1 : currentImageIndex - 1
+                                )
+                              }
+                              className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition"
+                            >
+                              ←
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setCurrentImageIndex(
+                                  currentImageIndex === previewUrls.length - 1 ? 0 : currentImageIndex + 1
+                                )
+                              }
+                              className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition"
+                            >
+                              →
+                            </button>
+                          </>
+                        )}
+
+                        <div className="absolute bottom-3 left-0 right-0 text-center text-xs text-white">
+                          {currentImageIndex + 1} of {previewUrls.length}
+                        </div>
+                      </div>
+
+                      <div className="flex gap-2 flex-wrap">
+                        {previewUrls.map((url, idx) => (
+                          <div key={idx} className="relative">
+                            <img
+                              src={url}
+                              alt={`Thumbnail ${idx + 1}`}
+                              className={`w-16 h-16 rounded-lg object-cover cursor-pointer border-2 transition ${
+                                currentImageIndex === idx ? 'border-purple-600' : 'border-gray-300'
+                              }`}
+                              onClick={() => setCurrentImageIndex(idx)}
+                            />
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const newFiles = selectedFiles.filter((_, i) => i !== idx);
+                                const newUrls = previewUrls.filter((_, i) => i !== idx);
+                                setSelectedFiles(newFiles);
+                                setPreviewUrls(newUrls);
+                                setCurrentImageIndex(Math.min(currentImageIndex, newUrls.length - 1));
+                              }}
+                              className="absolute top-0 right-0 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 w-5 h-5 flex items-center justify-center text-xs"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Step 3: Order Details & Description */}
+              {(currentStep === 'description' || window.innerWidth >= 768) && (
+                <>
+                  <div className="bg-gradient-to-br from-green-50 via-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-green-200 shadow-sm overflow-hidden">
+                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                      <span className="text-2xl">📋</span>
+                      Order Details
+                    </h3>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                      <div className="bg-white rounded-xl p-3 md:p-4 border border-green-100 md:border-0 md:bg-transparent">
+                        <label htmlFor="deliveryDate" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                          When Do You Need It?
+                        </label>
+                        <input
+                          type="date"
+                          id="deliveryDate"
+                          name="deliveryDate"
+                          value={formData.deliveryDate}
+                          onChange={handleInputChange}
+                          className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition text-sm md:text-base"
+                        />
+                      </div>
+
+                      <div className="bg-white rounded-xl p-3 md:p-4 border border-green-100 md:border-0 md:bg-transparent">
+                        <label htmlFor="quantity" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                          Quantity <span className="text-red-600">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          id="quantity"
+                          name="quantity"
+                          value={formData.quantity}
+                          onChange={handleInputChange}
+                          min="1"
+                          max="100"
+                          className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition text-sm md:text-base"
+                        />
+                      </div>
+                    </div>
+
                     {formData.quantity >= 3 && (
-                      <div className="mt-3 p-3 bg-gradient-to-r from-lime-50 to-green-50 border border-lime-200 rounded-lg">
+                      <div className="mt-4 p-3 md:p-4 bg-gradient-to-r from-lime-50 to-green-50 border border-lime-300 rounded-xl">
                         <p className="text-sm font-semibold text-lime-700 flex items-center gap-2">
                           <span>🎉</span>
-                          {(() => {
-                            if (formData.quantity >= 10) return "10% Bulk Discount Applied";
-                            if (formData.quantity >= 6) return "7% Bulk Discount Applied";
-                            if (formData.quantity >= 3) return "5% Bulk Discount Applied";
-                            return "No discount";
-                          })()}
+                          {formData.quantity >= 10 ? '10% Bulk Discount!' : formData.quantity >= 6 ? '7% Bulk Discount!' : '5% Bulk Discount!'}
                         </p>
                       </div>
                     )}
                   </div>
-                </div>
 
-                {/* Description Section */}
-                <div>
-                  <label htmlFor="description" className="block text-sm font-semibold text-gray-700 mb-2">
-                    Costume Description <span className="text-red-600 font-bold">*</span>
-                  </label>
-                  <textarea
-                    id="description"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    rows={6}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-600 transition resize-none"
-                    placeholder="Tell us everything about your costume vision:
-• Colors, patterns, and materials
-• Style and theme (traditional, modern, fantasy, etc.)
-• Size and fit preferences
-• Special features or unique details
-• Any reference images or inspirations
+                  <div className="bg-gradient-to-br from-orange-50 via-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-orange-200 shadow-sm overflow-hidden">
+                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
+                      <span className="text-2xl">✍️</span>
+                      Costume Description
+                    </h3>
+                    <p className="text-xs md:text-sm text-gray-600 mb-4">Tell us everything about your vision</p>
 
-The more detail you provide, the better we can bring your vision to life!"
-                  />
-                  <p className="text-xs text-gray-500 mt-2">Min 10 characters - describe your vision in detail</p>
-                </div>
-              </div>
+                    <textarea
+                      id="description"
+                      name="description"
+                      value={formData.description}
+                      onChange={handleInputChange}
+                      rows={5}
+                      className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 transition resize-none text-sm md:text-base bg-white"
+                      placeholder="Colors, materials, style, special features, reference inspirations..."
+                    />
+                    <p className="text-xs text-gray-500 mt-2">Min 10 characters required</p>
+                  </div>
+                </>
+              )}
 
-              {/* Design Upload Section */}
-              <div className="bg-gradient-to-br from-purple-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-purple-200 shadow-sm">
-                <h3 className="text-lg font-bold text-gray-900 mb-2 flex items-center gap-2">
-                  <span className="text-2xl">🖼️</span>
-                  Design Pictures
-                </h3>
-                <p className="text-sm text-gray-600 mb-6">Upload up to 5 reference images, sketches, or designs you like. This helps us understand your vision better.</p>
-                
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-purple-400 rounded-none md:rounded-xl p-4 md:p-8 text-center cursor-pointer hover:bg-purple-50 transition duration-200"
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    multiple
-                    onChange={handleFileSelect}
-                    className="hidden"
-                  />
-                  <Upload className="h-12 w-12 text-purple-600 mx-auto mb-3" />
-                  <p className="font-semibold text-gray-900 mb-1">Click to upload or drag and drop</p>
-                  <p className="text-sm text-gray-600">JPG, PNG, WebP, or GIF • Max 5MB each • Up to 5 images</p>
-                </div>
-
-                {/* Image Previews - Carousel */}
-                {previewUrls.length > 0 && (
-                  <div className="mt-6 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <p className="text-sm font-semibold text-gray-700">
-                        📸 Uploaded Pictures: <span className="text-purple-600">{previewUrls.length}/5</span>
-                      </p>
+              {/* Mobile Step 4: Review & Submit */}
+              {(currentStep === 'review' || window.innerWidth >= 768) && window.innerWidth < 768 && (
+                <div className="bg-gradient-to-br from-cyan-50 to-white rounded-2xl p-6 border border-cyan-200 shadow-sm">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+                    <span className="text-2xl">✅</span>
+                    Review & Submit
+                  </h3>
+                  <div className="space-y-3 text-sm mb-6">
+                    <div className="flex justify-between items-start">
+                      <span className="text-gray-600">Name:</span>
+                      <span className="font-semibold text-gray-900 text-right max-w-xs">{formData.fullName || '—'}</span>
                     </div>
-                    
-                    {/* Carousel Container */}
-                    <div className="relative bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl overflow-hidden border border-gray-700 shadow-lg">
-                      {/* Main Image */}
-                      <div className="aspect-video w-full flex items-center justify-center bg-gray-900">
-                        <img
-                          src={previewUrls[currentImageIndex]}
-                          alt={`Design ${currentImageIndex + 1}`}
-                          className="h-full w-full object-contain"
-                        />
-                      </div>
-
-                      {/* Navigation Buttons */}
-                      {previewUrls.length > 1 && (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCurrentImageIndex(
-                                currentImageIndex === 0
-                                  ? previewUrls.length - 1
-                                  : currentImageIndex - 1
-                              )
-                            }
-                            className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-900 rounded-full p-2 transition"
-                            title="Previous image"
-                          >
-                            <svg
-                              className="w-6 h-6"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M15 19l-7-7 7-7"
-                              />
-                            </svg>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() =>
-                              setCurrentImageIndex(
-                                currentImageIndex === previewUrls.length - 1
-                                  ? 0
-                                  : currentImageIndex + 1
-                              )
-                            }
-                            className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/80 hover:bg-white text-gray-900 rounded-full p-2 transition"
-                            title="Next image"
-                          >
-                            <svg
-                              className="w-6 h-6"
-                              fill="none"
-                              stroke="currentColor"
-                              viewBox="0 0 24 24"
-                            >
-                              <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth={2}
-                                d="M9 5l7 7-7 7"
-                              />
-                            </svg>
-                          </button>
-
-                          {/* Image Counter */}
-                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/60 text-white px-3 py-1 rounded-full text-sm">
-                            {currentImageIndex + 1} / {previewUrls.length}
-                          </div>
-                        </>
-                      )}
+                    <div className="flex justify-between items-start">
+                      <span className="text-gray-600">Email:</span>
+                      <span className="font-semibold text-gray-900 text-right max-w-xs truncate">{formData.email || '—'}</span>
                     </div>
-
-                    {/* Thumbnail Strip */}
-                    {previewUrls.length > 1 && (
-                      <div className="flex gap-2 overflow-x-auto pb-2">
-                        {previewUrls.map((url, index) => (
-                          <button
-                            key={index}
-                            type="button"
-                            onClick={() => setCurrentImageIndex(index)}
-                            className={`flex-shrink-0 relative rounded-lg overflow-hidden border-2 transition ${
-                              currentImageIndex === index
-                                ? "border-lime-600"
-                                : "border-gray-300 hover:border-gray-400"
-                            }`}
-                          >
-                            <img
-                              src={url}
-                              alt={`Thumbnail ${index + 1}`}
-                              className="h-16 w-16 object-cover"
-                            />
-                            {currentImageIndex === index && (
-                              <div className="absolute inset-0 ring-2 ring-lime-600 rounded-lg" />
-                            )}
-                          </button>
-                        ))}
+                    <div className="flex justify-between items-start">
+                      <span className="text-gray-600">Quantity:</span>
+                      <span className="font-semibold text-gray-900">{formData.quantity}</span>
+                    </div>
+                    {previewUrls.length > 0 && (
+                      <div className="flex justify-between items-start">
+                        <span className="text-gray-600">Images:</span>
+                        <span className="font-semibold text-gray-900">{previewUrls.length}/5</span>
                       </div>
                     )}
-
-                    {/* Remove Button for Current Image */}
-                    <button
-                      type="button"
-                      onClick={() => removeImage(currentImageIndex)}
-                      className="w-full bg-red-50 hover:bg-red-100 text-red-700 font-medium py-2 px-4 rounded-lg transition flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path
-                          fillRule="evenodd"
-                          d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                      Remove This Image
-                    </button>
                   </div>
+                </div>
+              )}
+
+              {/* Form Actions */}
+              <div className="md:hidden space-y-3 pt-4 sticky bottom-0 bg-white border-t border-gray-200 p-4 -mx-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const steps: typeof currentStep[] = ['info', 'design', 'description', 'review'];
+                    const idx = steps.indexOf(currentStep);
+                    if (idx > 0) setCurrentStep(steps[idx - 1]);
+                  }}
+                  disabled={currentStep === 'info'}
+                  className="w-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-gray-700 font-semibold py-3 rounded-lg transition text-sm"
+                >
+                  ← Back
+                </button>
+
+                {currentStep !== 'review' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const steps: Array<"info" | "design" | "description" | "review"> = ['info', 'design', 'description', 'review'];
+                      const idx = steps.indexOf(currentStep);
+                      if (idx < steps.length - 1) setCurrentStep(steps[idx + 1]);
+                    }}
+                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-3 rounded-lg transition text-sm"
+                  >
+                    Next →
+                  </button>
                 )}
 
-                {selectedFiles.length < 5 && (
-                  <p className="text-xs text-gray-600 mt-3">
-                    You can upload {5 - selectedFiles.length} more picture{5 - selectedFiles.length !== 1 ? 's' : ''}
-                  </p>
-                )}
-
-                {errorMessage && (
-                  <div className="mt-4 text-sm text-red-600">
-                    {errorMessage}
-                  </div>
+                {currentStep === 'review' && (
+                  <button
+                    type="submit"
+                    disabled={isLoading}
+                    className="w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2 shadow-lg"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader className="h-5 w-5 animate-spin" />
+                        Submitting...
+                      </>
+                    ) : (
+                      <>
+                        <span>✨</span>
+                        Get My Quote
+                      </>
+                    )}
+                  </button>
                 )}
               </div>
 
-              {/* Form Actions */}
-              <div className="space-y-4 pt-4">
+              {/* Desktop: Submit Button */}
+              <div className="hidden md:block space-y-4 pt-4">
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -735,15 +770,17 @@ The more detail you provide, the better we can bring your vision to life!"
                 </button>
 
                 <p className="text-xs text-gray-600 text-center leading-relaxed">
-                  Our team will carefully review your request and contact you within <strong>24 hours</strong> with a professional quote, timeline, and any questions we might have.
+                  Our team will carefully review your request and contact you within <strong>24 hours</strong> with a professional quote, timeline, and any questions.
                 </p>
               </div>
             </form>
           </section>
-
           {/* FAQ */}
-          <section className="space-y-4">
-            <h2 className="text-2xl font-bold text-gray-900">Frequently Asked Questions</h2>
+          <section className="px-4 md:px-0 space-y-6">
+            <div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Frequently Asked Questions</h2>
+              <p className="text-gray-600">Get answers to common questions</p>
+            </div>
             <div className="space-y-3">
               <details className="bg-gray-50 rounded-none md:rounded-lg p-4 md:border border-gray-200 group">
                 <summary className="font-semibold text-gray-900 cursor-pointer">How long does it take to create a custom costume?</summary>

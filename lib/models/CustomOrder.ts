@@ -10,6 +10,7 @@ export interface IDeliveryDetails {
 
 export interface ICustomOrder extends Document {
   orderNumber: string;
+  buyerId?: string; // Link to the authenticated user
   fullName: string;
   email: string;
   phone: string;
@@ -50,6 +51,10 @@ const customOrderSchema = new Schema(
       type: String,
       required: true,
       unique: true,
+      index: true,
+    },
+    buyerId: {
+      type: String,
       index: true,
     },
     fullName: {

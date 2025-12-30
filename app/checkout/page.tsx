@@ -24,6 +24,7 @@ export default function CheckoutPage() {
   const shippingOption = "empi"; // Fixed to EMPI Delivery only
   const [deliveryModalOpen, setDeliveryModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [selectedOrderIsCustom, setSelectedOrderIsCustom] = useState(false);
   const [successReference, setSuccessReference] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
@@ -156,6 +157,14 @@ export default function CheckoutPage() {
         console.log("Invoice generated:", orderRes.invoice?.invoiceNumber || "N/A");
         console.log("Order ID:", orderRes.orderId);
         
+        if (!orderRes.orderId) {
+          console.error("❌ ERROR: Order response missing orderId!");
+          console.error("Full response:", orderRes);
+          setOrderError("Order created but ID not returned. Please contact support.");
+          setIsProcessing(false);
+          return;
+        }
+        
         // Store the paid amount before clearing cart
         const amountToPay = customQuote 
           ? customQuote.quotedTotal 
@@ -164,9 +173,12 @@ export default function CheckoutPage() {
         
         // Capture order ID and show delivery method modal
         console.log("🎉 Showing delivery method selection modal");
+        console.log("📋 Setting selectedOrderId to:", orderRes.orderId);
         setPaymentSuccessful(true);
         setSelectedOrderId(orderRes.orderId);
+        setSelectedOrderIsCustom(!!customQuote);
         setSuccessReference(response.reference);
+        console.log("📋 State update scheduled - deliveryModalOpen will be set to true");
         setDeliveryModalOpen(true);
         
         if (!customQuote) {
@@ -594,6 +606,7 @@ export default function CheckoutPage() {
         orderId={selectedOrderId || ""}
         orderReference={successReference}
         total={paymentSuccessful ? paidAmount : displayTotal}
+        isCustomOrder={selectedOrderIsCustom}
       />
 
       <Footer />

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { MessageSquare, Zap, Calendar, Clock, DollarSign, Truck, X } from "lucide-react";
+import { MessageSquare, Zap, Calendar, Clock, DollarSign, Truck, X, Trash2 } from "lucide-react";
 
 interface Order {
   _id: string;
@@ -36,9 +36,10 @@ interface ReadyOrderCardProps {
   order: Order;
   onImageClick: () => void;
   onChatClick: () => void;
+  onDelete?: () => void;
 }
 
-export function ReadyOrderCard({ order, onImageClick, onChatClick }: ReadyOrderCardProps) {
+export function ReadyOrderCard({ order, onImageClick, onChatClick, onDelete }: ReadyOrderCardProps) {
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   
   // Truncate description to 2 lines (~80 characters)
@@ -176,6 +177,15 @@ export function ReadyOrderCard({ order, onImageClick, onChatClick }: ReadyOrderC
           <MessageSquare className="h-4 w-4" />
           Chat with Buyer
         </button>
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
+          >
+            <Trash2 className="h-4 w-4" />
+            Delete Order
+          </button>
+        )}
       </div>
 
       {/* Description Modal */}

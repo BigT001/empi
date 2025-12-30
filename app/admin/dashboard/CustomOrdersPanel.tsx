@@ -432,7 +432,7 @@ export function CustomOrdersPanel() {
       if (order) {
         const statusMessages: Record<string, string> = {
           "in-progress": "Your order production has started! We'll keep you updated.",
-          "ready": "Your order is ready for pickup/delivery!",
+          "ready": "Your order is ready! Please confirm your preferred delivery method below.",
           "completed": "Your order has been completed!"
         };
         
@@ -452,9 +452,9 @@ export function CustomOrdersPanel() {
             }),
           });
 
-          // If marked as ready, also send the delivery options message
+          // If marked as ready, send delivery confirmation options
           if (newStatus === "ready") {
-            const deliveryMessage = `📦 **DELIVERY OPTIONS** 📦\n\nYour costume is ready! Please select how you'd like to receive it:\n\nSelect your preferred option:\n\n📍 Personal Pickup\n🚚 Empi Delivery`;
+            const deliveryOptionsMessage = `🚚 **CONFIRM YOUR DELIVERY CHOICE** 🚚\n\nYour costume is ready! Please confirm how you'd like to receive it:\n\nDELIVERY OPTIONS`;
             
             await fetch("/api/messages", {
               method: "POST",
@@ -465,7 +465,7 @@ export function CustomOrdersPanel() {
                 senderEmail: admin?.email || "admin@empi.com",
                 senderName: "System",
                 senderType: "admin",
-                content: deliveryMessage,
+                content: deliveryOptionsMessage,
                 messageType: "system",
               }),
             });
@@ -583,6 +583,7 @@ export function CustomOrdersPanel() {
                 onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
                 onChatClick={() => setChatModalOpen(order._id)}
                 onMarkReady={() => updateOrderStatus(order._id, "ready")}
+                onDelete={() => setConfirmModal({ type: 'delete', orderId: order._id })}
               />
             ))
           ) : selectedStatus === "ready" ? (
@@ -593,6 +594,7 @@ export function CustomOrdersPanel() {
                 order={order as any}
                 onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
                 onChatClick={() => setChatModalOpen(order._id)}
+                onDelete={() => setConfirmModal({ type: 'delete', orderId: order._id })}
               />
             ))
           ) : selectedStatus === "completed" ? (
