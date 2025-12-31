@@ -37,6 +37,8 @@ export interface IInvoice extends Document {
   taxRate: number;
   type: 'automatic' | 'manual';
   status: 'draft' | 'sent' | 'paid' | 'overdue';
+  paymentVerified?: boolean;
+  paymentReference?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -79,6 +81,8 @@ const invoiceSchema = new Schema<IInvoice>(
     taxRate: { type: Number, default: 7.5 },
     type: { type: String, enum: ['automatic', 'manual'], default: 'automatic' },
     status: { type: String, enum: ['draft', 'sent', 'paid', 'overdue'], default: 'sent' },
+    paymentVerified: { type: Boolean, default: false },
+    paymentReference: String,
   },
   { timestamps: true }
 );

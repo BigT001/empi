@@ -112,6 +112,9 @@ export default function CheckoutPage() {
         },
         status: "confirmed",
         createdAt: new Date().toISOString(),
+        // Custom order linking fields
+        isCustomOrder: !!customQuote,
+        customOrderId: customQuote?.orderId || null,
       };
 
       console.log("💾 Saving order...");
@@ -174,13 +177,17 @@ export default function CheckoutPage() {
   };
 
   // Helper function to poll for payment
-  const pollForPayment = (ref: string) => {
+  const pollForPayment = (ref: string, customerEmail: string = '', customerName: string = '') => {
     let pollCount = 0;
     const maxPolls = 180;
     const pollInterval = setInterval(async () => {
       pollCount++;
       try {
-        const verifyRes = await fetch(`/api/verify-payment?reference=${ref}`);
+        const params = new URLSearchParams();
+        params.append('reference', ref);
+        if (customerEmail) params.append('email', customerEmail);
+        if (customerName) params.append('name', customerName);
+        const verifyRes = await fetch(`/api/verify-payment?${params.toString()}`);
         const verifyData = await verifyRes.json();
         
         if (verifyData.success && verifyData.status === 'success') {
@@ -201,9 +208,13 @@ export default function CheckoutPage() {
   };
 
   // Helper function to verify payment
-  const verifyAndProcessPayment = async (ref: string) => {
+  const verifyAndProcessPayment = async (ref: string, customerEmail: string = '', customerName: string = '') => {
     try {
-      const res = await fetch(`/api/verify-payment?reference=${ref}`);
+      const params = new URLSearchParams();
+      params.append('reference', ref);
+      if (customerEmail) params.append('email', customerEmail);
+      if (customerName) params.append('name', customerName);
+      const res = await fetch(`/api/verify-payment?${params.toString()}`);
       const data = await res.json();
       
       if (data.success && data.status === 'success') {
@@ -211,7 +222,8 @@ export default function CheckoutPage() {
         handlePaymentSuccess({ reference: ref, ...data });
       } else {
         console.log("Payment pending or failed");
-        pollForPayment(ref);
+        const customerInfo = buyer || guestCustomer;
+        pollForPayment(ref, customerInfo?.email || '', customerInfo?.fullName || '');
       }
     } catch (err) {
       console.error("Verification error:", err);
@@ -477,7 +489,7 @@ export default function CheckoutPage() {
                               console.log("Paystack modal closed - verifying payment...");
                               // Small delay to ensure payment is processed
                               setTimeout(() => {
-                                verifyAndProcessPayment(ref);
+                                verifyAndProcessPayment(ref, customerInfo.email, customerInfo.fullName);
                               }, 1500);
                             },
                             onSuccess: (response: any) => {

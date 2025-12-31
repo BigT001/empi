@@ -3,7 +3,7 @@
 import { AlertCircle } from "lucide-react";
 
 interface ConfirmationModalProps {
-  type: 'decline' | 'delete' | 'cancel';
+  type: 'decline' | 'delete' | 'cancel' | 'approve';
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -30,6 +30,13 @@ export function ConfirmationModal({ type, onConfirm, onCancel }: ConfirmationMod
       message: "This will permanently delete the order and all associated messages. This cannot be undone.",
       buttonColor: "bg-red-600 hover:bg-red-700",
       buttonText: "Delete"
+    },
+    approve: {
+      icon: "bg-green-100 text-green-600",
+      title: "Approve Order?",
+      message: "This will approve the order and start production. The customer will be notified via chat.",
+      buttonColor: "bg-green-600 hover:bg-green-700",
+      buttonText: "Approve"
     }
   };
 

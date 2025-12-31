@@ -133,6 +133,9 @@ export function ChatModal({
   // Review submission state
   const [reviewText, setReviewText] = useState('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+  // Success message modal state
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [reviewRating, setReviewRating] = useState<number>(5);
   const [hoverRating, setHoverRating] = useState<number>(0);
 
@@ -1412,16 +1415,14 @@ Thank you for choosing Empi! 👖✨`;
       {/* Delivery Details Form Modal */}
       {!isAdmin && showDeliveryDetailsForm && selectedDeliveryOption === 'delivery' && (
         <div className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[60] flex items-center justify-center p-2 md:p-4 pointer-events-auto overflow-y-auto" onClick={() => setShowDeliveryDetailsForm(false)}>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl my-8" onClick={(e) => e.stopPropagation()}>
-            <div className="p-4 md:p-6">
-              <DeliveryDetailsForm
-                onSubmit={handleDeliveryDetailsSubmit}
-                onCancel={() => setShowDeliveryDetailsForm(false)}
-                isLoading={isSubmittingDeliveryDetails}
-                buyerPhone={order.phone}
-                title="Empi Delivery Details"
-              />
-            </div>
+          <div onClick={(e) => e.stopPropagation()}>
+            <DeliveryDetailsForm
+              onSubmit={handleDeliveryDetailsSubmit}
+              onCancel={() => setShowDeliveryDetailsForm(false)}
+              isLoading={isSubmittingDeliveryDetails}
+              buyerPhone={order.phone}
+              title="Empi Delivery Details"
+            />
           </div>
         </div>
       )}
@@ -1706,12 +1707,15 @@ Thank you for choosing Empi! 👖✨`;
                                           if (res.ok) {
                                             const responseData = await res.json();
                                             console.log('[ChatModal] ✅ Delivery confirmation sent:', responseData);
+                                            // Show success message modal
+                                            setSuccessMessage('Message sent! Please wait for logistics to confirm payment.');
+                                            // Auto-close after 3 seconds
+                                            setTimeout(() => setSuccessMessage(null), 3000);
                                             // Refresh messages to show the new confirmation
                                             if (onMessageSent) {
                                               console.log('[ChatModal] 🔄 Calling onMessageSent callback');
                                               onMessageSent();
                                             }
-                                            alert('✅ Message sent! Please wait for logistics to confirm payment.');
                                           } else {
                                             const errorData = await res.json();
                                             console.error('[ChatModal] ❌ Failed to send confirmation:', res.status, errorData);
@@ -1722,7 +1726,8 @@ Thank you for choosing Empi! 👖✨`;
                                           alert('Error: ' + (err instanceof Error ? err.message : 'Unknown error'));
                                         }
                                       }}
-                                      className="w-full bg-gradient-to-r from-lime-500 to-green-500 hover:from-lime-600 hover:to-green-600 text-white font-bold py-2.5 px-3 rounded-lg transition transform hover:scale-105 active:scale-95 text-sm"
+                                      disabled={isAdmin || isLogisticsTeam}
+                                      className="w-full bg-gradient-to-r from-lime-500 to-green-500 hover:from-lime-600 hover:to-green-600 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed text-white font-bold py-2.5 px-3 rounded-lg transition transform hover:scale-105 active:scale-95 text-sm"
                                     >
                                       ✓ Confirm to proceed
                                     </button>
@@ -2536,6 +2541,27 @@ Thank you for choosing Empi! 👖✨`;
                 className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white font-medium rounded-lg transition"
               >
                 {isSubmitting ? 'Sending...' : 'Send Again'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Message Modal */}
+      {successMessage && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSuccessMessage(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-6 md:p-8 max-w-sm w-full animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="bg-green-100 rounded-full p-3">
+                <CheckCircle className="h-8 w-8 text-green-600" />
+              </div>
+              <p className="text-lg font-semibold text-gray-900">{successMessage}</p>
+              <button
+                onClick={() => setSuccessMessage(null)}
+                className="mt-4 px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition"
+              >
+                Got it
               </button>
             </div>
           </div>

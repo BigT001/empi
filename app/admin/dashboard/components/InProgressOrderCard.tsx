@@ -1,6 +1,7 @@
 "use client";
 
-import { MessageSquare, Zap, Calendar, Clock, DollarSign, Wrench, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { MessageSquare, Zap, Calendar, Clock, DollarSign, Wrench, Trash2, CheckCircle } from "lucide-react";
 
 interface Order {
   _id: string;
@@ -41,12 +42,18 @@ interface InProgressOrderCardProps {
 }
 
 export function InProgressOrderCard({ order, onImageClick, onChatClick, onMarkReady, onDelete }: InProgressOrderCardProps) {
+  const [showReadyConfirm, setShowReadyConfirm] = useState(false);
+
   const handleMarkReady = () => {
-    if (window.confirm('Is production ready for this order? Click OK to confirm.')) {
-      onMarkReady?.();
-    }
+    setShowReadyConfirm(true);
+  };
+
+  const confirmReady = () => {
+    setShowReadyConfirm(false);
+    onMarkReady?.();
   };
   return (
+    <>
     <div className="bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-xl p-4 h-full flex flex-col gap-3 shadow-sm hover:shadow-md transition">
       {/* Header - Customer Info */}
       <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg p-3 text-white">
@@ -213,6 +220,35 @@ export function InProgressOrderCard({ order, onImageClick, onChatClick, onMarkRe
         )}
       </div>
     </div>
+    
+    {/* Ready Confirmation Modal */}
+    {showReadyConfirm && (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-in fade-in zoom-in-95 duration-300">
+          <div className="flex items-center justify-center w-12 h-12 bg-green-100 text-green-600 rounded-full mx-auto mb-4">
+            <CheckCircle className="h-6 w-6" />
+          </div>
+          <h3 className="text-lg font-bold text-gray-900 text-center mb-2">Confirm Production Ready?</h3>
+          <p className="text-gray-600 text-center mb-6">Is the production of this costume complete and ready for delivery/pickup? The customer will be notified about the next steps.</p>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowReadyConfirm(false)}
+              className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold rounded-lg transition"
+            >
+              Not Yet
+            </button>
+            <button
+              onClick={confirmReady}
+              className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition"
+            >
+              Yes, Ready!
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 

@@ -130,3 +130,47 @@ export async function GET(
     }, { status: 500 });
   }
 }
+
+// DELETE - Delete order by ID
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    const { id } = await params;
+
+    console.log(`[Orders API] 🗑️ Deleting order ${id}`);
+
+    // Validate that id is a valid MongoDB ObjectId
+    if (!id || id.length !== 24) {
+      console.log(`[Orders API] ❌ Invalid order ID format: ${id}`);
+      return NextResponse.json(
+        { error: 'Invalid order ID' },
+        { status: 400 }
+      );
+    }
+
+    const deletedOrder = await Order.findByIdAndDelete(id);
+
+    if (!deletedOrder) {
+      return NextResponse.json(
+        { error: 'Order not found' },
+        { status: 404 }
+      );
+    }
+
+    console.log(`[Orders API] ✅ Order ${id} permanently deleted`);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Order deleted successfully',
+    });
+  } catch (error) {
+    console.error('Error deleting order:', error);
+    return NextResponse.json({
+      error: 'Failed to delete order',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}

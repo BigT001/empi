@@ -225,9 +225,94 @@ export default function BuyerDashboardPage() {
 
   // Fetch invoices
   useEffect(() => {
-    if (buyer?.email) {
-      setInvoices(getBuyerInvoices(buyer.email));
-    }
+    if (!buyer?.email) return;
+
+    const fetchInvoices = async () => {
+      try {
+        console.log('[Dashboard] ========== FETCHING INVOICES ==========');
+        console.log('[Dashboard] buyer.email:', buyer.email);
+        console.log('[Dashboard] buyer.id:', buyer.id || 'NOT SET (guest)');
+        
+        let fetchUrl = '';
+        
+        // Determine how to fetch invoices
+        if (buyer.id) {
+          // Logged-in user: fetch by buyerId
+          fetchUrl = `/api/invoices?buyerId=${buyer.id}`;
+          console.log('[Dashboard] Using logged-in user fetch:', fetchUrl);
+        } else if (buyer.email) {
+          // Guest user: fetch by email
+          fetchUrl = `/api/invoices?email=${encodeURIComponent(buyer.email)}`;
+          console.log('[Dashboard] Using guest fetch:', fetchUrl);
+        }
+        
+        if (!fetchUrl) {
+          console.log('[Dashboard] ❌ No way to identify buyer');
+          setInvoices([]);
+          return;
+        }
+
+        console.log('[Dashboard] 📡 Calling API:', fetchUrl);
+        const response = await fetch(fetchUrl);
+        
+        if (!response.ok) {
+          console.error('[Dashboard] ❌ API returned error:', response.status);
+          setInvoices([]);
+          return;
+        }
+
+        const data = await response.json();
+        console.log('[Dashboard] ✅ Got response from API');
+        console.log('[Dashboard] 📊 Number of invoices:', Array.isArray(data) ? data.length : 0);
+        
+        if (Array.isArray(data) && data.length > 0) {
+          console.log('[Dashboard] First invoice details:');
+          console.log('[Dashboard]   - invoiceNumber:', data[0].invoiceNumber);
+          console.log('[Dashboard]   - buyerId:', data[0].buyerId);
+          console.log('[Dashboard]   - customerEmail:', data[0].customerEmail);
+          console.log('[Dashboard]   - totalAmount:', data[0].totalAmount);
+        }
+        
+        // Convert API invoices to StoredInvoice format
+        const convertedInvoices: StoredInvoice[] = (data || []).map((inv: any) => ({
+          id: inv._id,
+          invoiceNumber: inv.invoiceNumber,
+          orderNumber: inv.orderNumber,
+          invoiceDate: inv.invoiceDate,
+          dueDate: inv.dueDate,
+          customerName: inv.customerName,
+          customerEmail: inv.customerEmail,
+          customerPhone: inv.customerPhone,
+          customerAddress: inv.customerAddress,
+          customerCity: inv.customerCity,
+          customerState: inv.customerState,
+          customerPostalCode: inv.customerPostalCode,
+          buyerId: inv.buyerId,
+          items: inv.items || [],
+          subtotal: inv.subtotal,
+          shippingCost: inv.shippingCost,
+          taxAmount: inv.taxAmount,
+          totalAmount: inv.totalAmount,
+          currency: inv.currency,
+          currencySymbol: inv.currencySymbol,
+          taxRate: inv.taxRate,
+          type: inv.type,
+          status: inv.status,
+          createdAt: inv.createdAt,
+          updatedAt: inv.updatedAt,
+        }));
+        
+        console.log('[Dashboard] ✅✅✅ INVOICES SET:', convertedInvoices.length);
+        setInvoices(convertedInvoices);
+      } catch (error) {
+        console.error('[Dashboard] ❌ Error fetching invoices:', error);
+        // Fall back to localStorage
+        console.log('[Dashboard] Falling back to localStorage');
+        setInvoices(getBuyerInvoices(buyer.id));
+      }
+    };
+
+    fetchInvoices();
   }, [buyer?.email]);
 
   // Load initial form data

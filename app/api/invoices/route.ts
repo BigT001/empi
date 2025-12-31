@@ -161,7 +161,9 @@ export async function POST(request: NextRequest) {
 // Get invoices for a buyer or all invoices
 export async function GET(request: NextRequest) {
   try {
-    console.log("🔍 GET /api/invoices called with query:", Object.fromEntries(request.nextUrl.searchParams));
+    console.log("\n========== GET /api/invoices CALLED ==========");
+    console.log("🔍 Query params:", Object.fromEntries(request.nextUrl.searchParams));
+    
     await connectDB();
     const buyerId = request.nextUrl.searchParams.get("buyerId");
     const email = request.nextUrl.searchParams.get("email");
@@ -172,38 +174,56 @@ export async function GET(request: NextRequest) {
 
     if (buyerId) {
       query.buyerId = buyerId;
-      console.log(`🔎 Searching by buyerId: ${buyerId}`);
+      console.log(`🔎 SEARCHING BY BUYERID: ${buyerId}`);
     } else if (email) {
       // For guest users, search by email
       query.customerEmail = email.toLowerCase();
-      console.log(`🔎 Searching by email: ${email.toLowerCase()}`);
+      console.log(`🔎 SEARCHING BY EMAIL: ${email.toLowerCase()}`);
     } else {
-      console.log(`🔎 Fetching all invoices`);
+      console.log(`🔎 FETCHING ALL INVOICES`);
     }
 
     if (type) {
       query.type = type;
+      console.log(`   Type filter: ${type}`);
     }
 
     if (status) {
       query.status = status;
+      console.log(`   Status filter: ${status}`);
     }
 
-    console.log(`📋 Query object:`, query);
+    console.log(`📋 FINAL QUERY:`, JSON.stringify(query));
 
     const invoices = await Invoice.find(query).sort({ createdAt: -1 });
-    console.log(`📋 Found ${invoices.length} invoices with query:`, query);
+    console.log(`📊 RESULT: Found ${invoices.length} invoices`);
     
     if (invoices.length > 0) {
-      console.log(`📄 First invoice:`, {
-        invoiceNumber: invoices[0].invoiceNumber,
-        customerEmail: invoices[0].customerEmail,
-        totalAmount: invoices[0].totalAmount,
+      console.log(`📄 First 3 invoices:`);
+      invoices.slice(0, 3).forEach((inv, idx) => {
+        console.log(`   ${idx + 1}. ${inv.invoiceNumber} - ${inv.customerEmail} - ₦${inv.totalAmount} - buyerId: ${inv.buyerId || 'NONE'}`);
       });
+    } else {
+      console.log(`⚠️ NO INVOICES FOUND with query:`, JSON.stringify(query));
+      
+      // Debug: show what invoices exist in DB
+      if (email) {
+        const allInvoicesWithEmail = await Invoice.find({ customerEmail: email.toLowerCase() });
+        console.log(`   DEBUG: Total invoices with this email in DB: ${allInvoicesWithEmail.length}`);
+        if (allInvoicesWithEmail.length > 0) {
+          console.log(`   Sample invoice:`, {
+            invoiceNumber: allInvoicesWithEmail[0].invoiceNumber,
+            buyerId: allInvoicesWithEmail[0].buyerId,
+            customerEmail: allInvoicesWithEmail[0].customerEmail,
+            type: allInvoicesWithEmail[0].type,
+          });
+        }
+      }
     }
 
     const serialized = serializeDocs(invoices);
-    console.log(`✅ Returning ${serialized.length} serialized invoices`);
+    console.log(`✅ RETURNING ${serialized.length} serialized invoices`);
+    console.log("========== GET /api/invoices COMPLETED ==========\n");
     
     return NextResponse.json(serialized, { status: 200 });
   } catch (error) {

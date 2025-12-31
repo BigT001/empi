@@ -853,23 +853,17 @@ export default function CustomCostumesPage({
             ) : (
               // User is not signed in
               <div className="space-y-3">
-                <p className="text-sm text-gray-700 text-center mb-2">
-                  Create an account to track your order and chat with our team!
+                <p className="text-sm text-gray-700 text-center mb-4">
+                  <span className="font-semibold">Create an account to track your order progress</span> and chat directly with our team throughout production!
                 </p>
                 <Link href="/auth">
                   <button className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-3 rounded-lg transition">
                     Sign Up Now
                   </button>
                 </Link>
-                <button
-                  onClick={() => {
-                    setShowSuccessModal(false);
-                    window.scrollTo(0, 0);
-                  }}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 rounded-lg transition"
-                >
-                  Continue as Guest
-                </button>
+                <p className="text-xs text-gray-600 text-center">
+                  You'll be able to track your costume from design review through delivery
+                </p>
               </div>
             )}
           </div>

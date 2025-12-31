@@ -19,7 +19,7 @@ const getCustomerName = (order: any) => {
   if (order.fullName) return order.fullName;
   if (order.firstName && order.lastName) return `${order.firstName} ${order.lastName}`;
   if (order.buyerName) return order.buyerName;
-  return 'Customer';
+  return `Order #${order.orderNumber}`;
 };
 
 // Helper function to check if payment approval is required
@@ -125,66 +125,94 @@ export function DeliveryOrdersTab({
 
       {/* Delivery Orders Grid */}
       {displayOrders.length > 0 ? (
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           {displayOrders.map(order => (
-            <div key={order._id} className={`rounded-lg p-3 h-full flex flex-col gap-2 shadow-md hover:shadow-lg transition ${
+            <div key={order._id} className={`rounded-xl overflow-hidden flex flex-col gap-0 shadow-md hover:shadow-lg transition h-full ${
               deliverySubTab === 'pending' 
-                ? 'bg-white border-2 border-red-200' 
-                : 'bg-white border-2 border-blue-200'
+                ? 'border-2 border-red-300 bg-white' 
+                : 'border-2 border-blue-300 bg-white'
             }`}>
-              {/* Header with Status Badge */}
-              <div className={`rounded-xl p-4 text-white shadow-lg ${
+              {/* Header with Status Badge - Enhanced */}
+              <div className={`p-4 text-white shadow-md ${
                 deliverySubTab === 'pending'
                   ? 'bg-gradient-to-br from-red-500 via-red-600 to-red-700'
                   : 'bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-600'
               }`}>
-                <div className="flex items-start justify-between gap-2 mb-3">
+                <div className="flex items-start justify-between gap-2 mb-2">
                   <div className="flex-1">
-                    <p className="font-black text-base mb-1">📦 {getCustomerName(order)}</p>
-                    <p className="text-sm opacity-95 font-semibold">Order #{order.orderNumber}</p>
+                    <p className="text-xs font-semibold opacity-90 uppercase tracking-wide">🚚 Delivery</p>
+                    <p className="text-lg font-black mt-1">{getCustomerName(order)}</p>
+                    <p className="text-xs opacity-85 font-semibold mt-0.5">#{order.orderNumber}</p>
                   </div>
                   <span className={`px-3 py-1.5 rounded-full text-xs font-black whitespace-nowrap shadow-md ${
                     deliverySubTab === 'pending' ? 'bg-red-200 text-red-800' :
                     deliverySubTab === 'in-progress' ? 'bg-orange-200 text-orange-800' :
                     'bg-green-200 text-green-800'
                   }`}>
-                    {deliverySubTab === 'pending' ? '📨 SEND QUOTE' :
+                    {deliverySubTab === 'pending' ? '📨 QUOTE' :
                      deliverySubTab === 'in-progress' ? '🚚 IN TRANSIT' :
-                     '✓ DELIVERED'}
+                     '✓ DONE'}
                   </span>
                 </div>
               </div>
 
-              {/* Customer Info */}
-              <div className="bg-gray-50 rounded p-2 border border-gray-200 space-y-1 text-xs">
+              {/* Customer Contact */}
+              <div className="px-4 py-3 border-b border-gray-100 space-y-1 text-xs">
                 <div className="flex items-center gap-2">
-                  <span>📞</span>
-                  <span className="text-gray-700">{order.phone}</span>
+                  <span className="text-lg">📞</span>
+                  <span className="text-gray-700 font-medium">{order.phone}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span>📧</span>
-                  <span className="text-gray-700 truncate">{order.email}</span>
+                <div className="flex items-start gap-2">
+                  <span className="text-lg">📧</span>
+                  <span className="text-gray-600 truncate">{order.email}</span>
                 </div>
               </div>
 
+              {/* Complete Delivery Address - Enhanced */}
+              {(order as any).deliveryDetails ? (
+                <div className="px-4 py-3 border-b border-gray-100 bg-emerald-50">
+                  <p className="font-bold text-xs text-gray-700 mb-2 uppercase tracking-wide">📍 Delivery Address</p>
+                  <div className="space-y-1.5 text-xs text-gray-900">
+                    <p className="font-semibold">{(order as any).deliveryDetails.address}</p>
+                    <p className="text-gray-700">{(order as any).deliveryDetails.location}</p>
+                    <p className="text-gray-700">{(order as any).deliveryDetails.state} - {(order as any).deliveryDetails.localGovernment}</p>
+                    {(order as any).deliveryDetails.phone && (
+                      <p className="text-gray-600 mt-1">Phone: {(order as any).deliveryDetails.phone}</p>
+                    )}
+                  </div>
+                </div>
+              ) : order.address ? (
+                <div className="px-4 py-3 border-b border-gray-100 bg-emerald-50">
+                  <p className="font-bold text-xs text-gray-700 mb-2 uppercase tracking-wide">📍 Delivery Address</p>
+                  <div className="space-y-1 text-xs text-gray-900">
+                    <p className="font-semibold">{order.address}</p>
+                    <p className="text-gray-700">{order.city}</p>
+                  </div>
+                </div>
+              ) : null}
+
               {/* Order Details Grid */}
-              <div className="grid grid-cols-2 gap-2">
+              <div className="px-4 py-3 border-b border-gray-100 grid grid-cols-3 gap-2">
                 <div className="bg-blue-50 rounded p-2 border border-blue-200">
-                  <p className="text-xs font-semibold text-gray-600 mb-0.5">Quantity</p>
-                  <p className="text-sm font-bold text-blue-700">
+                  <p className="text-xs font-semibold text-gray-600">Qty</p>
+                  <p className="text-sm font-bold text-blue-700 mt-0.5">
                     {order.quantity || (order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) ?? 0)}
                   </p>
                 </div>
                 <div className="bg-blue-50 rounded p-2 border border-blue-200">
-                  <p className="text-xs font-semibold text-gray-600 mb-0.5">Method</p>
-                  <p className="text-xs font-bold text-blue-700">🚚 Delivery</p>
+                  <p className="text-xs font-semibold text-gray-600">Type</p>
+                  <p className="text-xs font-bold text-blue-700 mt-0.5">🚚 Delivery</p>
+                </div>
+                <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                  <p className="text-xs font-semibold text-gray-600">Status</p>
+                  <p className="text-xs font-bold text-blue-700 mt-0.5">{deliverySubTab.toUpperCase()}</p>
                 </div>
               </div>
 
               {/* Description */}
-              <div className="bg-blue-50 rounded p-2 border border-blue-200">
-                <p className="text-xs font-semibold text-gray-600 mb-0.5">Description</p>
-                <p className="text-xs text-gray-900 line-clamp-2">{order.description}</p>
+              <div className="px-4 py-3 border-b border-gray-100">
+                <p className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Description</p>
+                <p className="text-xs text-gray-900 line-clamp-3">{order.description}</p>
               </div>
 
               {/* Product Images */}
@@ -193,11 +221,11 @@ export function DeliveryOrdersTab({
                 const itemImages = order.items?.map((item: any) => item.imageUrl).filter(Boolean) || [];
                 const allImages = [...customImages, ...itemImages];
                 return allImages.length > 0 ? (
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold text-gray-600">Images</p>
-                    <div className="grid grid-cols-3 gap-1">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Images</p>
+                    <div className="grid grid-cols-3 gap-2">
                       {allImages.slice(0, 3).map((img, idx) => (
-                        <div key={idx} className="relative aspect-square bg-gray-100 rounded border border-blue-300 overflow-hidden hover:border-blue-500 transition cursor-pointer">
+                        <div key={idx} className="relative aspect-square bg-gray-100 rounded-lg border border-gray-300 overflow-hidden hover:border-blue-500 transition cursor-pointer">
                           <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
                         </div>
                       ))}
@@ -206,61 +234,23 @@ export function DeliveryOrdersTab({
                 ) : null;
               })()}
 
-              {/* Delivery Address or Delivery Details */}
-              {(order as any).deliveryDetails ? (
-                <div className="bg-emerald-50 rounded p-2 border border-emerald-200 text-xs space-y-2">
-                  <p className="font-semibold text-gray-600 mb-1">📍 Delivery Details</p>
-                  <div>
-                    <p className="text-gray-700 text-xs">
-                      <span className="font-semibold">Address:</span> {(order as any).deliveryDetails.address}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-gray-700 text-xs">
-                      <span className="font-semibold">Location:</span> {(order as any).deliveryDetails.location}
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <p className="text-gray-700 text-xs">
-                      <span className="font-semibold">State:</span> {(order as any).deliveryDetails.state}
-                    </p>
-                    <p className="text-gray-700 text-xs">
-                      <span className="font-semibold">LGA:</span> {(order as any).deliveryDetails.localGovernment}
-                    </p>
-                  </div>
-                  {(order as any).deliveryDetails.phone && (
-                    <div>
-                      <p className="text-gray-700 text-xs">
-                        <span className="font-semibold">Phone:</span> {(order as any).deliveryDetails.phone}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              ) : order.address ? (
-                <div className="bg-emerald-50 rounded p-2 border border-emerald-200 text-xs">
-                  <p className="font-semibold text-gray-600 mb-0.5">📍 Delivery Address</p>
-                  <p className="text-gray-900 font-semibold text-xs">{order.address}</p>
-                  {order.city && <p className="text-gray-600 text-xs">{order.city}</p>}
-                </div>
-              ) : null}
-
               {/* Timeline */}
               {order.updatedAt && (
-                <div className="bg-amber-50 rounded p-2 border border-amber-200 text-xs">
-                  <p className="font-semibold text-gray-600 mb-0.5">📅 Expected Delivery</p>
-                  <p className="text-gray-900 font-bold">{new Date(order.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                <div className="px-4 py-3 border-b border-gray-100 bg-amber-50">
+                  <p className="font-bold text-xs text-gray-700 mb-1 uppercase tracking-wide">📅 Expected Delivery</p>
+                  <p className="text-gray-900 font-semibold text-xs">{new Date(order.updatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                 </div>
               )}
 
               {/* Action Button */}
-              <div className="mt-auto pt-2 flex gap-2">
+              <div className="mt-auto px-4 py-3 flex gap-2">
                 <button 
                   onClick={() => onJoinConversation(order)}
                   disabled={shouldShowPaymentApprovalMessage(order, deliverySubTab)}
-                  className={`flex-1 flex items-center justify-center gap-2 px-2 py-2 text-white font-semibold text-xs rounded-lg transition ${
+                  className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 text-white font-semibold text-xs rounded-lg transition shadow-sm hover:shadow-md ${
                     deliverySubTab === 'pending' 
                       ? 'bg-blue-600 hover:bg-blue-700' 
-                      : 'bg-green-600 hover:bg-green-700'
+                      : 'bg-blue-600 hover:bg-blue-700'
                   }`}
                 >
                   <MessageSquare className="h-4 w-4" />
@@ -281,7 +271,7 @@ export function DeliveryOrdersTab({
                       }
                       setApprovalModal({ orderId: order._id, orderNumber: order.orderNumber });
                     }}
-                    className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition flex items-center gap-1"
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition flex items-center gap-1 shadow-sm hover:shadow-md"
                   >
                     <Check className="h-4 w-4" />
                     Approve

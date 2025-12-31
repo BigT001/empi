@@ -33,6 +33,8 @@ interface CustomOrder {
   notes?: string;
   quotedPrice?: number;
   productId?: string;
+  paymentVerified?: boolean;
+  paymentReference?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -48,7 +50,7 @@ export function CustomOrdersPanel() {
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
-  const [confirmModal, setConfirmModal] = useState<{ type: 'decline' | 'delete' | 'cancel'; orderId: string } | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{ type: 'decline' | 'delete' | 'cancel' | 'approve'; orderId: string } | null>(null);
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({});
   const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
   const [messageCountPerOrder, setMessageCountPerOrder] = useState<Record<string, { total: number; unread: number }>>({});
@@ -123,6 +125,16 @@ export function CustomOrdersPanel() {
       const data = await response.json();
       
       if (!response.ok) throw new Error(data.message || "Failed to fetch custom orders");
+      
+      // DEBUG: Log payment status for pending orders
+      if (data.orders && Array.isArray(data.orders)) {
+        const pendingOrders = data.orders.filter((o: any) => o.status === 'pending');
+        console.log("[CustomOrdersPanel] 📋 Pending orders received:", pendingOrders.length);
+        pendingOrders.forEach((order: any) => {
+          console.log(`[CustomOrdersPanel] Order ${order.orderNumber}: paymentVerified = ${order.paymentVerified}`);
+        });
+      }
+      
       setOrders(data.orders || []);
       
       // Fetch message counts for all orders
@@ -492,8 +504,8 @@ export function CustomOrdersPanel() {
         <div className="absolute bottom-0 left-0 w-96 h-96 bg-white opacity-10 rounded-full -ml-48 -mb-48"></div>
         <div className="relative z-10 flex items-start justify-between">
           <div>
-            <h2 className="text-4xl font-black text-white mb-2">Custom Orders</h2>
-            <p className="text-white/90 text-lg">Manage custom costume requests and send professional quotes</p>
+            <h2 className="text-4xl font-black text-white mb-2">Orders</h2>
+            <p className="text-white/90 text-lg">Manage requests and send professional quotes</p>
           </div>
           <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-6 border border-white/30">
             <p className="text-white/80 text-sm font-semibold uppercase tracking-wide">Total Orders</p>
@@ -572,6 +584,7 @@ export function CustomOrdersPanel() {
                   updateOrderStatus(order._id, status);
                 }}
                 onDeleteClick={() => setConfirmModal({ type: 'delete', orderId: order._id })}
+                onApproveClick={() => updateOrderStatus(order._id, 'approved')}
               />
             ))
           ) : selectedStatus === "in-progress" ? (
@@ -635,6 +648,7 @@ export function CustomOrdersPanel() {
                   updateOrderStatus(order._id, status);
                 }}
                 onDeleteClick={() => setConfirmModal({ type: 'delete', orderId: order._id })}
+                onApproveClick={() => setConfirmModal({ type: 'approve', orderId: order._id })}
               />
             ))
           )}
@@ -673,6 +687,8 @@ export function CustomOrdersPanel() {
               declineOrder(confirmModal.orderId);
             } else if (confirmModal.type === 'cancel') {
               cancelOrder(confirmModal.orderId);
+            } else if (confirmModal.type === 'approve') {
+              updateOrderStatus(confirmModal.orderId, 'approved');
             } else {
               deleteOrder(confirmModal.orderId);
             }

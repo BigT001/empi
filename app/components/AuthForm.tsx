@@ -251,10 +251,10 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
   return (
     <div 
-      className={`bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-100/50 p-5 w-full max-w-sm transition-all duration-300 overflow-y-auto ${
+      className={`bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-100/50 p-5 w-full max-w-sm transition-all duration-300 ${
         mode === "register" 
-          ? "max-h-[calc(100vh-120px)]" 
-          : "max-h-[calc(100vh-200px)]"
+          ? "" 
+          : ""
       }`}
       onClick={(e) => e.stopPropagation()}
     >
@@ -514,17 +514,18 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         </button>
       </p>
 
-      {/* Guest/Cancel Option */}
-      {onCancel && (
-        <div className="mt-3 text-center">
-          <button
-            onClick={onCancel}
-            className="inline-block px-3 py-1 border-2 border-lime-300 text-lime-700 text-xs font-semibold rounded-lg hover:bg-lime-50 transition duration-300"
-          >
-            Continue as Guest
-          </button>
-        </div>
-      )}
+      {/* Benefits Message */}
+      <div className="mt-6 p-4 bg-lime-50 rounded-lg border border-lime-200">
+        <p className="text-xs text-gray-700 text-center mb-2">
+          <span className="font-semibold text-lime-700">✨ Create an account today to:</span>
+        </p>
+        <ul className="text-xs text-gray-600 space-y-1">
+          <li>✓ Track your order in real-time</li>
+          <li>✓ Chat with our team about your costume</li>
+          <li>✓ Save your preferences and history</li>
+          <li>✓ Get exclusive updates and offers</li>
+        </ul>
+      </div>
     </div>
   );
 }

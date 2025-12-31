@@ -31,6 +31,8 @@ export interface ICustomOrder extends Document {
   notes?: string;
   quotedPrice?: number;
   unitPrice?: number; // Unit price per item (for auto-recalculation when quantity changes)
+  paymentVerified?: boolean; // Whether payment has been verified (for UI display)
+  paymentReference?: string; // Reference from payment gateway (Paystack)
   // Countdown timer fields
   deadlineDate?: Date; // When the costume must be delivered
   timerStartedAt?: Date; // When the countdown timer was started (after payment)
@@ -106,6 +108,11 @@ const customOrderSchema = new Schema(
     notes: String,
     quotedPrice: Number,
     unitPrice: Number, // Unit price per item (for auto-recalculation when quantity changes)
+    paymentVerified: {
+      type: Boolean,
+      default: false,
+    },
+    paymentReference: String, // Reference from payment gateway (Paystack)
     // Countdown timer fields
     deadlineDate: Date,
     timerStartedAt: Date,

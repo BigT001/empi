@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Truck, Phone, Send, X, Package, MessageSquare, Zap, Calendar, Clock, Loader2, Check } from "lucide-react";
+import { Truck, Phone, Send, X, Package, MessageSquare, Zap, Calendar, Clock, Loader2, Check, Trash2 } from "lucide-react";
 import { ChatModal } from "@/app/components/ChatModal";
 import MobileAdminLayout from "../mobile-layout";
 
@@ -12,6 +12,7 @@ interface LogisticsOrder {
   email: string;
   phone: string;
   address?: string;
+  busStop?: string;
   city: string;
   state?: string;
   description: string;
@@ -188,7 +189,48 @@ export default function LogisticsPage() {
         
         if (updateResponse.ok) {
           console.log('[Logistics] ✅ Order marked as completed:', updateData);
-          alert('✅ Delivery confirmed! Order moved to Delivered tab.');
+          
+          // Send automatic thank you message to buyer
+          try {
+            await fetch('/api/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: paymentConfirmModalOrder._id,
+                orderNumber: paymentConfirmModalOrder.orderNumber,
+                senderEmail: 'admin@empi.com',
+                senderName: 'Empi Costumes',
+                senderType: 'admin',
+                content: '🎉 Thank you for your order! Your delivery has been completed successfully. We appreciate your business and hope you are satisfied with your purchase!',
+                messageType: 'text',
+              }),
+            });
+            console.log('[Logistics] ✅ Thank you message sent automatically');
+          } catch (thankYouError) {
+            console.error('[Logistics] ⚠️ Failed to send thank you message:', thankYouError);
+          }
+
+          // Send automatic review form request to buyer
+          try {
+            await fetch('/api/messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                orderId: paymentConfirmModalOrder._id,
+                orderNumber: paymentConfirmModalOrder.orderNumber,
+                senderEmail: 'admin@empi.com',
+                senderName: 'Empi Costumes',
+                senderType: 'admin',
+                content: '⭐ Please take a moment to review your order and share your experience with us. Your feedback helps us improve our service!',
+                messageType: 'text',
+              }),
+            });
+            console.log('[Logistics] ✅ Review form request sent automatically');
+          } catch (reviewError) {
+            console.error('[Logistics] ⚠️ Failed to send review request:', reviewError);
+          }
+
+          alert('✅ Delivery confirmed! Order moved to Delivered tab. Thank you message and review request sent automatically.');
           setPaymentConfirmModalOrder(null);
           setPaymentReceived(false);
           fetchLogisticsOrders();
@@ -266,6 +308,41 @@ export default function LogisticsPage() {
     }
   };
 
+  const deleteOrder = async (orderId: string) => {
+    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Try to delete from custom orders first
+      let response = await fetch(`/api/custom-orders/${orderId}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      // If not found in custom orders, try regular orders
+      if (response.status === 404) {
+        response = await fetch(`/api/orders/${orderId}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+      if (response.ok) {
+        alert('✅ Order deleted successfully!');
+        fetchLogisticsOrders();
+      } else {
+        const errorData = await response.json();
+        console.error('Error deleting order:', errorData);
+        const errorMsg = errorData.message || errorData.error || 'Unknown error';
+        alert(`Failed to delete order: ${errorMsg}`);
+      }
+    } catch (error) {
+      console.error('Error deleting order:', error);
+      alert(`Error deleting order: ${error instanceof Error ? error.message : 'Network error'}`);
+    }
+  };
+
   const fetchLogisticsOrders = async (isBackground = false) => {
     if (isFetchingRef.current) return;
     
@@ -293,8 +370,18 @@ export default function LogisticsPage() {
       let allOrders = [...customOrdersList, ...regularOrdersList];
       console.log('📦 Fetched:', customOrdersList.length, 'custom orders,', regularOrdersList.length, 'regular orders');
       
+      // Ensure all orders have a fullName field
+      const ordersWithFullNames = allOrders.map((order: any) => {
+        const name = order.fullName || `${order.firstName || ''} ${order.lastName || ''}`.trim() || order.buyerName || order.email || `Order #${order.orderNumber}`;
+        console.log(`📦 Order ${order.orderNumber}: fullName="${order.fullName}", firstName="${order.firstName}", lastName="${order.lastName}" -> final="${name}"`);
+        return {
+          ...order,
+          fullName: name
+        };
+      });
+      
       // Show all orders regardless of status for logistics to manage
-      const logisticsOrders = allOrders.filter((order: any) => 
+      const logisticsOrders = ordersWithFullNames.filter((order: any) => 
         order._id // Just check if order exists
       );
       
@@ -672,13 +759,77 @@ export default function LogisticsPage() {
                           </div>
 
                           {/* Action Button */}
-                          <button 
-                            onClick={() => joinConversation(order)}
-                            className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition mt-auto"
-                          >
-                            <MessageSquare className="h-4 w-4" />
-                            Open Chat
-                          </button>
+                          <div className="flex gap-2 mt-auto">
+                            <button 
+                              onClick={() => joinConversation(order)}
+                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              Open Chat
+                            </button>
+                            <button
+                              onClick={async () => {
+                                try {
+                                  const response = await fetch(`/api/custom-orders/${order._id}`, {
+                                    method: 'PATCH',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ status: 'completed' }),
+                                  });
+
+                                  if (response.ok) {
+                                    // Send automatic thank you message
+                                    await fetch('/api/messages', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        orderId: order._id,
+                                        orderNumber: order.orderNumber,
+                                        senderEmail: 'admin@empi.com',
+                                        senderName: 'Empi Costumes',
+                                        senderType: 'admin',
+                                        content: '🎉 Thank you for your order! Your pickup has been completed successfully. We appreciate your business and hope you are satisfied with your purchase!',
+                                        messageType: 'text',
+                                      }),
+                                    });
+
+                                    // Send review request
+                                    await fetch('/api/messages', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        orderId: order._id,
+                                        orderNumber: order.orderNumber,
+                                        senderEmail: 'admin@empi.com',
+                                        senderName: 'Empi Costumes',
+                                        senderType: 'admin',
+                                        content: '⭐ Please take a moment to review your order and share your experience with us. Your feedback helps us improve our service!',
+                                        messageType: 'text',
+                                      }),
+                                    });
+
+                                    alert('✅ Pickup confirmed! Order moved to Completed tab.');
+                                    fetchLogisticsOrders();
+                                  } else {
+                                    alert('Failed to mark pickup as complete.');
+                                  }
+                                } catch (error) {
+                                  console.error('Error marking pickup complete:', error);
+                                  alert('Error marking pickup as complete.');
+                                }
+                              }}
+                              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg transition flex items-center gap-1"
+                            >
+                              <Check className="h-4 w-4" />
+                              Picked Up
+                            </button>
+                            <button 
+                              onClick={() => deleteOrder(order._id)}
+                              className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition flex items-center gap-1"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              Delete
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -695,114 +846,163 @@ export default function LogisticsPage() {
               {activeTab === 'delivery' && (
                 <>
                   {deliveryOrders.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {deliveryOrders.map(order => (
-                        <div key={order._id} className="bg-blue-50 border-2 border-blue-300 rounded-xl p-3 h-full flex flex-col gap-2 shadow-sm hover:shadow-md transition">
-                          {/* Header */}
-                          <div className="bg-gradient-to-r from-blue-500 to-cyan-600 rounded-lg p-2 text-white">
-                            <p className="text-xs font-semibold uppercase opacity-90 flex items-center gap-1">
-                              <Package className="h-3 w-3" /> 🚚 Delivery - {order.status.toUpperCase()}
-                            </p>
-                            <p className="font-bold text-sm">#{order.orderNumber}</p>
-                            <p className="text-xs opacity-75">{order.fullName}</p>
+                        <div key={order._id} className="rounded-xl overflow-hidden flex flex-col gap-0 shadow-md hover:shadow-lg transition h-full border-2 border-blue-300 bg-white">
+                          {/* Header - Enhanced */}
+                          <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-600 p-4 text-white shadow-md">
+                            <p className="text-xs font-semibold opacity-90 uppercase tracking-wide">🚚 Delivery</p>
+                            <p className="text-lg font-black mt-1">{order.fullName || `Order #${order.orderNumber}`}</p>
+                            <p className="text-xs opacity-85 font-semibold mt-0.5">#{order.orderNumber}</p>
+                            <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-blue-200 text-blue-800">
+                              {order.status.toUpperCase()}
+                            </span>
                           </div>
+
+                          {/* Customer Contact */}
+                          <div className="px-4 py-3 border-b border-gray-100 space-y-1 text-xs">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">📞</span>
+                              <span className="text-gray-700 font-medium">{order.phone}</span>
+                            </div>
+                            <div className="flex items-start gap-2">
+                              <span className="text-lg">📧</span>
+                              <span className="text-gray-600 truncate">{order.email}</span>
+                            </div>
+                          </div>
+
+                          {/* Complete Delivery Address */}
+                          {order.address ? (
+                            <div className="px-4 py-3 border-b border-gray-100 bg-emerald-50">
+                              <p className="font-bold text-xs text-gray-700 mb-2 uppercase tracking-wide">📍 Delivery Address</p>
+                              <div className="space-y-2 text-xs text-gray-900">
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-600">Street Address</p>
+                                  <p className="font-semibold text-gray-900">{order.address}</p>
+                                </div>
+                                {order.busStop && (
+                                  <div>
+                                    <p className="text-xs font-semibold text-gray-600">🚏 Nearest Bus Stop</p>
+                                    <p className="font-semibold text-blue-700">{order.busStop}</p>
+                                  </div>
+                                )}
+                                <div className="grid grid-cols-2 gap-2">
+                                  {order.city && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-gray-600">City</p>
+                                      <p className="font-semibold text-gray-900">{order.city}</p>
+                                    </div>
+                                  )}
+                                  {order.state && (
+                                    <div>
+                                      <p className="text-xs font-semibold text-gray-600">State</p>
+                                      <p className="font-semibold text-gray-900">{order.state}</p>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ) : null}
 
                           {/* Product ID */}
                           {order.productId && (
-                            <div className="bg-white rounded p-1.5 border border-blue-200">
-                              <p className="text-xs font-semibold text-gray-600 uppercase mb-0.5">Product ID</p>
-                              <p className="text-xs font-bold text-blue-700 font-mono">{order.productId}</p>
+                            <div className="px-4 py-3 border-b border-gray-100">
+                              <p className="text-xs font-semibold text-gray-600 uppercase mb-1 tracking-wide">Product ID</p>
+                              <p className="text-xs font-bold text-gray-900 font-mono">{order.productId}</p>
                             </div>
                           )}
 
+                          {/* Order Details Grid */}
+                          <div className="px-4 py-3 border-b border-gray-100 grid grid-cols-3 gap-2">
+                            <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                              <p className="text-xs font-semibold text-gray-600">Qty</p>
+                              <p className="text-sm font-bold text-blue-700 mt-0.5">{order.quantity}</p>
+                            </div>
+                            <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                              <p className="text-xs font-semibold text-gray-600">Type</p>
+                              <p className="text-xs font-bold text-blue-700 mt-0.5">🚚 Delivery</p>
+                            </div>
+                            <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                              <p className="text-xs font-semibold text-gray-600">Status</p>
+                              <p className="text-xs font-bold text-blue-700 mt-0.5">{order.status.toUpperCase()}</p>
+                            </div>
+                          </div>
+
                           {/* Description */}
-                          <div className="bg-white rounded p-1.5 border border-blue-200">
-                            <p className="text-xs font-semibold text-gray-600 uppercase mb-0.5">Order Description</p>
-                            <p className="text-xs font-bold text-blue-700">{order.description}</p>
+                          <div className="px-4 py-3 border-b border-gray-100">
+                            <p className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Description</p>
+                            <p className="text-xs text-gray-900 line-clamp-3">{order.description}</p>
                           </div>
 
                           {/* Product Images Gallery */}
                           {(order.images?.length || 0) + (order.designUrls?.length || 0) > 0 && (
-                            <div className="space-y-1">
-                              <div className="flex justify-between items-center">
-                                <p className="text-xs font-semibold text-gray-600 uppercase">Images</p>
-                              </div>
-                              <div className="grid grid-cols-3 gap-1">
-                                {(order.images || order.designUrls || []).slice(0, 6).map((img, idx) => (
+                            <div className="px-4 py-3 border-b border-gray-100">
+                              <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Images</p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {(order.images || order.designUrls || []).slice(0, 3).map((img, idx) => (
                                   <div
                                     key={idx}
-                                    className="relative aspect-square bg-gray-100 rounded border border-blue-300 overflow-hidden cursor-pointer hover:border-blue-500 transition"
+                                    className="relative aspect-square bg-gray-100 rounded-lg border border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition"
                                   >
                                     <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
                                   </div>
                                 ))}
                               </div>
-                              {(((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) > 6) && (
-                                <p className="text-xs text-blue-600 font-semibold">
-                                  +{((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) - 6} more
+                              {(((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) > 3) && (
+                                <p className="text-xs text-blue-600 font-semibold mt-1">
+                                  +{((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) - 3} more
                                 </p>
                               )}
                             </div>
                           )}
 
-                          {/* Customer Contact */}
-                          <div className="bg-white rounded p-1.5 border border-blue-200 space-y-0.5 text-xs">
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-3 w-3 text-blue-600" />
-                              <span className="text-gray-700">{order.phone}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="h-3 w-3 text-blue-600">✉</span>
-                              <span className="text-gray-700 truncate">{order.email}</span>
-                            </div>
-                          </div>
-
-                          {/* Quantity & Delivery */}
-                          <div className="grid grid-cols-2 gap-1">
-                            <div className="bg-white rounded p-1.5 border border-blue-200">
-                              <p className="text-xs font-semibold text-gray-600">Qty</p>
-                              <p className="text-sm font-bold text-blue-700">{order.quantity}</p>
-                            </div>
-                            <div className="bg-white rounded p-1.5 border border-blue-200">
-                              <p className="text-xs font-semibold text-gray-600">Type</p>
-                              <p className="text-xs font-bold text-blue-700">🚚 Delivery</p>
-                            </div>
-                          </div>
-
                           {/* Delivery Date */}
                           {order.deliveryDate && (
-                            <div className="bg-white rounded p-1.5 border border-blue-200">
-                              <div className="flex items-center gap-2 text-xs">
-                                <Calendar className="h-3 w-3 text-blue-600" />
-                                <span className="text-gray-700">By: <span className="font-semibold text-gray-900">{new Date(order.deliveryDate).toLocaleDateString()}</span></span>
-                              </div>
-                            </div>
-                          )}
-
-                          {/* Delivery Address */}
-                          {order.address && (
-                            <div className="bg-white rounded p-1.5 border border-blue-200 text-xs">
-                              <p className="text-xs font-semibold text-gray-600 mb-0.5">🚚 Address</p>
-                              <p className="text-gray-900 font-semibold">{order.address}</p>
-                              <p className="text-gray-600">{order.city}</p>
+                            <div className="px-4 py-3 border-b border-gray-100 bg-amber-50">
+                              <p className="font-bold text-xs text-gray-700 mb-1 uppercase tracking-wide">📅 Expected Delivery</p>
+                              <p className="text-xs font-semibold text-gray-900">{new Date(order.deliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
                             </div>
                           )}
 
                           {/* Action Buttons */}
-                          <div className="flex gap-2 mt-auto">
-                            <button 
-                              onClick={() => joinConversation(order)}
-                              className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-lg transition"
-                            >
-                              <MessageSquare className="h-3 w-3" />
-                              Chat
-                            </button>
-                            <button 
-                              onClick={() => setPaymentConfirmModalOrder(order)}
-                              className="flex-1 flex items-center justify-center gap-2 px-2 py-1.5 bg-green-600 hover:bg-green-700 text-white font-bold text-xs rounded-lg transition"
-                            >
-                              {order.status === 'in-progress' ? '✓ Delivered?' : '✓ Confirm'}
-                            </button>
+                          <div className="mt-auto px-4 py-3 flex flex-col gap-2">
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => {
+                                  setChatModalOpen(order._id);
+                                }}
+                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition shadow-sm hover:shadow-md"
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                                Chat
+                              </button>
+                              <button
+                                onClick={() => deleteOrder(order._id)}
+                                className="px-3 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-lg transition flex items-center gap-1 shadow-sm hover:shadow-md"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                                Delete
+                              </button>
+                            </div>
+                            <div className="flex gap-2">
+                              {order.status === 'pending' && (
+                                <button
+                                  onClick={() => setPaymentConfirmModalOrder(order)}
+                                  className="flex-1 px-3 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md"
+                                >
+                                  💰 Confirm Payment
+                                </button>
+                              )}
+                              {order.status === 'in-progress' && (
+                                <button
+                                  onClick={() => setPaymentConfirmModalOrder(order)}
+                                  className="flex-1 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md"
+                                >
+                                  <Check className="h-4 w-4" />
+                                  Delivered
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -894,6 +1094,15 @@ export default function LogisticsPage() {
                           <div className="bg-green-100 border border-green-300 rounded-lg p-2 text-center">
                             <p className="text-xs font-bold text-green-700">✓ COMPLETED</p>
                           </div>
+
+                          {/* Delete Button */}
+                          <button 
+                            onClick={() => deleteOrder(order._id)}
+                            className="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition flex items-center justify-center gap-2 mt-auto"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete Order
+                          </button>
                         </div>
                       ))}
                     </div>

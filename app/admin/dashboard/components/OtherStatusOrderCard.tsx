@@ -24,6 +24,8 @@ interface Order {
   costumeType?: string;
   designUrls?: string[];
   productId?: string;
+  paymentVerified?: boolean;
+  paymentReference?: string;
   customData?: {
     fabricColor?: string;
     size?: string;
@@ -43,6 +45,7 @@ interface OtherStatusOrderCardProps {
   onCancelClick: () => void;
   onStatusChangeClick: (newStatus: string) => void;
   onDeleteClick: () => void;
+  onApproveClick: () => void;
 }
 
 export function OtherStatusOrderCard({
@@ -54,7 +57,8 @@ export function OtherStatusOrderCard({
   onDeclineClick,
   onCancelClick,
   onStatusChangeClick,
-  onDeleteClick
+  onDeleteClick,
+  onApproveClick
 }: OtherStatusOrderCardProps) {
   const [showActions, setShowActions] = useState(false);
 
@@ -70,7 +74,9 @@ export function OtherStatusOrderCard({
       costumeName: order.costumeName,
       pickupDate: order.pickupDate,
       deliveryDate: order.deliveryDate,
-      status: order.status
+      status: order.status,
+      paymentVerified: order.paymentVerified,
+      paymentReference: order.paymentReference
     });
   }, [order._id]);
 
@@ -243,6 +249,19 @@ export function OtherStatusOrderCard({
             </div>
           )}
 
+          {/* Payment Success Message */}
+          {order.paymentVerified && (
+            <div className="bg-green-100 border-2 border-green-400 rounded-lg p-3 mb-3 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-bold text-green-700">Payment Received</p>
+                  <p className="text-xs text-green-600">Payment has been made successfully. Click "Approve" to proceed with production.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Action Buttons */}
           <div className="flex flex-col gap-2 mt-auto">
             {order.images && order.images.length > 0 && (
@@ -262,13 +281,23 @@ export function OtherStatusOrderCard({
                 <MessageSquare className="h-4 w-4" />
                 Chat with Buyer
               </button>
-              <button
-                onClick={onDeleteClick}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </button>
+              {order.paymentVerified ? (
+                <button
+                  onClick={onApproveClick}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-lg transition"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  Approve
+                </button>
+              ) : (
+                <button
+                  onClick={onDeleteClick}
+                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </button>
+              )}
             </div>
           </div>
         </div>

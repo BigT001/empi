@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 import Admin from '@/lib/models/Admin';
+import Notification from '@/lib/models/Notification';
 import { sendEmail } from '@/lib/email';
 import { createInvoiceFromOrder } from '@/lib/createInvoiceFromOrder';
 
@@ -45,8 +46,25 @@ export async function POST(req: NextRequest) {
     if (resolvedAdminId) {
       order.paymentConfirmedBy = resolvedAdminId;
     }
-    order.status = 'confirmed';
+    order.status = 'approved';
     await order.save();
+
+    // Create notification for buyer
+    try {
+      await Notification.create({
+        type: 'order_approved',
+        target: 'buyer',
+        title: '✅ Order Approved',
+        message: `Your order #${order.orderNumber} has been approved! Check your dashboard to track progress.`,
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        soundEnabled: true,
+        smsEnabled: false, // User can enable SMS notifications in settings
+      });
+      console.log('[Confirm Payment] Buyer notification created');
+    } catch (notifErr) {
+      console.error('[Confirm Payment] Failed to create buyer notification:', notifErr);
+    }
 
     // Generate invoice automatically and send email
     let invoiceResult = null;
@@ -65,20 +83,21 @@ export async function POST(req: NextRequest) {
 
     // Send confirmation email to customer
     const emailHtml = `
-      <h2>Payment Confirmed! 🎉</h2>
+      <h2>Order Approved! 🎉</h2>
       <p>Hi ${order.firstName},</p>
-      <p>Great news! We've received and confirmed your payment.</p>
+      <p>Great news! We've received and approved your payment.</p>
       
       <h3>Order Details:</h3>
       <p><strong>Order Number:</strong> ${order.orderNumber}</p>
       <p><strong>Total Amount Paid:</strong> ₦${order.total.toLocaleString()}</p>
-      <p><strong>Status:</strong> CONFIRMED</p>
+      <p><strong>Status:</strong> APPROVED</p>
       
       ${invoiceResult?.success ? `<p><strong>Invoice Number:</strong> ${invoiceResult.invoiceNumber}</p>` : ''}
       
       <h3>Next Steps:</h3>
-      <p>Your order is now confirmed and will be processed shortly.</p>
+      <p>Your order has been approved and will be processed shortly.</p>
       <p>You'll receive regular updates about your order via email.</p>
+      <p>You can also track your order progress in your dashboard.</p>
       
       <p>Thank you for shopping with EMPI!</p>
     `;
@@ -86,7 +105,7 @@ export async function POST(req: NextRequest) {
     try {
       await sendEmail({
         to: order.email,
-        subject: `Payment Confirmed - Order ${order.orderNumber}`,
+        subject: `Order Approved - Order ${order.orderNumber}`,
         html: emailHtml,
       });
     } catch (emailError) {

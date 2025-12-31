@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 import CustomOrder from '@/lib/models/CustomOrder';
 import Buyer from '@/lib/models/Buyer';
+import Invoice from '@/lib/models/Invoice';
 import Product from '@/lib/models/Product';
 import { serializeDoc, serializeDocs } from '@/lib/serializer';
 import { sendInvoiceEmail } from '@/lib/email';
@@ -80,6 +81,10 @@ export async function POST(request: NextRequest) {
       rentalSchedule: body.rentalSchedule || undefined,
       cautionFee: cautionFee > 0 ? cautionFee : undefined,
       
+      // Custom order linking (if this is a custom order payment)
+      isCustomOrder: body.isCustomOrder || false,
+      customOrderId: body.customOrderId || undefined,
+      
       paymentMethod: body.paymentMethod || 'paystack',
       status: body.status || 'pending', // Orders start in pending status
     });
@@ -117,9 +122,21 @@ export async function POST(request: NextRequest) {
 
     await order.save();
     
+    console.log('[Orders API] 🎯 ORDER CREATED:', {
+      orderNumber: order.orderNumber,
+      _id: order._id,
+      isCustomOrder: order.isCustomOrder,
+      customOrderId: order.customOrderId,
+      status: order.status,
+    });
+    
     // If this is a custom order payment, update the custom order status to "approved"
     if (body.isCustomOrder && body.customOrderId) {
       try {
+        console.log('[Orders API] 🔗 LINKING CUSTOM ORDER');
+        console.log('[Orders API]   Order _id:', order._id);
+        console.log('[Orders API]   CustomOrder _id:', body.customOrderId);
+        
         const customOrder = await CustomOrder.findByIdAndUpdate(
           body.customOrderId,
           { status: 'approved' },
@@ -135,6 +152,10 @@ export async function POST(request: NextRequest) {
     // If guest checkout (no buyerId), create or update guest Buyer record
     if (!body.buyerId && email) {
       try {
+        console.log('[Orders API] 👤 CREATING/FINDING GUEST BUYER');
+        console.log('[Orders API]   Email:', email);
+        console.log('[Orders API]   fullName:', fullName);
+        
         // Check if guest user already exists
         const existingBuyer = await Buyer.findOne({ email: email.toLowerCase() });
         
@@ -148,17 +169,19 @@ export async function POST(request: NextRequest) {
             isAdmin: false,
           });
           await guestBuyer.save();
-          console.log(`✅ Guest buyer created: ${email}`);
+          console.log(`✅ Guest buyer CREATED with ID: ${guestBuyer._id}`);
+          console.log(`   Email: ${guestBuyer.email}`);
+          console.log(`   Full Name: ${guestBuyer.fullName}`);
         } else {
           // Update existing guest buyer with latest info if needed
+          console.log(`✅ Guest buyer ALREADY EXISTS: ${existingBuyer._id}`);
           if (existingBuyer.phone !== phone && phone) {
             existingBuyer.phone = phone;
             await existingBuyer.save();
           }
-          console.log(`✅ Guest buyer already exists: ${email}`);
         }
       } catch (buyerErr) {
-        console.error(`⚠️ Warning: Failed to create guest buyer record: ${email}`, buyerErr);
+        console.error('[Orders API] ❌ ERROR CREATING GUEST BUYER:', buyerErr);
         // Don't fail the order if guest buyer creation fails
       }
     }
@@ -166,10 +189,103 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Order created: ${order.orderNumber} for ${email || 'Unknown'}`);
     console.log(`Order status: ${order.status}`);
     
-    // Generate invoice automatically (for Paystack payments and checkout orders)
-    let invoiceResult = null;
-    // Check the actual saved order status, not the input body
+    // Link existing invoice from payment verification to the order's buyer
+    // This is critical for guest checkout - the invoice was created during verify-payment without a buyerId
+    let existingInvoiceFound = false; // Track if we found and updated an existing invoice
     if (order.status === 'confirmed' || order.status === 'completed') {
+      try {
+        console.log('[Orders API] 🔗 LINKING INVOICE TO BUYER');
+        console.log('[Orders API]   Order Number:', order.orderNumber);
+        console.log('[Orders API]   Email:', order.email);
+        console.log('[Orders API]   BuyerId:', order.buyerId || 'N/A (guest)');
+        
+        console.log('[Orders API] 🔍 Searching for invoice with:');
+        console.log('[Orders API]   - orderNumber:', order.orderNumber);
+        console.log('[Orders API]   - paymentVerified: true');
+        
+        // Look for existing invoice by payment reference (orderNumber from Paystack)
+        const existingInvoice = await Invoice.findOne({ 
+          orderNumber: order.orderNumber,
+          paymentVerified: true 
+        });
+        
+        if (existingInvoice) {
+          existingInvoiceFound = true; // Mark that we found an existing invoice
+          console.log('[Orders API] ✅ FOUND existing invoice!');
+          console.log('[Orders API]   - invoiceNumber:', existingInvoice.invoiceNumber);
+          console.log('[Orders API]   - _id:', existingInvoice._id);
+          console.log('[Orders API]   - Current customerEmail:', existingInvoice.customerEmail);
+          console.log('[Orders API]   - Current buyerId:', existingInvoice.buyerId || 'NONE');
+          
+          // Link the invoice to the buyer (either logged-in user or guest)
+          let buyerIdToUse = order.buyerId;
+          
+          // If no buyerId but we have email, we need to find or create the guest buyer record
+          if (!buyerIdToUse && email) {
+            try {
+              console.log('[Orders API] 🔎 Looking for guest buyer by email:', email);
+              const guestBuyer = await Buyer.findOne({ email: email.toLowerCase() });
+              if (guestBuyer) {
+                buyerIdToUse = guestBuyer._id.toString();
+                console.log('[Orders API] ✅ Found guest buyer ID:', buyerIdToUse);
+              } else {
+                console.log('[Orders API] ⚠️ No guest buyer found for email:', email);
+              }
+            } catch (guestBuyerErr) {
+              console.warn('[Orders API] Could not find guest buyer:', guestBuyerErr);
+            }
+          }
+          
+          // Update the invoice with buyerId, customerName, and other order details
+          console.log('[Orders API] 📝 Updating invoice with:');
+          console.log('[Orders API]   - buyerId:', buyerIdToUse || 'STILL NO BUYERID!');
+          console.log('[Orders API]   - customerName:', `${order.firstName} ${order.lastName}`);
+          console.log('[Orders API]   - customerEmail:', order.email);
+          console.log('[Orders API]   - totalAmount:', order.total);
+          
+          existingInvoice.buyerId = buyerIdToUse || undefined;
+          existingInvoice.customerName = `${order.firstName} ${order.lastName}`;
+          existingInvoice.customerEmail = order.email;
+          existingInvoice.customerPhone = order.phone || '';
+          existingInvoice.customerAddress = order.address || '';
+          existingInvoice.customerCity = order.city || '';
+          existingInvoice.customerState = order.state || '';
+          existingInvoice.customerPostalCode = order.zipCode || '';
+          existingInvoice.subtotal = order.subtotal || 0;
+          existingInvoice.shippingCost = order.shippingCost || 0;
+          existingInvoice.taxAmount = order.vat || 0;
+          existingInvoice.totalAmount = order.total || 0;
+          existingInvoice.items = (order.items || []).map((item: any) => ({
+            productId: item.productId,
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            mode: item.mode,
+          }));
+          
+          await existingInvoice.save();
+          console.log('[Orders API] ✅✅✅ INVOICE LINKED AND UPDATED!');
+          console.log('[Orders API]   - invoiceNumber:', existingInvoice.invoiceNumber);
+          console.log('[Orders API]   - buyerId:', existingInvoice.buyerId);
+          console.log('[Orders API]   - customerEmail:', existingInvoice.customerEmail);
+          console.log('[Orders API]   - totalAmount:', existingInvoice.totalAmount);
+        } else {
+          console.log('[Orders API] ❌ NO INVOICE FOUND for orderNumber:', order.orderNumber);
+          console.log('[Orders API] This might mean:');
+          console.log('[Orders API]   1. verify-payment was not called');
+          console.log('[Orders API]   2. Invoice was created with different orderNumber');
+          console.log('[Orders API]   3. Invoice was created with paymentVerified: false');
+        }
+      } catch (invoiceLinkError) {
+        console.error('[Orders API] ❌ CRITICAL ERROR linking invoice:', invoiceLinkError);
+        // Don't fail the whole process
+      }
+    }
+    
+    // Generate invoice automatically (for Paystack payments and checkout orders)
+    // BUT skip if we already linked an existing invoice from payment verification
+    let invoiceResult = null;
+    if (!existingInvoiceFound && (order.status === 'confirmed' || order.status === 'completed')) {
       try {
         console.log('[Orders API] Generating invoice for order:', order.orderNumber);
         console.log('[Orders API] Order status is:', order.status);
@@ -442,7 +558,20 @@ export async function GET(request: NextRequest) {
     let orders = await Order.find(query).sort({ createdAt: -1 }).limit(limit);
     console.log(`[Orders API] Fetched ${orders.length} orders for buyerId: ${buyerId || 'N/A'}, email: ${email || 'N/A'} (limit: ${limit})`);
     const serialized = serializeDocs(orders);
-    const withImages = await populateOrdersImages(serialized);
+    // Add fullName to each order for logistics display
+    const ordersWithFullName = serialized.map((order: any) => {
+      const computed = order.fullName || `${order.firstName || ''} ${order.lastName || ''}`.trim() || order.orderNumber;
+      console.log(`[Orders API] Order ${order.orderNumber}: firstName="${order.firstName}", lastName="${order.lastName}", fullName="${order.fullName}" -> computed="${computed}"`);
+      return {
+        ...order,
+        fullName: computed
+      };
+    });
+    console.log(`[Orders API] ✅ Response includes ${ordersWithFullName.length} orders with fullName computed`);
+    if (ordersWithFullName.length > 0) {
+      console.log(`[Orders API] First order in response:`, JSON.stringify(ordersWithFullName[0], null, 2));
+    }
+    const withImages = await populateOrdersImages(ordersWithFullName);
     return NextResponse.json({ success: true, orders: withImages });
   } catch (error) {
     console.error('Error fetching orders:', error);

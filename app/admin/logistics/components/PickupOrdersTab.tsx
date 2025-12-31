@@ -12,7 +12,7 @@ const getCustomerName = (order: any) => {
   if (order.fullName) return order.fullName;
   if (order.firstName && order.lastName) return `${order.firstName} ${order.lastName}`;
   if (order.buyerName) return order.buyerName;
-  return 'Customer';
+  return `Order #${order.orderNumber}`;
 };
 
 export function PickupOrdersTab({

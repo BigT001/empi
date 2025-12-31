@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import CustomOrder from "@/lib/models/CustomOrder";
+import Order from "@/lib/models/Order";
+import Invoice from "@/lib/models/Invoice";
 import { v2 as cloudinary } from "cloudinary";
 import { sendOrderDeclinedEmail, sendOrderDeletedEmail } from "@/lib/email";
 
@@ -204,8 +206,62 @@ export async function GET(request: NextRequest) {
     
     console.log("[API:GET /custom-orders] 🔎 MongoDB Query filter:", JSON.stringify(whereClause));
 
-    const orders = await CustomOrder.find(whereClause).sort({ createdAt: -1 });
+    let orders = await CustomOrder.find(whereClause).sort({ createdAt: -1 });
     console.log("[API:GET /custom-orders] ✅ Found", orders.length, "orders");
+    
+    // Attach payment verification status by checking invoices
+    const ordersWithPaymentStatus = await Promise.all(
+      orders.map(async (order) => {
+        const orderObj = order.toObject();
+        console.log(`[API:GET /custom-orders] 🔍 Checking payment for order: ${order.orderNumber} (_id: ${order._id})`);
+        try {
+          // First, try to find the associated regular Order (for custom order payments)
+          // Custom orders can have a linked regular Order with isCustomOrder: true and customOrderId pointing to this custom order
+          let relatedOrder = await Order.findOne({
+            customOrderId: order._id,
+            isCustomOrder: true
+          });
+          
+          if (relatedOrder) {
+            console.log(`[API:GET /custom-orders]   Found related Order: ${relatedOrder.orderNumber}`);
+            // Look for invoice using the related order's orderNumber
+            const invoice = await Invoice.findOne({
+              orderNumber: relatedOrder.orderNumber,
+              paymentVerified: true
+            });
+            
+            if (invoice) {
+              orderObj.paymentVerified = true;
+              orderObj.paymentReference = invoice.paymentReference;
+              console.log(`[API:GET /custom-orders] ✅ Order ${order.orderNumber} has verified payment via related Order ${relatedOrder.orderNumber} - REF: ${invoice.paymentReference}`);
+            } else {
+              orderObj.paymentVerified = false;
+              console.log(`[API:GET /custom-orders] ❌ Related Order ${relatedOrder.orderNumber} has NO verified invoice`);
+            }
+          } else {
+            console.log(`[API:GET /custom-orders]   No related Order found, checking direct invoice match`);
+            // Fallback: try direct match with custom order number
+            const invoice = await Invoice.findOne({
+              orderNumber: order.orderNumber,
+              paymentVerified: true
+            });
+            
+            if (invoice) {
+              orderObj.paymentVerified = true;
+              orderObj.paymentReference = invoice.paymentReference;
+              console.log(`[API:GET /custom-orders] ✅ Order ${order.orderNumber} has verified payment - REF: ${invoice.paymentReference}`);
+            } else {
+              orderObj.paymentVerified = false;
+              console.log(`[API:GET /custom-orders] ❌ Order ${order.orderNumber} has NO verified payment`);
+            }
+          }
+        } catch (invoiceError) {
+          console.error(`[API:GET /custom-orders] ⚠️ Error checking invoice for ${order.orderNumber}:`, invoiceError);
+          orderObj.paymentVerified = false;
+        }
+        return orderObj;
+      })
+    );
     
     if (orders.length === 0 && email) {
       console.log("[API:GET /custom-orders] 📊 Debugging: No orders found for email. Checking total custom orders in DB...");
@@ -213,7 +269,7 @@ export async function GET(request: NextRequest) {
       console.log("[API:GET /custom-orders] 📊 Sample orders in DB:", allOrders.map(o => ({ orderNumber: o.orderNumber, email: o.email, buyerId: o.buyerId })));
     }
 
-    return NextResponse.json({ success: true, orders }, { status: 200 });
+    return NextResponse.json({ success: true, orders: ordersWithPaymentStatus }, { status: 200 });
   } catch (error) {
     console.error("❌ Error fetching custom orders:", error);
     const errorMsg = error instanceof Error ? error.message : "Unknown error";
