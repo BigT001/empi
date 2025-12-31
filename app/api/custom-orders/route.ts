@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * GET /api/custom-orders
- * Lists all custom orders (admin only)
+ * Lists all custom orders AND regular orders (for unified admin panel)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -206,13 +206,39 @@ export async function GET(request: NextRequest) {
     
     console.log("[API:GET /custom-orders] 🔎 MongoDB Query filter:", JSON.stringify(whereClause));
 
-    let orders = await CustomOrder.find(whereClause).sort({ createdAt: -1 });
-    console.log("[API:GET /custom-orders] ✅ Found", orders.length, "orders");
+    // Fetch custom orders
+    let customOrders = await CustomOrder.find(whereClause).sort({ createdAt: -1 });
+    console.log("[API:GET /custom-orders] ✅ Found", customOrders.length, "custom orders");
+    
+    // Fetch regular orders with pending status (for unified display)
+    let regularOrders = [];
+    if (!buyerId && !email) {
+      // Admin fetching all - include pending regular orders
+      // Regular orders can have status 'pending' or 'awaiting_payment' in the pending tab
+      let regularOrdersQuery: any = {};
+      if (status === 'pending') {
+        // For pending tab, fetch both 'pending' and 'awaiting_payment' statuses
+        regularOrdersQuery = { $or: [{ status: 'pending' }, { status: 'awaiting_payment' }] };
+      } else if (status) {
+        regularOrdersQuery = { status: status };
+      }
+      regularOrders = await Order.find(regularOrdersQuery).sort({ createdAt: -1 });
+      console.log("[API:GET /custom-orders] ✅ Found", regularOrders.length, "regular orders with query:", regularOrdersQuery);
+    } else if (buyerId || email) {
+      // User fetching their orders
+      const orderWhereClause: any = {};
+      if (buyerId) orderWhereClause.buyerId = buyerId;
+      if (email) orderWhereClause.email = email;
+      if (status) orderWhereClause.status = status;
+      regularOrders = await Order.find(orderWhereClause).sort({ createdAt: -1 });
+      console.log("[API:GET /custom-orders] ✅ Found", regularOrders.length, "regular orders for user");
+    }
     
     // Attach payment verification status by checking invoices
     const ordersWithPaymentStatus = await Promise.all(
-      orders.map(async (order) => {
+      customOrders.map(async (order) => {
         const orderObj = order.toObject();
+        orderObj.isCustomOrder = true; // Mark as custom order
         console.log(`[API:GET /custom-orders] 🔍 Checking payment for order: ${order.orderNumber} (_id: ${order._id})`);
         try {
           // First, try to find the associated regular Order (for custom order payments)
@@ -262,14 +288,47 @@ export async function GET(request: NextRequest) {
         return orderObj;
       })
     );
+
+    // Attach payment verification status to regular orders
+    const regularOrdersWithPaymentStatus = await Promise.all(
+      regularOrders.map(async (order) => {
+        const orderObj = order.toObject();
+        orderObj.isCustomOrder = false; // Mark as regular order
+        console.log(`[API:GET /custom-orders] 🔍 Checking payment for regular order: ${order.orderNumber}`);
+        try {
+          const invoice = await Invoice.findOne({
+            orderNumber: order.orderNumber,
+            paymentVerified: true
+          });
+          
+          if (invoice) {
+            orderObj.paymentVerified = true;
+            orderObj.paymentReference = invoice.paymentReference;
+            console.log(`[API:GET /custom-orders] ✅ Regular order ${order.orderNumber} has verified payment`);
+          } else {
+            orderObj.paymentVerified = false;
+            console.log(`[API:GET /custom-orders] ❌ Regular order ${order.orderNumber} has NO verified payment`);
+          }
+        } catch (invoiceError) {
+          console.error(`[API:GET /custom-orders] ⚠️ Error checking invoice for regular order ${order.orderNumber}:`, invoiceError);
+          orderObj.paymentVerified = false;
+        }
+        return orderObj;
+      })
+    );
     
-    if (orders.length === 0 && email) {
-      console.log("[API:GET /custom-orders] 📊 Debugging: No orders found for email. Checking total custom orders in DB...");
+    if (customOrders.length === 0 && email) {
+      console.log("[API:GET /custom-orders] 📊 Debugging: No custom orders found for email. Checking total custom orders in DB...");
       const allOrders = await CustomOrder.find({}).limit(5);
-      console.log("[API:GET /custom-orders] 📊 Sample orders in DB:", allOrders.map(o => ({ orderNumber: o.orderNumber, email: o.email, buyerId: o.buyerId })));
+      console.log("[API:GET /custom-orders] 📊 Sample custom orders in DB:", allOrders.map(o => ({ orderNumber: o.orderNumber, email: o.email, buyerId: o.buyerId })));
     }
 
-    return NextResponse.json({ success: true, orders: ordersWithPaymentStatus }, { status: 200 });
+    // Combine custom and regular orders
+    const allOrders = [...ordersWithPaymentStatus, ...regularOrdersWithPaymentStatus].sort((a, b) => {
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+
+    return NextResponse.json({ success: true, orders: allOrders }, { status: 200 });
   } catch (error) {
     console.error("❌ Error fetching custom orders:", error);
     const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -304,8 +363,11 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // Determine if this is a custom order or regular order
+    const isCustomOrderFlag = body.isCustomOrder ?? true; // Default to custom order for backward compatibility
+    
     // Only allow specific fields to be updated
-    const allowedUpdates = ["status", "buyerAgreedToDate", "deliveryDate", "quantity", "shippingType", "address", "busStop", "city", "state", "zipCode"];
+    const allowedUpdates = ["status", "buyerAgreedToDate", "deliveryDate", "quantity", "shippingType", "address", "busStop", "city", "state", "zipCode", "deliveryOption"];
     const updates: Record<string, any> = {};
 
     for (const key of Object.keys(body)) {
@@ -314,9 +376,14 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
+    // Log what's being updated
+    if (updates.deliveryOption) {
+      console.log(`[API:PATCH] 🚚 Delivery option being set to: ${updates.deliveryOption}`);
+    }
+
     // Validate status if provided
     if (updates.status) {
-      const validStatuses = ["pending", "approved", "in-progress", "ready", "completed", "rejected"];
+      const validStatuses = ["pending", "approved", "in-progress", "ready", "completed", "rejected", "awaiting_payment", "payment_confirmed", "cancelled"];
       if (!validStatuses.includes(updates.status)) {
         return NextResponse.json(
           { message: "Invalid status value" },
@@ -325,36 +392,56 @@ export async function PATCH(request: NextRequest) {
       }
     }
 
-    // If quantity is being updated, recalculate quotedPrice using unitPrice
-    if (updates.quantity) {
-      const currentOrder = await CustomOrder.findById(id);
-      if (currentOrder) {
-        const unitPrice = currentOrder.unitPrice || (currentOrder.quotedPrice / (currentOrder.quantity || 1));
-        const newQuotedPrice = unitPrice * updates.quantity;
-        updates.quotedPrice = newQuotedPrice;
-        // Store unitPrice for future calculations if not already set
-        if (!currentOrder.unitPrice) {
-          updates.unitPrice = unitPrice;
+    let updatedOrder;
+
+    if (isCustomOrderFlag) {
+      // Update custom order
+      // If quantity is being updated, recalculate quotedPrice using unitPrice
+      if (updates.quantity) {
+        const currentOrder = await CustomOrder.findById(id);
+        if (currentOrder) {
+          const unitPrice = currentOrder.unitPrice || (currentOrder.quotedPrice / (currentOrder.quantity || 1));
+          const newQuotedPrice = unitPrice * updates.quantity;
+          updates.quotedPrice = newQuotedPrice;
+          // Store unitPrice for future calculations if not already set
+          if (!currentOrder.unitPrice) {
+            updates.unitPrice = unitPrice;
+          }
+          console.log(`[API:PATCH] 🔢 Auto-calculated price: quantity ${currentOrder.quantity} → ${updates.quantity}, unitPrice ₦${unitPrice}, newQuotedPrice ₦${newQuotedPrice}`);
         }
-        console.log(`[API:PATCH] 🔢 Auto-calculated price: quantity ${currentOrder.quantity} → ${updates.quantity}, unitPrice ₦${unitPrice}, newQuotedPrice ₦${newQuotedPrice}`);
       }
-    }
 
-    // Update the order
-    const updatedOrder = await CustomOrder.findByIdAndUpdate(
-      id,
-      updates,
-      { new: true }
-    );
-
-    if (!updatedOrder) {
-      return NextResponse.json(
-        { message: "Custom order not found" },
-        { status: 404 }
+      updatedOrder = await CustomOrder.findByIdAndUpdate(
+        id,
+        updates,
+        { new: true }
       );
-    }
 
-    console.log(`✅ Custom order ${id} updated:`, updates);
+      if (!updatedOrder) {
+        return NextResponse.json(
+          { message: "Custom order not found" },
+          { status: 404 }
+        );
+      }
+
+      console.log(`✅ Custom order ${id} updated:`, updates);
+    } else {
+      // Update regular order
+      updatedOrder = await Order.findByIdAndUpdate(
+        id,
+        updates,
+        { new: true }
+      );
+
+      if (!updatedOrder) {
+        return NextResponse.json(
+          { message: "Order not found" },
+          { status: 404 }
+        );
+      }
+
+      console.log(`✅ Regular order ${id} updated:`, updates);
+    }
 
     // Send email notification if order was rejected
     if (updates.status === "rejected") {

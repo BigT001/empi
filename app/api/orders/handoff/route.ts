@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import CustomOrder from '@/lib/models/CustomOrder';
+import Order from '@/lib/models/Order';
 import Message from '@/lib/models/Message';
 
 /**
@@ -34,18 +35,37 @@ export async function POST(request: NextRequest) {
 
     const latestDeliveryMessage = latestDeliveryMessageDoc as any;
 
-    // Get the current order first to check if already handed off
-    const currentOrder = await CustomOrder.findOne(query);
+    console.log('[API:POST /orders/handoff] 🔍 Query used for message search:', {
+      ...query,
+      senderType: 'customer',
+      deliveryOption: { $exists: true, $ne: null }
+    });
+    
+    console.log('[API:POST /orders/handoff] 🔍 Latest delivery message found:', latestDeliveryMessage ? {
+      _id: latestDeliveryMessage._id,
+      deliveryOption: latestDeliveryMessage.deliveryOption,
+      content: latestDeliveryMessage.content,
+      senderType: latestDeliveryMessage.senderType,
+    } : 'No delivery message found');
+
+    // Get the current order - try CustomOrder first, then Order
+    let currentOrder = await CustomOrder.findOne(query);
+    let isCustomOrderFlag = true;
     
     if (!currentOrder) {
-      console.error('[API:POST /orders/handoff] ❌ Order not found with query:', query);
+      currentOrder = await Order.findOne(query);
+      isCustomOrderFlag = false;
+    }
+    
+    if (!currentOrder) {
+      console.error('[API:POST /orders/handoff] ❌ Order not found in either collection with query:', query);
       return NextResponse.json(
         { message: 'Order not found', error: `No order found with query: ${JSON.stringify(query)}` },
         { status: 404 }
       );
     }
 
-    console.log('[API:POST /orders/handoff] ✅ Order found:', currentOrder._id);
+    console.log(`[API:POST /orders/handoff] ✅ Order found (${isCustomOrderFlag ? 'CustomOrder' : 'Order'}):`, currentOrder._id);
 
     // Check if logistics handoff message already exists (only send once)
     const existingHandoffMessage = await Message.findOne({
@@ -75,13 +95,25 @@ export async function POST(request: NextRequest) {
 
     if (latestDeliveryMessage?.deliveryOption) {
       updateData.deliveryOption = latestDeliveryMessage.deliveryOption;
+      console.log(`[API:POST /orders/handoff] ✅ Setting deliveryOption to: ${latestDeliveryMessage.deliveryOption}`);
     }
 
-    const updatedOrder = await CustomOrder.findOneAndUpdate(
-      query,
-      updateData,
-      { new: true }
-    );
+    let updatedOrder;
+    if (isCustomOrderFlag) {
+      updatedOrder = await CustomOrder.findOneAndUpdate(
+        query,
+        updateData,
+        { new: true }
+      );
+    } else {
+      updatedOrder = await Order.findOneAndUpdate(
+        query,
+        updateData,
+        { new: true }
+      );
+    }
+
+    console.log(`[API:POST /orders/handoff] ✅ Order updated with deliveryOption: ${updatedOrder.deliveryOption}`);
 
     // Send auto-message about logistics joining (only on first handoff)
     let handoffMessage = null;
@@ -139,13 +171,23 @@ export async function PATCH(request: NextRequest) {
 
     const query = orderId ? { _id: orderId } : { orderNumber };
     
-    const updatedOrder = await CustomOrder.findOneAndUpdate(
+    let updatedOrder = await CustomOrder.findOneAndUpdate(
       query,
       {
         logisticsCanViewFullHistory: grantAccess === true,
       },
       { new: true }
     );
+
+    if (!updatedOrder) {
+      updatedOrder = await Order.findOneAndUpdate(
+        query,
+        {
+          logisticsCanViewFullHistory: grantAccess === true,
+        },
+        { new: true }
+      );
+    }
 
     if (!updatedOrder) {
       return NextResponse.json(

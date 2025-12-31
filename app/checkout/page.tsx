@@ -110,7 +110,6 @@ export default function CheckoutPage() {
           shipping: shippingCost,
           total: totalAmount,
         },
-        status: "confirmed",
         createdAt: new Date().toISOString(),
         // Custom order linking fields
         isCustomOrder: !!customQuote,

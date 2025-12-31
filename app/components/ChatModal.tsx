@@ -48,6 +48,7 @@ interface CustomOrder {
   quotedPrice?: number;
   buyerAgreedToDate?: boolean; // Whether buyer agreed to proposed delivery date
   items?: any[]; // For regular orders
+  isCustomOrder?: boolean; // Flag indicating if this is a custom order or regular order
 }
 
 interface ChatModalProps {
@@ -626,16 +627,19 @@ export function ChatModal({
       setIsSubmittingDeliveryDetails(true);
 
       // Update the custom order with delivery details
-      const updateResponse = await fetch(`/api/custom-orders/${order._id}`, {
+      const updateResponse = await fetch(`/api/custom-orders?id=${order._id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          isCustomOrder: order.isCustomOrder !== false, // Pass the order type flag
           deliveryOption: selectedDeliveryOption,
           deliveryDetails: details,
         }),
       });
 
       if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error('[ChatModal] Update response error:', errorText);
         throw new Error('Failed to save delivery details');
       }
 

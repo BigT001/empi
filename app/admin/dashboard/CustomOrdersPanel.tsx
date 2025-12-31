@@ -17,29 +17,54 @@ import { ConfirmationModal } from "./components/ConfirmationModal";
 interface CustomOrder {
   _id: string;
   orderNumber: string;
-  fullName: string;
+  fullName?: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
-  phone: string;
+  phone?: string;
   address?: string;
-  city: string;
+  busStop?: string;
+  city?: string;
   state?: string;
-  description: string;
+  zipCode?: string;
+  description?: string;
   designUrl?: string;
   designUrls?: string[];
   quantity?: number;
   deliveryDate?: string;
   productionStartedAt?: string;
-  status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
+  status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected" | "awaiting_payment" | "payment_confirmed" | "cancelled";
   notes?: string;
   quotedPrice?: number;
+  price?: number;
   productId?: string;
   paymentVerified?: boolean;
   paymentReference?: string;
+  items?: any[];
+  isCustomOrder?: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export type { CustomOrder };
+
+// Helper function to get full name from either fullName or firstName + lastName
+const getFullName = (order: CustomOrder): string => {
+  if (order.fullName) return order.fullName;
+  if (order.firstName && order.lastName) return `${order.firstName} ${order.lastName}`;
+  if (order.firstName) return order.firstName;
+  if (order.lastName) return order.lastName;
+  return 'Unknown';
+};
+
+// Helper function to get description/items display
+const getDescription = (order: CustomOrder): string => {
+  if (order.description) return order.description;
+  if (order.items && order.items.length > 0) {
+    return order.items.map((item: any) => `${item.name} (x${item.quantity})`).join(', ');
+  }
+  return 'No description';
+};
 
 export function CustomOrdersPanel() {
   const { admin } = useAdmin();
@@ -410,8 +435,13 @@ export function CustomOrdersPanel() {
       console.log(`[CustomOrdersPanel] ðŸ"„ Updating order ${orderId} status to: ${newStatus}`);
       
       const updatePayload: Record<string, any> = { status: newStatus };
-      
-      // If transitioning to "in-progress", set the productionStartedAt timestamp
+            // Find the order to check if it's a custom order
+      const order = orders.find(o => o._id === orderId);
+      if (order) {
+        updatePayload.isCustomOrder = order.isCustomOrder !== false; // Default to true if not set
+        console.log(`[CustomOrdersPanel] Order type: ${updatePayload.isCustomOrder ? 'Custom Order' : 'Regular Order'}`);
+      }
+            // If transitioning to "in-progress", set the productionStartedAt timestamp
       if (newStatus === "in-progress") {
         updatePayload.productionStartedAt = new Date().toISOString();
       }
@@ -439,8 +469,7 @@ export function CustomOrdersPanel() {
         throw new Error(data.message || `Failed to update order status to ${newStatus}`);
       }
 
-      // Find the order to send a system message
-      const order = orders.find(o => o._id === orderId);
+      // Use the order we found earlier to send a system message
       if (order) {
         const statusMessages: Record<string, string> = {
           "in-progress": "Your order production has started! We'll keep you updated.",
@@ -668,7 +697,7 @@ export function CustomOrdersPanel() {
             // Refresh orders when message is sent
             fetchOrders();
           }}
-          order={filteredOrders.find(o => o._id === chatModalOpen)!}
+          order={Object.assign({}, filteredOrders.find(o => o._id === chatModalOpen)!, { phone: filteredOrders.find(o => o._id === chatModalOpen)?.phone || '' })}
           userEmail={admin?.email || ''}
           userName={admin?.fullName || 'Admin'}
           isAdmin={true}
@@ -711,7 +740,7 @@ export function CustomOrdersPanel() {
             open={true}
             onClose={() => setImageModalOpen(null)}
             images={images}
-            orderName={order.description || order.fullName}
+            orderName={order.description || order.fullName || getFullName(order)}
           />
         );
       })()}

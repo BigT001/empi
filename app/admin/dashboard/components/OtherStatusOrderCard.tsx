@@ -130,7 +130,19 @@ export function OtherStatusOrderCard({
           {/* Product Name Section */}
           <div className="bg-white rounded-lg p-3 border-2 border-yellow-200 mb-3 flex-shrink-0">
             <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">What They're Buying</p>
-            <h4 className="font-bold text-base text-gray-900">{order.costumeType || order.description || 'Custom Order'}</h4>
+            {order.items && order.items.length > 0 ? (
+              <div className="space-y-2">
+                {order.items.map((item: any, idx: number) => (
+                  <div key={idx} className="border-b border-yellow-100 pb-2 last:border-b-0 last:pb-0">
+                    <h4 className="font-bold text-base text-gray-900">{item.name || item.productName || 'Product'}</h4>
+                    {item.quantity && <p className="text-xs text-gray-600">Qty: {item.quantity}</p>}
+                    {item.price && <p className="text-xs font-semibold text-amber-700">₦{(item.price).toLocaleString('en-NG')}</p>}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <h4 className="font-bold text-base text-gray-900">{order.costumeType || order.description || 'Custom Order'}</h4>
+            )}
           </div>
 
           {/* Product ID Section */}

@@ -366,12 +366,22 @@ export default function LogisticsPage() {
       const customOrdersList = (customData.orders || customData.data) || [];
       const regularOrdersList = regularData.orders || [];
       
-      // Combine both lists
+      // Combine both lists and deduplicate by _id
       let allOrders = [...customOrdersList, ...regularOrdersList];
-      console.log('📦 Fetched:', customOrdersList.length, 'custom orders,', regularOrdersList.length, 'regular orders');
+      const seenIds = new Set<string>();
+      const deduplicatedOrders = allOrders.filter((order: any) => {
+        if (seenIds.has(order._id)) {
+          console.log(`[Logistics] ⚠️ Duplicate order ID found: ${order._id}, skipping`);
+          return false;
+        }
+        seenIds.add(order._id);
+        return true;
+      });
+      
+      console.log(`[Logistics] 📦 Fetched: ${customOrdersList.length} custom orders, ${regularOrdersList.length} regular orders, deduplicated to: ${deduplicatedOrders.length}`);
       
       // Ensure all orders have a fullName field
-      const ordersWithFullNames = allOrders.map((order: any) => {
+      const ordersWithFullNames = deduplicatedOrders.map((order: any) => {
         const name = order.fullName || `${order.firstName || ''} ${order.lastName || ''}`.trim() || order.buyerName || order.email || `Order #${order.orderNumber}`;
         console.log(`📦 Order ${order.orderNumber}: fullName="${order.fullName}", firstName="${order.firstName}", lastName="${order.lastName}" -> final="${name}"`);
         return {
@@ -438,16 +448,15 @@ export default function LogisticsPage() {
   // Further split delivery orders by status
   const pendingDeliveryOrders = allDeliveryOrders.filter(o => o.status === 'ready' || o.status === 'confirmed' || o.status === 'pending');
   const inProgressDeliveryOrders = allDeliveryOrders.filter(o => o.status === 'in-progress');
-  const deliveredDeliveryOrders = orders.filter((o: any) => o.status === 'completed' && (o.deliveryOption === 'delivery' || o.shippingType === 'empi'));
+  const deliveredDeliveryOrders = allDeliveryOrders.filter((o: any) => o.status === 'completed');
   const deliveryOrders = deliverySubTab === 'pending' ? pendingDeliveryOrders : 
                          deliverySubTab === 'in-progress' ? inProgressDeliveryOrders :
                          deliverySubTab === 'delivered' ? deliveredDeliveryOrders : [];
   
-  const completedOrders = orders.filter((o: any) => o.status === 'completed' && (o.deliveryOption === 'pickup' || o.deliveryOption === 'delivery' || o.shippingType === 'self' || o.shippingType === 'empi'));
+  const completedOrders = validOrders.filter((o: any) => o.status === 'completed');
 
   // Debug logging
-  console.log('📍 Pickup orders:', pickupOrders.length, pickupOrders);
-  console.log('🚚 Delivery orders:', deliveryOrders.length, deliveryOrders);
+  console.log(`[Logistics] 📍 Pickup orders: ${pickupOrders.length}`);
   
   // Show all ready orders and their deliveryOption values for debugging
   console.log('📊 All ready orders breakdown:');
@@ -513,7 +522,7 @@ export default function LogisticsPage() {
                   onClick={() => setDeliverySubTab(subTab.id as 'pending' | 'in-progress' | 'delivered')}
                   className={`px-3 py-2 rounded-lg whitespace-nowrap font-semibold text-sm transition ${
                     deliverySubTab === subTab.id
-                      ? 'bg-blue-500 text-white'
+                      ? 'bg-lime-500 text-white'
                       : 'bg-gray-100 text-gray-700 border border-gray-300'
                   }`}
                 >
@@ -542,7 +551,7 @@ export default function LogisticsPage() {
                       <h3 className="font-semibold text-gray-900">{order.orderNumber}</h3>
                       <p className="text-sm text-gray-600">{order.fullName}</p>
                     </div>
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded">
+                    <span className="px-2 py-1 bg-lime-100 text-lime-700 text-xs font-semibold rounded">
                       {order.status}
                     </span>
                   </div>
@@ -622,7 +631,7 @@ export default function LogisticsPage() {
                   }}
                   className={`px-6 py-3 font-semibold border-b-2 transition ${
                     activeTab === 'delivery'
-                      ? 'border-blue-600 text-blue-600'
+                      ? 'border-lime-600 text-lime-600'
                       : 'border-transparent text-gray-600 hover:text-gray-900'
                   }`}
                 >
@@ -663,7 +672,7 @@ export default function LogisticsPage() {
                       onClick={() => setDeliverySubTab(subTab.id as 'pending' | 'in-progress' | 'delivered')}
                       className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
                         deliverySubTab === subTab.id
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-lime-600 text-white'
                           : 'bg-white text-gray-700 border border-gray-300'
                       }`}
                     >
@@ -679,9 +688,9 @@ export default function LogisticsPage() {
                   {pickupOrders.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {pickupOrders.map(order => (
-                        <div key={order._id} className="bg-purple-50 border-2 border-purple-300 rounded-xl p-4 h-full flex flex-col gap-3 shadow-sm hover:shadow-md transition">
+                        <div key={order._id} className="bg-lime-50 border-2 border-lime-300 rounded-xl p-4 h-full flex flex-col gap-3 shadow-sm hover:shadow-md transition">
                           {/* Header */}
-                          <div className="bg-gradient-to-r from-purple-500 to-indigo-600 rounded-lg p-3 text-white">
+                          <div className="bg-gradient-to-r from-lime-600 to-green-600 rounded-lg p-3 text-white">
                             <p className="text-xs font-semibold uppercase opacity-90 flex items-center gap-1">
                               <Package className="h-3 w-3" /> 📍 Pickup - {order.status.toUpperCase()}
                             </p>
@@ -691,16 +700,16 @@ export default function LogisticsPage() {
 
                           {/* Product ID */}
                           {order.productId && (
-                            <div className="bg-white rounded p-2 border border-purple-200">
+                            <div className="bg-white rounded p-2 border border-lime-200">
                               <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Product ID</p>
-                              <p className="text-sm font-bold text-purple-700 font-mono">{order.productId}</p>
+                              <p className="text-sm font-bold text-lime-700 font-mono">{order.productId}</p>
                             </div>
                           )}
 
                           {/* Description */}
-                          <div className="bg-white rounded p-2 border border-purple-200">
+                          <div className="bg-white rounded p-2 border border-lime-200">
                             <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Order Description</p>
-                            <p className="text-sm font-bold text-purple-700">{order.description}</p>
+                            <p className="text-sm font-bold text-lime-700">{order.description}</p>
                           </div>
 
                           {/* Product Images Gallery */}
@@ -713,14 +722,14 @@ export default function LogisticsPage() {
                                 {(order.images || order.designUrls || []).slice(0, 6).map((img, idx) => (
                                   <div
                                     key={idx}
-                                    className="relative aspect-square bg-gray-100 rounded border border-purple-300 overflow-hidden cursor-pointer hover:border-purple-500 transition"
+                                    className="relative aspect-square bg-gray-100 rounded border border-lime-300 overflow-hidden cursor-pointer hover:border-lime-500 transition"
                                   >
                                     <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
                                   </div>
                                 ))}
                               </div>
                               {(((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) > 6) && (
-                                <p className="text-xs text-purple-600 font-semibold">
+                                <p className="text-xs text-lime-600 font-semibold">
                                   +{((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) - 6} more images
                                 </p>
                               )}
@@ -728,13 +737,13 @@ export default function LogisticsPage() {
                           )}
 
                           {/* Customer Contact */}
-                          <div className="bg-white rounded p-2 border border-purple-200 space-y-1 text-xs">
+                          <div className="bg-white rounded p-2 border border-lime-200 space-y-1 text-xs">
                             <div className="flex items-center gap-2">
-                              <Phone className="h-3 w-3 text-purple-600" />
+                              <Phone className="h-3 w-3 text-lime-600" />
                               <span className="text-gray-700">{order.phone}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="h-3 w-3 text-purple-600">✉</span>
+                              <span className="h-3 w-3 text-lime-600">✉</span>
                               <span className="text-gray-700 truncate">{order.email}</span>
                             </div>
                           </div>
@@ -762,7 +771,7 @@ export default function LogisticsPage() {
                           <div className="flex gap-2 mt-auto">
                             <button 
                               onClick={() => joinConversation(order)}
-                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition"
+                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-lime-600 hover:bg-lime-700 text-white font-bold text-sm rounded-lg transition"
                             >
                               <MessageSquare className="h-4 w-4" />
                               Open Chat
@@ -848,13 +857,13 @@ export default function LogisticsPage() {
                   {deliveryOrders.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                       {deliveryOrders.map(order => (
-                        <div key={order._id} className="rounded-xl overflow-hidden flex flex-col gap-0 shadow-md hover:shadow-lg transition h-full border-2 border-blue-300 bg-white">
+                        <div key={order._id} className="rounded-xl overflow-hidden flex flex-col gap-0 shadow-md hover:shadow-lg transition h-full border-2 border-lime-300 bg-white">
                           {/* Header - Enhanced */}
-                          <div className="bg-gradient-to-br from-blue-600 via-blue-500 to-cyan-600 p-4 text-white shadow-md">
+                          <div className="bg-gradient-to-br from-lime-600 via-green-600 to-lime-700 p-4 text-white shadow-md">
                             <p className="text-xs font-semibold opacity-90 uppercase tracking-wide">🚚 Delivery</p>
                             <p className="text-lg font-black mt-1">{order.fullName || `Order #${order.orderNumber}`}</p>
                             <p className="text-xs opacity-85 font-semibold mt-0.5">#{order.orderNumber}</p>
-                            <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-blue-200 text-blue-800">
+                            <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-lime-200 text-lime-800">
                               {order.status.toUpperCase()}
                             </span>
                           </div>
@@ -873,7 +882,7 @@ export default function LogisticsPage() {
 
                           {/* Complete Delivery Address */}
                           {order.address ? (
-                            <div className="px-4 py-3 border-b border-gray-100 bg-emerald-50">
+                            <div className="px-4 py-3 border-b border-gray-100 bg-lime-50">
                               <p className="font-bold text-xs text-gray-700 mb-2 uppercase tracking-wide">📍 Delivery Address</p>
                               <div className="space-y-2 text-xs text-gray-900">
                                 <div>
@@ -883,7 +892,7 @@ export default function LogisticsPage() {
                                 {order.busStop && (
                                   <div>
                                     <p className="text-xs font-semibold text-gray-600">🚏 Nearest Bus Stop</p>
-                                    <p className="font-semibold text-blue-700">{order.busStop}</p>
+                                    <p className="font-semibold text-lime-700">{order.busStop}</p>
                                   </div>
                                 )}
                                 <div className="grid grid-cols-2 gap-2">
@@ -914,17 +923,17 @@ export default function LogisticsPage() {
 
                           {/* Order Details Grid */}
                           <div className="px-4 py-3 border-b border-gray-100 grid grid-cols-3 gap-2">
-                            <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                            <div className="bg-lime-50 rounded p-2 border border-lime-200">
                               <p className="text-xs font-semibold text-gray-600">Qty</p>
-                              <p className="text-sm font-bold text-blue-700 mt-0.5">{order.quantity}</p>
+                              <p className="text-sm font-bold text-lime-700 mt-0.5">{order.quantity}</p>
                             </div>
-                            <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                            <div className="bg-lime-50 rounded p-2 border border-lime-200">
                               <p className="text-xs font-semibold text-gray-600">Type</p>
-                              <p className="text-xs font-bold text-blue-700 mt-0.5">🚚 Delivery</p>
+                              <p className="text-xs font-bold text-lime-700 mt-0.5">🚚 Delivery</p>
                             </div>
-                            <div className="bg-blue-50 rounded p-2 border border-blue-200">
+                            <div className="bg-lime-50 rounded p-2 border border-lime-200">
                               <p className="text-xs font-semibold text-gray-600">Status</p>
-                              <p className="text-xs font-bold text-blue-700 mt-0.5">{order.status.toUpperCase()}</p>
+                              <p className="text-xs font-bold text-lime-700 mt-0.5">{order.status.toUpperCase()}</p>
                             </div>
                           </div>
 
@@ -942,14 +951,14 @@ export default function LogisticsPage() {
                                 {(order.images || order.designUrls || []).slice(0, 3).map((img, idx) => (
                                   <div
                                     key={idx}
-                                    className="relative aspect-square bg-gray-100 rounded-lg border border-gray-300 overflow-hidden cursor-pointer hover:border-blue-500 transition"
+                                    className="relative aspect-square bg-gray-100 rounded-lg border border-gray-300 overflow-hidden cursor-pointer hover:border-lime-500 transition"
                                   >
                                     <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
                                   </div>
                                 ))}
                               </div>
                               {(((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) > 3) && (
-                                <p className="text-xs text-blue-600 font-semibold mt-1">
+                                <p className="text-xs text-lime-600 font-semibold mt-1">
                                   +{((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) - 3} more
                                 </p>
                               )}
@@ -971,7 +980,7 @@ export default function LogisticsPage() {
                                 onClick={() => {
                                   setChatModalOpen(order._id);
                                 }}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded-lg transition shadow-sm hover:shadow-md"
+                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-lime-600 hover:bg-lime-700 text-white font-semibold text-xs rounded-lg transition shadow-sm hover:shadow-md"
                               >
                                 <MessageSquare className="h-4 w-4" />
                                 Chat
@@ -1022,9 +1031,9 @@ export default function LogisticsPage() {
                   {completedOrders.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                       {completedOrders.map(order => (
-                        <div key={order._id} className="bg-green-50 border-2 border-green-300 rounded-xl p-4 h-full flex flex-col gap-3 shadow-sm hover:shadow-md transition">
+                        <div key={order._id} className="bg-lime-50 border-2 border-lime-300 rounded-xl p-4 h-full flex flex-col gap-3 shadow-sm hover:shadow-md transition">
                           {/* Header */}
-                          <div className="bg-gradient-to-r from-green-500 to-emerald-600 rounded-lg p-3 text-white">
+                          <div className="bg-gradient-to-r from-lime-600 to-green-600 rounded-lg p-3 text-white">
                             <p className="text-xs font-semibold uppercase opacity-90 flex items-center gap-1">
                               <Package className="h-3 w-3" /> ✓ {order.deliveryOption === 'pickup' ? '📍 Pickup' : '🚚 Delivery'} - COMPLETED
                             </p>
@@ -1063,8 +1072,8 @@ export default function LogisticsPage() {
 
                           {/* Pickup Status (if pickup order) */}
                           {order.deliveryOption === 'pickup' && (
-                            <div className="bg-green-100 border-l-4 border-green-600 p-2.5 rounded text-center">
-                              <p className="text-sm font-semibold text-green-900">✓ Successfully Picked Up</p>
+                            <div className="bg-lime-100 border-l-4 border-lime-600 p-2.5 rounded text-center">
+                              <p className="text-sm font-semibold text-lime-900">✓ Successfully Picked Up</p>
                             </div>
                           )}
 
@@ -1072,12 +1081,12 @@ export default function LogisticsPage() {
                           {order.designUrls && order.designUrls.length > 0 && (
                             <div className="space-y-2">
                               <p className="text-xs font-semibold text-gray-600">🖼️ Design Images</p>
-                              <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-green-300 scrollbar-track-green-100">
+                              <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-lime-300 scrollbar-track-lime-100">
                                 <div className="flex gap-2">
                                   {order.designUrls.map((img, idx) => (
                                     <div
                                       key={idx}
-                                      className="relative aspect-square bg-gray-100 rounded border border-green-300 overflow-hidden cursor-pointer hover:border-green-500 transition flex-shrink-0 w-16 h-16"
+                                      className="relative aspect-square bg-gray-100 rounded border border-lime-300 overflow-hidden cursor-pointer hover:border-lime-500 transition flex-shrink-0 w-16 h-16"
                                     >
                                       <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
                                     </div>
@@ -1173,11 +1182,11 @@ export default function LogisticsPage() {
             <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 mb-6 border border-blue-200">
               <div className="space-y-2">
                 <div>
-                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Order Number</p>
+                  <p className="text-xs font-semibold text-lime-600 uppercase tracking-wide">Order Number</p>
                   <p className="text-lg font-bold text-gray-900">{quoteModalOrder.orderNumber}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Customer</p>
+                  <p className="text-xs font-semibold text-lime-600 uppercase tracking-wide">Customer</p>
                   <p className="font-semibold text-gray-900">{quoteModalOrder.fullName}</p>
                 </div>
               </div>
@@ -1388,8 +1397,8 @@ export default function LogisticsPage() {
                 </div>
 
                 {/* Info Message */}
-                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-6 rounded">
-                  <p className="text-sm text-blue-900">
+                <div className="bg-lime-50 border-l-4 border-lime-400 p-3 mb-6 rounded">
+                  <p className="text-sm text-lime-900">
                     {paymentReceived === true ? '✅ Order will be marked as completed.' : '❌ Order status will remain in progress.'}
                   </p>
                 </div>
@@ -1423,8 +1432,8 @@ export default function LogisticsPage() {
                 </div>
 
                 {/* Info Message */}
-                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-6 rounded">
-                  <p className="text-sm text-blue-900">
+                <div className="bg-lime-50 border-l-4 border-lime-400 p-3 mb-6 rounded">
+                  <p className="text-sm text-lime-900">
                     {paymentReceived ? '✅ Customer will be notified that payment was received.' : '⏳ Customer will be notified to complete the payment.'}
                   </p>
                 </div>

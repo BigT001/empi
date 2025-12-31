@@ -26,6 +26,7 @@ interface CustomOrder {
   deadlineDate?: string;
   timerStartedAt?: string;
   timerDurationDays?: number;
+  items?: any[];
   createdAt: string;
   updatedAt: string;
 }
@@ -91,13 +92,31 @@ export function OrderCard({
 
       {/* Main Content */}
       <div className="flex-1 px-4 md:px-5 py-4 md:py-5 space-y-3">
-        {/* Description */}
-        <div>
-          <p className="text-xs text-gray-600 font-bold uppercase tracking-wide mb-1.5">Description</p>
-          <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed">
-            {order.description}
-          </p>
-        </div>
+        {/* Items Section - Show if items exist */}
+        {order.items && order.items.length > 0 ? (
+          <div>
+            <p className="text-xs text-gray-600 font-bold uppercase tracking-wide mb-1.5">Items Ordered</p>
+            <div className="space-y-2">
+              {order.items.map((item: any, idx: number) => (
+                <div key={idx} className="bg-gradient-to-r from-lime-50 to-green-50 border border-lime-200 rounded-lg p-2.5">
+                  <h4 className="text-sm font-bold text-gray-900">{item.name || item.productName || 'Product'}</h4>
+                  <div className="flex items-center justify-between mt-1">
+                    {item.quantity && <p className="text-xs text-gray-600">Qty: {item.quantity}</p>}
+                    {item.price && <p className="text-xs font-semibold text-lime-700">₦{(item.price).toLocaleString('en-NG')}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="text-xs text-gray-600 font-bold uppercase tracking-wide mb-1.5">Description</p>
+            <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed">
+              {order.description}
+            </p>
+          </div>
+        )}
+
 
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-2 gap-2">
