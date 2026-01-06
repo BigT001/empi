@@ -179,10 +179,33 @@ export default function CheckoutContent({
                 {items.map((item) => (
                   <div
                     key={`${item.id}-${item.mode}`}
-                    className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-xl border border-gray-100 hover:border-blue-200 transition-all duration-200"
+                    className="flex gap-4 p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-xl border border-gray-100 hover:border-blue-200 transition-all duration-200"
                   >
+                    {/* Product Image - Always show */}
+                    <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                      {item.image ? (
+                        <img
+                          src={item.image}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.warn(`[Checkout] Failed to load image: ${item.image}`);
+                            const img = e.target as HTMLImageElement;
+                            img.style.display = 'none';
+                          }}
+                          onLoad={() => {
+                            console.log(`[Checkout] ✅ Image loaded: ${item.image}`);
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-600">
+                          <span className="text-xs">No image</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Item Details */}
                     <div className="flex-1">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 mb-1">
                         <div
                           className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap ${
                             item.mode === "rent" ? "bg-purple-100 text-purple-700" : "bg-green-100 text-green-700"
@@ -190,24 +213,24 @@ export default function CheckoutContent({
                         >
                           {item.mode === "rent" ? "🔄 Rental" : "🛍️ Buy"}
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-900">{item.name}</p>
-                          <p className="text-xs text-gray-500">Quantity: {item.quantity}</p>
-                        </div>
                       </div>
+                      <p className="font-semibold text-gray-900">{item.name}</p>
+                      <p className="text-xs text-gray-500">Quantity: {item.quantity}</p>
+                      {item.size && <p className="text-xs text-gray-500">Size: {item.size}</p>}
                     </div>
-                    <div className="text-right ml-4">
+                    {/* Price */}
+                    <div className="text-right">
                       {item.mode === "rent" ? (
                         <>
                           <p className="font-bold text-gray-900">₦{(item.price * item.quantity * (rentalSchedule?.rentalDays || 1)).toLocaleString()}</p>
                           <p className="text-xs text-gray-500">
-                            ₦{item.price.toLocaleString()} × {item.quantity} qty × {rentalSchedule?.rentalDays || 1} days
+                            ₦{item.price.toLocaleString()} × {item.quantity} × {rentalSchedule?.rentalDays || 1}d
                           </p>
                         </>
                       ) : (
                         <>
                           <p className="font-bold text-gray-900">₦{(item.price * item.quantity).toLocaleString()}</p>
-                          <p className="text-xs text-gray-500">₦{item.price.toLocaleString()} each</p>
+                          <p className="text-xs text-gray-500">₦{item.price.toLocaleString()} ea</p>
                         </>
                       )}
                     </div>
@@ -231,25 +254,56 @@ export default function CheckoutContent({
               </div>
 
               <div className="grid md:grid-cols-3 gap-8">
-                {/* Image Section - Main Picture Only */}
+                {/* Image Section - All Design Images */}
                 <div className="md:col-span-1">
-                  <div className="bg-gray-100 rounded-xl overflow-hidden">
-                    {customOrderDetails.designUrl || customOrderDetails.designUrls?.[0] ? (
-                      <img
-                        src={customOrderDetails.designUrl || customOrderDetails.designUrls?.[0]}
-                        alt={customOrderDetails.description}
-                        className="w-full h-64 object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-64 flex items-center justify-center bg-gray-200 text-gray-500">
-                        <div className="text-center">
-                          <ShoppingBag className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-                          <p className="text-sm">No image available</p>
-                        </div>
+                  {customOrderDetails.designUrl || customOrderDetails.designUrls?.[0] ? (
+                    <div className="space-y-3">
+                      {/* Main Image */}
+                      <div className="bg-gray-100 rounded-xl overflow-hidden shadow-sm">
+                        <img
+                          src={customOrderDetails.designUrl || customOrderDetails.designUrls?.[0]}
+                          alt={customOrderDetails.description}
+                          className="w-full h-64 object-cover"
+                          onError={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            img.style.display = 'none';
+                          }}
+                        />
                       </div>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-2 text-center">Main design image</p>
+                      
+                      {/* Additional Images Gallery */}
+                      {customOrderDetails.designUrls && customOrderDetails.designUrls.length > 1 && (
+                        <div>
+                          <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">All Designs ({customOrderDetails.designUrls.length})</p>
+                          <div className="grid grid-cols-3 gap-2 overflow-y-auto max-h-48">
+                            {customOrderDetails.designUrls.map((imageUrl, idx) => (
+                              <div
+                                key={idx}
+                                className="bg-gray-100 rounded-lg overflow-hidden border border-gray-300 hover:border-lime-500 transition cursor-pointer aspect-square"
+                              >
+                                <img
+                                  src={imageUrl}
+                                  alt={`Design ${idx + 1}`}
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    const img = e.target as HTMLImageElement;
+                                    img.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="w-full h-64 flex items-center justify-center bg-gray-200 text-gray-500 rounded-xl">
+                      <div className="text-center">
+                        <ShoppingBag className="h-12 w-12 mx-auto mb-2 text-gray-400" />
+                        <p className="text-sm">No image available</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Details Section */}

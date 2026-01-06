@@ -29,9 +29,10 @@ export async function POST(request: NextRequest) {
       productId: item.productId || item.id || `PROD-${Date.now()}`,
       name: item.name || 'Product',
       quantity: item.quantity || 1,
-      price: item.price || 0,
+      price: item.price || item.unitPrice || 0,
       mode: item.mode || 'buy',
       rentalDays: item.rentalDays || 0,
+      imageUrl: item.imageUrl || item.image || undefined, // Preserve image from cart if present
     }));
 
     // Calculate VAT (7.5% of subtotal)
@@ -433,7 +434,7 @@ async function populateOrderImages(order: any) {
   }
 
   try {
-    // Get unique product IDs
+    // Get unique product IDs that don't already have imageUrl
     const productIds = order.items
       .map((item: any) => item.productId)
       .filter((id: string) => id && !order.items.find((item: any) => item.imageUrl && item.productId === id));
@@ -446,7 +447,7 @@ async function populateOrderImages(order: any) {
     const products = await Product.find({ _id: { $in: productIds } }).select('_id imageUrl');
     const productMap = new Map(products.map((p: any) => [p._id.toString(), p.imageUrl]));
 
-    // Add imageUrl to items
+    // Add imageUrl to items (only if they don't already have it)
     order.items = order.items.map((item: any) => ({
       ...item,
       imageUrl: item.imageUrl || productMap.get(item.productId?.toString()),
@@ -486,7 +487,7 @@ async function populateOrdersImages(orders: any[]) {
     const products = await Product.find({ _id: { $in: Array.from(productIdsToFetch) } }).select('_id imageUrl');
     const productMap = new Map(products.map((p: any) => [p._id.toString(), p.imageUrl]));
 
-    // Add imageUrl to items in all orders
+    // Add imageUrl to items in all orders (only if they don't already have it)
     return orders.map((order: any) => ({
       ...order,
       items: (order.items || []).map((item: any) => ({

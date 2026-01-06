@@ -14,7 +14,7 @@ export function ApprovedOrderCard({ order, onChatClick, onStartProduction }: App
     <div className="bg-gradient-to-br from-white to-slate-50 rounded-2xl border-2 border-blue-200 overflow-hidden shadow-md hover:shadow-xl hover:border-blue-300 transition-all">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-cyan-600 p-5 text-white">
-        <h3 className="font-bold text-lg">{order.fullName}</h3>
+        <h3 className="font-bold text-lg">{order.fullName || `${order.firstName || ''} ${order.lastName || ''}`.trim() || 'Customer'}</h3>
         <p className="text-sm text-blue-100 mt-1">{order.city || 'Location not set'}</p>
       </div>
 
@@ -32,6 +32,73 @@ export function ApprovedOrderCard({ order, onChatClick, onStartProduction }: App
           </div>
         </div>
 
+        {/* What They're Buying */}
+        <div className="bg-white rounded-lg p-3 border-2 border-blue-200">
+          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">What They're Buying</p>
+          {order.items && order.items.length > 0 ? (
+            <div className="space-y-2">
+              {order.items.map((item: any, idx: number) => (
+                <div key={idx} className="flex gap-3 bg-blue-50 rounded-lg p-2 border border-blue-200">
+                  {/* Product Image */}
+                  <div className="relative aspect-square bg-gray-100 rounded border border-blue-300 overflow-hidden flex-shrink-0 w-16 h-16">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          img.style.display = 'none';
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                        <span className="text-xs text-gray-600">No Image</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* Product Details */}
+                  <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
+                    <h4 className="font-bold text-base text-gray-900 truncate">{item.name || item.productName || 'Product'}</h4>
+                    <div className="flex gap-2 items-center text-xs">
+                      <span className="text-gray-600">Qty: {item.quantity || 1}</span>
+                      {item.price && <span className="font-semibold text-blue-700">₦{(item.price).toLocaleString('en-NG')}</span>}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-2">
+              <h4 className="font-bold text-base text-gray-900">{order.costumeType || order.description || 'Custom Order'}</h4>
+              {/* Design Images for Custom Orders */}
+              {(order.designUrls && order.designUrls.length > 0) && (
+                <div className="mt-2">
+                  <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Design Images</p>
+                  <div className="grid grid-cols-3 gap-2">
+                    {order.designUrls.map((img: string, idx: number) => (
+                      <div
+                        key={idx}
+                        className="relative aspect-square bg-gray-100 rounded border border-blue-300 overflow-hidden"
+                      >
+                        <img
+                          src={img}
+                          alt={`Design ${idx + 1}`}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            img.style.display = 'none';
+                          }}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {/* Product ID */}
         {order.productId && (
           <div className="bg-blue-50 rounded-lg p-3 border border-blue-200">
@@ -47,7 +114,8 @@ export function ApprovedOrderCard({ order, onChatClick, onStartProduction }: App
               <p className="text-xs font-semibold text-gray-600 uppercase">Design Images</p>
               <button
                 onClick={() => {
-                  (order.designUrls || []).forEach((img, idx) => {
+                  const allImages = [...(order.designUrls || [])];
+                  allImages.forEach((img, idx) => {
                     const xhr = new XMLHttpRequest();
                     xhr.responseType = 'blob';
                     xhr.open('GET', img, true);
@@ -88,23 +156,22 @@ export function ApprovedOrderCard({ order, onChatClick, onStartProduction }: App
         {/* Stats - 3 column grid */}
         <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-200">
           <div className="bg-blue-50 rounded-lg p-2 text-center border border-blue-200">
-            <p className="text-2xl font-bold text-blue-700">{order.quantity || '—'}</p>
+            <p className="text-2xl font-bold text-blue-700">{order.quantity || order.quantityOfPieces || '—'}</p>
             <p className="text-xs text-blue-600 font-medium">Quantity</p>
           </div>
           <div className="bg-green-50 rounded-lg p-2 text-center border border-green-200">
             <p className="text-lg font-bold text-green-700">
-              ₦{order.quotedPrice ? (
-                order.quotedPrice < 1000000 
-                  ? (order.quotedPrice / 1000) + 'K'
-                  : (order.quotedPrice / 1000000) + 'M'
-              ) : 'Pending'}
+              {(() => {
+                const price = order.quotedPrice || order.price || 0;
+                return price ? `₦${price < 1000000 ? (price / 1000).toFixed(0) + 'K' : (price / 1000000).toFixed(1) + 'M'}` : '—';
+              })()}
             </p>
             <p className="text-xs text-green-600 font-medium">💚 Paid</p>
           </div>
           {order.deliveryDate && (
             <div className="bg-emerald-50 rounded-lg p-2 text-center border border-emerald-200">
               <p className="text-xs font-bold text-emerald-700">{new Date(order.deliveryDate).toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: '2-digit' })}</p>
-              <p className="text-xs text-emerald-600 font-medium">✓ Agreed</p>
+              <p className="text-xs text-emerald-600 font-medium">✓ Delivery</p>
             </div>
           )}
         </div>

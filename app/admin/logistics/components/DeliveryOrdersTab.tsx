@@ -191,48 +191,73 @@ export function DeliveryOrdersTab({
                 </div>
               ) : null}
 
-              {/* Order Details Grid */}
-              <div className="px-4 py-3 border-b border-gray-100 grid grid-cols-3 gap-2">
-                <div className="bg-blue-50 rounded p-2 border border-blue-200">
-                  <p className="text-xs font-semibold text-gray-600">Qty</p>
-                  <p className="text-sm font-bold text-blue-700 mt-0.5">
-                    {order.quantity || (order.items?.reduce((sum: number, item: any) => sum + item.quantity, 0) ?? 0)}
-                  </p>
-                </div>
-                <div className="bg-blue-50 rounded p-2 border border-blue-200">
-                  <p className="text-xs font-semibold text-gray-600">Type</p>
-                  <p className="text-xs font-bold text-blue-700 mt-0.5">🚚 Delivery</p>
-                </div>
-                <div className="bg-blue-50 rounded p-2 border border-blue-200">
-                  <p className="text-xs font-semibold text-gray-600">Status</p>
-                  <p className="text-xs font-bold text-blue-700 mt-0.5">{deliverySubTab.toUpperCase()}</p>
-                </div>
-              </div>
 
-              {/* Description */}
-              <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Description</p>
-                <p className="text-xs text-gray-900 line-clamp-3">{order.description}</p>
-              </div>
 
-              {/* Product Images */}
-              {(() => {
-                const customImages = (order.images || order.designUrls || []);
-                const itemImages = order.items?.map((item: any) => item.imageUrl).filter(Boolean) || [];
-                const allImages = [...customImages, ...itemImages];
-                return allImages.length > 0 ? (
-                  <div className="px-4 py-3 border-b border-gray-100">
-                    <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Images</p>
-                    <div className="grid grid-cols-3 gap-2">
-                      {allImages.slice(0, 3).map((img, idx) => (
-                        <div key={idx} className="relative aspect-square bg-gray-100 rounded-lg border border-gray-300 overflow-hidden hover:border-blue-500 transition cursor-pointer">
-                          <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+              {/* What They're Ordering */}
+              {order.items && order.items.length > 0 ? (
+                <div className="px-4 py-3 border-b border-gray-100 space-y-2">
+                  <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Items</p>
+                  {order.items.map((item: any, idx: number) => (
+                    <div key={idx} className="flex gap-3 bg-blue-50 rounded-lg p-2 border border-blue-200">
+                      {/* Product Image */}
+                      <div className="relative aspect-square bg-gray-100 rounded border border-blue-300 overflow-hidden flex-shrink-0 w-16 h-16">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              img.style.display = 'none';
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                            <span className="text-xs text-gray-600">No Image</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Product Details */}
+                      <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
+                        <h4 className="font-bold text-sm text-gray-900 truncate">{item.name || item.productName || 'Product'}</h4>
+                        <div className="flex gap-2 items-center text-xs">
+                          <span className="text-gray-600">Qty: {item.quantity || 1}</span>
+                          {item.price && <span className="font-semibold text-blue-700">₦{(item.price).toLocaleString('en-NG')}</span>}
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  </div>
-                ) : null;
-              })()}
+                  ))}
+                </div>
+              ) : (
+                <div className="px-4 py-3 border-b border-gray-100">
+                  <p className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Description</p>
+                  <p className="text-xs text-gray-900 line-clamp-3">{order.description}</p>
+                  {/* Design Images for Custom Orders */}
+                  {(order.designUrls && order.designUrls.length > 0) && (
+                    <div className="mt-3">
+                      <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Design Images</p>
+                      <div className="grid grid-cols-3 gap-2">
+                        {order.designUrls.map((img: string, idx: number) => (
+                          <div
+                            key={idx}
+                            className="relative aspect-square bg-gray-100 rounded border border-blue-300 overflow-hidden"
+                          >
+                            <img
+                              src={img}
+                              alt={`Design ${idx + 1}`}
+                              className="w-full h-full object-cover"
+                              onError={(e) => {
+                                const img = e.target as HTMLImageElement;
+                                img.style.display = 'none';
+                              }}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Timeline */}
               {order.updatedAt && (

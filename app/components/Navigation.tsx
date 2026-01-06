@@ -159,7 +159,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
     <>
       {/* Main Header Container with Hide-on-Scroll */}
       <div 
-        className={`fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out ${
+        className={`md:fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out md:${
           headerVisible ? 'translate-y-0' : '-translate-y-full'
         }`}
         style={{ boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}

@@ -763,8 +763,38 @@ export function ChatModal({
           errorText: error,
           orderId: effectiveOrderId,
           orderNumber: order.orderNumber,
+          orderIdType: typeof effectiveOrderId,
         });
-        throw new Error(`Failed to send quote: ${response.status} - ${error}`);
+        
+        // Try with orderNumber if orderId fails
+        if (response.status === 404) {
+          console.log('[ChatModal] 🔄 Retrying with orderNumber instead of orderId...');
+          const retryResponse = await fetch('/api/messages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderNumber: order.orderNumber, // Use orderNumber instead of orderId
+              senderEmail: userEmail,
+              senderName: userName || 'Logistics Team',
+              senderType: 'admin',
+              content: JSON.stringify(quoteData),
+              messageType: 'quote',
+              recipientType: 'all',
+            }),
+          });
+          
+          if (!retryResponse.ok) {
+            const retryError = await retryResponse.text();
+            console.error('[ChatModal] ❌ Retry also failed:', retryError);
+            throw new Error(`Failed to send quote: ${retryResponse.status} - ${retryError}`);
+          }
+          
+          console.log('[ChatModal] ✅ Quote sent successfully on retry');
+        } else {
+          throw new Error(`Failed to send quote: ${response.status} - ${error}`);
+        }
+      } else {
+        console.log('[ChatModal] ✅ Quote sent successfully');
       }
 
       // Reset form

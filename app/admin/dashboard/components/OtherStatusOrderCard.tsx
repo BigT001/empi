@@ -123,25 +123,74 @@ export function OtherStatusOrderCard({
         <div className="h-full flex flex-col">
           {/* Header */}
           <div className="bg-gradient-to-r from-yellow-500 to-amber-500 rounded-lg p-4 text-white mb-3 flex-shrink-0">
-            <h3 className="font-bold text-lg">{order.fullName || order.costumeName}</h3>
+            <h3 className="font-bold text-lg">{order.fullName || `${order.firstName || ''} ${order.lastName || ''}`.trim() || order.costumeName || 'Customer'}</h3>
             <p className="text-sm text-yellow-100">{order.email || order.customerEmail}</p>
           </div>
 
-          {/* Product Name Section */}
+          {/* Product Name & Images Section */}
           <div className="bg-white rounded-lg p-3 border-2 border-yellow-200 mb-3 flex-shrink-0">
-            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">What They're Buying</p>
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">What They're Buying</p>
             {order.items && order.items.length > 0 ? (
               <div className="space-y-2">
                 {order.items.map((item: any, idx: number) => (
-                  <div key={idx} className="border-b border-yellow-100 pb-2 last:border-b-0 last:pb-0">
-                    <h4 className="font-bold text-base text-gray-900">{item.name || item.productName || 'Product'}</h4>
-                    {item.quantity && <p className="text-xs text-gray-600">Qty: {item.quantity}</p>}
-                    {item.price && <p className="text-xs font-semibold text-amber-700">₦{(item.price).toLocaleString('en-NG')}</p>}
+                  <div key={idx} className="flex gap-3 bg-yellow-50 rounded-lg p-2 border border-yellow-200">
+                    {/* Product Image */}
+                    <div className="relative aspect-square bg-gray-100 rounded border border-yellow-300 overflow-hidden flex-shrink-0 w-16 h-16">
+                      {item.imageUrl ? (
+                        <img
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const img = e.target as HTMLImageElement;
+                            img.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                          <span className="text-xs text-gray-600">No Image</span>
+                        </div>
+                      )}
+                    </div>
+                    {/* Product Details */}
+                    <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
+                      <h4 className="font-bold text-base text-gray-900 truncate">{item.name || item.productName || 'Product'}</h4>
+                      <div className="flex gap-2 items-center text-xs">
+                        <span className="text-gray-600">Qty: {item.quantity || 1}</span>
+                        {item.price && <span className="font-semibold text-amber-700">₦{(item.price).toLocaleString('en-NG')}</span>}
+                      </div>
+                    </div>
                   </div>
                 ))}
               </div>
             ) : (
-              <h4 className="font-bold text-base text-gray-900">{order.costumeType || order.description || 'Custom Order'}</h4>
+              <div className="space-y-2">
+                <h4 className="font-bold text-base text-gray-900">{order.costumeType || order.description || 'Custom Order'}</h4>
+                {/* Design Images for Custom Orders */}
+                {(order.designUrls && order.designUrls.length > 0) && (
+                  <div className="mt-2">
+                    <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Design Images</p>
+                    <div className="grid grid-cols-3 gap-2">
+                      {order.designUrls.map((img: string, idx: number) => (
+                        <div
+                          key={idx}
+                          className="relative aspect-square bg-gray-100 rounded border border-yellow-300 overflow-hidden"
+                        >
+                          <img
+                            src={img}
+                            alt={`Design ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              const img = e.target as HTMLImageElement;
+                              img.style.display = 'none';
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             )}
           </div>
 
@@ -185,11 +234,11 @@ export function OtherStatusOrderCard({
                 </button>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                {(order.images || order.designUrls || []).slice(0, 6).map((img, idx) => (
+                {(order.designUrls || []).slice(0, 6).map((img, idx) => (
                   <div key={idx} className="relative aspect-square bg-gray-100 rounded border border-yellow-300 overflow-hidden cursor-pointer hover:border-yellow-500 transition"
                     onClick={onImageClick}
                   >
-                    <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                    <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = ''; }} />
                   </div>
                 ))}
               </div>

@@ -28,9 +28,11 @@ interface CustomOrder {
   state?: string;
   zipCode?: string;
   description?: string;
+  costumeType?: string;
   designUrl?: string;
   designUrls?: string[];
   quantity?: number;
+  quantityOfPieces?: number;
   deliveryDate?: string;
   productionStartedAt?: string;
   status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected" | "awaiting_payment" | "payment_confirmed" | "cancelled";
@@ -151,12 +153,25 @@ export function CustomOrdersPanel() {
       
       if (!response.ok) throw new Error(data.message || "Failed to fetch custom orders");
       
-      // DEBUG: Log payment status for pending orders
+      // DEBUG: Log detailed order info
       if (data.orders && Array.isArray(data.orders)) {
-        const pendingOrders = data.orders.filter((o: any) => o.status === 'pending');
-        console.log("[CustomOrdersPanel] 📋 Pending orders received:", pendingOrders.length);
-        pendingOrders.forEach((order: any) => {
-          console.log(`[CustomOrdersPanel] Order ${order.orderNumber}: paymentVerified = ${order.paymentVerified}`);
+        console.log("[CustomOrdersPanel] 📋 Total orders received:", data.orders.length);
+        data.orders.forEach((order: any, idx: number) => {
+          console.log(`[CustomOrdersPanel] Order ${idx + 1}:`, {
+            orderNumber: order.orderNumber,
+            email: order.email,
+            fullName: order.fullName,
+            status: order.status,
+            quantity: order.quantity,
+            quantityOfPieces: order.quantityOfPieces,
+            quotedPrice: order.quotedPrice,
+            price: order.price,
+            designUrls: order.designUrls?.length || 0,
+            images: order.images?.length || 0,
+            description: order.description,
+            costumeType: order.costumeType,
+            paymentVerified: order.paymentVerified
+          });
         });
       }
       

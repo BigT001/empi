@@ -1,9 +1,14 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { Truck, Phone, Send, X, Package, MessageSquare, Zap, Calendar, Clock, Loader2, Check, Trash2 } from "lucide-react";
+import { Truck, Loader2, Package, Phone, MessageSquare, Send, Check } from "lucide-react";
 import { ChatModal } from "@/app/components/ChatModal";
 import MobileAdminLayout from "../mobile-layout";
+import { DeliveryOrdersTab } from "./components/DeliveryOrdersTab";
+import { PickupOrdersTab } from "./components/PickupOrdersTab";
+import { CompletedOrdersTab } from "./components/CompletedOrdersTab";
+import { SettingsPanel } from "./components/SettingsPanel";
+import { TabNavigation } from "./components/TabNavigation";
 
 interface LogisticsOrder {
   _id: string;
@@ -12,14 +17,14 @@ interface LogisticsOrder {
   email: string;
   phone: string;
   address?: string;
-  busStop?: string;
   city: string;
   state?: string;
-  description: string;
+  description?: string;
   quantity: number;
   status: string;
   deliveryDate?: string;
   createdAt: string;
+  updatedAt: string;
   deliveryOption?: 'pickup' | 'delivery';
   shippingType?: 'self' | 'empi' | 'standard';
   currentHandler?: 'production' | 'logistics';
@@ -27,31 +32,25 @@ interface LogisticsOrder {
   images?: string[];
   designUrls?: string[];
   productId?: string;
-}
-
-interface Message {
-  _id: string;
-  orderId: string;
-  senderEmail: string;
-  senderName: string;
-  senderType: 'admin' | 'customer' | 'system';
-  content: string;
-  messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update';
-  isRead: boolean;
-  createdAt: string;
+  paymentConfirmedAt?: string;
+  _isCustomOrder?: boolean;
 }
 
 export default function LogisticsPage() {
   const [orders, setOrders] = useState<LogisticsOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'pickup' | 'delivery' | 'completed'>('delivery');
-  const [deliverySubTab, setDeliverySubTab] = useState<'pending' | 'in-progress' | 'delivered'>('pending');
+  const [activeTab, setActiveTab] = useState<'delivery' | 'pickup' | 'completed' | 'settings'>('delivery');
+  const [deliverySubTab, setDeliverySubTab] = useState<'pending' | 'approved' | 'in-progress' | 'delivered'>('pending');
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const isFetchingRef = useRef(false);
   
+  // Settings state
+  const [paymentCards, setPaymentCards] = useState<{_id: string; bankName: string; accountNumber: string; accountHolderName: string; active: boolean; createdAt: string}[]>([]);
+  
   // ChatModal state
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
+  const [selectedOrderForChat, setSelectedOrderForChat] = useState<LogisticsOrder | null>(null);
   
   // Quote modal state
   const [quoteModalOrder, setQuoteModalOrder] = useState<LogisticsOrder | null>(null);
@@ -93,23 +92,136 @@ export default function LogisticsPage() {
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  const joinConversation = async (order: LogisticsOrder) => {
+  // Load payment cards settings
+  const loadPaymentCards = async () => {
     try {
-      const response = await fetch('/api/orders/handoff', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          orderId: order._id,
-          orderNumber: order.orderNumber,
-        }),
-      });
-
-      if (response.ok) {
-        // Open ChatModal after successful handoff
-        setChatModalOpen(order._id);
+      const res = await fetch('/api/logistics/payment-settings');
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentCards(data.paymentCards || []);
       }
     } catch (error) {
-      console.error('Error joining conversation:', error);
+      console.error('Error loading payment settings:', error);
+    }
+  };
+
+  const handleAddPaymentCard = async (cardData: { bankName: string; accountNumber: string; accountHolderName: string }) => {
+    try {
+      const res = await fetch('/api/logistics/payment-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cardData),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentCards(data.paymentCards || []);
+      } else {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to save payment card');
+      }
+    } catch (error) {
+      console.error('Error adding payment card:', error);
+    }
+  };
+
+  const handleDeletePaymentCard = async (cardId: string) => {
+    try {
+      const res = await fetch(`/api/logistics/payment-settings?cardId=${cardId}`, {
+        method: 'DELETE',
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentCards(data.paymentCards || []);
+      } else {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to delete payment card');
+      }
+    } catch (error) {
+      console.error('Error deleting payment card:', error);
+      throw error;
+    }
+  };
+
+  const handleSetActivePaymentCard = async (cardId: string) => {
+    try {
+      const res = await fetch('/api/logistics/payment-settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cardId, active: true }),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setPaymentCards(data.paymentCards || []);
+      } else {
+        throw new Error('Failed to update card');
+      }
+    } catch (error) {
+      console.error('Error updating card:', error);
+      throw error;
+    }
+  };
+
+  const joinConversation = async (order: LogisticsOrder) => {
+    try {
+      console.log('[Logistics] 💬 Opening chat for order:', {
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        fullName: order.fullName,
+        isCustomOrder: (order as unknown as { _isCustomOrder?: boolean })._isCustomOrder,
+      });
+      
+      // Check if this is a custom order (supports handoff) or regular order
+      const isCustomOrder = (order as unknown as { _isCustomOrder?: boolean })._isCustomOrder;
+      
+      if (isCustomOrder) {
+        // Custom orders support handoff API
+        const response = await fetch('/api/orders/handoff', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+          }),
+        });
+
+        console.log('[Logistics] Handoff response status:', response.status);
+        
+        if (!response.ok) {
+          let errorData = {};
+          try {
+            errorData = await response.json();
+          } catch {
+            console.warn('[Logistics] Could not parse error response as JSON');
+          }
+          
+          const errorMessage = (errorData as unknown as { message?: string; error?: string })?.message || (errorData as unknown as { message?: string; error?: string })?.error || 'Failed to hand off order';
+          console.error('[Logistics] ❌ Handoff failed:', {
+            status: response.status,
+            message: errorMessage,
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+          });
+        } else {
+          const data = await response.json();
+          console.log('[Logistics] ✅ Handoff successful:', data);
+        }
+      } else {
+        // Regular orders don't support handoff
+        console.log('[Logistics] ℹ️ Regular order - no handoff needed');
+      }
+      
+      // Open chat for both custom and regular orders
+      setSelectedOrderForChat(order);
+      setChatModalOpen(order._id);
+      console.log('[Logistics] 🔓 Chat modal opened for order:', order._id);
+    } catch (error) {
+      console.error('[Logistics] ❌ Error joining conversation:', error);
+      // Still try to open chat on error
+      setSelectedOrderForChat(order);
+      setChatModalOpen(order._id);
     }
   };
 
@@ -172,12 +284,17 @@ export default function LogisticsPage() {
     try {
       const isDeliveryCompletion = paymentConfirmModalOrder.status === 'in-progress';
       
+      // Determine if this is a custom order or regular order
+      const isCustomOrder = !!paymentConfirmModalOrder.deliveryOption;
+      const endpoint = isCustomOrder ? '/api/custom-orders' : '/api/orders';
+      
       console.log('[Logistics] Processing:', isDeliveryCompletion ? 'Delivery completion' : 'Payment confirmation', 'for order:', paymentConfirmModalOrder.orderNumber);
+      console.log('[Logistics] Order type:', isCustomOrder ? 'Custom Order' : 'Regular Order');
       
       // If this is a delivery completion (in-progress order and Yes is selected)
       if (isDeliveryCompletion && paymentReceived === true) {
         console.log('[Logistics] 📦 Marking order as completed for order ID:', paymentConfirmModalOrder._id);
-        const updateResponse = await fetch(`/api/custom-orders/${paymentConfirmModalOrder._id}`, {
+        const updateResponse = await fetch(`${endpoint}/${paymentConfirmModalOrder._id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -189,48 +306,7 @@ export default function LogisticsPage() {
         
         if (updateResponse.ok) {
           console.log('[Logistics] ✅ Order marked as completed:', updateData);
-          
-          // Send automatic thank you message to buyer
-          try {
-            await fetch('/api/messages', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                orderId: paymentConfirmModalOrder._id,
-                orderNumber: paymentConfirmModalOrder.orderNumber,
-                senderEmail: 'admin@empi.com',
-                senderName: 'Empi Costumes',
-                senderType: 'admin',
-                content: '🎉 Thank you for your order! Your delivery has been completed successfully. We appreciate your business and hope you are satisfied with your purchase!',
-                messageType: 'text',
-              }),
-            });
-            console.log('[Logistics] ✅ Thank you message sent automatically');
-          } catch (thankYouError) {
-            console.error('[Logistics] ⚠️ Failed to send thank you message:', thankYouError);
-          }
-
-          // Send automatic review form request to buyer
-          try {
-            await fetch('/api/messages', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                orderId: paymentConfirmModalOrder._id,
-                orderNumber: paymentConfirmModalOrder.orderNumber,
-                senderEmail: 'admin@empi.com',
-                senderName: 'Empi Costumes',
-                senderType: 'admin',
-                content: '⭐ Please take a moment to review your order and share your experience with us. Your feedback helps us improve our service!',
-                messageType: 'text',
-              }),
-            });
-            console.log('[Logistics] ✅ Review form request sent automatically');
-          } catch (reviewError) {
-            console.error('[Logistics] ⚠️ Failed to send review request:', reviewError);
-          }
-
-          alert('✅ Delivery confirmed! Order moved to Delivered tab. Thank you message and review request sent automatically.');
+          alert('✅ Delivery confirmed! Order moved to Delivered tab.');
           setPaymentConfirmModalOrder(null);
           setPaymentReceived(false);
           fetchLogisticsOrders();
@@ -248,8 +324,8 @@ export default function LogisticsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          orderId: paymentConfirmModalOrder._id,
-          orderNumber: paymentConfirmModalOrder.orderNumber,
+          orderNumber: paymentConfirmModalOrder.orderNumber, // Use orderNumber as primary identifier
+          orderId: paymentConfirmModalOrder._id, // Include orderId as backup
           senderEmail: 'logistics@empi.com',
           senderName: 'Logistics Team',
           senderType: 'admin',
@@ -261,85 +337,43 @@ export default function LogisticsPage() {
         }),
       });
 
-      if (response.ok) {
-        console.log('[Logistics] ✅ Payment confirmation sent');
-        
-        // If payment is confirmed, update order status to "in-progress" for EMPI logistics
-        if (paymentReceived) {
-          try {
-            console.log('[Logistics] 📦 Updating order status to in-progress for order ID:', paymentConfirmModalOrder._id);
-            const updateResponse = await fetch(`/api/custom-orders/${paymentConfirmModalOrder._id}`, {
-              method: 'PATCH',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                status: 'in-progress'
-              }),
-            });
-
-            const updateData = await updateResponse.json();
-            
-            if (updateResponse.ok) {
-              console.log('[Logistics] ✅ Order status updated to in-progress:', updateData);
-              console.log('[Logistics] Updated order:', updateData.order);
-            } else {
-              console.error('[Logistics] ⚠️ Failed to update order status. Status:', updateResponse.status);
-              console.error('[Logistics] Response:', updateData);
-            }
-          } catch (statusError) {
-            console.error('[Logistics] Error updating order status:', statusError);
-          }
-        }
-        
-        alert(paymentReceived ? 'Payment confirmed! Customer notified.' : 'Pending notification sent to customer.');
-        setPaymentConfirmModalOrder(null);
-        setPaymentReceived(false);
-        // Refresh orders
-        fetchLogisticsOrders();
-      } else {
-        const errorData = await response.json();
-        console.error('[Logistics] ❌ Failed to send confirmation:', errorData);
-        alert('Failed to send confirmation. Please try again.');
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[Logistics] ❌ Failed to send message:', {
+          status: response.status,
+          error: errorText,
+          orderId: paymentConfirmModalOrder._id,
+          orderNumber: paymentConfirmModalOrder.orderNumber,
+        });
+        alert(`Failed to send confirmation: ${errorText}`);
+        throw new Error(`Failed to send confirmation: ${response.status}`);
       }
+      
+      console.log('[Logistics] ✅ Payment confirmation sent');
+      
+      // Close modal first
+      setPaymentConfirmModalOrder(null);
+      setPaymentReceived(false);
+      
+      // Show success message
+      alert(paymentReceived ? 'Payment confirmed! Customer notified.' : 'Pending notification sent to customer.');
+      
+      // If payment was confirmed, switch to "In Progress" tab to show the updated order
+      if (paymentReceived && activeTab === 'delivery') {
+        setDeliverySubTab('in-progress');
+      }
+      
+      // Add a small delay before refreshing to ensure backend has processed the message
+      console.log('[Logistics] ⏳ Waiting 500ms before refreshing orders...');
+      setTimeout(() => {
+        console.log('[Logistics] 🔄 Refreshing orders after payment confirmation');
+        fetchLogisticsOrders();
+      }, 500);
     } catch (error) {
       console.error('[Logistics] Error confirming payment:', error);
       alert('Error confirming payment. Please try again.');
     } finally {
       setConfirmingPayment(false);
-    }
-  };
-
-  const deleteOrder = async (orderId: string) => {
-    if (!confirm('Are you sure you want to delete this order? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      // Try to delete from custom orders first
-      let response = await fetch(`/api/custom-orders/${orderId}`, {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-      });
-
-      // If not found in custom orders, try regular orders
-      if (response.status === 404) {
-        response = await fetch(`/api/orders/${orderId}`, {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-
-      if (response.ok) {
-        alert('✅ Order deleted successfully!');
-        fetchLogisticsOrders();
-      } else {
-        const errorData = await response.json();
-        console.error('Error deleting order:', errorData);
-        const errorMsg = errorData.message || errorData.error || 'Unknown error';
-        alert(`Failed to delete order: ${errorMsg}`);
-      }
-    } catch (error) {
-      console.error('Error deleting order:', error);
-      alert(`Error deleting order: ${error instanceof Error ? error.message : 'Network error'}`);
     }
   };
 
@@ -351,6 +385,7 @@ export default function LogisticsPage() {
     
     try {
       // Fetch both custom orders and regular orders
+      // Regular orders use shippingType (self/empi) while custom orders use deliveryOption (pickup/delivery)
       const [customOrdersRes, regularOrdersRes] = await Promise.all([
         fetch('/api/custom-orders'),
         fetch('/api/orders')
@@ -366,32 +401,30 @@ export default function LogisticsPage() {
       const customOrdersList = (customData.orders || customData.data) || [];
       const regularOrdersList = regularData.orders || [];
       
-      // Combine both lists and deduplicate by _id
-      let allOrders = [...customOrdersList, ...regularOrdersList];
+      // Deduplicate orders - keep track of IDs we've seen
       const seenIds = new Set<string>();
-      const deduplicatedOrders = allOrders.filter((order: any) => {
-        if (seenIds.has(order._id)) {
-          console.log(`[Logistics] ⚠️ Duplicate order ID found: ${order._id}, skipping`);
-          return false;
+      const allOrders: (LogisticsOrder & { _isCustomOrder?: boolean })[] = [];
+      
+      // Add custom orders first
+      customOrdersList.forEach((o: LogisticsOrder) => {
+        if (!seenIds.has(o._id)) {
+          seenIds.add(o._id);
+          allOrders.push({ ...o, _isCustomOrder: true });
         }
-        seenIds.add(order._id);
-        return true;
       });
       
-      console.log(`[Logistics] 📦 Fetched: ${customOrdersList.length} custom orders, ${regularOrdersList.length} regular orders, deduplicated to: ${deduplicatedOrders.length}`);
-      
-      // Ensure all orders have a fullName field
-      const ordersWithFullNames = deduplicatedOrders.map((order: any) => {
-        const name = order.fullName || `${order.firstName || ''} ${order.lastName || ''}`.trim() || order.buyerName || order.email || `Order #${order.orderNumber}`;
-        console.log(`📦 Order ${order.orderNumber}: fullName="${order.fullName}", firstName="${order.firstName}", lastName="${order.lastName}" -> final="${name}"`);
-        return {
-          ...order,
-          fullName: name
-        };
+      // Add regular orders, skipping any already added
+      regularOrdersList.forEach((o: LogisticsOrder) => {
+        if (!seenIds.has(o._id)) {
+          seenIds.add(o._id);
+          allOrders.push({ ...o, _isCustomOrder: false });
+        }
       });
+      
+      console.log('📦 Fetched:', customOrdersList.length, 'custom orders,', regularOrdersList.length, 'regular orders, deduplicated to', allOrders.length);
       
       // Show all orders regardless of status for logistics to manage
-      const logisticsOrders = ordersWithFullNames.filter((order: any) => 
+      const logisticsOrders = allOrders.filter((order: LogisticsOrder & { _isCustomOrder?: boolean }) => 
         order._id // Just check if order exists
       );
       
@@ -410,23 +443,29 @@ export default function LogisticsPage() {
     }
   };
 
-  const pendingHandoff = orders.filter(o => o.status === 'ready' && o.currentHandler !== 'logistics');
-  
   // Show orders that have a delivery option selected (pickup or delivery)
-  // Exclude only rejected and pending statuses
+  // Exclude only rejected and cancelled statuses
   // This way orders appear in logistics once customer selects their delivery preference
   // Handle both custom orders (deliveryOption) and regular orders (shippingType)
-  const validOrders = orders.filter((o: any) => {
+  const validOrders = orders.filter((o: LogisticsOrder) => {
     const isCustomOrder = !!o.deliveryOption;
     const isRegularOrder = !!o.shippingType;
     
     if (isCustomOrder) {
-      return o.status !== 'rejected' && 
+      // For custom orders: exclude rejected and pending statuses, but include all delivery options
+      const isValid = o.status !== 'rejected' && 
              o.status !== 'pending' &&
              (o.deliveryOption === 'pickup' || o.deliveryOption === 'delivery');
+      
+      if (!isValid && o.orderNumber === 'DEBUG') {
+        console.log('[Logistics Filter] Custom order excluded:', { orderNumber: o.orderNumber, status: o.status, deliveryOption: o.deliveryOption });
+      }
+      
+      return isValid;
     } else if (isRegularOrder) {
+      // For regular orders: exclude cancelled and rejected
       return o.status !== 'cancelled' && 
-             o.status !== 'pending' &&
+             o.status !== 'rejected' &&
              (o.shippingType === 'self' || o.shippingType === 'empi');
     }
     return false;
@@ -435,28 +474,41 @@ export default function LogisticsPage() {
   // Split by delivery type:
   // Custom orders: 'pickup' → Personal Pickup, 'delivery' → Empi Delivery
   // Regular orders: 'self' → Personal Pickup, 'empi' → Empi Delivery
-  const pickupOrders = validOrders.filter((o: any) => {
+  // NOTE: Pickup orders show ALL statuses (pending, ready, confirmed, in-progress, completed)
+  // They should stay in Pickup tab regardless of status
+  const pickupOrders = validOrders.filter((o: LogisticsOrder) => {
     const isPickup = o.deliveryOption === 'pickup' || o.shippingType === 'self';
-    return isPickup && o.status !== 'completed';
+    return isPickup;
   });
   
-  const allDeliveryOrders = validOrders.filter((o: any) => {
+  const allDeliveryOrders = validOrders.filter((o: LogisticsOrder) => {
     const isDelivery = o.deliveryOption === 'delivery' || o.shippingType === 'empi';
-    return isDelivery && o.status !== 'completed';
+    return isDelivery;
   });
   
   // Further split delivery orders by status
   const pendingDeliveryOrders = allDeliveryOrders.filter(o => o.status === 'ready' || o.status === 'confirmed' || o.status === 'pending');
+  const approvedDeliveryOrders = allDeliveryOrders.filter(o => o.status === 'approved');
   const inProgressDeliveryOrders = allDeliveryOrders.filter(o => o.status === 'in-progress');
-  const deliveredDeliveryOrders = allDeliveryOrders.filter((o: any) => o.status === 'completed');
+  const deliveredDeliveryOrders = allDeliveryOrders.filter((o: LogisticsOrder) => o.status === 'completed');
   const deliveryOrders = deliverySubTab === 'pending' ? pendingDeliveryOrders : 
+                         deliverySubTab === 'approved' ? approvedDeliveryOrders :
                          deliverySubTab === 'in-progress' ? inProgressDeliveryOrders :
                          deliverySubTab === 'delivered' ? deliveredDeliveryOrders : [];
   
-  const completedOrders = validOrders.filter((o: any) => o.status === 'completed');
+  const completedOrders = orders.filter((o: LogisticsOrder) => {
+    // Show completed orders that don't have a delivery method yet (no pickup/delivery selected)
+    // Pickup orders are handled in the Pickup tab, delivery orders in the Delivery tab
+    const isPickup = o.deliveryOption === 'pickup' || o.shippingType === 'self';
+    const isDelivery = o.deliveryOption === 'delivery' || o.shippingType === 'empi';
+    return o.status === 'completed' && !isPickup && !isDelivery;
+  });
 
   // Debug logging
-  console.log(`[Logistics] 📍 Pickup orders: ${pickupOrders.length}`);
+  console.log('📍 Pickup orders:', pickupOrders.length, pickupOrders);
+  console.log('🚚 Delivery orders:', deliveryOrders.length, deliveryOrders);
+  console.log('📊 All orders fetched:', orders.length);
+  console.log('📊 Valid orders (after filter):', validOrders.length);
   
   // Show all ready orders and their deliveryOption values for debugging
   console.log('📊 All ready orders breakdown:');
@@ -522,7 +574,7 @@ export default function LogisticsPage() {
                   onClick={() => setDeliverySubTab(subTab.id as 'pending' | 'in-progress' | 'delivered')}
                   className={`px-3 py-2 rounded-lg whitespace-nowrap font-semibold text-sm transition ${
                     deliverySubTab === subTab.id
-                      ? 'bg-lime-500 text-white'
+                      ? 'bg-blue-500 text-white'
                       : 'bg-gray-100 text-gray-700 border border-gray-300'
                   }`}
                 >
@@ -547,11 +599,11 @@ export default function LogisticsPage() {
               (activeTab === 'delivery' ? deliveryOrders : activeTab === 'pickup' ? pickupOrders : completedOrders).map((order) => (
                 <div key={order._id} className="bg-white rounded-lg border border-gray-200 p-4">
                   <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{order.orderNumber}</h3>
-                      <p className="text-sm text-gray-600">{order.fullName}</p>
+                    <div className="flex-1">
+                      <p className="text-lg font-bold text-gray-900 mb-1">👤 {order.fullName}</p>
+                      <h3 className="font-semibold text-gray-700 text-sm">Order #{order.orderNumber}</h3>
                     </div>
-                    <span className="px-2 py-1 bg-lime-100 text-lime-700 text-xs font-semibold rounded">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-700 text-xs font-semibold rounded ml-2">
                       {order.status}
                     </span>
                   </div>
@@ -594,7 +646,7 @@ export default function LogisticsPage() {
   return (
     <div className="w-full h-screen flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between flex-shrink-0 shadow-sm">
+      <div className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between shrink-0 shadow-sm">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-green-100 rounded-lg">
             <Truck className="h-6 w-6 text-green-600" />
@@ -622,506 +674,55 @@ export default function LogisticsPage() {
             </div>
           ) : (
             <>
-              {/* Tab Navigation */}
-              <div className="flex gap-0 mb-6 border-b border-gray-200">
-                <button
-                  onClick={() => {
-                    setActiveTab('delivery');
-                    setDeliverySubTab('pending');
-                  }}
-                  className={`px-6 py-3 font-semibold border-b-2 transition ${
-                    activeTab === 'delivery'
-                      ? 'border-lime-600 text-lime-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  🚚 Delivery ({allDeliveryOrders.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('pickup')}
-                  className={`px-6 py-3 font-semibold border-b-2 transition ${
-                    activeTab === 'pickup'
-                      ? 'border-purple-600 text-purple-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  📍 Pickup ({pickupOrders.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('completed')}
-                  className={`px-6 py-3 font-semibold border-b-2 transition ${
-                    activeTab === 'completed'
-                      ? 'border-green-600 text-green-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
-                  }`}
-                >
-                  ✓ Completed ({completedOrders.length})
-                </button>
-              </div>
+              <TabNavigation
+                activeTab={activeTab}
+                onTabChange={(tab) => {
+                  setActiveTab(tab);
+                  if (tab === 'delivery') setDeliverySubTab('pending');
+                  if (tab === 'settings') loadPaymentCards();
+                }}
+                deliveryCount={allDeliveryOrders.length}
+                pickupCount={pickupOrders.length}
+                completedCount={completedOrders.length}
+              />
 
-              {/* Delivery Sub-Tabs */}
               {activeTab === 'delivery' && (
-                <div className="flex gap-2 mb-6 bg-gray-100 rounded-lg p-2 w-fit scrollbar-hide">
-                  {[
-                    { id: 'pending', label: 'Pending', count: pendingDeliveryOrders.length },
-                    { id: 'in-progress', label: 'In Progress', count: inProgressDeliveryOrders.length },
-                    { id: 'delivered', label: 'Delivered', count: deliveredDeliveryOrders.length },
-                  ].map((subTab) => (
-                    <button
-                      key={subTab.id}
-                      onClick={() => setDeliverySubTab(subTab.id as 'pending' | 'in-progress' | 'delivered')}
-                      className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
-                        deliverySubTab === subTab.id
-                          ? 'bg-lime-600 text-white'
-                          : 'bg-white text-gray-700 border border-gray-300'
-                      }`}
-                    >
-                      {subTab.label} ({subTab.count})
-                    </button>
-                  ))}
-                </div>
+                <DeliveryOrdersTab
+                  deliverySubTab={deliverySubTab}
+                  setDeliverySubTab={setDeliverySubTab}
+                  pendingDeliveryOrders={pendingDeliveryOrders}
+                  approvedDeliveryOrders={[]}
+                  inProgressDeliveryOrders={inProgressDeliveryOrders}
+                  deliveredDeliveryOrders={deliveredDeliveryOrders}
+                  allDeliveryOrders={allDeliveryOrders}
+                  onJoinConversation={joinConversation}
+                />
               )}
 
               {/* Pickup Tab */}
               {activeTab === 'pickup' && (
-                <>
-                  {pickupOrders.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {pickupOrders.map(order => (
-                        <div key={order._id} className="bg-lime-50 border-2 border-lime-300 rounded-xl p-4 h-full flex flex-col gap-3 shadow-sm hover:shadow-md transition">
-                          {/* Header */}
-                          <div className="bg-gradient-to-r from-lime-600 to-green-600 rounded-lg p-3 text-white">
-                            <p className="text-xs font-semibold uppercase opacity-90 flex items-center gap-1">
-                              <Package className="h-3 w-3" /> 📍 Pickup - {order.status.toUpperCase()}
-                            </p>
-                            <p className="font-bold text-sm">#{order.orderNumber}</p>
-                            <p className="text-xs opacity-75">{order.fullName}</p>
-                          </div>
-
-                          {/* Product ID */}
-                          {order.productId && (
-                            <div className="bg-white rounded p-2 border border-lime-200">
-                              <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Product ID</p>
-                              <p className="text-sm font-bold text-lime-700 font-mono">{order.productId}</p>
-                            </div>
-                          )}
-
-                          {/* Description */}
-                          <div className="bg-white rounded p-2 border border-lime-200">
-                            <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Order Description</p>
-                            <p className="text-sm font-bold text-lime-700">{order.description}</p>
-                          </div>
-
-                          {/* Product Images Gallery */}
-                          {(order.images?.length || 0) + (order.designUrls?.length || 0) > 0 && (
-                            <div className="space-y-2">
-                              <div className="flex justify-between items-center">
-                                <p className="text-xs font-semibold text-gray-600 uppercase">Product Images</p>
-                              </div>
-                              <div className="grid grid-cols-3 gap-2">
-                                {(order.images || order.designUrls || []).slice(0, 6).map((img, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="relative aspect-square bg-gray-100 rounded border border-lime-300 overflow-hidden cursor-pointer hover:border-lime-500 transition"
-                                  >
-                                    <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
-                                  </div>
-                                ))}
-                              </div>
-                              {(((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) > 6) && (
-                                <p className="text-xs text-lime-600 font-semibold">
-                                  +{((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) - 6} more images
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Customer Contact */}
-                          <div className="bg-white rounded p-2 border border-lime-200 space-y-1 text-xs">
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-3 w-3 text-lime-600" />
-                              <span className="text-gray-700">{order.phone}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="h-3 w-3 text-lime-600">✉</span>
-                              <span className="text-gray-700 truncate">{order.email}</span>
-                            </div>
-                          </div>
-
-                          {/* Quantity & Delivery */}
-                          <div className="grid grid-cols-2 gap-2">
-                            <div className="bg-white rounded p-2 border border-purple-200">
-                              <p className="text-xs font-semibold text-gray-600">Qty</p>
-                              <p className="text-lg font-bold text-purple-700">{order.quantity}</p>
-                            </div>
-                            <div className="bg-white rounded p-2 border border-purple-200">
-                              <p className="text-xs font-semibold text-gray-600">Type</p>
-                              <p className="text-sm font-bold text-purple-700">📍 Pickup</p>
-                            </div>
-                          </div>
-
-                          {/* Pickup Location Info */}
-                          <div className="bg-white rounded p-2 border border-purple-200 text-xs">
-                            <p className="text-xs font-semibold text-gray-600 mb-1">📍 Pickup Location</p>
-                            <p className="text-gray-900 font-semibold">22 Chi-Ben street, Ojo, Lagos</p>
-                            <p className="text-gray-600">Customer will pick up here</p>
-                          </div>
-
-                          {/* Action Button */}
-                          <div className="flex gap-2 mt-auto">
-                            <button 
-                              onClick={() => joinConversation(order)}
-                              className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-lime-600 hover:bg-lime-700 text-white font-bold text-sm rounded-lg transition"
-                            >
-                              <MessageSquare className="h-4 w-4" />
-                              Open Chat
-                            </button>
-                            <button
-                              onClick={async () => {
-                                try {
-                                  const response = await fetch(`/api/custom-orders/${order._id}`, {
-                                    method: 'PATCH',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ status: 'completed' }),
-                                  });
-
-                                  if (response.ok) {
-                                    // Send automatic thank you message
-                                    await fetch('/api/messages', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({
-                                        orderId: order._id,
-                                        orderNumber: order.orderNumber,
-                                        senderEmail: 'admin@empi.com',
-                                        senderName: 'Empi Costumes',
-                                        senderType: 'admin',
-                                        content: '🎉 Thank you for your order! Your pickup has been completed successfully. We appreciate your business and hope you are satisfied with your purchase!',
-                                        messageType: 'text',
-                                      }),
-                                    });
-
-                                    // Send review request
-                                    await fetch('/api/messages', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json' },
-                                      body: JSON.stringify({
-                                        orderId: order._id,
-                                        orderNumber: order.orderNumber,
-                                        senderEmail: 'admin@empi.com',
-                                        senderName: 'Empi Costumes',
-                                        senderType: 'admin',
-                                        content: '⭐ Please take a moment to review your order and share your experience with us. Your feedback helps us improve our service!',
-                                        messageType: 'text',
-                                      }),
-                                    });
-
-                                    alert('✅ Pickup confirmed! Order moved to Completed tab.');
-                                    fetchLogisticsOrders();
-                                  } else {
-                                    alert('Failed to mark pickup as complete.');
-                                  }
-                                } catch (error) {
-                                  console.error('Error marking pickup complete:', error);
-                                  alert('Error marking pickup as complete.');
-                                }
-                              }}
-                              className="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm rounded-lg transition flex items-center gap-1"
-                            >
-                              <Check className="h-4 w-4" />
-                              Picked Up
-                            </button>
-                            <button 
-                              onClick={() => deleteOrder(order._id)}
-                              className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition flex items-center gap-1"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                              Delete
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-40 bg-white rounded-lg border border-gray-200">
-                      <Package className="h-12 w-12 text-gray-400 mb-3" />
-                      <p className="text-gray-600 font-medium">No pending handoffs</p>
-                    </div>
-                  )}
-                </>
+                <PickupOrdersTab
+                  pickupOrders={pickupOrders}
+                  onJoinConversation={joinConversation}
+                />
               )}
 
-              {/* Delivery Tab */}
-              {activeTab === 'delivery' && (
-                <>
-                  {deliveryOrders.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                      {deliveryOrders.map(order => (
-                        <div key={order._id} className="rounded-xl overflow-hidden flex flex-col gap-0 shadow-md hover:shadow-lg transition h-full border-2 border-lime-300 bg-white">
-                          {/* Header - Enhanced */}
-                          <div className="bg-gradient-to-br from-lime-600 via-green-600 to-lime-700 p-4 text-white shadow-md">
-                            <p className="text-xs font-semibold opacity-90 uppercase tracking-wide">🚚 Delivery</p>
-                            <p className="text-lg font-black mt-1">{order.fullName || `Order #${order.orderNumber}`}</p>
-                            <p className="text-xs opacity-85 font-semibold mt-0.5">#{order.orderNumber}</p>
-                            <span className="inline-block mt-2 px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap bg-lime-200 text-lime-800">
-                              {order.status.toUpperCase()}
-                            </span>
-                          </div>
 
-                          {/* Customer Contact */}
-                          <div className="px-4 py-3 border-b border-gray-100 space-y-1 text-xs">
-                            <div className="flex items-center gap-2">
-                              <span className="text-lg">📞</span>
-                              <span className="text-gray-700 font-medium">{order.phone}</span>
-                            </div>
-                            <div className="flex items-start gap-2">
-                              <span className="text-lg">📧</span>
-                              <span className="text-gray-600 truncate">{order.email}</span>
-                            </div>
-                          </div>
-
-                          {/* Complete Delivery Address */}
-                          {order.address ? (
-                            <div className="px-4 py-3 border-b border-gray-100 bg-lime-50">
-                              <p className="font-bold text-xs text-gray-700 mb-2 uppercase tracking-wide">📍 Delivery Address</p>
-                              <div className="space-y-2 text-xs text-gray-900">
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-600">Street Address</p>
-                                  <p className="font-semibold text-gray-900">{order.address}</p>
-                                </div>
-                                {order.busStop && (
-                                  <div>
-                                    <p className="text-xs font-semibold text-gray-600">🚏 Nearest Bus Stop</p>
-                                    <p className="font-semibold text-lime-700">{order.busStop}</p>
-                                  </div>
-                                )}
-                                <div className="grid grid-cols-2 gap-2">
-                                  {order.city && (
-                                    <div>
-                                      <p className="text-xs font-semibold text-gray-600">City</p>
-                                      <p className="font-semibold text-gray-900">{order.city}</p>
-                                    </div>
-                                  )}
-                                  {order.state && (
-                                    <div>
-                                      <p className="text-xs font-semibold text-gray-600">State</p>
-                                      <p className="font-semibold text-gray-900">{order.state}</p>
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          ) : null}
-
-                          {/* Product ID */}
-                          {order.productId && (
-                            <div className="px-4 py-3 border-b border-gray-100">
-                              <p className="text-xs font-semibold text-gray-600 uppercase mb-1 tracking-wide">Product ID</p>
-                              <p className="text-xs font-bold text-gray-900 font-mono">{order.productId}</p>
-                            </div>
-                          )}
-
-                          {/* Order Details Grid */}
-                          <div className="px-4 py-3 border-b border-gray-100 grid grid-cols-3 gap-2">
-                            <div className="bg-lime-50 rounded p-2 border border-lime-200">
-                              <p className="text-xs font-semibold text-gray-600">Qty</p>
-                              <p className="text-sm font-bold text-lime-700 mt-0.5">{order.quantity}</p>
-                            </div>
-                            <div className="bg-lime-50 rounded p-2 border border-lime-200">
-                              <p className="text-xs font-semibold text-gray-600">Type</p>
-                              <p className="text-xs font-bold text-lime-700 mt-0.5">🚚 Delivery</p>
-                            </div>
-                            <div className="bg-lime-50 rounded p-2 border border-lime-200">
-                              <p className="text-xs font-semibold text-gray-600">Status</p>
-                              <p className="text-xs font-bold text-lime-700 mt-0.5">{order.status.toUpperCase()}</p>
-                            </div>
-                          </div>
-
-                          {/* Description */}
-                          <div className="px-4 py-3 border-b border-gray-100">
-                            <p className="text-xs font-semibold text-gray-600 mb-1 uppercase tracking-wide">Description</p>
-                            <p className="text-xs text-gray-900 line-clamp-3">{order.description}</p>
-                          </div>
-
-                          {/* Product Images Gallery */}
-                          {(order.images?.length || 0) + (order.designUrls?.length || 0) > 0 && (
-                            <div className="px-4 py-3 border-b border-gray-100">
-                              <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wide">Images</p>
-                              <div className="grid grid-cols-3 gap-2">
-                                {(order.images || order.designUrls || []).slice(0, 3).map((img, idx) => (
-                                  <div
-                                    key={idx}
-                                    className="relative aspect-square bg-gray-100 rounded-lg border border-gray-300 overflow-hidden cursor-pointer hover:border-lime-500 transition"
-                                  >
-                                    <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
-                                  </div>
-                                ))}
-                              </div>
-                              {(((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) > 3) && (
-                                <p className="text-xs text-lime-600 font-semibold mt-1">
-                                  +{((order.images?.length) ?? 0) + ((order.designUrls?.length) ?? 0) - 3} more
-                                </p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Delivery Date */}
-                          {order.deliveryDate && (
-                            <div className="px-4 py-3 border-b border-gray-100 bg-amber-50">
-                              <p className="font-bold text-xs text-gray-700 mb-1 uppercase tracking-wide">📅 Expected Delivery</p>
-                              <p className="text-xs font-semibold text-gray-900">{new Date(order.deliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
-                            </div>
-                          )}
-
-                          {/* Action Buttons */}
-                          <div className="mt-auto px-4 py-3 flex flex-col gap-2">
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() => {
-                                  setChatModalOpen(order._id);
-                                }}
-                                className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 bg-lime-600 hover:bg-lime-700 text-white font-semibold text-xs rounded-lg transition shadow-sm hover:shadow-md"
-                              >
-                                <MessageSquare className="h-4 w-4" />
-                                Chat
-                              </button>
-                              <button
-                                onClick={() => deleteOrder(order._id)}
-                                className="px-3 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold text-xs rounded-lg transition flex items-center gap-1 shadow-sm hover:shadow-md"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                                Delete
-                              </button>
-                            </div>
-                            <div className="flex gap-2">
-                              {order.status === 'pending' && (
-                                <button
-                                  onClick={() => setPaymentConfirmModalOrder(order)}
-                                  className="flex-1 px-3 py-2.5 bg-amber-600 hover:bg-amber-700 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md"
-                                >
-                                  💰 Confirm Payment
-                                </button>
-                              )}
-                              {order.status === 'in-progress' && (
-                                <button
-                                  onClick={() => setPaymentConfirmModalOrder(order)}
-                                  className="flex-1 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-xs rounded-lg transition flex items-center justify-center gap-1 shadow-sm hover:shadow-md"
-                                >
-                                  <Check className="h-4 w-4" />
-                                  Delivered
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-40 bg-white rounded-lg border border-gray-200">
-                      <Package className="h-12 w-12 text-gray-400 mb-3" />
-                      <p className="text-gray-600 font-medium">No delivery orders</p>
-                    </div>
-                  )}
-                </>
-              )}
-
-              {/* Completed Tab */}
               {activeTab === 'completed' && (
-                <>
-                  {completedOrders.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {completedOrders.map(order => (
-                        <div key={order._id} className="bg-lime-50 border-2 border-lime-300 rounded-xl p-4 h-full flex flex-col gap-3 shadow-sm hover:shadow-md transition">
-                          {/* Header */}
-                          <div className="bg-gradient-to-r from-lime-600 to-green-600 rounded-lg p-3 text-white">
-                            <p className="text-xs font-semibold uppercase opacity-90 flex items-center gap-1">
-                              <Package className="h-3 w-3" /> ✓ {order.deliveryOption === 'pickup' ? '📍 Pickup' : '🚚 Delivery'} - COMPLETED
-                            </p>
-                            <p className="font-bold text-sm">#{order.orderNumber}</p>
-                          </div>
+                <CompletedOrdersTab
+                  completedOrders={completedOrders}
+                  onJoinConversation={joinConversation}
+                />
+              )}
 
-                          {/* Customer Info */}
-                          <div>
-                            <p className="text-xs font-semibold text-gray-600 mb-1">👤 Customer</p>
-                            <p className="font-semibold text-gray-900">{order.fullName}</p>
-                            <p className="text-gray-600 text-sm flex items-center gap-1">
-                              <Phone className="h-3 w-3" /> {order.phone}
-                            </p>
-                          </div>
-
-                          {/* Order Details */}
-                          <div className="bg-white rounded-lg p-2.5 space-y-2 text-sm">
-                            <div>
-                              <p className="text-xs font-semibold text-gray-600">📦 Quantity</p>
-                              <p className="font-semibold text-gray-900">{order.quantity} pieces</p>
-                            </div>
-                            <div>
-                              <p className="text-xs font-semibold text-gray-600">📅 Order Date</p>
-                              <p className="text-gray-900 font-semibold">{new Date(order.createdAt).toLocaleDateString('en-NG')}</p>
-                            </div>
-                          </div>
-
-                          {/* Delivery Address (if delivery order) */}
-                          {order.deliveryOption === 'delivery' && (
-                            <div className="bg-white rounded-lg p-2.5">
-                              <p className="text-xs font-semibold text-gray-600 mb-1">🚚 Delivery Address</p>
-                              <p className="text-gray-900 font-semibold">{order.address}</p>
-                              <p className="text-gray-600">{order.city}</p>
-                            </div>
-                          )}
-
-                          {/* Pickup Status (if pickup order) */}
-                          {order.deliveryOption === 'pickup' && (
-                            <div className="bg-lime-100 border-l-4 border-lime-600 p-2.5 rounded text-center">
-                              <p className="text-sm font-semibold text-lime-900">✓ Successfully Picked Up</p>
-                            </div>
-                          )}
-
-                          {/* Design Images - Horizontal Scrollable */}
-                          {order.designUrls && order.designUrls.length > 0 && (
-                            <div className="space-y-2">
-                              <p className="text-xs font-semibold text-gray-600">🖼️ Design Images</p>
-                              <div className="overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-lime-300 scrollbar-track-lime-100">
-                                <div className="flex gap-2">
-                                  {order.designUrls.map((img, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="relative aspect-square bg-gray-100 rounded border border-lime-300 overflow-hidden cursor-pointer hover:border-lime-500 transition flex-shrink-0 w-16 h-16"
-                                    >
-                                      <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                              {order.designUrls.length > 4 && (
-                                <p className="text-xs text-gray-500 text-center">← Scroll to see more →</p>
-                              )}
-                            </div>
-                          )}
-
-                          {/* Completion Badge */}
-                          <div className="bg-green-100 border border-green-300 rounded-lg p-2 text-center">
-                            <p className="text-xs font-bold text-green-700">✓ COMPLETED</p>
-                          </div>
-
-                          {/* Delete Button */}
-                          <button 
-                            onClick={() => deleteOrder(order._id)}
-                            className="w-full px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition flex items-center justify-center gap-2 mt-auto"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete Order
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center h-40 bg-white rounded-lg border border-gray-200">
-                      <Package className="h-12 w-12 text-gray-400 mb-3" />
-                      <p className="text-gray-600 font-medium">No completed orders yet</p>
-                    </div>
-                  )}
-                </>
+              {/* Settings Tab */}
+              {activeTab === 'settings' && (
+                <SettingsPanel
+                  paymentCards={paymentCards}
+                  onAddCard={handleAddPaymentCard}
+                  onDeleteCard={handleDeletePaymentCard}
+                  onSetActive={handleSetActivePaymentCard}
+                />
               )}
             </>
           )}
@@ -1130,20 +731,21 @@ export default function LogisticsPage() {
 
       {/* Message Modal */}
       {/* ChatModal for selected order */}
-      {chatModalOpen && orders.find(o => o._id === chatModalOpen) && (
+      {chatModalOpen && selectedOrderForChat && (
         <ChatModal
           isOpen={!!chatModalOpen}
           onClose={() => {
             setChatModalOpen(null);
+            setSelectedOrderForChat(null);
             // Refresh orders when modal closes
             fetchLogisticsOrders();
           }}
-          order={orders.find(o => o._id === chatModalOpen)!}
+          order={selectedOrderForChat}
           userEmail="logistics@empi.com"
           userName="Logistics Team"
           isAdmin={true}
           isLogisticsTeam={true}
-          deliveryOption={orders.find(o => o._id === chatModalOpen)?.deliveryOption}
+          deliveryOption={selectedOrderForChat?.deliveryOption}
           adminName="Logistics Team"
           orderStatus="ready" // Logistics always has orders in ready status
           onMessageSent={() => {
@@ -1157,7 +759,7 @@ export default function LogisticsPage() {
       {/* Quote Modal */}
       {quoteModalOrder && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-gradient-to-br from-white to-gray-50 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200">
+          <div className="bg-linear-to-br from-white to-gray-50 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200">
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
@@ -1179,14 +781,14 @@ export default function LogisticsPage() {
             </div>
 
             {/* Order Info Card */}
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 mb-6 border border-blue-200">
+            <div className="bg-linear-to-r from-blue-50 to-cyan-50 rounded-lg p-4 mb-6 border border-blue-200">
               <div className="space-y-2">
                 <div>
-                  <p className="text-xs font-semibold text-lime-600 uppercase tracking-wide">Order Number</p>
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Order Number</p>
                   <p className="text-lg font-bold text-gray-900">{quoteModalOrder.orderNumber}</p>
                 </div>
                 <div>
-                  <p className="text-xs font-semibold text-lime-600 uppercase tracking-wide">Customer</p>
+                  <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Customer</p>
                   <p className="font-semibold text-gray-900">{quoteModalOrder.fullName}</p>
                 </div>
               </div>
@@ -1304,7 +906,7 @@ export default function LogisticsPage() {
               <button
                 onClick={sendDeliveryQuote}
                 disabled={!quoteAmount || sendingQuote}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-lg transition flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-lg transition flex items-center justify-center gap-2"
               >
                 {sendingQuote ? (
                   <>
@@ -1347,7 +949,7 @@ export default function LogisticsPage() {
             </div>
 
             {/* Order Info Card */}
-            <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg p-4 mb-6 border-2 border-blue-200">
+            <div className="bg-linear-to-r from-blue-50 to-cyan-50 rounded-lg p-4 mb-6 border-2 border-blue-200">
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="text-xs text-gray-600 font-semibold uppercase">Order Number</p>
@@ -1397,8 +999,8 @@ export default function LogisticsPage() {
                 </div>
 
                 {/* Info Message */}
-                <div className="bg-lime-50 border-l-4 border-lime-400 p-3 mb-6 rounded">
-                  <p className="text-sm text-lime-900">
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-6 rounded">
+                  <p className="text-sm text-blue-900">
                     {paymentReceived === true ? '✅ Order will be marked as completed.' : '❌ Order status will remain in progress.'}
                   </p>
                 </div>
@@ -1432,8 +1034,8 @@ export default function LogisticsPage() {
                 </div>
 
                 {/* Info Message */}
-                <div className="bg-lime-50 border-l-4 border-lime-400 p-3 mb-6 rounded">
-                  <p className="text-sm text-lime-900">
+                <div className="bg-blue-50 border-l-4 border-blue-400 p-3 mb-6 rounded">
+                  <p className="text-sm text-blue-900">
                     {paymentReceived ? '✅ Customer will be notified that payment was received.' : '⏳ Customer will be notified to complete the payment.'}
                   </p>
                 </div>
@@ -1454,7 +1056,7 @@ export default function LogisticsPage() {
               <button
                 onClick={handleConfirmPayment}
                 disabled={confirmingPayment}
-                className="flex-1 px-4 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-lg transition flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-3 bg-linear-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold rounded-lg transition flex items-center justify-center gap-2"
               >
                 {confirmingPayment ? (
                   <>

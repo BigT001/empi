@@ -286,19 +286,18 @@ export function ApprovedOrdersPanel({ searchQuery = "" }: ApprovedOrdersPanelPro
 
                         {/* Content */}
                         <div className="p-5 space-y-4 flex-1 flex flex-col">
-                          {/* Product Images Gallery */}
+                          {/* Product Items - Images & Names */}
                           {order.items && order.items.length > 0 && (
                             <div className="space-y-2">
-                              <div className="flex justify-between items-center">
-                                <p className="text-xs font-semibold text-gray-600 uppercase">Product Images</p>
-                              </div>
-                              <div className="overflow-x-auto pb-2">
-                                <div className="flex gap-2 min-w-min">
-                                  {order.items.map((item, idx) => (
-                                    <div
-                                      key={`${order._id}-item-${idx}`}
-                                      className="relative aspect-square bg-gray-100 rounded border border-green-300 overflow-hidden flex-shrink-0 w-20 h-20"
-                                    >
+                              <p className="text-xs font-semibold text-gray-600 uppercase">Products Ordered</p>
+                              <div className="space-y-2">
+                                {order.items.map((item, idx) => (
+                                  <div
+                                    key={`${order._id}-item-${idx}`}
+                                    className="flex gap-3 bg-white rounded-lg p-3 border border-green-200"
+                                  >
+                                    {/* Product Image */}
+                                    <div className="relative aspect-square bg-gray-100 rounded border border-green-300 overflow-hidden flex-shrink-0 w-16 h-16">
                                       {item.imageUrl ? (
                                         <Image
                                           src={item.imageUrl}
@@ -312,16 +311,27 @@ export function ApprovedOrdersPanel({ searchQuery = "" }: ApprovedOrdersPanelPro
                                           <span className="text-xs text-gray-600">No Image</span>
                                         </div>
                                       )}
-                                      {item.quantity > 1 && (
-                                        <div className="absolute bottom-0 right-0 bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-tl">
-                                          ×{item.quantity}
-                                        </div>
-                                      )}
                                     </div>
-                                  ))}
-                                </div>
+                                    
+                                    {/* Product Details */}
+                                    <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
+                                      <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                                      <div className="flex gap-2 items-center">
+                                        <span className="text-xs text-gray-600">Qty: {item.quantity}</span>
+                                        {item.mode && (
+                                          <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
+                                            item.mode === 'rent'
+                                              ? 'bg-purple-100 text-purple-700'
+                                              : 'bg-green-100 text-green-700'
+                                          }`}>
+                                            {item.mode === 'rent' ? '🔄 Rental' : '🛍️ Buy'}
+                                          </span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
-                              <p className="text-xs text-gray-500 text-center">← Scroll to see more items →</p>
                             </div>
                           )}
 

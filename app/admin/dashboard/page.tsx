@@ -109,47 +109,71 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchCounts = async () => {
       try {
-        // Fetch pending orders count
-        const pendingRes = await fetch('/api/orders?limit=1');
-        const pendingData = pendingRes.ok ? await pendingRes.json() : { orders: [] };
-        const pendingOrders = Array.isArray(pendingData) ? pendingData : (pendingData.orders || []);
-        const pendingCount = pendingOrders.filter((o: any) => 
-          o.status === 'pending' || o.status === 'unpaid' || o.status === 'processing' || o.paymentStatus === 'pending'
-        ).length;
+        // Use admin dashboard API which provides comprehensive stats
+        const dashboardRes = await fetch('/api/admin/dashboard');
+        if (!dashboardRes.ok) {
+          console.warn('Dashboard API failed, using fallback counts');
+          setTabCounts({
+            pending: 0,
+            approved: 0,
+            custom: 0,
+            users: 0,
+            products: 0,
+          });
+          return;
+        }
 
-        // Fetch approved orders count
-        const approvedRes = await fetch('/api/orders?limit=1');
-        const approvedData = approvedRes.ok ? await approvedRes.json() : { orders: [] };
-        const approvedOrders = Array.isArray(approvedData) ? approvedData : (approvedData.orders || []);
-        const approvedCount = approvedOrders.filter((o: any) => 
-          o.status === 'approved' || o.paymentStatus === 'paid'
-        ).length;
+        const dashboardData = await dashboardRes.json();
 
-        // Fetch custom orders count
-        const customRes = await fetch('/api/custom-orders?limit=1');
-        const customData = customRes.ok ? await customRes.json() : [];
-        const customOrders = Array.isArray(customData) ? customData : (customData.orders || []);
-        const customCount = customOrders.filter((o: any) => o.status === 'pending').length;
+        // Fetch custom orders separately for custom order pending count
+        let customCount = 0;
+        try {
+          const customRes = await fetch('/api/custom-orders');
+          if (customRes.ok) {
+            const customData = await customRes.json();
+            const customOrders = Array.isArray(customData) ? customData : (customData.orders || []);
+            customCount = customOrders.filter((o: any) => o.status === 'pending').length;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch custom orders count:', err);
+        }
 
-        // Fetch users count
-        const usersRes = await fetch('/api/users?limit=1');
-        const usersData = usersRes.ok ? await usersRes.json() : [];
-        const usersCount = Array.isArray(usersData) ? usersData.length : (usersData.users || []).length;
-
-        // Fetch products count
-        const productsRes = await fetch('/api/products?limit=1');
-        const productsData = productsRes.ok ? await productsRes.json() : [];
-        const productsCount = Array.isArray(productsData) ? productsData.length : (productsData.products || []).length;
+        // Fetch orders for pending/approved counts
+        let pendingCount = 0;
+        let approvedCount = 0;
+        try {
+          const ordersRes = await fetch('/api/orders');
+          if (ordersRes.ok) {
+            const ordersData = await ordersRes.json();
+            const orders = Array.isArray(ordersData) ? ordersData : (ordersData.orders || []);
+            pendingCount = orders.filter((o: any) => 
+              o.status === 'pending' || o.status === 'unpaid' || o.status === 'processing' || o.paymentStatus === 'pending'
+            ).length;
+            approvedCount = orders.filter((o: any) => 
+              o.status === 'approved' || o.paymentStatus === 'paid'
+            ).length;
+          }
+        } catch (err) {
+          console.warn('Failed to fetch orders count:', err);
+        }
 
         setTabCounts({
           pending: pendingCount,
           approved: approvedCount,
           custom: customCount,
-          users: usersCount,
-          products: productsCount,
+          users: dashboardData.totalCustomers || 0,
+          products: dashboardData.totalProducts || 0,
         });
       } catch (error) {
         console.error('Failed to fetch tab counts:', error);
+        // Set default empty state on error
+        setTabCounts({
+          pending: 0,
+          approved: 0,
+          custom: 0,
+          users: 0,
+          products: 0,
+        });
       }
     };
 

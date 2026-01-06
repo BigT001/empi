@@ -49,7 +49,7 @@ export function CategoryCards({ currentCategory, onCategoryChange }: CategoryCar
   };
 
   return (
-    <div className="md:hidden w-full px-4 py-0 bg-white -mb-4 mt-4">
+    <div className="md:hidden w-full px-4 py-0 bg-white -mb-2 mt-2">
       <div className="flex gap-2 justify-between items-stretch">
         {categories.map((category) => {
           const isActive = currentCategory === category.id;
@@ -58,32 +58,25 @@ export function CategoryCards({ currentCategory, onCategoryChange }: CategoryCar
             <button
               key={category.id}
               onClick={() => handleCategoryClick(category.id)}
-              className={`flex-1 rounded-2xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-visible group cursor-pointer relative border-2 ${
+              className={`flex-1 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-visible group cursor-pointer relative border-2 ${
                 isActive
-                  ? `bg-gradient-to-br ${category.color} text-white shadow-xl border-transparent`
-                  : `bg-gradient-to-br ${category.lightBg} text-gray-800 hover:shadow-lg ${category.borderColor}`
+                  ? `bg-gradient-to-br ${category.color} text-white shadow-lg border-transparent`
+                  : `bg-gradient-to-br ${category.lightBg} text-gray-800 hover:shadow-md ${category.borderColor}`
               }`}
             >
-              <div className="flex flex-col items-center justify-end pt-1 pb-4 px-4 relative" style={{ minHeight: "95px" }}>
+              <div className="flex flex-row items-center justify-center gap-2 px-3 py-2" style={{ minHeight: "50px" }}>
                 <div 
                   style={{
-                    position: "absolute",
-                    top: "-28px",
-                    left: "50%",
-                    transform: "translateX(-50%) perspective(1200px) rotateX(15deg) rotateY(-12deg) rotateZ(8deg)",
-                    transformStyle: "preserve-3d",
-                    zIndex: 10,
-                    transition: "transform 0.3s ease-out",
-                    fontSize: "48px",
+                    fontSize: "24px",
                     lineHeight: "1",
-                    filter: "drop-shadow(0 8px 12px rgba(0, 0, 0, 0.2))"
+                    filter: "drop-shadow(0 2px 4px rgba(0, 0, 0, 0.1))"
                   }}
-                  className="transition-all duration-300 hover:scale-110 group-hover:drop-shadow-lg"
+                  className="transition-all duration-300 hover:scale-110 group-hover:drop-shadow-lg flex-shrink-0"
                 >
                   {category.icon}
                 </div>
-                <div className="text-center mt-1">
-                  <p className={`text-base font-bold leading-tight tracking-wide ${isActive ? "text-white" : "text-gray-800"}`}>
+                <div className="text-center">
+                  <p className={`text-xs font-bold leading-tight tracking-wide ${isActive ? "text-white" : "text-gray-800"}`}>
                     {category.label}
                   </p>
                 </div>

@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
     for (let i = 0; i < designImages.length; i++) {
       const file = designImages[i];
       try {
+        console.log(`[API:POST] Uploading image ${i + 1}/${designImages.length}: ${file.name} (${file.type})`);
         const buffer = await file.arrayBuffer();
         const base64 = Buffer.from(buffer).toString("base64");
         const dataURL = `data:${file.type};base64,${base64}`;
@@ -98,6 +99,9 @@ export async function POST(request: NextRequest) {
         // Continue uploading remaining images even if one fails
       }
     }
+
+    console.log(`[API:POST] Upload complete. Total images uploaded: ${designUrls.length}/${designImages.length}`);
+    console.log(`[API:POST] designUrls array:`, designUrls);
 
     // Generate unique order number using buyer's first name and short code
     const firstName = fullName.split(' ')[0]; // Get first name
@@ -132,6 +136,8 @@ export async function POST(request: NextRequest) {
       email,
       buyerId: orderData.buyerId || "(not provided)",
       fullName,
+      designUrlCount: orderData.designUrls?.length || 0,
+      designUrls: orderData.designUrls || [],
     });
 
     const customOrder = await CustomOrder.create(orderData);
@@ -143,6 +149,9 @@ export async function POST(request: NextRequest) {
     console.log("  - Email:", customOrder.email);
     console.log("  - Full Name:", customOrder.fullName);
     console.log("  - Status:", customOrder.status);
+    console.log("  - designUrl:", customOrder.designUrl || "EMPTY");
+    console.log("  - designUrls count:", customOrder.designUrls?.length || 0);
+    console.log("  - designUrls:", customOrder.designUrls || []);
 
     // TODO: Send email notification to admin and customer
     // For now, just log it
@@ -209,6 +218,15 @@ export async function GET(request: NextRequest) {
     // Fetch custom orders
     let customOrders = await CustomOrder.find(whereClause).sort({ createdAt: -1 });
     console.log("[API:GET /custom-orders] ✅ Found", customOrders.length, "custom orders");
+    
+    // Log details of fetched orders
+    customOrders.forEach((order, idx) => {
+      console.log(`[API:GET /custom-orders] Order ${idx + 1}:`);
+      console.log(`  - orderNumber: ${order.orderNumber}`);
+      console.log(`  - email: ${order.email}`);
+      console.log(`  - designUrl: ${order.designUrl || "EMPTY"}`);
+      console.log(`  - designUrls: ${order.designUrls?.length || 0} images`);
+    });
     
     // Fetch regular orders with pending status (for unified display)
     let regularOrders = [];
@@ -316,12 +334,6 @@ export async function GET(request: NextRequest) {
         return orderObj;
       })
     );
-    
-    if (customOrders.length === 0 && email) {
-      console.log("[API:GET /custom-orders] 📊 Debugging: No custom orders found for email. Checking total custom orders in DB...");
-      const allOrders = await CustomOrder.find({}).limit(5);
-      console.log("[API:GET /custom-orders] 📊 Sample custom orders in DB:", allOrders.map(o => ({ orderNumber: o.orderNumber, email: o.email, buyerId: o.buyerId })));
-    }
 
     // Combine custom and regular orders
     const allOrders = [...ordersWithPaymentStatus, ...regularOrdersWithPaymentStatus].sort((a, b) => {
@@ -490,19 +502,25 @@ export async function DELETE(request: NextRequest) {
 
     console.log(`[API:DELETE /custom-orders] 🗑️ Deleting order ${id}`);
 
-    // Validate that id is a valid MongoDB ObjectId
-    if (!id || id.length !== 24) {
-      console.log(`[API:DELETE] ❌ Invalid order ID format: ${id}`);
+    if (!id) {
+      console.log(`[API:DELETE] ❌ No order ID provided`);
       return NextResponse.json(
-        { message: "Invalid order ID" },
+        { message: "Order ID is required" },
         { status: 400 }
       );
     }
 
-    // Get order before deleting (for email notification)
-    const deletedOrder = await CustomOrder.findByIdAndDelete(id);
+    // Try to find and delete by _id first
+    let deletedOrder = await CustomOrder.findByIdAndDelete(id);
 
     if (!deletedOrder) {
+      // Try to find by orderNumber if _id doesn't work
+      console.log(`[API:DELETE] Order not found by _id, trying orderNumber...`);
+      deletedOrder = await CustomOrder.findOneAndDelete({ orderNumber: id });
+    }
+
+    if (!deletedOrder) {
+      console.log(`[API:DELETE] ❌ Custom order not found with id: ${id}`);
       return NextResponse.json(
         { message: "Custom order not found" },
         { status: 404 }

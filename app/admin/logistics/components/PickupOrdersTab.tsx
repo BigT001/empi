@@ -48,12 +48,12 @@ export function PickupOrdersTab({
                       <p className="text-xs font-semibold text-gray-600 uppercase">Product Images</p>
                     </div>
                     <div className="grid grid-cols-3 gap-2">
-                      {(order.images || order.designUrls || []).slice(0, 6).map((img, idx) => (
+                      {(order.designUrls || []).slice(0, 6).map((img, idx) => (
                         <div
                           key={idx}
                           className="relative aspect-square bg-gray-100 rounded border border-purple-300 overflow-hidden cursor-pointer hover:border-purple-500 transition"
                         >
-                          <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                          <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = ''; }} />
                         </div>
                       ))}
                     </div>
@@ -93,7 +93,7 @@ export function PickupOrdersTab({
 
                 {/* Product Images */}
                 {(() => {
-                  const customImages = (order.images || order.designUrls || []);
+                  const customImages = (order.designUrls || []);
                   const itemImages = order.items?.map((item: any) => item.imageUrl).filter(Boolean) || [];
                   const allImages = [...customImages, ...itemImages];
                   return allImages.length > 0 ? (
@@ -102,7 +102,7 @@ export function PickupOrdersTab({
                       <div className="grid grid-cols-3 gap-1">
                         {allImages.slice(0, 3).map((img, idx) => (
                           <div key={idx} className="relative aspect-square bg-gray-100 rounded border border-purple-300 overflow-hidden hover:border-purple-500 transition cursor-pointer">
-                            <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                            <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = ''; }} />
                           </div>
                         ))}
                       </div>

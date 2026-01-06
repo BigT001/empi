@@ -51,9 +51,70 @@ export function RejectedOrderCard({ order, onImageClick, onChatClick, onDeleteOr
       </div>
 
       {/* What They Were Trying to Order */}
-      <div className="bg-white rounded p-2 border border-red-200">
-        <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Order Details</p>
-        <p className="text-sm font-bold text-red-700">{order.costumeType || order.costumeName || 'Costume'}</p>
+      <div className="bg-white rounded p-3 border-2 border-red-200">
+        <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Order Details</p>
+        {order.items && order.items.length > 0 ? (
+          <div className="space-y-2">
+            {order.items.map((item: any, idx: number) => (
+              <div key={idx} className="flex gap-3 bg-red-50 rounded-lg p-2 border border-red-200">
+                {/* Product Image */}
+                <div className="relative aspect-square bg-gray-100 rounded border border-red-300 overflow-hidden flex-shrink-0 w-16 h-16">
+                  {item.imageUrl ? (
+                    <img
+                      src={item.imageUrl}
+                      alt={item.name}
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        const img = e.target as HTMLImageElement;
+                        img.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                      <span className="text-xs text-gray-600">No Image</span>
+                    </div>
+                  )}
+                </div>
+                {/* Product Details */}
+                <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
+                  <h4 className="font-bold text-base text-gray-900 truncate">{item.name || item.productName || 'Product'}</h4>
+                  <div className="flex gap-2 items-center text-xs">
+                    <span className="text-gray-600">Qty: {item.quantity || 1}</span>
+                    {item.price && <span className="font-semibold text-red-700">₦{(item.price).toLocaleString('en-NG')}</span>}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm font-bold text-red-700">{order.costumeType || order.costumeName || 'Costume'}</p>
+            {/* Design Images for Custom Orders */}
+            {(order.designUrls && order.designUrls.length > 0) && (
+              <div className="mt-2">
+                <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Design Images</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {order.designUrls.map((img: string, idx: number) => (
+                    <div
+                      key={idx}
+                      className="relative aspect-square bg-gray-100 rounded border border-red-300 overflow-hidden"
+                    >
+                      <img
+                        src={img}
+                        alt={`Design ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          const img = e.target as HTMLImageElement;
+                          img.style.display = 'none';
+                        }}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Product ID */}
@@ -108,13 +169,13 @@ export function RejectedOrderCard({ order, onImageClick, onChatClick, onDeleteOr
             </button>
           </div>
           <div className="grid grid-cols-3 gap-2">
-            {(order.images || order.designUrls || []).slice(0, 6).map((img, idx) => (
+            {(order.designUrls || []).slice(0, 6).map((img, idx) => (
               <div
                 key={idx}
                 className="relative aspect-square bg-gray-100 rounded border border-red-300 overflow-hidden cursor-pointer hover:border-red-500 transition"
                 onClick={onImageClick}
               >
-                <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = ''; }} />
               </div>
             ))}
           </div>
@@ -126,29 +187,7 @@ export function RejectedOrderCard({ order, onImageClick, onChatClick, onDeleteOr
         </div>
       )}
 
-      {/* Order Stats */}
-      <div className="grid grid-cols-2 gap-2 mb-3 flex-shrink-0">
-        <div className="bg-white rounded p-2 border border-red-200">
-          <p className="text-xs font-semibold text-gray-600">Qty</p>
-          <p className="text-lg font-bold text-red-700">{order.quantity || order.quantityOfPieces || 1}</p>
-        </div>
-        <div className="bg-white rounded p-2 border border-red-200">
-          <p className="text-xs font-semibold text-gray-600 flex items-center gap-1">
-            <DollarSign className="h-3 w-3" />
-            Quote
-          </p>
-          <p className="text-sm font-bold text-red-700">
-            {(() => {
-              const price = order.quotedPrice || order.price || 0;
-              if (price <= 0) return 'N/A';
-              if (price < 1000000) {
-                return (price / 1000) + 'K';
-              }
-              return (price / 1000000) + 'M';
-            })()}
-          </p>
-        </div>
-      </div>
+
 
       {/* Order Info & Specs */}
       {(order.pickupDate || order.pickupTime || (order.customData && (order.customData.fabricColor || order.customData.size)) || order.rejectedAt) && (

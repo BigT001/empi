@@ -189,8 +189,8 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
       {/* Products Bento Grid */}
       {filteredProducts.length > 0 && (
         <div>
-          {/* Bento Grid Layout - 4 columns on desktop, 3 on tablet, 2 on mobile */}
-          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 auto-rows-max">
+          {/* Bento Grid Layout - 4 columns on desktop, 3 on tablet, 1 on mobile */}
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 auto-rows-max">
             {filteredProducts.map((product, idx) => {
               // Simple pattern - mostly small cards
               let size: "small" | "medium" | "large" = "small";

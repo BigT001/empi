@@ -76,7 +76,7 @@ export function CompletedOrdersTab({
 
               {/* Product Images */}
               {(() => {
-                const customImages = (order.images || order.designUrls || []);
+                const customImages = (order.designUrls || []);
                 const itemImages = order.items?.map((item: any) => item.imageUrl).filter(Boolean) || [];
                 const allImages = [...customImages, ...itemImages];
                 return allImages.length > 0 ? (
@@ -85,7 +85,7 @@ export function CompletedOrdersTab({
                     <div className="grid grid-cols-3 gap-1">
                       {allImages.slice(0, 3).map((img, idx) => (
                         <div key={idx} className="relative aspect-square bg-gray-100 rounded border border-green-300 overflow-hidden hover:border-green-500 transition cursor-pointer">
-                          <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" />
+                          <img src={img} alt={`Design ${idx + 1}`} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.src = ''; }} />
                         </div>
                       ))}
                     </div>

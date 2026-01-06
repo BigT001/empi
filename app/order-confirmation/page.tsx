@@ -88,7 +88,14 @@ function OrderConfirmationContent() {
           throw new Error("Order not found");
         }
         const data = await res.json();
-        setOrder(data.order || data);
+        const orderData = data.order || data;
+        console.log('[OrderConfirmation] 📦 Fetched order data:', orderData);
+        console.log('[OrderConfirmation] 🖼️ Items with images:', orderData.items?.map((item: any) => ({
+          name: item.name,
+          imageUrl: item.imageUrl,
+          hasImage: !!item.imageUrl
+        })));
+        setOrder(orderData);
         setError(null);
       } catch (err) {
         console.error("Error fetching order:", err);
@@ -231,15 +238,45 @@ function OrderConfirmationContent() {
                   order.items.map((item, index) => (
                     <div
                       key={index}
-                      className="flex justify-between items-center p-4 bg-gray-50 rounded-lg border border-gray-200"
+                      className="flex gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition"
                     >
-                      <div>
+                      {/* Product Image - Always show, with fallback */}
+                      <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
+                        {item.imageUrl ? (
+                          <img
+                            src={item.imageUrl}
+                            alt={item.name}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              console.warn(`[OrderConfirmation] Failed to load image: ${item.imageUrl}`);
+                              const img = e.target as HTMLImageElement;
+                              img.style.display = 'none';
+                            }}
+                            onLoad={() => {
+                              console.log(`[OrderConfirmation] ✅ Image loaded: ${item.imageUrl}`);
+                            }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-200 text-gray-600">
+                            <span className="text-xs text-center px-1">No image</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Item Details */}
+                      <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900">{item.name}</p>
                         <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
+                        {item.mode && <p className="text-xs text-gray-500 mt-1">Mode: {item.mode}</p>}
                       </div>
-                      <p className="font-semibold text-gray-900">
-                        {formatPrice(item.price * item.quantity)}
-                      </p>
+                      {/* Price */}
+                      <div className="flex-shrink-0 text-right">
+                        <p className="font-semibold text-gray-900">
+                          {formatPrice(item.price * item.quantity)}
+                        </p>
+                        {item.quantity > 1 && (
+                          <p className="text-xs text-gray-500">@ {formatPrice(item.price)} ea</p>
+                        )}
+                      </div>
                     </div>
                   ))
                 ) : (

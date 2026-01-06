@@ -25,7 +25,7 @@ export function MobileLogoTop() {
   };
 
   return (
-    <div className="md:hidden flex items-center px-0 pr-4 py-3 gap-3 relative z-[1000]">
+    <div className="md:hidden flex items-center px-0 pr-4 py-3 gap-3 relative z-[1000] bg-black/40 backdrop-blur-sm border-b border-white/10">
       {/* Logo */}
       <Link href="/" className="flex-shrink-0">
         <Image
@@ -33,7 +33,7 @@ export function MobileLogoTop() {
           alt="EMPI Logo"
           width={80}
           height={80}
-          className="h-16 w-auto"
+          className="h-12 w-auto"
         />
       </Link>
 
@@ -45,9 +45,9 @@ export function MobileLogoTop() {
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-2xl border-2 border-gray-300 bg-gray-50 px-4 py-2 pl-12 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition"
+            className="w-full rounded-full border border-white/30 bg-white/20 px-4 py-1.5 pl-9 text-xs font-medium text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-primary focus:bg-white/30 transition backdrop-blur-sm"
           />
-          <Search className="absolute left-4 top-2.5 h-5 w-5 text-gray-400 pointer-events-none" />
+          <Search className="absolute left-3 top-2 h-4 w-4 text-white/60 pointer-events-none" />
         </div>
       </form>
 
@@ -56,12 +56,12 @@ export function MobileLogoTop() {
         {/* Cart Icon */}
         <Link href="/cart" className="relative inline-flex items-center justify-center">
           <button 
-            className="p-2 text-gray-700 hover:text-gray-900 transition-colors duration-200 transform hover:scale-110 active:scale-95 relative"
+            className="p-2 text-white/80 hover:text-white transition-colors duration-200 transform hover:scale-110 active:scale-95 relative"
             title="Cart"
           >
-            <ShoppingCart className="h-6 w-6" strokeWidth={2} />
+            <ShoppingCart className="h-5 w-5" strokeWidth={2} />
             {items.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-4 w-4 flex items-center justify-center text-xs">
                 {items.length}
               </span>
             )}
