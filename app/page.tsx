@@ -81,8 +81,6 @@ export default function Home() {
       <div className="md:hidden absolute top-0 left-0 right-0 z-50">
         <MobileLogoTop />
       </div>
-
-      {/* Hero Section */}
       <HeroSection />
 
       {/* Brands/Partners Section */}
