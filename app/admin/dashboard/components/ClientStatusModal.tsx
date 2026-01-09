@@ -89,9 +89,7 @@ export function ClientStatusModal({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {orders.map((order) => {
                 const displayPrice = order.quotedPrice || order.price || 0;
-                const formattedPrice = displayPrice > 0 
-                  ? (displayPrice < 1000000 ? (displayPrice / 1000) + 'K' : (displayPrice / 1000000) + 'M')
-                  : 'Pending';
+                const formattedPrice = displayPrice > 0 ? `₦${Number(displayPrice).toLocaleString('en-NG')}` : 'Pending';
 
                 return (
                   <div key={order._id} className={`${statusConfig.bg} border-2 ${statusConfig.border} rounded-xl p-4 flex flex-col gap-3 hover:shadow-md transition`}>

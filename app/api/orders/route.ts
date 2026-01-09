@@ -40,13 +40,13 @@ export async function POST(request: NextRequest) {
     const vatRate = 7.5;
     const vat = subtotal * (vatRate / 100);
 
-    // Calculate caution fee for rentals (50% of total rental cost)
+    // Calculate caution fee for rentals (50% per costume quantity, NOT per day)
     let cautionFee = 0;
-    const rentalTotal = processedItems
+    const rentalBaseTotal = processedItems
       .filter((item: any) => item.mode === 'rent')
-      .reduce((sum: number, item: any) => sum + (item.price * item.quantity * (item.rentalDays || 1)), 0);
-    if (rentalTotal > 0) {
-      cautionFee = rentalTotal * 0.5;
+      .reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+    if (rentalBaseTotal > 0) {
+      cautionFee = rentalBaseTotal * 0.5;
     }
 
     const order = new Order({
@@ -63,12 +63,14 @@ export async function POST(request: NextRequest) {
       subtotal: subtotal,
       vat: Math.round(vat * 100) / 100, // Round to 2 decimal places
       vatRate: vatRate,
-      shippingCost: body.pricing?.shipping || body.shippingCost || 0,
+      // Shipping removed from checkout totals - force zero
+      shippingCost: 0,
       total: body.pricing?.total || body.total || 0,
       
       // Shipping info
       shippingType: body.shipping?.option || body.shippingType || 'standard',
-      deliveryFee: body.pricing?.shipping || body.deliveryFee || 0,
+      // Delivery fee removed from checkout totals
+      deliveryFee: 0,
       
       // Address (if provided)
       address: body.address || null,
@@ -81,6 +83,9 @@ export async function POST(request: NextRequest) {
       // Rental schedule (if provided)
       rentalSchedule: body.rentalSchedule || undefined,
       cautionFee: cautionFee > 0 ? cautionFee : undefined,
+      
+      // Pricing breakdown (from checkout)
+      pricing: body.pricing || undefined,
       
       // Custom order linking (if this is a custom order payment)
       isCustomOrder: body.isCustomOrder || false,
@@ -253,7 +258,8 @@ export async function POST(request: NextRequest) {
           existingInvoice.customerState = order.state || '';
           existingInvoice.customerPostalCode = order.zipCode || '';
           existingInvoice.subtotal = order.subtotal || 0;
-          existingInvoice.shippingCost = order.shippingCost || 0;
+          // Ensure invoices do not include shipping
+          existingInvoice.shippingCost = 0;
           existingInvoice.taxAmount = order.vat || 0;
           existingInvoice.totalAmount = order.total || 0;
           existingInvoice.items = (order.items || []).map((item: any) => ({
@@ -298,6 +304,14 @@ export async function POST(request: NextRequest) {
         dueDate.setDate(dueDate.getDate() + 30);
 
         // Prepare invoice data - call the proven working endpoint
+        // Build invoice payload using structured pricing and excluding shipping
+        const pricing = (order as any).pricing || {};
+        const goodsSubtotal = pricing.goodsSubtotal ?? order.subtotal ?? 0;
+        const cautionFee = pricing.cautionFee ?? order.cautionFee ?? 0;
+        const taxAmount = pricing.tax ?? order.vat ?? 0;
+        const subtotalWithCaution = goodsSubtotal + (cautionFee || 0);
+        const totalAmount = subtotalWithCaution + (taxAmount || 0);
+
         const invoicePayload = {
           invoiceNumber,
           orderNumber: order.orderNumber,
@@ -309,16 +323,20 @@ export async function POST(request: NextRequest) {
           customerCity: order.city || '',
           customerState: order.state || '',
           customerPostalCode: order.zipCode || '',
-          subtotal: order.subtotal || 0,
-          shippingCost: order.shippingCost || 0,
-          taxAmount: order.vat || 0,
-          totalAmount: order.total || 0,
+          subtotal: goodsSubtotal,
+          goodsSubtotal: goodsSubtotal,
+          cautionFee: cautionFee,
+          subtotalWithCaution: subtotalWithCaution,
+          shippingCost: 0,
+          taxAmount: taxAmount,
+          totalAmount: totalAmount,
           items: (order.items || []).map((item: any) => ({
             productId: item.productId,
             name: item.name,
             quantity: item.quantity,
             price: item.price,
             mode: item.mode,
+            rentalDays: item.rentalDays || 0,
           })),
           invoiceDate: invoiceDate.toISOString(),
           dueDate: dueDate.toISOString(),
@@ -359,11 +377,14 @@ export async function POST(request: NextRequest) {
               customerCity: order.city || '',
               customerState: order.state || '',
               customerPostalCode: order.zipCode || '',
-              subtotal: order.subtotal || 0,
-              shippingCost: order.shippingCost || 0,
-              taxAmount: order.vat || 0,
-              totalAmount: order.total || 0,
-              items: order.items || [],
+              subtotal: goodsSubtotal,
+              goodsSubtotal: goodsSubtotal,
+              cautionFee: cautionFee,
+              subtotalWithCaution: subtotalWithCaution,
+              shippingCost: 0,
+              taxAmount: taxAmount,
+              totalAmount: totalAmount,
+              items: (order.items || []).map((item: any) => ({ ...item, rentalDays: item.rentalDays || 0 })) || [],
               invoiceDate: new Date().toISOString(),
               dueDate: new Date(new Date().setDate(new Date().getDate() + 30)).toISOString(),
               currency: 'NGN',
@@ -511,6 +532,7 @@ export async function GET(request: NextRequest) {
     const ref = searchParams.get('ref');
     const email = searchParams.get('email');
     const buyerId = searchParams.get('buyerId');
+    const includeCustom = searchParams.get('includeCustom');
     const limit = parseInt(searchParams.get('limit') || '100');
 
     if (ref) {
@@ -549,12 +571,14 @@ export async function GET(request: NextRequest) {
     } else if (email) {
       query.email = email;
     }
-    // Exclude orders created for custom order payments
-    // Check both: isCustomOrder flag AND customOrderId reference
-    query.$and = [
-      { $or: [{ isCustomOrder: { $ne: true } }, { isCustomOrder: { $exists: false } }] },
-      { $or: [{ customOrderId: { $eq: null } }, { customOrderId: { $exists: false } }] }
-    ];
+    // Exclude orders created for custom order payments by default
+    // If `includeCustom=true` is provided, do not exclude custom orders
+    if (includeCustom !== 'true') {
+      query.$and = [
+        { $or: [{ isCustomOrder: { $ne: true } }, { isCustomOrder: { $exists: false } }] },
+        { $or: [{ customOrderId: { $eq: null } }, { customOrderId: { $exists: false } }] }
+      ];
+    }
     
     let orders = await Order.find(query).sort({ createdAt: -1 }).limit(limit);
     console.log(`[Orders API] Fetched ${orders.length} orders for buyerId: ${buyerId || 'N/A'}, email: ${email || 'N/A'} (limit: ${limit})`);

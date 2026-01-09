@@ -1,16 +1,17 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
-import { Clock, AlertTriangle, Search, Calendar, AlertCircle, Check, X, DollarSign, Mail, Phone, Package, MessageCircle, Trash2 } from "lucide-react";
-import Image from "next/image";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { Clock, AlertCircle, Check, X } from "lucide-react";
 import { ChatModal } from "@/app/components/ChatModal";
+import { OrderCard } from "./components/PendingPanel/OrderCard";
+import { ConfirmPaymentModal } from "./components/PendingPanel/ConfirmPaymentModal";
 
 interface OrderItem {
   productId?: string;
   name: string;
   quantity: number;
   price: number;
-  mode?: string;
+  mode?: 'buy' | 'rent';
   imageUrl?: string; // Product image URL from order
 }
 
@@ -26,6 +27,8 @@ interface PendingOrderData {
   paymentStatus?: string;
   createdAt: string;
   items: OrderItem[];
+  rentalSchedule?: { rentalDays?: number } | null;
+  cautionFee?: number | null;
 }
 
 interface ProductWithImage {
@@ -49,6 +52,11 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
   const [confirmModalOpen, setConfirmModalOpen] = useState<string | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<Record<string, 'pending' | 'paid' | 'approved'>>({});
+  const [fetchedCount, setFetchedCount] = useState<number>(0);
+  const [lastFetchAt, setLastFetchAt] = useState<number | null>(null);
+  const [isPollingActive, setIsPollingActive] = useState<boolean>(true);
+  const prevPendingKeyRef = useRef<string>('');
+  const prevPaymentStatusRef = useRef<string>('');
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -88,8 +96,14 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         });
       }
       
-      setPaymentStatus(statusMap);
-      console.log('[PendingPanel] Payment status map:', statusMap);
+      const serialized = JSON.stringify(statusMap);
+      if (serialized !== prevPaymentStatusRef.current) {
+        prevPaymentStatusRef.current = serialized;
+        setPaymentStatus(statusMap);
+        console.log('[PendingPanel] Payment status map (updated):', statusMap);
+      } else {
+        console.log('[PendingPanel] Payment status unchanged');
+      }
     } catch (err) {
       console.error('[PendingPanel] Error detecting payment status:', err);
     }
@@ -97,37 +111,121 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
 
   useEffect(() => {
     let mounted = true;
-    (async () => {
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    let backoffMs = 0;
+
+    const DEFAULT_POLL_MS = Number(process.env.NEXT_PUBLIC_ADMIN_POLL_INTERVAL) || 15000;
+    const MAX_BACKOFF_MS = 60000;
+
+    const fetchOrders = async ({ signal, showLoading }: { signal?: AbortSignal; showLoading?: boolean } = {}) => {
       try {
-        setLoading(true);
-        setError(null);
-        const res = await fetch('/api/orders?limit=200');
+        if (!mounted) return;
+        if (showLoading) {
+          setLoading(true);
+          setError(null);
+        }
+
+        // Fetch both regular orders and custom-orders to ensure admin sees everything
+        const ordersFetch = fetch('/api/orders?limit=200&includeCustom=true', { signal, cache: 'no-store' });
+        const customFetch = fetch('/api/custom-orders?limit=200', { signal, cache: 'no-store' });
+
+        const [res, customRes] = await Promise.all([ordersFetch, customFetch]);
         if (!res.ok) throw new Error('Failed to load orders');
+        if (!customRes.ok) console.warn('[PendingPanel] /api/custom-orders returned non-OK status', customRes.status);
+
         const data = await res.json();
         const ordersList = Array.isArray(data) ? data : (data.orders || []);
-        console.log('[PendingPanel] First order:', ordersList[0]);
-        console.log('[PendingPanel] First item:', ordersList[0]?.items?.[0]);
-        const pendingList = ordersList.filter((o: any) => 
-          o.status === 'pending' || o.status === 'unpaid' || o.status === 'processing' || o.paymentStatus === 'pending'
-        );
-        if (mounted) {
-          setPending(pendingList);
-          // Fetch product images
-          fetchProductImages(pendingList);
-          // Detect payment status by checking for invoices
-          detectPaymentStatus(pendingList);
+
+        let customList: any[] = [];
+        try {
+          const customData = await customRes.json();
+          customList = Array.isArray(customData) ? customData : (customData.orders || []);
+        } catch (e) {
+          console.warn('[PendingPanel] Failed to parse /api/custom-orders response', e);
         }
+
+        // Merge unique orders by _id or orderNumber (custom orders may use different ids)
+        const allOrdersMap = new Map<string, any>();
+        ordersList.forEach((o: any) => {
+          allOrdersMap.set(o._id?.toString() || o.orderNumber, o);
+        });
+        customList.forEach((o: any) => {
+          const key = o._id?.toString() || o.orderNumber || (`custom-${o.orderNumber}`);
+          if (!allOrdersMap.has(key)) allOrdersMap.set(key, o);
+        });
+        const combinedOrders = Array.from(allOrdersMap.values());
+
+        console.log('[PendingPanel] First order:', combinedOrders[0]);
+        console.log('[PendingPanel] First item:', combinedOrders[0]?.items?.[0]);
+
+        // Show all orders that are not final (exclude completed or cancelled)
+        const pendingList = combinedOrders.filter((o: any) => {
+          const status = (o.status || '').toString().toLowerCase();
+          if (status === 'completed' || status === 'cancelled' || status === 'deleted') return false;
+          return true;
+        });
+
+        console.log('[PendingPanel] fetched orders count:', combinedOrders.length, 'pendingList count:', pendingList.length);
+        console.log('[PendingPanel] fetched orderNumbers:', combinedOrders.map(o => o.orderNumber).slice(0,50));
+        if (mounted) {
+          // Create a simple fingerprint of the pending list to avoid replacing state when nothing changed
+          const newKey = pendingList.map(o => o._id || o.orderNumber).join(',');
+          if (newKey !== prevPendingKeyRef.current) {
+            prevPendingKeyRef.current = newKey;
+            setPending(pendingList);
+            setFetchedCount(combinedOrders.length);
+            setLastFetchAt(Date.now());
+            // Fetch product images
+            fetchProductImages(pendingList);
+            // Detect payment status by checking for invoices
+            detectPaymentStatus(pendingList);
+            console.log('[PendingPanel] pending state updated (changes detected)');
+          } else {
+            // No meaningful change — avoid updating UI state to prevent visible refresh/jank
+            console.log('[PendingPanel] no change in pending orders — skipping state update');
+          }
+        }
+
+        // reset backoff on success
+        backoffMs = 0;
       } catch (err: any) {
-        console.error('[PendingPanel] Error loading pending orders:', err);
-        if (mounted) setError(err.message || 'Failed to load pending orders');
+        if (err?.name === 'AbortError') {
+          console.log('[PendingPanel] fetch aborted');
+        } else {
+          console.error('[PendingPanel] Error loading pending orders:', err);
+          // Only set a user-facing error when this fetch was explicitly requested (showLoading)
+          if (mounted && showLoading) setError(err.message || 'Failed to load pending orders');
+          // increase backoff
+          backoffMs = backoffMs ? Math.min(backoffMs * 2, MAX_BACKOFF_MS) : 5000;
+        }
       } finally {
-        if (mounted) setLoading(false);
+        if (mounted && showLoading) setLoading(false);
       }
-    })();
+    };
+
+    const controller = new AbortController();
+
+    // initial fetch (show loading UI on first explicit load)
+    fetchOrders({ signal: controller.signal, showLoading: true });
+
+    // Polling loop
+    if (isPollingActive) {
+      intervalId = setInterval(() => {
+        // if there is a backoff, wait for backoff duration instead
+        if (backoffMs) {
+          setTimeout(() => fetchOrders(), backoffMs);
+        } else {
+          fetchOrders();
+        }
+      }, DEFAULT_POLL_MS);
+    }
+
     return () => {
       mounted = false;
+      controller.abort();
+      if (intervalId) clearInterval(intervalId);
     };
-  }, []);
+  }, [isPollingActive]);
 
   const fetchProductImages = async (orders: PendingOrderData[]) => {
     // Extract images directly from order items instead of fetching from products API
@@ -221,6 +319,28 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
     }
   };
 
+  const deleteOrder = async (orderId: string) => {
+    try {
+      setLoading(true);
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || 'Failed to delete order');
+      }
+
+      setPending(pending.filter(o => o._id !== orderId));
+      showToast('Order deleted successfully!', 'success');
+    } catch (err: any) {
+      console.error('[PendingPanel] Error deleting order:', err);
+      showToast(err.message || 'Failed to delete order', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Filter and sort pending orders
   const filteredPending = useMemo(() => {
     let filtered = pending;
@@ -276,6 +396,35 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
 
   const totalPendingAmount = pending.reduce((sum, o) => sum + o.total, 0);
 
+  const refreshNow = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch('/api/orders?limit=200&includeCustom=true');
+      if (!res.ok) throw new Error('Failed to refresh orders');
+      const data = await res.json();
+      const ordersList = Array.isArray(data) ? data : (data.orders || []);
+      const pendingList = ordersList.filter((o: any) => {
+        const status = (o.status || '').toString().toLowerCase();
+        if (status === 'completed' || status === 'cancelled' || status === 'deleted') return false;
+        return true;
+      });
+
+      setPending(pendingList);
+      setFetchedCount(ordersList.length);
+      setLastFetchAt(Date.now());
+      fetchProductImages(pendingList);
+      detectPaymentStatus(pendingList);
+    } catch (err: any) {
+      console.error('[PendingPanel] Manual refresh failed:', err);
+      setError(err.message || 'Failed to refresh orders');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const togglePolling = () => setIsPollingActive(prev => !prev);
+
   return (
     <div className="space-y-6">
       {/* Main Container */}
@@ -318,7 +467,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
 
         {/* Pending Orders Cards Grid */}
         {!loading && !error && pending.length > 0 && (
-          <>
+          <div>
             {/* Sort Controls */}
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -334,18 +483,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
                     <option value="amount">Highest Amount</option>
                   </select>
                 </div>
-                <button
-                  onClick={deleteAllPendingOrders}
-                  disabled={pending.length === 0 || loading}
-                  className="flex items-center gap-2 px-4 py-1.5 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold transition"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete All
-                </button>
               </div>
-              <p className="text-sm text-gray-600">
-                {filteredPending.length} of {pending.length} orders
-              </p>
             </div>
 
             {/* Cards Grid */}
@@ -354,247 +492,49 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
                 <p className="text-gray-500 font-semibold">No pending orders found</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredPending.map((order) => {
-                  const daysOld = getDaysOld(order.createdAt);
-                  
-                  return (
-                    <div
-                      key={order._id}
-                      className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl border-2 border-red-200 overflow-hidden shadow-md hover:shadow-xl hover:border-red-300 transition-all flex flex-col"
-                    >
-                      {/* Header - Customer Info */}
-                      <div className="bg-gradient-to-r from-red-600 to-rose-600 p-5 text-white">
-                        <h3 className="font-bold text-lg">{order.firstName} {order.lastName}</h3>
-                        <p className="text-sm text-red-100 truncate">{order.email}</p>
-                        {order.phone && <p className="text-sm text-red-100">{order.phone}</p>}
-                      </div>
-
-                      {/* Content */}
-                      <div className="p-5 space-y-4 flex-1 flex flex-col">
-                        {/* Product Items - Images & Names */}
-                        {order.items && order.items.length > 0 && (
-                          <div className="space-y-2">
-                            <p className="text-xs font-semibold text-gray-600 uppercase">Products Ordered</p>
-                            <div className="space-y-2">
-                              {order.items.map((item, idx) => (
-                                <div
-                                  key={`${order._id}-item-${idx}`}
-                                  className="flex gap-3 bg-white rounded-lg p-3 border border-red-200"
-                                >
-                                  {/* Product Image */}
-                                  <div className="relative aspect-square bg-gray-100 rounded border border-red-300 overflow-hidden flex-shrink-0 w-16 h-16">
-                                    {item.imageUrl ? (
-                                      <Image
-                                        src={item.imageUrl}
-                                        alt={item.name}
-                                        fill
-                                        className="object-cover"
-                                        unoptimized={true}
-                                      />
-                                    ) : (
-                                      <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                                        <span className="text-xs text-gray-600">No Image</span>
-                                      </div>
-                                    )}
-                                  </div>
-                                  
-                                  {/* Product Details */}
-                                  <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
-                                    <div className="flex gap-2 items-center">
-                                      <span className="text-xs text-gray-600">Qty: {item.quantity}</span>
-                                      {item.mode && (
-                                        <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                                          item.mode === 'rent'
-                                            ? 'bg-purple-100 text-purple-700'
-                                            : 'bg-green-100 text-green-700'
-                                        }`}>
-                                          {item.mode === 'rent' ? '🔄 Rental' : '🛍️ Buy'}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Stats - 3 column grid */}
-                        <div className="grid grid-cols-3 gap-2 pt-3 border-t border-red-200">
-                          <div className="bg-red-50 rounded-lg p-2 text-center border border-red-300">
-                            <p className="text-2xl font-bold text-red-700">{order.items?.length || '—'}</p>
-                            <p className="text-xs text-red-600 font-medium">Items</p>
-                          </div>
-                          <div className={`rounded-lg p-2 text-center border ${
-                            paymentStatus[order._id] === 'paid'
-                              ? 'bg-green-50 border-green-300'
-                              : 'bg-yellow-50 border-yellow-300'
-                          }`}>
-                            <p className="text-lg font-bold text-yellow-700">
-                              ₦{order.total < 1000000 ? (order.total / 1000).toFixed(0) + 'K' : (order.total / 1000000).toFixed(1) + 'M'}
-                            </p>
-                            <p className={`text-xs font-medium ${
-                              paymentStatus[order._id] === 'paid'
-                                ? 'text-green-600'
-                                : 'text-yellow-600'
-                            }`}>
-                              {paymentStatus[order._id] === 'paid' ? 'PAID' : 'Awaiting'}
-                            </p>
-                          </div>
-                          <div className="bg-orange-50 rounded-lg p-2 text-center border border-orange-300">
-                            <p className="text-xs font-bold text-orange-700">{formatDate(order.createdAt)}</p>
-                            <p className="text-xs text-orange-600 font-medium">{daysOld === 0 ? 'Today' : daysOld === 1 ? '1 day' : `${daysOld} days`}</p>
-                          </div>
-                        </div>
-
-                        {/* Order Details */}
-                        <div className="pt-3 border-t border-red-200">
-                          <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Order Info</p>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 text-xs text-gray-600">
-                              <Calendar className="h-3.5 w-3.5" />
-                              <span>Order: {order.orderNumber}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-xs">
-                              <Clock className="h-3.5 w-3.5" />
-                              {paymentStatus[order._id] === 'paid' ? (
-                                <span className="text-green-600 font-semibold flex items-center gap-1">
-                                  <span>✅ Payment Received</span>
-                                </span>
-                              ) : (
-                                <span className="text-yellow-600 font-semibold">Status: Awaiting Payment</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Action Buttons */}
-                        <div className="flex gap-2 pt-4 border-t border-red-200 mt-auto">
-                          <button
-                            onClick={() => setConfirmModalOpen(order._id)}
-                            disabled={approvingOrderId === order._id}
-                            className={`flex-1 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 ${
-                              paymentStatus[order._id] === 'paid'
-                                ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
-                                : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
-                            } disabled:from-gray-400 disabled:to-gray-400`}
-                          >
-                            {approvingOrderId === order._id ? (
-                              <>
-                                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-                                {paymentStatus[order._id] === 'paid' ? 'Confirming...' : 'Approving...'}
-                              </>
-                            ) : (
-                              <>
-                                <Check className="h-4 w-4" />
-                                Approve
-                              </>
-                            )}
-                          </button>
-                          <button
-                            onClick={() => setChatModalOpen(order._id)}
-                            className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
-                          >
-                            <MessageCircle className="h-4 w-4" />
-                            Chat
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-3 gap-6">
+                {filteredPending.map((order) => (
+                  <div key={order._id} className="break-inside-avoid mb-6">
+                    <OrderCard
+                      orderId={order._id}
+                      firstName={order.firstName}
+                      lastName={order.lastName}
+                      email={order.email}
+                      phone={order.phone}
+                      items={order.items}
+                      total={order.total}
+                      orderNumber={order.orderNumber}
+                      isPaid={paymentStatus[order._id] === 'paid'}
+                      isApproving={approvingOrderId === order._id}
+                      rentalDays={order.rentalSchedule?.rentalDays}
+                      cautionFee={order.cautionFee || undefined}
+                      onApprove={() => setConfirmModalOpen(order._id)}
+                      onChat={() => setChatModalOpen(order._id)}
+                      onDelete={deleteOrder}
+                      formatCurrency={formatCurrency}
+                    />
+                  </div>
+                ))}
               </div>
             )}
-          </>
+          </div>
         )}
 
         {/* Confirmation Modal */}
-        {confirmModalOpen && (() => {
-          const order = pending.find(o => o._id === confirmModalOpen);
-          const isPaid = paymentStatus[confirmModalOpen] === 'paid';
-          
-          return (
-            <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="bg-white rounded-xl shadow-2xl max-w-sm mx-4 p-6 space-y-4">
-                <div className={`flex items-center justify-center w-12 h-12 rounded-full mx-auto ${
-                  isPaid ? 'bg-green-100' : 'bg-yellow-100'
-                }`}>
-                  {isPaid ? (
-                    <Check className="h-6 w-6 text-green-600" />
-                  ) : (
-                    <AlertCircle className="h-6 w-6 text-yellow-600" />
-                  )}
-                </div>
-                
-                <h2 className="text-xl font-bold text-center text-gray-900">
-                  {isPaid ? 'Payment Confirmed' : 'Verify Payment'}
-                </h2>
-                
-                <div className="space-y-3">
-                  <p className="text-center text-gray-600">
-                    Order <span className="font-semibold">{order?.orderNumber}</span>
-                  </p>
-                  
-                  <div className={`border rounded-lg p-4 ${
-                    isPaid ? 'bg-green-50 border-green-200' : 'bg-yellow-50 border-yellow-200'
-                  }`}>
-                    <p className={`text-sm font-semibold mb-2 ${
-                      isPaid ? 'text-green-700' : 'text-yellow-700'
-                    }`}>
-                      Payment Status:
-                    </p>
-                    <p className={`text-lg font-bold ${
-                      isPaid ? 'text-green-600' : 'text-yellow-600'
-                    }`}>
-                      {isPaid ? '✅ Payment Received' : '⏳ Awaiting Payment'}
-                    </p>
-                  </div>
-                  
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                    <p className="text-sm text-gray-600">
-                      <span className="font-semibold">Amount:</span> {formatCurrency(order?.total || 0)}
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-700">
-                    {isPaid 
-                      ? '✅ Payment has been verified. You can now approve this order.'
-                      : '⚠️ No payment detected yet. Please ensure payment has been received before approving.'}
-                  </p>
-                </div>
-                
-                <div className="flex gap-3 pt-2">
-                  <button
-                    onClick={() => setConfirmModalOpen(null)}
-                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition"
-                  >
-                    {isPaid ? 'Cancel' : 'Go Back'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirmModalOpen) {
-                        approvePayment(confirmModalOpen);
-                        setConfirmModalOpen(null);
-                      }
-                    }}
-                    disabled={!isPaid}
-                    className={`flex-1 px-4 py-2 text-white font-semibold rounded-lg transition ${
-                      isPaid
-                        ? 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
-                        : 'bg-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {isPaid ? 'Approve Order' : 'Waiting for Payment'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })()}
+        <ConfirmPaymentModal
+          isOpen={!!confirmModalOpen}
+          orderNumber={pending.find(o => o._id === confirmModalOpen)?.orderNumber || ''}
+          isPaid={confirmModalOpen ? paymentStatus[confirmModalOpen] === 'paid' : false}
+          total={pending.find(o => o._id === confirmModalOpen)?.total || 0}
+          onClose={() => setConfirmModalOpen(null)}
+          onApprove={() => {
+            if (confirmModalOpen) {
+              approvePayment(confirmModalOpen);
+              setConfirmModalOpen(null);
+            }
+          }}
+          formatCurrency={formatCurrency}
+        />
 
         {/* Chat Modal */}
         {chatModalOpen && (

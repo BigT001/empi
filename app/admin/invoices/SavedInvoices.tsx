@@ -165,7 +165,6 @@ export function SavedInvoices() {
 
             <div class="totals">
               <p><strong>Subtotal:</strong> ${invoice.currencySymbol}${invoice.subtotal.toFixed(2)}</p>
-              <p><strong>Shipping:</strong> ${invoice.shippingCost === 0 ? 'FREE' : `${invoice.currencySymbol}${invoice.shippingCost.toFixed(2)}`}</p>
               <p><strong>Tax:</strong> ${invoice.currencySymbol}${invoice.taxAmount.toFixed(2)}</p>
               <p class="total-amount"><strong>Total:</strong> ${invoice.currencySymbol}${invoice.totalAmount.toFixed(2)}</p>
             </div>

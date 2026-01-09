@@ -14,11 +14,7 @@ export function StatusTabs({ orders, selectedStatus, onStatusChange }: StatusTab
       <div className="flex gap-2 flex-wrap items-center">
         {[
           { id: "pending", label: "Pending", color: "bg-yellow-50 text-yellow-700 border-yellow-300", badgeColor: "bg-yellow-100" },
-          { id: "approved", label: "Approved", color: "bg-blue-50 text-blue-700 border-blue-300", badgeColor: "bg-blue-100" },
-          { id: "in-progress", label: "In Progress", color: "bg-purple-50 text-purple-700 border-purple-300", badgeColor: "bg-purple-100" },
-          { id: "ready", label: "Ready", color: "bg-green-50 text-green-700 border-green-300", badgeColor: "bg-green-100" },
-          { id: "completed", label: "Completed", color: "bg-emerald-50 text-emerald-700 border-emerald-300", badgeColor: "bg-emerald-100" },
-          { id: "rejected", label: "Rejected", color: "bg-red-50 text-red-700 border-red-300", badgeColor: "bg-red-100" }
+          { id: "approved", label: "Approved", color: "bg-blue-50 text-blue-700 border-blue-300", badgeColor: "bg-blue-100" }
         ].map((tab) => (
           <button
             key={tab.id}

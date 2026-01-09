@@ -25,6 +25,8 @@ interface CartContextType {
   updateQuantity: (id: string, mode: "buy" | "rent", quantity: number) => void;
   clearCart: () => void;
   total: number;
+  // Caution fee for rentals (50% of rental total)
+  cautionFee: number;
   // Delivery state
   deliveryState: string | null;
   setDeliveryState: (state: string | null) => void;
@@ -224,9 +226,27 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   // Calculate total: sum of all item costs (buy items as-is, rental items base cost)
-  const total = items.reduce((sum, item) => {
-    return sum + item.price * item.quantity;
+  // Compute totals considering rental days
+  const buyTotal = items.reduce((sum, item) => {
+    return item.mode === 'buy' ? sum + item.price * item.quantity : sum;
   }, 0);
+
+  const rentalTotal = items.reduce((sum, item) => {
+    if (item.mode !== 'rent') return sum;
+    const days = rentalSchedule?.rentalDays || item.rentalDays || 1;
+    return sum + (item.price * item.quantity * days);
+  }, 0);
+
+  // subtotal used for VAT (goods/services only, NOT caution fee)
+  const total = buyTotal + rentalTotal;
+
+  // Caution fee: 50% per costume (quantity), NOT multiplied by rental days
+  const rentalBaseForCaution = items.reduce((sum, item) => {
+    if (item.mode !== 'rent') return sum;
+    return sum + (item.price * item.quantity);
+  }, 0);
+
+  const cautionFee = rentalBaseForCaution * 0.5;
 
   // ===== VALIDATION FUNCTIONS =====
   
@@ -392,7 +412,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, deliveryState, setDeliveryState, deliveryDistance, setDeliveryDistance, deliveryQuote, setDeliveryQuote, rentalSchedule, setRentalSchedule, validateRentalSchedule, validateDeliveryInfo, validateCheckoutRequirements }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, cautionFee, deliveryState, setDeliveryState, deliveryDistance, setDeliveryDistance, deliveryQuote, setDeliveryQuote, rentalSchedule, setRentalSchedule, validateRentalSchedule, validateDeliveryInfo, validateCheckoutRequirements }}>
       {children}
     </CartContext.Provider>
   );

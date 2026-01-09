@@ -19,7 +19,7 @@ import { ItemSize } from "@/app/lib/deliverySystem";
 import { EnhancedDeliverySelector } from "../components/EnhancedDeliverySelectorNew";
 
 export default function CartPage() {
-  const { items, removeItem, updateQuantity, clearCart, total, deliveryState, setDeliveryState, rentalSchedule, setRentalSchedule, deliveryQuote, setDeliveryQuote } = useCart();
+  const { items, removeItem, updateQuantity, clearCart, total, deliveryState, setDeliveryState, rentalSchedule, setRentalSchedule, deliveryQuote, setDeliveryQuote, cautionFee: contextCautionFee } = useCart();
   const { buyer, updateProfile } = useBuyer();
   const router = useRouter();
 
@@ -97,8 +97,8 @@ export default function CartPage() {
       }
     });
     
-    // 50% caution fee on TOTAL rental amount only
-    const cautionFee = rentalTotal * 0.5;
+    // Use caution fee from cart context (50% per-costume, not per-day)
+    const cautionFee = contextCautionFee;
     
     // Subtotal is buy items + rental items (not including caution fee)
     const subtotalBeforeCaution = buyTotal + rentalTotal;
@@ -499,15 +499,7 @@ export default function CartPage() {
                   </div>
                   
                   {/* Shipping */}
-                  {shippingOption === "empi" ? (
-                    deliveryQuote ? (
-                      <div className="flex justify-between text-sm"><span className="text-gray-600">Delivery</span><span className="font-semibold text-lime-600">{formatPrice(deliveryQuote.fee)}</span></div>
-                    ) : (
-                      <div className="flex justify-between text-sm"><span className="text-gray-600">Delivery</span><span className="text-gray-500">Calculate below</span></div>
-                    )
-                  ) : (
-                    <div className="flex justify-between text-sm"><span className="text-gray-600">Pickup</span><span className="font-semibold text-green-600">FREE</span></div>
-                  )}
+                  {/* Delivery row intentionally hidden; delivery handled separately */}
                   
                   {/* VAT */}
                   <div className="flex justify-between text-sm"><span className="text-gray-600">VAT (7.5%)</span><span>{formatPrice(parseFloat(taxEstimate))}</span></div>

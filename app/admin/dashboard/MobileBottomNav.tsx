@@ -3,19 +3,19 @@
 import { Users, ShoppingCart, Palette, Package, Clock, BarChart3 } from "lucide-react";
 
 interface Tab {
-  id: 'overview' | 'users' | 'orders' | 'custom-orders' | 'products' | 'pending';
+  id: 'dashboard' | 'users' | 'orders' | 'custom-orders' | 'products' | 'pending';
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   badge?: number | null;
 }
 
 const TABS: Tab[] = [
-  { id: 'overview', label: 'Overview', icon: BarChart3 },
+  { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
   { id: 'users', label: 'Users', icon: Users },
   { id: 'orders', label: 'Orders', icon: ShoppingCart },
   { id: 'custom-orders', label: 'Custom', icon: Palette },
   { id: 'products', label: 'Products', icon: Package },
-  { id: 'pending', label: 'Pending', icon: Clock },
+  { id: 'pending', label: 'Orders', icon: Clock },
 ];
 
 interface MobileBottomNavProps {

@@ -1,45 +1,16 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
-import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 import MobileAdminDashboard from "../mobile-dashboard";
-import MobileAdminLayout from "../mobile-layout";
 import { MobileBottomSidebar } from "./MobileBottomSidebar";
-import { useAdmin } from "@/app/context/AdminContext";
+import { UsersPanel } from "./UsersPanel";
+import { PendingPanel } from "./PendingPanel";
+import { ProductsPanel } from "./ProductsPanel";
 import { useSessionExpiry } from "@/lib/hooks/useSessionExpiry";
-import MobileAdminDashboardSkeleton from "../mobile-dashboard";
-import { Users, ShoppingCart, Palette, Package, Clock, BarChart3, AlertTriangle, Palette as Paintbrush, CheckCircle2 } from "lucide-react";
+import { BarChart3, AlertTriangle } from "lucide-react";
 
 // ⚡ LAZY LOAD panels with code splitting - dramatically reduces initial bundle size
-const UsersPanel = dynamic(() => import("./UsersPanel").then(mod => ({ default: mod.UsersPanel })), {
-  loading: () => <PanelSkeleton />,
-  ssr: false // Don't render on server - load on client only when tab is clicked
-});
-
-const OrdersPanel = dynamic(() => import("./OrdersPanel").then(mod => ({ default: mod.OrdersPanel })), {
-  loading: () => <PanelSkeleton />,
-  ssr: false
-});
-
-const ProductsPanel = dynamic(() => import("./ProductsPanel").then(mod => ({ default: mod.ProductsPanel })), {
-  loading: () => <PanelSkeleton />,
-  ssr: false
-});
-
-const PendingPanel = dynamic(() => import("./PendingPanel").then(mod => ({ default: mod.PendingPanel })), {
-  loading: () => <PanelSkeleton />,
-  ssr: false
-});
-
-const ApprovedOrdersPanel = dynamic(() => import("./ApprovedOrdersPanel").then(mod => ({ default: mod.ApprovedOrdersPanel })), {
-  loading: () => <PanelSkeleton />,
-  ssr: false
-});
-
-const CustomOrdersPanel = dynamic(() => import("./CustomOrdersPanel").then(mod => ({ default: mod.CustomOrdersPanel })), {
-  loading: () => <PanelSkeleton />,
-  ssr: false
-});
+// Panels are intentionally minimal — dashboard now only shows Overview
 
 // ⚡ Skeleton loader for fast perceived performance
 function PanelSkeleton() {
@@ -52,44 +23,26 @@ function PanelSkeleton() {
   );
 }
 
-// ⚡ Tab configuration for easy maintenance
+// Tab configuration: main dashboard + panels (rendered by activeTab)
 const TABS = [
-  { id: 'overview', label: 'Overview', icon: BarChart3, color: 'text-blue-600' },
-  { id: 'custom', label: 'Orders', icon: Paintbrush, color: 'text-orange-600' },
-  { id: 'users', label: 'Users', icon: Users, color: 'text-purple-600' },
-  { id: 'products', label: 'Products', icon: Package, color: 'text-indigo-600' },
+  { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'text-blue-600' },
+  { id: 'users', label: 'Users', icon: BarChart3, color: 'text-green-600' },
+  { id: 'pending', label: 'Pending', icon: BarChart3, color: 'text-orange-600' },
+  { id: 'products', label: 'Products', icon: BarChart3, color: 'text-purple-600' },
 ] as const;
 
 export default function AdminDashboardPage() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  const [tabCounts, setTabCounts] = useState<Record<string, number>>({
-    pending: 0,
-    approved: 0,
-    custom: 0,
-    users: 0,
-    products: 0,
-  });
-  
-  // ⚡ Initialize activeTab and loadedTabs together to prevent missing content on page refresh
-  const [activeTab, setActiveTab] = useState<
-    'overview' | 'users' | 'products' | 'custom'
-  >(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('adminDashboardActiveTab');
-      return (saved as 'overview' | 'users' | 'products' | 'custom') || 'overview';
-    }
-    return 'overview';
-  });
-  
-  // ⚡ Track loaded tabs to prevent re-fetching - Initialize with activeTab so content loads on refresh
-  const [loadedTabs, setLoadedTabs] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('adminDashboardActiveTab');
-      const initialTab = (saved as 'overview' | 'users' | 'products' | 'custom') || 'overview';
-      return new Set(['overview', initialTab]);
-    }
-    return new Set(['overview']);
+  // Active dashboard tab (dashboard | users | pending | products)
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'pending' | 'products'>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const saved = localStorage.getItem('adminDashboardActiveTab');
+        if (saved === 'users' || saved === 'pending' || saved === 'products' || saved === 'dashboard') return saved as any;
+      }
+    } catch (e) { /* ignore */ }
+    return 'dashboard';
   });
   
   // Use session expiry hook to detect logout
@@ -106,92 +59,37 @@ export default function AdminDashboardPage() {
   }, []);
 
   // Fetch tab counts
+  // No tab counts to fetch — overview-only dashboard
+
+  // Persist active tab to localStorage when it changes
   useEffect(() => {
-    const fetchCounts = async () => {
+    try {
+      if (typeof window !== 'undefined') localStorage.setItem('adminDashboardActiveTab', activeTab);
+    } catch (e) { /* ignore */ }
+  }, [activeTab]);
+
+  // Listen for same-window tab changes dispatched by the sidebar
+  useEffect(() => {
+    const onAdminTabChange = (e: Event) => {
       try {
-        // Use admin dashboard API which provides comprehensive stats
-        const dashboardRes = await fetch('/api/admin/dashboard');
-        if (!dashboardRes.ok) {
-          console.warn('Dashboard API failed, using fallback counts');
-          setTabCounts({
-            pending: 0,
-            approved: 0,
-            custom: 0,
-            users: 0,
-            products: 0,
-          });
-          return;
+        const detail = (e as CustomEvent).detail;
+        if (detail && detail.tab) {
+            const t = detail.tab;
+            if (t === 'dashboard' || t === 'users' || t === 'pending' || t === 'products') {
+              setActiveTab(t);
+            }
         }
-
-        const dashboardData = await dashboardRes.json();
-
-        // Fetch custom orders separately for custom order pending count
-        let customCount = 0;
-        try {
-          const customRes = await fetch('/api/custom-orders');
-          if (customRes.ok) {
-            const customData = await customRes.json();
-            const customOrders = Array.isArray(customData) ? customData : (customData.orders || []);
-            customCount = customOrders.filter((o: any) => o.status === 'pending').length;
-          }
-        } catch (err) {
-          console.warn('Failed to fetch custom orders count:', err);
-        }
-
-        // Fetch orders for pending/approved counts
-        let pendingCount = 0;
-        let approvedCount = 0;
-        try {
-          const ordersRes = await fetch('/api/orders');
-          if (ordersRes.ok) {
-            const ordersData = await ordersRes.json();
-            const orders = Array.isArray(ordersData) ? ordersData : (ordersData.orders || []);
-            pendingCount = orders.filter((o: any) => 
-              o.status === 'pending' || o.status === 'unpaid' || o.status === 'processing' || o.paymentStatus === 'pending'
-            ).length;
-            approvedCount = orders.filter((o: any) => 
-              o.status === 'approved' || o.paymentStatus === 'paid'
-            ).length;
-          }
-        } catch (err) {
-          console.warn('Failed to fetch orders count:', err);
-        }
-
-        setTabCounts({
-          pending: pendingCount,
-          approved: approvedCount,
-          custom: customCount,
-          users: dashboardData.totalCustomers || 0,
-          products: dashboardData.totalProducts || 0,
-        });
-      } catch (error) {
-        console.error('Failed to fetch tab counts:', error);
-        // Set default empty state on error
-        setTabCounts({
-          pending: 0,
-          approved: 0,
-          custom: 0,
-          users: 0,
-          products: 0,
-        });
+      } catch (err) {
+        // ignore
       }
     };
 
-    fetchCounts();
-    // Refresh counts every 10 seconds
-    const interval = setInterval(fetchCounts, 10000);
-    return () => clearInterval(interval);
+    window.addEventListener('adminTabChange', onAdminTabChange as EventListener);
+    return () => window.removeEventListener('adminTabChange', onAdminTabChange as EventListener);
   }, []);
 
-  // Persist active tab to localStorage
-  useEffect(() => {
-    localStorage.setItem('adminDashboardActiveTab', activeTab);
-  }, [activeTab]);
-
-  // ⚡ Handle tab click - mark as loaded
   const handleTabClick = (tabId: string) => {
     setActiveTab(tabId as any);
-    setLoadedTabs(prev => new Set([...prev, tabId]));
   };
 
   // Show session error banner if present
@@ -219,66 +117,36 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-0">
-      {/* Horizontal Tab Navigation - VISIBLE ON DESKTOP AND MOBILE - ⚡ OPTIMIZED FOR SPEED - POSITIONED AT TOP */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 overflow-x-auto shadow-sm md:sticky">
-        <nav className="flex gap-1 px-4 md:px-6 py-0">
-          {TABS.map(tab => {
-            const Icon = tab.icon;
-            const count = tabCounts[tab.id] || 0;
-            const showBadge = ['pending', 'approved', 'custom', 'users', 'products'].includes(tab.id) && count > 0;
-            
-            return (
-              <button
-                key={tab.id}
-                onClick={() => handleTabClick(tab.id)}
-                className={`px-3 md:px-4 py-3 font-semibold transition-all whitespace-nowrap flex items-center gap-1 md:gap-2 border-b-2 text-sm md:text-base relative ${
-                  activeTab === tab.id
-                    ? 'border-lime-600 text-lime-600 bg-lime-50/50'
-                    : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                }`}
-              >
-                <Icon className="h-4 w-4 md:h-5 md:w-5" />
-                <span className="hidden sm:inline">{tab.label}</span>
-                {showBadge && (
-                  <span className="absolute -top-1 -right-1 bg-red-600 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-                    {count > 99 ? '99+' : count}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+      {/* Header removed per request */}
 
       {/* Content Area - ⚡ Lazy loaded panels only render when needed - ADD PADDING BOTTOM FOR MOBILE SIDEBAR */}
       <main className="p-4 md:p-8 w-full pb-24 md:pb-0">
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
+        {/* Overview + Panels */}
+        {activeTab === 'dashboard' && (
           <div className="animate-fadeIn">
             <MobileAdminDashboard />
           </div>
         )}
 
-        {/* Users Tab - ⚡ Only loaded/rendered when clicked */}
-        {activeTab === 'users' && loadedTabs.has('users') && (
+        {activeTab === 'users' && (
           <div className="animate-fadeIn">
             <UsersPanel />
           </div>
         )}
 
-        {/* Products Tab - ⚡ Only loaded/rendered when clicked */}
-        {activeTab === 'products' && loadedTabs.has('products') && (
+        {activeTab === 'pending' && (
+          <div className="animate-fadeIn">
+            <PendingPanel />
+          </div>
+        )}
+
+        {activeTab === 'products' && (
           <div className="animate-fadeIn">
             <ProductsPanel />
           </div>
         )}
 
-        {/* Orders Tab - ⚡ Only loaded/rendered when clicked */}
-        {activeTab === 'custom' && loadedTabs.has('custom') && (
-          <div className="animate-fadeIn">
-            <CustomOrdersPanel />
-          </div>
-        )}
+        {/* Only Overview content is shown */}
 
 
       </main>

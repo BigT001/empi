@@ -18,6 +18,8 @@ interface Product {
   sellPrice: number;
   rentPrice: number;
   category: string;
+  costumeType?: string | null;
+  country?: string | null;
   badge?: string | null;
   imageUrl: string;
   imageUrls: string[];
@@ -284,12 +286,24 @@ export default function ProductDetailClient({ product, allProducts, currency = "
               )}
 
               {/* Product Details Box */}
-              {(product.color || product.material || product.condition || sizes.length > 0) && (
+              {(product.costumeType || product.country || product.color || product.material || product.condition || sizes.length > 0) && (
                 <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl border-2 border-gray-200 p-6 mb-6 shadow-md hover:shadow-lg transition">
                   <h3 className="font-black text-gray-900 mb-4 text-lg flex items-center gap-2">
                     <span>📦</span> Product Details
                   </h3>
                   <div className="grid grid-cols-2 gap-5 text-sm">
+                    {product.costumeType && (
+                      <div className="bg-white p-3 rounded-lg border border-gray-200">
+                        <p className="text-gray-600 font-bold text-xs uppercase tracking-wide">Costume Type</p>
+                        <p className="text-gray-900 font-black mt-1 text-base">{product.costumeType}</p>
+                      </div>
+                    )}
+                    {product.country && product.costumeType === 'Traditional Africa' && (
+                      <div className="bg-white p-3 rounded-lg border border-gray-200">
+                        <p className="text-gray-600 font-bold text-xs uppercase tracking-wide">Country/Region</p>
+                        <p className="text-gray-900 font-black mt-1 text-base">{product.country}</p>
+                      </div>
+                    )}
                     {product.color && (
                       <div className="bg-white p-3 rounded-lg border border-gray-200">
                         <p className="text-gray-600 font-bold text-xs uppercase tracking-wide">Color</p>
@@ -321,30 +335,6 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
             {/* Action Buttons Section */}
             <div className="space-y-4">
-              {/* Size Selection */}
-              {sizes.length > 0 && (
-                <div className="bg-white p-4 rounded-xl border-2 border-gray-200">
-                  <label className="block text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
-                    <span>📏</span> Select Size:
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {sizes.map((s: string) => (
-                      <button 
-                        key={s} 
-                        onClick={() => setSelectedSize(s)} 
-                        className={`px-4 py-2.5 rounded-lg border-2 font-bold transition transform ${
-                          selectedSize === s 
-                            ? 'border-lime-600 bg-lime-50 text-lime-700 shadow-md' 
-                            : 'border-gray-300 text-gray-700 hover:border-lime-300'
-                        }`}
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Quantity */}
               <div className="flex items-center gap-4 bg-white p-4 rounded-xl border-2 border-gray-200">
                 <label className="font-bold text-gray-900 flex items-center gap-2">
@@ -424,6 +414,14 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                         </div>
                         <div className="p-4 flex-grow flex flex-col">
                           <h3 className="font-bold text-gray-900 text-sm line-clamp-2 mb-2">{p.name}</h3>
+                          {(p.costumeType || p.country) && (
+                            <div className="text-xs text-gray-600 mb-2">
+                              {p.costumeType && <span>{p.costumeType}</span>}
+                              {p.country && p.costumeType === 'Traditional Africa' && (
+                                <span> • {p.country}</span>
+                              )}
+                            </div>
+                          )}
                           <p className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-lime-600 to-green-600 mt-auto">{formatPrice(p.sellPrice)}</p>
                         </div>
                       </div>

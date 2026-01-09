@@ -70,6 +70,18 @@ export interface IOrder extends Document {
   // Rental schedule (shared for all rental items)
   rentalSchedule?: IRentalSchedule;
   cautionFee?: number; // 50% of total rental amount
+  // Pricing breakdown
+  pricing?: {
+    subtotal?: number;
+    goodsSubtotal?: number;
+    cautionFee?: number;
+    tax?: number;
+    shipping?: number;
+    total?: number;
+    discount?: number;
+    discountPercentage?: number;
+    subtotalAfterDiscount?: number;
+  };
   createdAt: Date;
   updatedAt: Date;
 }
@@ -148,6 +160,18 @@ const orderSchema = new Schema<IOrder>(
     // Rental schedule (shared for all rental items)
     rentalSchedule: rentalScheduleSchema,
     cautionFee: { type: Number, default: 0 }, // 50% of total rental amount
+    // Pricing breakdown
+    pricing: {
+      subtotal: Number,
+      goodsSubtotal: Number,
+      cautionFee: Number,
+      tax: Number,
+      shipping: Number,
+      total: Number,
+      discount: Number,
+      discountPercentage: Number,
+      subtotalAfterDiscount: Number,
+    },
   },
   { timestamps: true }
 );

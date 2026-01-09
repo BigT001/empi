@@ -649,7 +649,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
           ${invoice.bulkDiscountPercentage && invoice.bulkDiscountPercentage > 0 ? `<div class="totals-row" style="background-color: #f0fdf4; border-radius: 6px; padding: 8px; margin: 4px 0;"><span style="color: #15803d; font-weight: 600;">🎉 Bulk Discount (${invoice.bulkDiscountPercentage}%)</span><span style="color: #15803d; font-weight: 600;">-${invoice.currencySymbol}${invoice.bulkDiscountAmount?.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
           ${invoice.cautionFee && invoice.cautionFee > 0 ? `<div class="totals-row"><span>🔄 Caution Fee (Rentals)</span><span>${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
           ${invoice.subtotalWithCaution && invoice.cautionFee && invoice.cautionFee > 0 ? `<div class="totals-row"><span style="font-weight: 700;">Subtotal + Caution</span><span style="font-weight: 700;">${invoice.currencySymbol}${invoice.subtotalWithCaution.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
-          ${invoice.shippingCost > 0 ? `<div class="totals-row"><span>Shipping</span><span>${invoice.currencySymbol}${invoice.shippingCost.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
+          <!-- Shipping removed from professional invoice per admin request -->
           ${invoice.taxAmount > 0 ? `<div class="totals-row"><span>VAT</span><span>${invoice.currencySymbol}${invoice.taxAmount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
           <div class="totals-row total-row">
             <span>Total</span>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Search, AlertCircle, ChevronDown } from "lucide-react";
 import { ProductCard } from "@/app/components/ProductCard";
@@ -16,6 +16,7 @@ interface Product {
   rentPrice: number;
   category: string;
   costumeType?: string;
+  country?: string; // For Traditional Africa subfilter
   imageUrl: string;
   imageUrls?: string[];
   badge: string | null;
@@ -29,16 +30,16 @@ interface PaginationData {
   page: number;
   limit: number;
   totalPages: number;
-  hasMore: boolean;
+  hasMore: boolean; 
 }
 
-const COSTUME_TYPES = ['Angel', 'Carnival', 'Superhero', 'Traditional', 'Cosplay', 'Other'];
+const COSTUME_TYPES = ['Angel', 'Carnival', 'Western', 'Traditional Africa', 'Cosplay', 'Other'];
+const TRADITIONAL_AFRICA_COUNTRIES = ['Nigeria', 'Ghana', 'South Africa', 'Egypt', 'Algeria', 'Congo', 'Kenya'];
 const COLORS = ['Red', 'Blue', 'Black', 'White', 'Gold', 'Silver', 'Purple', 'Green', 'Pink', 'Yellow', 'Orange', 'Brown'];
 const MATERIALS = ['Cotton', 'Polyester', 'Satin', 'Silk', 'Velvet', 'Leather', 'Synthetic'];
 
 export default function SearchResults() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const query = searchParams.get("q") || "";
   const category = searchParams.get("category") || "";
   const currency = searchParams.get("currency") || "NGN";
@@ -57,6 +58,7 @@ export default function SearchResults() {
 
   // Filter states
   const [selectedType, setSelectedType] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [selectedMaterial, setSelectedMaterial] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -91,6 +93,7 @@ export default function SearchResults() {
         params.append("search", query);
         if (category) params.append("category", category);
         if (selectedType) params.append("costumeType", selectedType);
+        if (selectedCountry) params.append("country", selectedCountry);
         if (selectedColor) params.append("color", selectedColor);
         if (selectedMaterial) params.append("material", selectedMaterial);
         params.append("page", currentPage.toString());
@@ -111,7 +114,7 @@ export default function SearchResults() {
     };
 
     fetchSearchResults();
-  }, [query, category, selectedType, selectedColor, selectedMaterial, currentPage]);
+  }, [query, category, selectedType, selectedCountry, selectedColor, selectedMaterial, currentPage]);
 
   // Handle scroll to hide/show header
   useEffect(() => {
@@ -166,12 +169,13 @@ export default function SearchResults() {
                 <p className="text-sm font-bold text-gray-900">
                   {pagination.total} result{pagination.total !== 1 ? "s" : ""} found
                 </p>
-                {query && <p className="text-xs text-gray-600">for <span className="font-semibold">"{query}"</span></p>}
+                {query && <p className="text-xs text-gray-600">for <span className="font-semibold">&quot;{query}&quot;</span></p>}
               </div>
-              {(selectedType || selectedColor || selectedMaterial) && (
+              {(selectedType || selectedCountry || selectedColor || selectedMaterial) && (
                 <button
                   onClick={() => {
                     setSelectedType("");
+                    setSelectedCountry("");
                     setSelectedColor("");
                     setSelectedMaterial("");
                     setCurrentPage(1);
@@ -192,6 +196,7 @@ export default function SearchResults() {
                   value={selectedType}
                   onChange={(e) => {
                     setSelectedType(e.target.value);
+                    setSelectedCountry(""); // Reset country when type changes
                     setCurrentPage(1);
                   }}
                   className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white hover:border-lime-400 transition cursor-pointer"
@@ -202,6 +207,26 @@ export default function SearchResults() {
                   ))}
                 </select>
               </div>
+
+              {/* Country Filter - Only show if Traditional Africa is selected */}
+              {selectedType === "Traditional Africa" && (
+                <div className="flex items-center gap-1.5">
+                  <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">COUNTRY:</label>
+                  <select
+                    value={selectedCountry}
+                    onChange={(e) => {
+                      setSelectedCountry(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                    className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white hover:border-lime-400 transition cursor-pointer"
+                  >
+                    <option value="">All Countries</option>
+                    {TRADITIONAL_AFRICA_COUNTRIES.map(country => (
+                      <option key={country} value={country}>{country}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {/* Color Filter */}
               <div className="flex items-center gap-1.5">

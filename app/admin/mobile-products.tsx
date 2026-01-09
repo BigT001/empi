@@ -13,12 +13,25 @@ interface Product {
   sellPrice: number;
   rentPrice: number;
   category: string;
+  costumeType?: string;
   badge?: string;
   condition: string;
   color?: string;
   material?: string;
   sizes?: string;
+  country?: string;
 }
+
+const COUNTRIES = [
+  { id: 'all', label: '🌍 All Countries', value: null },
+  { id: 'Nigeria', label: '🇳🇬 Nigeria', value: 'Nigeria' },
+  { id: 'Ghana', label: '🇬🇭 Ghana', value: 'Ghana' },
+  { id: 'South Africa', label: '🇿🇦 South Africa', value: 'South Africa' },
+  { id: 'Egypt', label: '🇪🇬 Egypt', value: 'Egypt' },
+  { id: 'Algeria', label: '🇩🇿 Algeria', value: 'Algeria' },
+  { id: 'Congo', label: '🇨🇩 Congo', value: 'Congo' },
+  { id: 'Kenya', label: '🇰🇪 Kenya', value: 'Kenya' },
+];
 
 export default function MobileProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -29,6 +42,7 @@ export default function MobileProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<string | null>(null);
 
   useEffect(() => {
     loadProducts();
@@ -43,8 +57,8 @@ export default function MobileProductsPage() {
       if (!response.ok) throw new Error("Failed to fetch products");
 
       const data = await response.json();
-      // Handle both response formats: direct array and { products: [] }
-      const productList = Array.isArray(data) ? data : (data.products || []);
+      // API returns { data: [], pagination: {...} }
+      const productList = data.data || (Array.isArray(data) ? data : (data.products || []));
       setProducts(productList);
     } catch (err) {
       const message = err instanceof Error ? err.message : "Error loading products";
@@ -149,12 +163,51 @@ export default function MobileProductsPage() {
     );
   }
 
+  // Filter to show only Traditional Africa costumes with country data
+  const traditionalAfricaProducts = products.filter(
+    (p) => p.costumeType?.toLowerCase() === 'traditional africa' && p.country
+  );
+
+  // Filter products by selected country (only among Traditional Africa costumes)
+  const filteredProducts = selectedCountry
+    ? traditionalAfricaProducts.filter((p) => p.country === selectedCountry)
+    : traditionalAfricaProducts;
+
+  // Show country tabs only if there are Traditional Africa products with country data
+  const showCountryTabs = traditionalAfricaProducts.length > 0;
+
+  // DEBUG LOGS
+  console.log('📊 DEBUG: Total Products:', products.length);
+  console.log('🥁 DEBUG: Traditional Africa Products:', traditionalAfricaProducts.length);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
       {/* Header */}
       <div className="sticky top-0 z-20 bg-white border-b border-gray-200 px-4 py-4">
-        <h1 className="text-xl font-bold text-gray-900">📦 Products ({products.length})</h1>
+        <h1 className="text-xl font-bold text-gray-900">📦 Products ({filteredProducts.length})</h1>
       </div>
+
+      {/* Country Filter Tabs */}
+      {showCountryTabs && (
+        <div className="sticky top-16 z-19 bg-white border-b border-gray-200 px-4 py-3">
+          <p className="text-xs font-semibold text-gray-600 mb-2">🥁 Traditional Africa - Filter by Country:</p>
+          <div className="flex gap-2 overflow-x-auto pb-2 -mb-2">
+            {COUNTRIES.map((country) => (
+              <button
+                key={country.id}
+                onClick={() => setSelectedCountry(country.value)}
+                className={`px-4 py-2 rounded-full font-semibold text-sm whitespace-nowrap transition ${
+                  selectedCountry === country.value
+                    ? 'bg-lime-600 text-white shadow-md'
+                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {country.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {deleteMessage && (
         <div
@@ -170,7 +223,13 @@ export default function MobileProductsPage() {
 
       {/* Products Feed - Instagram Style */}
       <div className="space-y-4 px-4 py-4">
-        {products.map((product) => (
+        {filteredProducts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <p className="text-gray-500 text-lg font-semibold">No Traditional Africa products found</p>
+            <p className="text-gray-400 text-sm">for {selectedCountry || 'any country'}</p>
+          </div>
+        ) : null}
+        {filteredProducts.map((product) => (
           <div
             key={product._id}
             className="bg-white rounded-2xl overflow-hidden border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer"
@@ -215,6 +274,13 @@ export default function MobileProductsPage() {
               <div className="inline-block bg-gray-100 text-gray-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
                 {product.condition}
               </div>
+
+              {/* Country Badge - Show if product has country */}
+              {product.country && (
+                <div className="inline-block ml-2 bg-lime-100 text-lime-700 text-xs font-semibold px-3 py-1 rounded-full mb-3">
+                  🌍 {product.country}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex gap-2 pt-3 border-t border-gray-200">

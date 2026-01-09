@@ -27,6 +27,13 @@ export interface InvoiceData {
   taxAmount: number;
   totalAmount: number;
   
+  // Discount
+  bulkDiscountPercentage?: number;
+  bulkDiscountAmount?: number;
+  subtotalAfterDiscount?: number;
+  cautionFee?: number;
+  subtotalWithCaution?: number;
+  
   // Shipping preference
   shippingPreference: "empi" | "self";
   shippingMethod: string;

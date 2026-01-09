@@ -8,6 +8,7 @@ import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
 import { ShoppingBag, AlertCircle, CreditCard } from "lucide-react";
+import { getDiscountPercentage, VAT_RATE } from "@/lib/discountCalculator";
 
 const SHIPPING_OPTIONS = {
   empi: { id: "empi", name: "EMPI Delivery", cost: 2500, estimatedDays: "2-5 business days" },
@@ -15,7 +16,7 @@ const SHIPPING_OPTIONS = {
 };
 
 export default function CheckoutPage() {
-  const { items, clearCart, total } = useCart();
+  const { items, clearCart, total, cautionFee, rentalSchedule } = useCart();
   const { buyer } = useBuyer();
   const router = useRouter();
 
@@ -69,7 +70,7 @@ export default function CheckoutPage() {
     try {
       // Use buyer info or guest customer info
       const customerInfo = buyer || guestCustomer;
-      
+
       if (!customerInfo.fullName || !customerInfo.email || !customerInfo.phone) {
         setOrderError("Customer information is incomplete. Please fill in all required fields.");
         setIsProcessing(false);
@@ -79,42 +80,108 @@ export default function CheckoutPage() {
       let orderData;
       
       // Consolidated order data - treat all orders the same way
-      const shippingCost = customQuote ? 0 : (shippingOption === "empi" ? 2500 : 0);
-      const subtotal = customQuote ? (customQuote.quotedPrice || 0) : total;
-      const taxAmount = customQuote ? (customQuote.quotedVAT || 0) : (subtotal * 0.075);
-      const totalAmount = customQuote ? (customQuote.quotedTotal || 0) : (subtotal + shippingCost + taxAmount);
+      // Shipping removed from checkout totals and order payloads
+      const shippingCost = 0;
+      // For regular cart orders, `total` is goods/services subtotal (buy + rental days)
+      // Tax should be charged on goods/services only (NOT on caution fee)
+      if (customQuote) {
+        const subtotal = customQuote.quotedPrice || 0;
+        const taxAmount = customQuote.quotedVAT || 0;
+        const totalAmount = customQuote.quotedTotal || (subtotal + taxAmount + shippingCost);
 
-      orderData = {
-        reference: response.reference,
-        buyerId: buyer?.id || null,
-        customer: {
-          name: customerInfo.fullName,
-          email: customerInfo.email,
-          phone: customerInfo.phone,
-        },
-        items: customQuote 
-          ? [{
-              id: customQuote.orderId,
-              name: `Order #${customQuote.orderNumber}`,
-              quantity: customQuote.quantity || 1,
-              price: customQuote.quotedPrice || 0,
-              mode: 'buy'
-            }]
-          : items,
-        shippingType: shippingOption || 'standard',
-        shippingCost: shippingCost,
-        pricing: {
-          subtotal: subtotal,
-          discount: customQuote?.discountAmount || 0,
-          tax: taxAmount,
-          shipping: shippingCost,
-          total: totalAmount,
-        },
-        createdAt: new Date().toISOString(),
-        // Custom order linking fields
-        isCustomOrder: !!customQuote,
-        customOrderId: customQuote?.orderId || null,
-      };
+        orderData = {
+          reference: response.reference,
+          buyerId: buyer?.id || null,
+          customer: {
+            name: customerInfo.fullName,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+          },
+          items: [{
+            id: customQuote.orderId,
+            name: `Order #${customQuote.orderNumber}`,
+            quantity: customQuote.quantity || 1,
+            price: customQuote.quotedPrice || 0,
+            mode: 'buy'
+          }],
+          rentalSchedule: null,
+          shippingType: shippingOption || 'standard',
+          status: 'confirmed',
+          shippingCost: 0,
+          pricing: {
+            subtotal: subtotal,
+            goodsSubtotal: subtotal,
+            cautionFee: 0,
+            tax: taxAmount,
+            shipping: 0,
+            total: totalAmount,
+            discount: customQuote?.discountAmount || 0,
+          },
+          createdAt: new Date().toISOString(),
+          isCustomOrder: true,
+          customOrderId: customQuote?.orderId || null,
+        };
+      } else {
+        const buyItems = items.filter((item: any) => item.mode === 'buy');
+        const rentalItems = items.filter((item: any) => item.mode === 'rent');
+        
+        // Buy subtotal (before discount)
+        const buySubtotal = buyItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+        
+        // Rental subtotal (with rental days)
+        const rentalSubtotal = rentalItems.reduce((sum: number, item: any) => {
+          const days = rentalSchedule?.rentalDays || item.rentalDays || 1;
+          return sum + (item.price * item.quantity * days);
+        }, 0);
+        
+        // Apply discount ONLY to buy items
+        const buyQuantity = buyItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
+        const discountPercent = getDiscountPercentage(buyQuantity);
+        const discountAmt = buySubtotal * (discountPercent / 100);
+        const buySubtotalAfterDiscount = buySubtotal - discountAmt;
+        
+        // Total goods = buy after discount + rental (no discount)
+        const goodsSubtotal = buySubtotalAfterDiscount + rentalSubtotal;
+        const taxAmount = Number((goodsSubtotal * VAT_RATE).toFixed(2));
+        const totalAmount = goodsSubtotal + (cautionFee || 0) + shippingCost + taxAmount;
+
+        // Attach rentalDays to each item for persistence/visibility in admin UI
+        const itemsWithRentalDays = items.map((it: any) => ({
+          ...it,
+          rentalDays: it.rentalDays || rentalSchedule?.rentalDays || 1,
+        }));
+
+        orderData = {
+          reference: response.reference,
+          buyerId: buyer?.id || null,
+          customer: {
+            name: customerInfo.fullName,
+            email: customerInfo.email,
+            phone: customerInfo.phone,
+          },
+          items: itemsWithRentalDays,
+          rentalSchedule: rentalSchedule || null,
+          shippingType: shippingOption || 'standard',
+          status: 'confirmed',
+          shippingCost: 0,
+          pricing: {
+            subtotal: buySubtotal,
+            buySubtotal: buySubtotal,
+            rentalSubtotal: rentalSubtotal,
+            goodsSubtotal: goodsSubtotal,
+            cautionFee: (cautionFee || 0),
+            tax: taxAmount,
+            shipping: 0,
+            total: totalAmount,
+            discount: discountAmt,
+            discountPercentage: discountPercent,
+            subtotalAfterDiscount: buySubtotalAfterDiscount,
+          },
+          createdAt: new Date().toISOString(),
+          isCustomOrder: false,
+          customOrderId: null,
+        };
+      }
 
       console.log("💾 Saving order...");
       console.log("Order data:", JSON.stringify(orderData, null, 2));
@@ -308,7 +375,7 @@ export default function CheckoutPage() {
   }
 
   // ===== CALCULATE TOTALS =====
-  let shippingCost, taxEstimate, totalAmount, displayItems, displayTotal, displaySubtotal;
+  let shippingCost, taxEstimate, totalAmount, displayItems, displayTotal, displaySubtotal, discountAmount = 0, discountPercentage = 0, displaySubtotalAfterDiscount = 0;
   
   if (customQuote) {
     // Custom order totals - ensure all values are numbers
@@ -336,13 +403,55 @@ export default function CheckoutPage() {
       displayTotal,
     });
   } else {
-    // Cart totals
-    shippingCost = SHIPPING_OPTIONS[shippingOption].cost;
-    taxEstimate = total * 0.075;
-    totalAmount = total + shippingCost + taxEstimate;
+    // Cart totals - with discount calculation ONLY on buy items
+    shippingCost = 0;
+    
+    // Separate buy and rental items
+    const buyItems = items.filter(item => item.mode === 'buy');
+    const rentalItems = items.filter(item => item.mode === 'rent');
+    
+    // Calculate buy subtotal
+    const buySubtotal = buyItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    
+    // Calculate rental total (with rental days)
+    const rentalSubtotal = rentalItems.reduce((sum, item) => {
+      const days = rentalSchedule?.rentalDays || item.rentalDays || 1;
+      return sum + (item.price * item.quantity * days);
+    }, 0);
+    
+    // Apply discount ONLY to buy items, NOT rentals
+    const buyQuantity = buyItems.reduce((sum, item) => sum + item.quantity, 0);
+    discountPercentage = getDiscountPercentage(buyQuantity);
+    discountAmount = buySubtotal * (discountPercentage / 100);
+    const buySubtotalAfterDiscount = buySubtotal - discountAmount;
+    
+    // Total goods/services = buy after discount + rental (no discount)
+    const goodsSubtotal = buySubtotalAfterDiscount + rentalSubtotal;
+    
+    // Tax calculated on goods only (not caution fee)
+    taxEstimate = goodsSubtotal * VAT_RATE;
+    
+    // Include caution fee in displayed subtotal and in final total
+    displaySubtotal = buySubtotal + rentalSubtotal + (cautionFee || 0);
+    displaySubtotalAfterDiscount = goodsSubtotal + (cautionFee || 0);
+    totalAmount = displaySubtotalAfterDiscount + shippingCost + taxEstimate;
     displayItems = items;
-    displaySubtotal = total;
     displayTotal = totalAmount;
+    
+    console.log('[Checkout] Calculated cart totals with discount on buy only:', {
+      buySubtotal,
+      buyQuantity,
+      discountPercentage,
+      discountAmount,
+      buySubtotalAfterDiscount,
+      rentalSubtotal,
+      goodsSubtotal,
+      taxEstimate,
+      cautionFee,
+      displaySubtotal,
+      displaySubtotalAfterDiscount,
+      displayTotal,
+    });
   }
 
   // ===== CHECKOUT FORM =====
@@ -378,21 +487,30 @@ export default function CheckoutPage() {
                   <span>Subtotal</span>
                   <span>₦{displaySubtotal.toLocaleString()}</span>
                 </div>
+                {/* Discount (if applicable for cart orders) */}
+                {!customQuote && discountPercentage > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount ({discountPercentage}%)</span>
+                    <span>-₦{Math.round(discountAmount).toLocaleString()}</span>
+                  </div>
+                )}
+                {/* Caution Fee (rentals) */}
+                {cautionFee > 0 && (
+                  <div className="flex justify-between text-sm text-amber-700">
+                    <span>🔒 Caution Fee (50% of rentals)</span>
+                    <span>₦{Math.round(cautionFee).toLocaleString()}</span>
+                  </div>
+                )}
                 {customQuote && customQuote.discountAmount > 0 && (
                   <div className="flex justify-between text-sm text-green-600">
                     <span>Discount</span>
                     <span>-₦{customQuote.discountAmount.toLocaleString()}</span>
                   </div>
                 )}
-                {!customQuote && (
-                  <div className="flex justify-between text-sm">
-                    <span>Shipping ({shippingOption === "empi" ? "EMPI" : "Pickup"})</span>
-                    <span>{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</span>
-                  </div>
-                )}
+                {/* Shipping is handled separately and intentionally hidden on checkout */}
                 <div className="flex justify-between text-sm">
                   <span>Tax (7.5%)</span>
-                  <span>₦{taxEstimate.toLocaleString()}</span>
+                  <span>₦{Math.round(taxEstimate).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-lg font-bold pt-3 border-t-2 border-gray-200">
                   <span>Total Amount</span>
@@ -593,15 +711,21 @@ export default function CheckoutPage() {
                   <p className="text-gray-600 mb-1">Subtotal</p>
                   <p className="font-semibold text-gray-900">₦{displaySubtotal.toLocaleString()}</p>
                 </div>
+                {!customQuote && discountPercentage > 0 && (
+                  <div className="pb-4 border-b border-gray-200">
+                    <p className="text-gray-600 mb-1">Discount ({discountPercentage}%)</p>
+                    <p className="font-semibold text-green-600">-₦{Math.round(discountAmount).toLocaleString()}</p>
+                  </div>
+                )}
                 {!customQuote && (
                   <div className="pb-4 border-b border-gray-200">
-                    <p className="text-gray-600 mb-1">Shipping</p>
-                    <p className="font-semibold text-gray-900">{shippingCost === 0 ? "FREE" : `₦${shippingCost.toLocaleString()}`}</p>
+                    <p className="text-gray-600 mb-1">Rental Days</p>
+                    <p className="font-semibold text-gray-900">{rentalSchedule?.rentalDays ? `${rentalSchedule.rentalDays} day${rentalSchedule.rentalDays > 1 ? 's' : ''}` : 'N/A'}</p>
                   </div>
                 )}
                 <div className="pb-4 border-b border-gray-200">
                   <p className="text-gray-600 mb-1">Tax</p>
-                  <p className="font-semibold text-gray-900">₦{taxEstimate.toLocaleString()}</p>
+                  <p className="font-semibold text-gray-900">₦{Math.round(taxEstimate).toLocaleString()}</p>
                 </div>
                 <div className="pt-4">
                   <p className="text-gray-600 text-xs mb-2">Total</p>

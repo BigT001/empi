@@ -15,6 +15,8 @@ interface Product {
   rentPrice: number;
   category: string;
   costumeType?: string;
+  region?: string; // legacy: keep region as fallback for Traditional Africa subfilter
+  country?: string;
   badge: string | null;
   imageUrl: string;
   imageUrls: string[];
@@ -91,9 +93,19 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
 
   // Apply costume type filter if selected
   if (selectedCostumeType) {
-    filteredProducts = filteredProducts.filter(
-      (product) => product.costumeType === selectedCostumeType
-    );
+    // Check if it's a Traditional Africa filter with a country
+    if (selectedCostumeType.startsWith("Traditional Africa - ")) {
+      const country = selectedCostumeType.split(" - ")[1]?.trim() || "";
+      filteredProducts = filteredProducts.filter((product) => {
+        const isTraditional = (product.costumeType || "").toLowerCase() === "traditional africa";
+        const productCountry = (product.country || product.region || "").toLowerCase();
+        return isTraditional && productCountry === country.toLowerCase();
+      });
+    } else {
+      filteredProducts = filteredProducts.filter((product) =>
+        (product.costumeType || "").toLowerCase() === (selectedCostumeType || "").toLowerCase()
+      );
+    }
   }
 
   // Apply search query filter
@@ -115,7 +127,7 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
 
   // Get unique costume types for the filter
   // Always show all costume types, regardless of whether products exist
-  const COSTUME_TYPES = ["Angel", "Carnival", "Superhero", "Traditional", "Cosplay", "Other"];
+  const COSTUME_TYPES = ["Angel", "Carnival", "Western", "Traditional Africa", "Cosplay", "Other"];
   const availableCostumeTypes = COSTUME_TYPES;
 
   return (
@@ -186,34 +198,24 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
         </div>
       )}
 
-      {/* Products Bento Grid */}
+      {/* Products Masonry Layout */}
       {filteredProducts.length > 0 && (
         <div>
-          {/* Bento Grid Layout - 4 columns on desktop, 3 on tablet, 1 on mobile */}
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-3 lg:grid-cols-4 auto-rows-max">
-            {filteredProducts.map((product, idx) => {
-              // Simple pattern - mostly small cards
-              let size: "small" | "medium" | "large" = "small";
-              const pattern = idx % 12;
-              
-              if (pattern === 0 || pattern === 6) {
-                size = "medium"; // Occasional featured items
-              }
-              
-              return (
-                <div
-                  key={product.id || (product as any)._id || `product-${idx}`}
-                  className="animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
-                  style={{ animationDelay: `${idx * 50}ms` }}
-                >
-                  <ProductCard
-                    product={product}
-                    formattedPrice={formatPrice(product.sellPrice)}
-                    currency={currency}
-                  />
-                </div>
-              );
-            })}
+          {/* CSS Columns Masonry - Natural card flow, no fixed heights */}
+          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
+            {filteredProducts.map((product, idx) => (
+              <div
+                key={product.id || (product as any)._id || `product-${idx}`}
+                className="break-inside-avoid animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
+                style={{ animationDelay: `${idx * 50}ms` }}
+              >
+                <ProductCard
+                  product={product}
+                  formattedPrice={formatPrice(product.sellPrice)}
+                  currency={currency}
+                />
+              </div>
+            ))}
           </div>
 
           {/* Load More Button */}

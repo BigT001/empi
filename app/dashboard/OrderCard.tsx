@@ -2,6 +2,7 @@
 
 import { MessageCircle, Clock, Check, MapPin, Package, Calendar, DollarSign, ArrowRight } from 'lucide-react';
 import { CountdownTimer } from '../components/CountdownTimer';
+import { getDiscountPercentage } from '@/lib/discountCalculator';
 
 interface CustomOrder {
   _id: string;
@@ -27,6 +28,15 @@ interface CustomOrder {
   timerStartedAt?: string;
   timerDurationDays?: number;
   items?: any[];
+  // Pricing breakdown
+  pricing?: {
+    subtotal?: number;
+    discount?: number;
+    discountPercentage?: number;
+    subtotalAfterDiscount?: number;
+    tax?: number;
+    total?: number;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +60,21 @@ export function OrderCard({
     const subtotal = basePrice * quantity;
     const vat = (subtotal * 7.5) / 100;
     return subtotal + vat;
+  };
+
+  const getPricingDetails = (order: CustomOrder) => {
+    const basePrice = order.quotedPrice || 0;
+    const quantity = order.quantity || 1;
+    const subtotal = basePrice * quantity;
+    
+    // For custom orders (which are buy mode), apply discount based on quantity
+    const discountPercent = getDiscountPercentage(quantity);
+    const discount = subtotal * (discountPercent / 100);
+    const subtotalAfterDiscount = subtotal - discount;
+    const vat = subtotalAfterDiscount * 0.075;
+    const total = subtotalAfterDiscount + vat;
+    
+    return { quantity, subtotal, discount, discountPercent, subtotalAfterDiscount, vat, total };
   };
 
   const getStatusColor = (status: string) => {
@@ -139,78 +164,58 @@ export function OrderCard({
         )}
 
 
-        {/* Quick Stats Grid */}
-        <div className="grid grid-cols-2 gap-2">
-          {/* Quantity */}
-          <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 rounded-lg p-2.5">
-            <div className="flex items-center gap-1 text-blue-700 mb-1">
-              <Package className="h-3.5 w-3.5" />
-              <span className="text-xs font-bold">Qty</span>
-            </div>
-            <p className="text-base font-bold text-blue-900">{order.quantity || 1}</p>
-          </div>
+        {/* Quick Stats Grid - 2 columns */}
+        {(() => {
+          const pricing = getPricingDetails(order);
+          return (
+            <div className="grid grid-cols-2 gap-2">
+              {/* Quantity */}
+              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 rounded-lg p-2.5">
+                <div className="flex items-center gap-1 text-blue-700 mb-1">
+                  <Package className="h-3.5 w-3.5" />
+                  <span className="text-xs font-bold">Qty</span>
+                </div>
+                <p className="text-base font-bold text-blue-900">{pricing.quantity}</p>
+              </div>
 
-          {/* Total Price */}
-          {order.quotedPrice && (
-            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200 rounded-lg p-2.5">
-              <div className="flex items-center gap-1 text-emerald-700 mb-1">
-                <DollarSign className="h-3.5 w-3.5" />
-                <span className="text-xs font-bold">Total</span>
+              {/* Subtotal Price */}
+              <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 border border-gray-200 rounded-lg p-2.5">
+                <div className="flex items-center gap-1 text-gray-700 mb-1">
+                  <DollarSign className="h-3.5 w-3.5" />
+                  <span className="text-xs font-bold">Subtotal</span>
+                </div>
+                <p className="text-sm font-bold text-gray-900">₦{Number(pricing.subtotal).toLocaleString('en-NG')}</p>
               </div>
-              <p className="text-base font-bold text-emerald-900">₦{Math.round(calculateTotal(order)).toLocaleString()}</p>
-            </div>
-          )}
-        </div>
 
-        {/* Delivery Method & Timeline */}
-        <div className="grid grid-cols-2 gap-2">
-          {/* Delivery Method */}
-          <div className={`${deliveryMethod === 'Pickup' ? 'bg-gradient-to-br from-orange-50 to-orange-100/50 border-orange-200' : 'bg-gradient-to-br from-cyan-50 to-cyan-100/50 border-cyan-200'} border rounded-lg p-2.5`}>
-            <div className={`flex items-center gap-1 ${deliveryMethod === 'Pickup' ? 'text-orange-700' : 'text-cyan-700'} mb-1`}>
-              <MapPin className="h-3.5 w-3.5" />
-              <span className="text-xs font-bold">Delivery</span>
-            </div>
-            <p className={`text-base font-bold ${deliveryMethod === 'Pickup' ? 'text-orange-900' : 'text-cyan-900'}`}>
-              {deliveryMethod}
-            </p>
-          </div>
+              {/* Discount (if applicable) */}
+              {pricing.discount > 0 && (
+                <div className="bg-gradient-to-br from-green-50 to-green-100/50 border border-green-200 rounded-lg p-2.5">
+                  <div className="flex items-center gap-1 text-green-700 mb-1">
+                    <span className="text-xs font-bold">Discount</span>
+                  </div>
+                  <p className="text-sm font-bold text-green-900">-₦{Number(pricing.discount).toLocaleString('en-NG')}</p>
+                </div>
+              )}
 
-          {/* Timeline */}
-          {order.timerStartedAt && order.deadlineDate ? (
-            <div className="bg-gradient-to-br from-red-50 to-red-100/50 border border-red-200 rounded-lg p-2.5">
-              <div className="flex items-center gap-1 text-red-700 mb-1">
-                <Clock className="h-3.5 w-3.5" />
-                <span className="text-xs font-bold">Deadline</span>
+              {/* VAT */}
+              <div className="bg-gradient-to-br from-yellow-50 to-yellow-100/50 border border-yellow-200 rounded-lg p-2.5">
+                <div className="flex items-center gap-1 text-yellow-700 mb-1">
+                  <span className="text-xs font-bold">VAT (7.5%)</span>
+                </div>
+                <p className="text-sm font-bold text-yellow-900">₦{Number(pricing.vat).toLocaleString('en-NG')}</p>
               </div>
-              <p className="text-base font-bold text-red-900">
-                {Math.ceil(
-                  (new Date(order.deadlineDate).getTime() - new Date().getTime()) /
-                    (1000 * 60 * 60 * 24)
-                )}d
-              </p>
-            </div>
-          ) : order.buyerAgreedToDate && order.proposedDeliveryDate ? (
-            <div className="bg-gradient-to-br from-green-50 to-green-100/50 border border-green-200 rounded-lg p-2.5">
-              <div className="flex items-center gap-1 text-green-700 mb-1">
-                <Calendar className="h-3.5 w-3.5" />
-                <span className="text-xs font-bold">Agreed</span>
+
+              {/* Total Price */}
+              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200 rounded-lg p-2.5">
+                <div className="flex items-center gap-1 text-emerald-700 mb-1">
+                  <DollarSign className="h-3.5 w-3.5" />
+                  <span className="text-xs font-bold">Total</span>
+                </div>
+                <p className="text-base font-bold text-emerald-900">₦{Number(pricing.total).toLocaleString('en-NG')}</p>
               </div>
-              <p className="text-base font-bold text-green-900">
-                {new Date(order.proposedDeliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </p>
             </div>
-          ) : order.deliveryDate ? (
-            <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 border border-indigo-200 rounded-lg p-2.5">
-              <div className="flex items-center gap-1 text-indigo-700 mb-1">
-                <Calendar className="h-3.5 w-3.5" />
-                <span className="text-xs font-bold">Needed</span>
-              </div>
-              <p className="text-base font-bold text-indigo-900">
-                {new Date(order.deliveryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-              </p>
-            </div>
-          ) : null}
-        </div>
+          );
+        })()}
 
         {/* Countdown Timer */}
         {order.timerStartedAt && order.deadlineDate && (

@@ -104,8 +104,7 @@ export function AutomaticInvoiceGenerator() {
             </table>
 
             <div class="totals">
-              <p><strong>Subtotal:</strong> ${invoice.currencySymbol}${(invoice.totalAmount - (invoice.shippingCost || 0)).toFixed(2)}</p>
-              <p><strong>Shipping:</strong> ${(invoice.shippingCost || 0) === 0 ? 'FREE' : `${invoice.currencySymbol}${(invoice.shippingCost || 0).toFixed(2)}`}</p>
+              <p><strong>Subtotal:</strong> ${invoice.currencySymbol}${(invoice.subtotal || invoice.totalAmount).toFixed(2)}</p>
               <p><strong>Tax (7.5%):</strong> ${invoice.currencySymbol}${(invoice.taxAmount || 0).toFixed(2)}</p>
               <p class="total-amount"><strong>Total:</strong> ${invoice.currencySymbol}${invoice.totalAmount.toFixed(2)}</p>
             </div>
@@ -325,11 +324,7 @@ export function AutomaticInvoiceGenerator() {
               <div className="bg-lime-50 rounded-lg p-4 border border-lime-200 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span>Subtotal:</span>
-                  <span className="font-semibold">{selectedInvoice.currencySymbol}{(selectedInvoice.totalAmount - (selectedInvoice.shippingCost || 0)).toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Shipping:</span>
-                  <span className="font-semibold">{(selectedInvoice.shippingCost || 0) === 0 ? 'FREE' : `${selectedInvoice.currencySymbol}${(selectedInvoice.shippingCost || 0).toFixed(2)}`}</span>
+                  <span className="font-semibold">{selectedInvoice.currencySymbol}{(selectedInvoice.subtotal || selectedInvoice.totalAmount).toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between border-t-2 border-lime-300 pt-2 text-base">
                   <span className="font-bold">Total:</span>

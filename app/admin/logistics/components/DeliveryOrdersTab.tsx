@@ -84,8 +84,18 @@ export function DeliveryOrdersTab({
       if (response.ok) {
         console.log('[Logistics] ✅ Order approved successfully');
         setApprovalModal(null);
-        // Refresh the page to update the tabs
-        setTimeout(() => window.location.reload(), 500);
+        // Notify the app about the approved order instead of reloading the page
+        try {
+          if (typeof window !== 'undefined') {
+            // Ensure admin dashboard shows the pending/orders tab
+            localStorage.setItem('adminDashboardActiveTab', 'pending');
+            window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: 'pending' } }));
+            // Also broadcast a generic event for components to refresh data
+            window.dispatchEvent(new CustomEvent('ordersUpdated', { detail: { orderId: approvalModal?.orderId } }));
+          }
+        } catch (e) {
+          /* ignore */
+        }
       } else {
         const errorMsg = data.error || data.details || 'Unknown error';
         console.error('[Logistics] ❌ Approval failed:', errorMsg);

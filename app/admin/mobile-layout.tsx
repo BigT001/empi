@@ -4,13 +4,14 @@ import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Plus, BarChart3, FileText, Settings, Home, LogOut, MessageCircle, Truck } from "lucide-react";
+import { Plus, BarChart3, FileText, Settings, Home, LogOut, MessageCircle, Truck, Package, Users } from "lucide-react";
 
 interface NavItem {
   name: string;
   href: string;
   icon: ReactNode;
   label: string;
+  tab?: string;
 }
 
 const navItems: NavItem[] = [
@@ -19,6 +20,21 @@ const navItems: NavItem[] = [
     href: "/admin/dashboard",
     icon: <Home className="h-5 w-5" />,
     label: "Overview",
+    tab: 'dashboard',
+  },
+  {
+    name: "Users",
+    href: "/admin/dashboard",
+    icon: <Users className="h-5 w-5" />,
+    label: "Users",
+    tab: 'users',
+  },
+  {
+    name: "Products",
+    href: "/admin/dashboard",
+    icon: <Package className="h-5 w-5" />,
+    label: "Products",
+    tab: 'products',
   },
   {
     name: "Add",
@@ -65,14 +81,46 @@ export default function MobileAdminLayout({
 }) {
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
+  const [stats, setStats] = useState({ pendingInvoices: 0, pendingOrders: 0, totalOrders: 0, totalProducts: 0, registeredCustomers: 0 });
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  const isActive = (href: string) => {
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/dashboard', { cache: 'no-store' });
+        if (!res.ok) return;
+        const d = await res.json();
+        if (!mounted) return;
+        setStats({
+          pendingInvoices: d.pendingInvoices || 0,
+          pendingOrders: (d.pendingOrders ?? d.pendingInvoices) || 0,
+          totalOrders: d.totalOrders || 0,
+          totalProducts: d.totalProducts || 0,
+          registeredCustomers: d.registeredCustomers || 0,
+        });
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
+  const isActive = (href: string, tab?: string) => {
     if (href === "/admin/dashboard") {
-      return pathname === "/admin/dashboard" || pathname === "/admin";
+      if (!(pathname === '/admin' || pathname.startsWith('/admin/dashboard'))) return false;
+      try {
+        if (typeof window !== 'undefined') {
+          const activeTab = localStorage.getItem('adminDashboardActiveTab') || 'dashboard';
+          return !!tab && activeTab === tab;
+        }
+      } catch (e) {
+        // ignore
+      }
+      return tab === 'dashboard' && (pathname === '/admin' || pathname === '/admin/dashboard');
     }
     if (href === "/admin/upload") {
       return pathname === "/admin/upload" || pathname === "/admin";
@@ -107,35 +155,40 @@ export default function MobileAdminLayout({
       </main>
 
       {/* Bottom Navigation Bar - Instagram Style */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-40 md:hidden">
-        <div className="flex items-center justify-between h-16 w-full px-0.5">
+      <nav className="fixed bottom-4 left-4 right-4 bg-white/95 border border-gray-100 z-40 md:hidden rounded-2xl shadow-lg backdrop-blur-sm">
+        <div className="flex items-center justify-between h-16 w-full px-1">
           {navItems.map((item) => {
-            const active = isActive(item.href);
+            const active = isActive(item.href, item.tab);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center flex-1 h-full py-1 relative transition-colors ${
+                onClick={() => {
+                  try {
+                    if (typeof window !== 'undefined') {
+                      if (item.tab) localStorage.setItem('adminDashboardActiveTab', item.tab);
+                    }
+                  } catch (e) { /* ignore */ }
+                }}
+                className={`flex flex-col items-center justify-center flex-1 h-full py-2 relative transition-transform duration-200 ${
                   active
-                    ? "text-lime-600"
-                    : "text-gray-500 hover:text-gray-900"
+                    ? "text-lime-600 transform -translate-y-1 scale-105"
+                    : "text-gray-500 hover:text-gray-900 hover:scale-102"
                 }`}
                 title={item.label}
               >
-                {/* Active indicator dot */}
-                {active && (
-                  <div className="absolute top-1 w-1 h-1 bg-lime-600 rounded-full" />
-                )}
+                {/* Icon + badge container */}
+                <div className="relative mb-0.5 flex items-center justify-center">
+                  <div className={`transition-transform ${active ? 'scale-110' : 'scale-100'}`}>{item.icon}</div>
 
-                {/* Icon - size optimized */}
-                <div className="mb-0.5">
-                  {item.icon}
+                  {/* Badges (dot only - no numeric count) */}
+                  {item.name === 'Pending' && stats.pendingOrders > 0 && (
+                    <span aria-hidden className="absolute -top-1 -right-3 w-2 h-2 rounded-full bg-amber-500" />
+                  )}
                 </div>
 
-                {/* Label - very small on mobile */}
-                <span className="text-[8px] font-semibold leading-none line-clamp-1 px-0.5">
-                  {item.name}
-                </span>
+                {/* Label - small on mobile */}
+                <span className="text-[10px] font-semibold leading-none line-clamp-1 px-0.5 mt-0.5">{item.name}</span>
               </Link>
             );
           })}

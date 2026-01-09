@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     const total = await Product.countDocuments(query);
     
     // For product picker (lite mode), only fetch essential fields
-    let query_builder = Product.find(query).skip(skip).limit(limit);
+    let query_builder: any = Product.find(query).skip(skip).limit(limit);
     if (lite) {
       query_builder = query_builder.select('_id name sellPrice imageUrl').lean();
     } else {
@@ -172,6 +172,7 @@ export async function POST(request: NextRequest) {
       rentPrice: body.rentPrice || 0,
       category: body.category,
       costumeType: body.costumeType || 'Other',
+      ...(body.country && { country: body.country }),
       badge: body.badge || null,
       imageUrl: body.imageUrl,
       imageUrls: body.imageUrls || [],
@@ -205,6 +206,8 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (error) {
     console.error("❌ Error creating product:", error);
+    console.error("❌ Error type:", error instanceof Error ? error.constructor.name : typeof error);
+    console.error("❌ Full error object:", JSON.stringify(error, null, 2));
     
     if (error instanceof SyntaxError) {
       console.error("❌ Invalid JSON in request body");
@@ -216,6 +219,18 @@ export async function POST(request: NextRequest) {
 
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     console.error("❌ Error message:", errorMessage);
+    
+    // Check if it's a Mongoose validation error
+    if (error instanceof Error && error.name === 'ValidationError') {
+      console.error("❌ Mongoose ValidationError details:", (error as any).errors);
+      const validationErrors = Object.entries((error as any).errors).map(
+        ([field, err]: [string, any]) => `${field}: ${err.message}`
+      ).join('; ');
+      return NextResponse.json(
+        { error: `Validation error: ${validationErrors}` },
+        { status: 400 }
+      );
+    }
     
     return NextResponse.json(
       { error: `Failed to create product: ${errorMessage}` },

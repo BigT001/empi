@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 import Buyer from '@/lib/models/Buyer';
 import Product from '@/lib/models/Product';
+import CustomOrder from '@/lib/models/CustomOrder';
 
 interface DashboardStats {
   totalRevenue: number;
@@ -46,6 +47,8 @@ export async function GET(request: NextRequest) {
     let totalRents = 0;
     let totalSales = 0;
     let pendingInvoices = 0;
+    // pendingOrders will include both regular orders and custom orders in pending/unpaid state
+    let pendingOrders = 0;
     let completedOrders = 0;
     const buyerIdsSet = new Set<string>();
     const guestEmailsSet = new Set<string>();
@@ -76,13 +79,29 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Track order status
-      if (order.status === 'pending' || order.status === 'unpaid') {
-        pendingInvoices += 1;
-      } else if (order.status === 'completed' || order.status === 'delivered') {
-        completedOrders += 1;
-      }
+        // Track order status — treat awaiting/payment-pending states as pending
+        const oStatus = String(order.status || '').toLowerCase();
+        const oPaymentStatus = String(order.paymentStatus || '').toLowerCase();
+        const isPendingStatus = ['pending', 'unpaid', 'awaiting_payment'].includes(oStatus) || ['pending', 'awaiting_payment'].includes(oPaymentStatus);
+        if (isPendingStatus) {
+          pendingInvoices += 1;
+          pendingOrders += 1;
+        } else if (['completed', 'delivered'].includes(oStatus)) {
+          completedOrders += 1;
+        }
     });
+
+      // Include custom orders pending count
+      try {
+        const customOrders = await CustomOrder.find({}, '', { lean: true });
+        if (Array.isArray(customOrders)) {
+          customOrders.forEach((co: any) => {
+            if (co.status === 'pending') pendingOrders += 1;
+          });
+        }
+      } catch (e) {
+        console.warn('[Dashboard API] Failed to fetch custom orders for pendingOrders count', e);
+      }
 
     // Count actual registered customers from Buyer collection
     const registeredCustomersCount = buyers.length;
@@ -102,6 +121,9 @@ export async function GET(request: NextRequest) {
       totalOrders: orders.length,
       totalProducts: products.length,
       pendingInvoices,
+      // include pendingOrders for UI counts (regular + custom pending orders)
+      // @ts-ignore - extend with dynamic field
+      pendingOrders: pendingOrders,
       totalRents,
       totalSales,
       completedOrders,

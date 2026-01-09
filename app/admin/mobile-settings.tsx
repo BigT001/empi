@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Save, LogOut, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function MobileSettingsPage() {
+  const router = useRouter();
   const [adminName, setAdminName] = useState("Admin");
   const [adminEmail, setAdminEmail] = useState("admin@empi.com");
   const [storeName, setStoreName] = useState("EMPI");
@@ -69,7 +71,11 @@ export default function MobileSettingsPage() {
 
   const handleLogout = () => {
     if (confirm("Are you sure you want to log out?")) {
-      window.location.href = "/";
+      try {
+        router.push('/');
+      } catch (e) {
+        window.location.href = "/";
+      }
     }
   };
 

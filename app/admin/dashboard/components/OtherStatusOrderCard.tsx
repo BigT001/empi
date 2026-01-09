@@ -262,7 +262,7 @@ export function OtherStatusOrderCard({
                 {(() => {
                   const price = order.quotedPrice || order.price || 0;
                   if (price <= 0) return 'Awaiting';
-                  return '₦' + Math.round(price).toLocaleString('en-NG');
+                  return '₦' + Number(price).toLocaleString('en-NG');
                 })()}
               </p>
             </div>
@@ -383,7 +383,7 @@ export function OtherStatusOrderCard({
                 {(() => {
                   const price = order.quotedPrice || order.price || 0;
                   if (price <= 0) return 'Pending';
-                  return '₦' + Math.round(price).toLocaleString('en-NG');
+                  return '₦' + Number(price).toLocaleString('en-NG');
                 })()}
               </p>
             </div>

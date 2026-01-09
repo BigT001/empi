@@ -11,6 +11,7 @@ interface ProductForm {
   rentPrice: string;
   category: "adults" | "kids";
   costumeType: string;
+  country?: string; // For Traditional Africa subfilter
   badge: string;
   sizes: string;
   color: string;
@@ -45,6 +46,7 @@ export default function MobileAdminUpload() {
     rentPrice: "",
     category: "adults",
     costumeType: "Other",
+    country: "",
     badge: "",
     sizes: "",
     color: "",
@@ -342,6 +344,7 @@ export default function MobileAdminUpload() {
         rentPrice: parseFloat(form.rentPrice),
         category: form.category,
         costumeType: form.costumeType,
+        ...(form.country && { country: form.country }),
         badge: form.badge || null,
         imageUrl: mainImage,
         imageUrls: cloudinaryUrls,
@@ -370,9 +373,20 @@ export default function MobileAdminUpload() {
       clearTimeout(timeoutId);
 
       if (!response.ok) {
-        const error = await response.json();
-        console.error("❌ API Error:", error);
-        setSubmitMessage(`❌ Error: ${error.error || error.message}`);
+        console.error("❌ Response Status:", response.status, response.statusText);
+        console.error("❌ Response Headers:", Object.fromEntries(response.headers.entries()));
+        
+        let error: any = {};
+        try {
+          const responseText = await response.text();
+          console.error("❌ Raw Response:", responseText);
+          error = responseText ? JSON.parse(responseText) : {};
+        } catch (parseError) {
+          console.error("❌ Failed to parse error response:", parseError);
+        }
+        
+        console.error("❌ Parsed Error:", error);
+        setSubmitMessage(`❌ Error: ${error.error || error.message || 'Unknown error'}`);
         setUploadProgress("");
         return;
       }
@@ -417,6 +431,7 @@ export default function MobileAdminUpload() {
         rentPrice: "",
         category: "adults",
         costumeType: "Other",
+        country: "",
         badge: "",
         sizes: "",
         color: "",
@@ -711,12 +726,37 @@ export default function MobileAdminUpload() {
                 >
                   <option value="Angel">👼 Angel</option>
                   <option value="Carnival">🎪 Carnival</option>
-                  <option value="Superhero">🦸 Superhero</option>
-                  <option value="Traditional">🥁 Traditional</option>
+                  <option value="Western">🤠 Western</option>
+                  <option value="Traditional Africa">🥁 Traditional Africa</option>
                   <option value="Cosplay">🎭 Cosplay</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
+              
+              {/* Country field - Only show if Traditional Africa is selected */}
+              {form.costumeType === "Traditional Africa" && (
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                    Country <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="country"
+                    value={form.country || ""}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select a country...</option>
+                    <option value="Nigeria">Nigeria</option>
+                    <option value="Ghana">Ghana</option>
+                    <option value="South Africa">South Africa</option>
+                    <option value="Egypt">Egypt</option>
+                    <option value="Algeria">Algeria</option>
+                    <option value="Congo">Congo</option>
+                    <option value="Kenya">Kenya</option>
+                  </select>
+                </div>
+              )}
             </div>
           </div>
 

@@ -45,7 +45,7 @@ export function OrdersTab({
   setImageModalOpen,
 }: OrdersTabProps) {
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="columns-1 sm:columns-2 md:columns-3 gap-6">
       {void (customOrders.length > 0 &&
         console.log(
           '[Dashboard:Render] ✅ Rendering',
@@ -53,7 +53,7 @@ export function OrdersTab({
           'custom order cards'
         ))}
       {customOrders.length === 0 ? (
-        <div className="col-span-1 md:col-span-2 lg:col-span-3 text-center py-12">
+        <div className="text-center py-12 w-full">
           <p className="text-gray-400 text-sm">No orders to display</p>
         </div>
       ) : (
@@ -64,15 +64,16 @@ export function OrdersTab({
           };
 
           return (
-            <OrderCard
-              key={order._id}
-              order={order}
-              messageCount={messageCount}
-              onChat={() => setChatModalOpen(order._id)}
-              onViewImages={() =>
-                setImageModalOpen({ orderId: order._id, index: 0 })
-              }
-            />
+            <div key={order._id} className="break-inside-avoid mb-6">
+              <OrderCard
+                order={order}
+                messageCount={messageCount}
+                onChat={() => setChatModalOpen(order._id)}
+                onViewImages={() =>
+                  setImageModalOpen({ orderId: order._id, index: 0 })
+                }
+              />
+            </div>
           );
         })
       )}

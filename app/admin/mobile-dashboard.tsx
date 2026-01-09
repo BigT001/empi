@@ -12,6 +12,7 @@ interface DashboardStats {
   totalOrders: number;
   totalProducts: number;
   pendingInvoices: number;
+  pendingOrders?: number;
   totalRents: number;
   totalSales: number;
   completedOrders: number;
@@ -63,7 +64,9 @@ export default function MobileDashboard() {
         totalRevenue: apiData.totalRevenue ?? 0,
         totalOrders: apiData.totalOrders ?? 0,
         totalProducts: apiData.totalProducts ?? 0,
+        // prefer pendingOrders (includes custom orders) when available
         pendingInvoices: apiData.pendingInvoices ?? 0,
+        pendingOrders: apiData.pendingOrders ?? apiData.pendingInvoices ?? 0,
         totalRents: apiData.totalRents ?? 0,
         totalSales: apiData.totalSales ?? 0,
         completedOrders: apiData.completedOrders ?? 0,
@@ -312,7 +315,7 @@ export default function MobileDashboard() {
           {/* Pending Orders */}
           <div className="bg-white rounded-xl p-4 border border-slate-200 hover:shadow-md transition">
             <p className="text-xs font-black text-slate-600 uppercase mb-2 tracking-wider">Pending</p>
-            <p className="text-xl font-black text-orange-600">{stats.pendingInvoices}</p>
+            <p className="text-xl font-black text-orange-600">{(stats.pendingOrders ?? stats.pendingInvoices)}</p>
           </div>
 
           {/* Completion Rate */}

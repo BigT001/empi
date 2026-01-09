@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, AlertCircle, CheckCircle, Zap, TrendingUp, Users } from "lucide-react";
+import { Clock, CheckCircle, TrendingUp } from "lucide-react";
 
 interface Order {
   status: string;
@@ -28,22 +28,8 @@ export function OrderStatsGrid({ orders }: OrderStatsGridProps) {
       bgColor: "bg-yellow-50 text-yellow-700"
     },
     {
-      label: "In Progress",
-      value: orders.filter(o => o.status === "in-progress").length,
-      icon: Zap,
-      color: "from-purple-600 to-purple-400",
-      bgColor: "bg-purple-50 text-purple-700"
-    },
-    {
-      label: "Ready",
-      value: orders.filter(o => o.status === "ready").length,
-      icon: AlertCircle,
-      color: "from-green-600 to-green-400",
-      bgColor: "bg-green-50 text-green-700"
-    },
-    {
-      label: "Completed",
-      value: orders.filter(o => o.status === "completed").length,
+      label: "Approved",
+      value: orders.filter(o => o.status === "approved").length,
       icon: CheckCircle,
       color: "from-emerald-600 to-emerald-400",
       bgColor: "bg-emerald-50 text-emerald-700"
@@ -51,7 +37,7 @@ export function OrderStatsGrid({ orders }: OrderStatsGridProps) {
   ];
 
   return (
-    <div className="grid md:grid-cols-5 gap-3">
+    <div className="grid md:grid-cols-3 gap-3">
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (

@@ -35,9 +35,14 @@ interface Order {
     tax: number;
     shipping: number;
     total: number;
+    cautionFee?: number;
   };
   status: string;
   createdAt: string;
+  subtotal?: number;
+  cautionFee?: number;
+  vat?: number;
+  total?: number;
 }
 
 function OrderConfirmationContent() {
@@ -266,12 +271,12 @@ function OrderConfirmationContent() {
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900">{item.name}</p>
                         <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
-                        {item.mode && <p className="text-xs text-gray-500 mt-1">Mode: {item.mode}</p>}
+                        {item.mode && <p className="text-xs text-gray-500 mt-1">Mode: {item.mode}{item.mode === 'rent' && item.rentalDays ? ` • ${item.rentalDays} day${item.rentalDays > 1 ? 's' : ''}` : ''}</p>}
                       </div>
                       {/* Price */}
                       <div className="flex-shrink-0 text-right">
                         <p className="font-semibold text-gray-900">
-                          {formatPrice(item.price * item.quantity)}
+                          {formatPrice((item.mode === 'rent' ? (item.price * item.quantity * (item.rentalDays || 1)) : (item.price * item.quantity)) || 0)}
                         </p>
                         {item.quantity > 1 && (
                           <p className="text-xs text-gray-500">@ {formatPrice(item.price)} ea</p>
@@ -286,47 +291,7 @@ function OrderConfirmationContent() {
             </div>
 
             {/* Delivery Information */}
-            {order.shipping?.option === "empi" && (
-              <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-2xl border border-green-200 p-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
-                  <Truck className="h-6 w-6 text-green-600" />
-                  Delivery Information
-                </h2>
-
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-lg p-4">
-                    <p className="text-sm font-semibold text-gray-600 uppercase mb-2">
-                      Delivery Method
-                    </p>
-                    <p className="text-lg font-semibold text-green-900">
-                      EMPI Delivery
-                    </p>
-                  </div>
-                  <div className="bg-white rounded-lg p-4">
-                    <p className="text-sm font-semibold text-gray-600 uppercase mb-2">
-                      Delivery Cost
-                    </p>
-                    <p className="text-lg font-semibold text-green-900">
-                      {formatPrice(order.shipping.cost)}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 p-4 bg-white rounded-lg border border-green-200">
-                  <div className="flex items-start gap-3">
-                    <Calendar className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        Estimated Delivery
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        Your order will be delivered within 2-3 business days. You'll receive tracking information via email.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Delivery information removed - shipping handled separately and omitted from UI */}
           </div>
 
           {/* Right Column - Summary & Actions */}
@@ -339,33 +304,32 @@ function OrderConfirmationContent() {
               </h3>
 
               <div className="space-y-3 mb-6 pb-6 border-b border-gray-200">
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-semibold text-gray-900">
-                    {formatPrice(order.pricing?.subtotal || 0)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Tax (7.5%)</span>
-                  <span className="font-semibold text-gray-900">
-                    {formatPrice(order.pricing?.tax || 0)}
-                  </span>
-                </div>
-                {order.shipping?.cost > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Delivery</span>
-                    <span className="font-semibold text-lime-600">
-                      {formatPrice(order.shipping.cost)}
+                    <span className="text-gray-600">Subtotal</span>
+                    <span className="font-semibold text-gray-900">
+                      {formatPrice(order.pricing?.subtotal ?? order.subtotal ?? 0)}
                     </span>
                   </div>
+                {((order.pricing?.cautionFee ?? order.cautionFee) ?? 0) > 0 && (
+                  <div className="flex justify-between text-sm text-amber-700">
+                    <span>🔒 Caution Fee (50% of rentals)</span>
+                    <span className="font-semibold">{formatPrice(order.pricing?.cautionFee ?? order.cautionFee ?? 0)}</span>
+                  </div>
                 )}
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Tax (7.5%)</span>
+                    <span className="font-semibold text-gray-900">
+                      {formatPrice(order.pricing?.tax ?? order.vat ?? 0)}
+                    </span>
+                  </div>
+                {/* Delivery amount removed from order summary */}
               </div>
 
               <div className="flex justify-between items-baseline mb-6 pb-6 border-b border-gray-200">
                 <span className="text-gray-600 font-medium">Total</span>
                 <div>
                   <p className="text-3xl font-bold text-lime-600">
-                    {formatPrice(order.pricing?.total || 0)}
+                    {formatPrice(order.pricing?.total ?? order.total ?? 0)}
                   </p>
                 </div>
               </div>

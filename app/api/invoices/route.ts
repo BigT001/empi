@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
       customerState,
       customerPostalCode,
       subtotal,
-      shippingCost,
+      // shippingCost intentionally ignored - shipping removed from invoices
       taxAmount,
       totalAmount,
       items,
@@ -80,7 +80,6 @@ export async function POST(request: NextRequest) {
       customerEmail,
       customerPhone,
       subtotal,
-      shippingCost,
       taxAmount,
       totalAmount
     });
@@ -97,7 +96,8 @@ export async function POST(request: NextRequest) {
       customerState: customerState || null,
       customerPostalCode: customerPostalCode || null,
       subtotal: subtotal || 0,
-      shippingCost: shippingCost || 0,
+      // Force shippingCost to zero - invoices should not include shipping
+      shippingCost: 0,
       taxAmount: taxAmount || 0,
       totalAmount: totalAmount || 0,
       items: items || [],

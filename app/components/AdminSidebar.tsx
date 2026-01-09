@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home, Truck, MessageCircle } from "lucide-react";
+import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home, Truck, MessageCircle, Clock, Package, Users } from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
 import {
   Sidebar,
@@ -17,11 +17,13 @@ import {
   useSidebar,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { useEffect, useState } from "react";
 
 interface SidebarItem {
   name: string;
   href: string;
   icon: React.ReactNode;
+  tab?: string; // optional dashboard tab id when href === '/admin/dashboard'
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -29,6 +31,25 @@ const sidebarItems: SidebarItem[] = [
     name: "Dashboard",
     href: "/admin/dashboard",
     icon: <Home className="h-5 w-5" />,
+    tab: 'dashboard',
+  },
+  {
+    name: "Users",
+    href: "/admin/dashboard",
+    icon: <Users className="h-5 w-5" />,
+    tab: 'users',
+  },
+  {
+    name: "Orders",
+    href: "/admin/dashboard",
+    icon: <Clock className="h-5 w-5" />,
+    tab: 'pending',
+  },
+  {
+    name: "Products",
+    href: "/admin/dashboard",
+    icon: <Package className="h-5 w-5" />,
+    tab: 'products',
   },
   {
     name: "Add Product",
@@ -67,11 +88,24 @@ export function AdminSidebar() {
   const pathname = usePathname();
   const { state, isMobile, setOpenMobile } = useSidebar();
   const { logout } = useAdmin();
+  const [stats, setStats] = useState({ pendingInvoices: 0, pendingOrders: 0, totalOrders: 0, totalProducts: 0, registeredCustomers: 0 });
 
-  const isActive = (href: string) => {
-    if (href === "/admin") {
-      return pathname === "/admin";
+  const isActive = (href: string, tab?: string) => {
+    // If the item points to the dashboard, resolve active state from the stored active tab
+    if (href === "/admin/dashboard") {
+      if (!(pathname === "/admin" || pathname.startsWith("/admin/dashboard"))) return false;
+      try {
+        if (typeof window !== 'undefined') {
+          const activeTab = localStorage.getItem('adminDashboardActiveTab') || 'dashboard';
+          return !!tab && activeTab === tab;
+        }
+      } catch (e) {
+        // ignore
+      }
+      // Fallback: if no localStorage available, make 'dashboard' active when at dashboard root
+      return tab === 'dashboard' && (pathname === '/admin' || pathname === '/admin/dashboard');
     }
+
     return pathname.startsWith(href);
   };
 
@@ -91,6 +125,29 @@ export function AdminSidebar() {
       router.push('/admin/login');
     }, 300);
   };
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/dashboard', { cache: 'no-store' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (!mounted) return;
+        setStats({
+          pendingInvoices: data.pendingInvoices || 0,
+          // prefer explicit pendingOrders if API provides it (includes custom orders)
+          pendingOrders: (data.pendingOrders ?? data.pendingInvoices) || 0,
+          totalOrders: data.totalOrders || 0,
+          totalProducts: data.totalProducts || 0,
+          registeredCustomers: data.registeredCustomers || 0,
+        });
+      } catch (e) {
+        // ignore fail silently
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   return (
     <Sidebar className={`border-r border-gray-200 bg-gradient-to-b from-white via-gray-50 to-gray-50 ${state === 'collapsed' ? 'sidebar-collapsed' : 'sidebar-expanded'}`} collapsible="icon">
@@ -113,19 +170,46 @@ export function AdminSidebar() {
       <SidebarContent className="py-4">
         <SidebarMenu className="gap-2">
           {sidebarItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
+            <SidebarMenuItem key={item.name}>
               <SidebarMenuButton
                 asChild
-                isActive={isActive(item.href)}
-                className={`rounded-lg transition-all duration-200 px-4 py-2.5 ${ 
-                  isActive(item.href) 
-                    ? "bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md shadow-lime-200 font-semibold" 
+                isActive={isActive(item.href, item.tab)}
+                className={`rounded-lg transition-all duration-200 px-3 py-2.5 flex items-center gap-3 justify-between ${
+                  isActive(item.href, item.tab)
+                    ? "bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md shadow-lime-200 font-semibold"
                     : "text-gray-700 hover:bg-gray-100 hover:text-gray-900 border border-transparent"
                 }`}
               >
-                <Link href={item.href} onClick={handleMenuClick} className="font-medium text-sm flex items-center gap-3 w-full" title={item.name}>
-                  {item.icon}
-                  <span className="sidebar-text">{item.name}</span>
+                <Link
+                  href={item.href}
+                  onClick={() => {
+                    try {
+                      if (typeof window !== 'undefined') {
+                        if (item.tab) {
+                          localStorage.setItem('adminDashboardActiveTab', item.tab);
+                          // Notify same-window listeners that the tab changed
+                          window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: item.tab } }));
+                        }
+                      }
+                    } catch (e) {
+                      /* ignore */
+                    }
+                    handleMenuClick();
+                  }}
+                  className="font-medium text-sm flex items-center gap-3 w-full"
+                  title={state === 'collapsed' ? item.name : undefined}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="text-gray-500">{item.icon}</div>
+                    <span className="sidebar-text truncate">{item.name}</span>
+                  </div>
+
+                  {/* Badges for key items */}
+                  <div className="ml-3 flex items-center">
+                    {item.tab === 'pending' && stats.pendingOrders > 0 && (
+                      <span aria-hidden className="inline-block w-2 h-2 rounded-full bg-amber-500" />
+                    )}
+                  </div>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>

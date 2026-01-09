@@ -7,10 +7,6 @@ import { useAdmin } from "@/app/context/AdminContext";
 import { StatusTabs } from "./components/StatusTabs";
 import { ApprovedOrderCard } from "./components/ApprovedOrderCard";
 import { OtherStatusOrderCard } from "./components/OtherStatusOrderCard";
-import { CompletedOrderCard } from "./components/CompletedOrderCard";
-import { RejectedOrderCard } from "./components/RejectedOrderCard";
-import { ReadyOrderCard } from "./components/ReadyOrderCard";
-import { InProgressOrderCard } from "./components/InProgressOrderCard";
 import { ImageModal } from "./components/ImageModal";
 import { ConfirmationModal } from "./components/ConfirmationModal";
 
@@ -266,14 +262,6 @@ export function CustomOrdersPanel() {
         return "bg-yellow-100 text-yellow-800 border-yellow-300";
       case "approved":
         return "bg-blue-100 text-blue-800 border-blue-300";
-      case "in-progress":
-        return "bg-purple-100 text-purple-800 border-purple-300";
-      case "ready":
-        return "bg-green-100 text-green-800 border-green-300";
-      case "completed":
-        return "bg-gray-100 text-gray-800 border-gray-300";
-      case "rejected":
-        return "bg-red-100 text-red-800 border-gray-300";
       default:
         return "bg-gray-100 text-gray-800 border-gray-300";
     }
@@ -284,11 +272,7 @@ export function CustomOrdersPanel() {
       case "pending":
         return <Clock className="h-4 w-4" />;
       case "approved":
-      case "in-progress":
         return <AlertCircle className="h-4 w-4" />;
-      case "ready":
-      case "completed":
-        return <CheckCircle className="h-4 w-4" />;
       default:
         return <FileText className="h-4 w-4" />;
     }
@@ -612,7 +596,7 @@ export function CustomOrdersPanel() {
                 onStartProduction={(orderId) => updateOrderStatus(orderId, "in-progress")}
               />
             ))
-          ) : selectedStatus === "pending" ? (
+          ) : (
             // Pending cards using OtherStatusOrderCard component
             filteredOrders.map((order) => (
               <OtherStatusOrderCard
@@ -629,70 +613,6 @@ export function CustomOrdersPanel() {
                 }}
                 onDeleteClick={() => setConfirmModal({ type: 'delete', orderId: order._id })}
                 onApproveClick={() => updateOrderStatus(order._id, 'approved')}
-              />
-            ))
-          ) : selectedStatus === "in-progress" ? (
-            // In-Progress cards using InProgressOrderCard component
-            filteredOrders.map((order) => (
-              <InProgressOrderCard
-                key={order._id}
-                order={order as any}
-                onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
-                onChatClick={() => setChatModalOpen(order._id)}
-                onMarkReady={() => updateOrderStatus(order._id, "ready")}
-                onDelete={() => setConfirmModal({ type: 'delete', orderId: order._id })}
-              />
-            ))
-          ) : selectedStatus === "ready" ? (
-            // Ready cards using ReadyOrderCard component
-            filteredOrders.map((order) => (
-              <ReadyOrderCard
-                key={order._id}
-                order={order as any}
-                onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
-                onChatClick={() => setChatModalOpen(order._id)}
-                onDelete={() => setConfirmModal({ type: 'delete', orderId: order._id })}
-              />
-            ))
-          ) : selectedStatus === "completed" ? (
-            // Completed cards using CompletedOrderCard component
-            filteredOrders.map((order) => (
-              <CompletedOrderCard
-                key={order._id}
-                order={order as any}
-                onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
-                onChatClick={() => setChatModalOpen(order._id)}
-                onDeleteOrder={deleteOrder}
-              />
-            ))
-          ) : selectedStatus === "rejected" ? (
-            // Rejected cards using RejectedOrderCard component
-            filteredOrders.map((order) => (
-              <RejectedOrderCard
-                key={order._id}
-                order={order as any}
-                onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
-                onChatClick={() => setChatModalOpen(order._id)}
-                onDeleteOrder={(orderId) => deleteOrder(orderId)}
-              />
-            ))
-          ) : (
-            // Fallback for any other statuses
-            filteredOrders.map((order) => (
-              <OtherStatusOrderCard
-                key={order._id}
-                order={order as any}
-                expanded={expandedOrder === order._id}
-                onExpandClick={() => setExpandedOrder(expandedOrder === order._id ? null : order._id)}
-                onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
-                onChatClick={() => setChatModalOpen(order._id)}
-                onDeclineClick={() => setConfirmModal({ type: 'decline', orderId: order._id })}
-                onCancelClick={() => setConfirmModal({ type: 'cancel', orderId: order._id })}
-                onStatusChangeClick={(status) => {
-                  updateOrderStatus(order._id, status);
-                }}
-                onDeleteClick={() => setConfirmModal({ type: 'delete', orderId: order._id })}
-                onApproveClick={() => setConfirmModal({ type: 'approve', orderId: order._id })}
               />
             ))
           )}

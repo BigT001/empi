@@ -101,12 +101,12 @@ export default function SettingsPage() {
         // Clear all session cookies to logout all users
         await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
 
-        // Wait a moment then redirect to login
+        // Wait a moment then navigate to login without a full reload
         setTimeout(() => {
           // Clear local storage
-          localStorage.clear();
-          // Redirect to home/login
-          window.location.href = '/';
+          try { localStorage.clear(); } catch (e) { /* ignore */ }
+          // Navigate client-side to home/login
+          try { router.push('/'); } catch (e) { window.location.href = '/'; }
         }, 2000);
       } else {
         setResetMessage({

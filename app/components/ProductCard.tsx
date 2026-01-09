@@ -100,7 +100,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
 
   return (
     <article 
-      className="group h-full flex flex-col border border-gray-200 rounded-lg md:rounded-xl overflow-hidden hover:border-gray-400 hover:shadow-lg transition"
+      className="group flex flex-col border border-gray-200 rounded-lg md:rounded-xl overflow-hidden hover:border-gray-400 hover:shadow-lg transition break-inside-avoid"
     >
       {/* Main Image Section - Clickable */}
       <Link href={`/product/${productId}?mode=${cardMode}`} className="relative w-full aspect-[4/5] overflow-hidden flex-shrink-0 bg-gray-50 cursor-pointer">
