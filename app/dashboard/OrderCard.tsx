@@ -63,6 +63,47 @@ export function OrderCard({
   };
 
   const getPricingDetails = (order: CustomOrder) => {
+    // Check if admin sent a quote message with exact figures
+    const quoteMessage = (order as any).messages?.find?.((msg: any) => 
+      msg.sender === 'admin' && (msg.quotedPrice !== undefined || msg.quotedTotal !== undefined)
+    );
+
+    // If admin has quoted specific amounts, use those exactly (don't recalculate)
+    if (quoteMessage && quoteMessage.quotedPrice !== undefined) {
+      const unitPrice = quoteMessage.quotedPrice || 0;
+      const quantity = quoteMessage.quantity || order.quantity || 1;
+      const discountAmount = quoteMessage.discountAmount || 0;
+      const quotedVAT = quoteMessage.quotedVAT || 0;
+      const quotedTotal = quoteMessage.quotedTotal || 0;
+      
+      // Calculate subtotal from unit price and quantity
+      const subtotal = unitPrice * quantity;
+      const subtotalAfterDiscount = subtotal - discountAmount;
+      const discountPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
+      
+      console.log('[OrderCard] Using admin quote message:', {
+        unitPrice,
+        quantity,
+        subtotal,
+        discountAmount,
+        discountPercent,
+        subtotalAfterDiscount,
+        vat: quotedVAT,
+        total: quotedTotal
+      });
+      
+      return { 
+        quantity, 
+        subtotal, 
+        discount: discountAmount, 
+        discountPercent: Math.round(discountPercent),
+        subtotalAfterDiscount, 
+        vat: quotedVAT, 
+        total: quotedTotal 
+      };
+    }
+
+    // Fallback: calculate from quotedPrice (old behavior)
     const basePrice = order.quotedPrice || 0;
     const quantity = order.quantity || 1;
     const subtotal = basePrice * quantity;
@@ -73,6 +114,17 @@ export function OrderCard({
     const subtotalAfterDiscount = subtotal - discount;
     const vat = subtotalAfterDiscount * 0.075;
     const total = subtotalAfterDiscount + vat;
+    
+    console.log('[OrderCard] Using calculated pricing (no quote message):', {
+      basePrice,
+      quantity,
+      subtotal,
+      discountPercent,
+      discount,
+      subtotalAfterDiscount,
+      vat,
+      total
+    });
     
     return { quantity, subtotal, discount, discountPercent, subtotalAfterDiscount, vat, total };
   };

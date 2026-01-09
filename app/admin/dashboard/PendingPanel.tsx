@@ -26,9 +26,16 @@ interface PendingOrderData {
   status: string;
   paymentStatus?: string;
   createdAt: string;
-  items: OrderItem[];
+  items?: OrderItem[];
   rentalSchedule?: { rentalDays?: number } | null;
   cautionFee?: number | null;
+  // Custom order fields
+  isCustomOrder?: boolean;
+  description?: string;
+  designUrls?: string[];
+  quotedPrice?: number;
+  quantity?: number;
+  fullName?: string;
 }
 
 interface ProductWithImage {
@@ -43,6 +50,8 @@ interface PendingPanelProps {
 
 export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const [pending, setPending] = useState<PendingOrderData[]>([]);
+  const [approved, setApproved] = useState<PendingOrderData[]>([]);
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'amount'>('newest');
@@ -147,11 +156,11 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         // Merge unique orders by _id or orderNumber (custom orders may use different ids)
         const allOrdersMap = new Map<string, any>();
         ordersList.forEach((o: any) => {
-          allOrdersMap.set(o._id?.toString() || o.orderNumber, o);
+          allOrdersMap.set(o._id?.toString() || o.orderNumber, { ...o, isCustomOrder: false });
         });
         customList.forEach((o: any) => {
           const key = o._id?.toString() || o.orderNumber || (`custom-${o.orderNumber}`);
-          if (!allOrdersMap.has(key)) allOrdersMap.set(key, o);
+          if (!allOrdersMap.has(key)) allOrdersMap.set(key, { ...o, isCustomOrder: true });
         });
         const combinedOrders = Array.from(allOrdersMap.values());
 
@@ -232,15 +241,17 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
     const images: Record<string, ProductWithImage> = {};
     
     orders.forEach(order => {
-      order.items.forEach(item => {
-        if (item.productId && item.imageUrl) {
-          images[item.productId] = {
-            name: item.name,
-            imageUrl: item.imageUrl,
-            sellPrice: item.price,
-          };
-        }
-      });
+      if (order.items && Array.isArray(order.items)) {
+        order.items.forEach(item => {
+          if (item.productId && item.imageUrl) {
+            images[item.productId] = {
+              name: item.name,
+              imageUrl: item.imageUrl,
+              sellPrice: item.price,
+            };
+          }
+        });
+      }
     });
 
     setProductImages(images);
@@ -269,7 +280,13 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         throw new Error(error.error || 'Failed to approve payment');
       }
 
-      setPending(pending.filter(o => o._id !== orderId));
+      // Move order from pending to approved
+      const approvedOrder = pending.find(o => o._id === orderId);
+      if (approvedOrder) {
+        setPending(pending.filter(o => o._id !== orderId));
+        setApproved([...approved, { ...approvedOrder, status: 'approved' }]);
+        setPaymentStatus(prev => ({ ...prev, [orderId]: 'approved' }));
+      }
       showToast('Payment approved successfully!', 'success');
     } catch (err: any) {
       console.error('[PendingPanel] Error approving payment:', err);
@@ -429,6 +446,34 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
     <div className="space-y-6">
       {/* Main Container */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      {/* Tabs */}
+      <div className="border-b border-gray-200 bg-gray-50">
+        <div className="flex">
+          <button
+            onClick={() => setActiveTab('pending')}
+            className={`flex-1 py-4 px-6 font-semibold text-center transition-colors ${
+              activeTab === 'pending'
+                ? 'text-red-600 border-b-2 border-red-600 bg-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Clock className="h-4 w-4 inline mr-2" />
+            Pending ({pending.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('approved')}
+            className={`flex-1 py-4 px-6 font-semibold text-center transition-colors ${
+              activeTab === 'approved'
+                ? 'text-green-600 border-b-2 border-green-600 bg-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Check className="h-4 w-4 inline mr-2" />
+            Approved ({approved.length})
+          </button>
+        </div>
+      </div>
+
       {/* Content */}
       <div className="p-6">
         {/* Error State */}
@@ -453,7 +498,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         )}
 
         {/* Empty State */}
-        {!loading && !error && pending.length === 0 && (
+        {!loading && !error && activeTab === 'pending' && pending.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="text-center">
               <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
@@ -465,8 +510,21 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
           </div>
         )}
 
-        {/* Pending Orders Cards Grid */}
-        {!loading && !error && pending.length > 0 && (
+        {/* Empty State - Approved */}
+        {!loading && !error && activeTab === 'approved' && approved.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="text-center">
+              <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                <Check className="h-6 w-6 text-blue-600" />
+              </div>
+              <p className="font-semibold text-gray-900">No approved orders</p>
+              <p className="text-gray-600 text-sm mt-1">Approved orders will appear here</p>
+            </div>
+          </div>
+        )}
+
+        {/* Orders Cards Grid */}
+        {!loading && !error && ((activeTab === 'pending' && pending.length > 0) || (activeTab === 'approved' && approved.length > 0)) && (
           <div>
             {/* Sort Controls */}
             <div className="flex items-center justify-between mb-6">
@@ -487,31 +545,37 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
             </div>
 
             {/* Cards Grid */}
-            {filteredPending.length === 0 ? (
+            {(activeTab === 'pending' ? filteredPending : approved).length === 0 ? (
               <div className="text-center py-12">
-                <p className="text-gray-500 font-semibold">No pending orders found</p>
+                <p className="text-gray-500 font-semibold">No orders found</p>
               </div>
             ) : (
               <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-3 gap-6">
-                {filteredPending.map((order) => (
+                {(activeTab === 'pending' ? filteredPending : approved).map((order) => (
                   <div key={order._id} className="break-inside-avoid mb-6">
                     <OrderCard
                       orderId={order._id}
-                      firstName={order.firstName}
-                      lastName={order.lastName}
+                      firstName={order.firstName || order.fullName?.split(' ')[0] || ''}
+                      lastName={order.lastName || order.fullName?.split(' ').slice(1).join(' ') || ''}
                       email={order.email}
                       phone={order.phone}
                       items={order.items}
                       total={order.total}
                       orderNumber={order.orderNumber}
-                      isPaid={paymentStatus[order._id] === 'paid'}
+                      isPaid={paymentStatus[order._id] === 'paid' || paymentStatus[order._id] === 'approved'}
                       isApproving={approvingOrderId === order._id}
                       rentalDays={order.rentalSchedule?.rentalDays}
                       cautionFee={order.cautionFee || undefined}
-                      onApprove={() => setConfirmModalOpen(order._id)}
+                      onApprove={activeTab === 'pending' ? () => setConfirmModalOpen(order._id) : () => {}}
                       onChat={() => setChatModalOpen(order._id)}
                       onDelete={deleteOrder}
                       formatCurrency={formatCurrency}
+                      // Custom order fields
+                      description={order.description}
+                      designUrls={order.designUrls}
+                      quantity={order.quantity}
+                      quotedPrice={order.quotedPrice}
+                      isCustomOrder={!order.items || order.items.length === 0}
                     />
                   </div>
                 ))}
@@ -551,6 +615,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
             userEmail="admin@empi.com"
             userName="Admin"
             isAdmin={true}
+            isCustomOrder={pending.find(o => o._id === chatModalOpen)?.isCustomOrder || false}
             paymentStatus={paymentStatus[chatModalOpen] || 'pending'}
           />
         )}

@@ -30,6 +30,10 @@ export default function CustomCostumesPage({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [successOrderNumber, setSuccessOrderNumber] = useState("");
+  const [signupPassword, setSignupPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isCreatingAccount, setIsCreatingAccount] = useState(false);
+  const [signupError, setSignupError] = useState("");
 
   const [formData, setFormData] = useState({
     fullName: "",
@@ -38,6 +42,7 @@ export default function CustomCostumesPage({
     address: "",
     city: "",
     state: "",
+    postalCode: "",
     description: "",
     deliveryDate: "",
     quantity: 1,
@@ -63,6 +68,7 @@ export default function CustomCostumesPage({
         address: buyer.address || prev.address,
         city: buyer.city || prev.city,
         state: buyer.state || prev.state,
+        postalCode: buyer.postalCode || prev.postalCode,
       }));
     }
   }, [buyer]);
@@ -127,6 +133,61 @@ export default function CustomCostumesPage({
     setPreviewUrls(previewUrls.filter((_, i) => i !== index));
   };
 
+  const handleCreateAccount = async () => {
+    setSignupError("");
+    
+    if (!signupPassword || !confirmPassword) {
+      setSignupError("Please enter and confirm your password");
+      return;
+    }
+    
+    if (signupPassword.length < 8) {
+      setSignupError("Password must be at least 8 characters long");
+      return;
+    }
+    
+    if (signupPassword !== confirmPassword) {
+      setSignupError("Passwords do not match");
+      return;
+    }
+    
+    setIsCreatingAccount(true);
+    try {
+      const response = await fetch("/api/auth/signup-from-custom-order", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          fullName: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          address: formData.address,
+          city: formData.city,
+          state: formData.state,
+          postalCode: formData.postalCode || "",
+          password: signupPassword,
+          customOrderNumber: successOrderNumber,
+        }),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to create account");
+      }
+      
+      const data = await response.json();
+      console.log("[CustomCostumes] ✅ Account created successfully!");
+      
+      // Close modal and redirect to dashboard
+      setShowSuccessModal(false);
+      window.location.href = `/dashboard?order=${successOrderNumber}&signup=success`;
+    } catch (err: any) {
+      console.error("[CustomCostumes] ❌ Error creating account:", err);
+      setSignupError(err.message || "Failed to create account. Please try again.");
+    } finally {
+      setIsCreatingAccount(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -154,6 +215,7 @@ export default function CustomCostumesPage({
       uploadFormData.append("address", formData.address);
       uploadFormData.append("city", formData.city);
       uploadFormData.append("state", formData.state);
+      uploadFormData.append("postalCode", formData.postalCode);
       uploadFormData.append("description", formData.description);
       uploadFormData.append("deliveryDate", formData.deliveryDate);
       uploadFormData.append("quantity", formData.quantity.toString());
@@ -191,21 +253,11 @@ export default function CustomCostumesPage({
       setSubmitStatus("success");
       setSuccessOrderNumber(data.orderNumber || "");
       setShowSuccessModal(true);
+      setSignupPassword("");
+      setConfirmPassword("");
+      setSignupError("");
       
-      // Reset form
-      setFormData({
-        fullName: "",
-        email: "",
-        phone: "",
-        address: "",
-        city: "",
-        state: "",
-        description: "",
-        deliveryDate: "",
-        quantity: 1,
-      });
-      setSelectedFiles([]);
-      setPreviewUrls([]);
+      // Don't reset form yet - need it for the modal to display user info
     } catch (err: any) {
       console.error("[CustomCostumes] ❌ Error submitting order:", err);
       setSubmitStatus("error");
@@ -388,14 +440,24 @@ export default function CustomCostumesPage({
               {/* Step 1: Contact Information */}
               {(currentStep === 'info' || window.innerWidth >= 768) && (
                 <div className="bg-gradient-to-br from-blue-50 via-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-blue-200 shadow-sm overflow-hidden">
-                  <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                    <span className="text-2xl">👤</span>
-                    <span className="hidden md:inline">Contact Information</span>
-                    <span className="md:hidden">Your Information</span>
-                  </h3>
+                  <div className="flex items-start justify-between mb-6">
+                    <h3 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
+                      <span className="text-2xl">👤</span>
+                      <span className="hidden md:inline">Contact Information</span>
+                      <span className="md:hidden">Your Information</span>
+                    </h3>
+                    {buyer?.id && (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                        <span>✓</span>
+                        <span>Auto-filled</span>
+                      </div>
+                    )}
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
+                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
+                    }`}>
                       <label htmlFor="fullName" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
                         Full Name <span className="text-red-600">*</span>
                       </label>
@@ -405,12 +467,19 @@ export default function CustomCostumesPage({
                         name="fullName"
                         value={formData.fullName}
                         onChange={handleInputChange}
+                        disabled={!!buyer?.id}
                         required
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
+                          buyer?.id
+                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
+                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        }`}
                         placeholder="Your name"
                       />
                     </div>
-                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
+                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
+                    }`}>
                       <label htmlFor="email" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
                         Email <span className="text-red-600">*</span>
                       </label>
@@ -420,12 +489,19 @@ export default function CustomCostumesPage({
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
+                        disabled={!!buyer?.id}
                         required
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
+                          buyer?.id
+                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
+                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        }`}
                         placeholder="your@email.com"
                       />
                     </div>
-                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
+                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
+                    }`}>
                       <label htmlFor="phone" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
                         Phone <span className="text-red-600">*</span>
                       </label>
@@ -435,12 +511,19 @@ export default function CustomCostumesPage({
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
+                        disabled={!!buyer?.id}
                         required
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
+                          buyer?.id
+                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
+                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        }`}
                         placeholder="+234 123 456 7890"
                       />
                     </div>
-                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
+                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
+                    }`}>
                       <label htmlFor="city" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
                         City <span className="text-red-600">*</span>
                       </label>
@@ -450,15 +533,22 @@ export default function CustomCostumesPage({
                         name="city"
                         value={formData.city}
                         onChange={handleInputChange}
+                        disabled={!!buyer?.id}
                         required
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
+                          buyer?.id
+                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
+                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        }`}
                         placeholder="Lagos, Abuja..."
                       />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-6">
-                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
+                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
+                    }`}>
                       <label htmlFor="address" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
                         Address
                       </label>
@@ -468,11 +558,18 @@ export default function CustomCostumesPage({
                         name="address"
                         value={formData.address}
                         onChange={handleInputChange}
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        disabled={!!buyer?.id}
+                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
+                          buyer?.id
+                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
+                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        }`}
                         placeholder="Street address"
                       />
                     </div>
-                    <div className="bg-white rounded-xl p-3 md:p-4 border border-blue-100 md:border-0 md:bg-transparent">
+                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
+                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
+                    }`}>
                       <label htmlFor="state" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
                         State
                       </label>
@@ -482,8 +579,34 @@ export default function CustomCostumesPage({
                         name="state"
                         value={formData.state}
                         onChange={handleInputChange}
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base"
+                        disabled={!!buyer?.id}
+                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
+                          buyer?.id
+                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
+                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        }`}
                         placeholder="State"
+                      />
+                    </div>
+                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
+                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
+                    }`}>
+                      <label htmlFor="postalCode" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
+                        Postal Code
+                      </label>
+                      <input
+                        type="text"
+                        id="postalCode"
+                        name="postalCode"
+                        value={formData.postalCode}
+                        onChange={handleInputChange}
+                        disabled={!!buyer?.id}
+                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
+                          buyer?.id
+                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
+                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
+                        }`}
+                        placeholder="Postal code"
                       />
                     </div>
                   </div>
@@ -818,18 +941,6 @@ export default function CustomCostumesPage({
             </div>
             
             <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Order Submitted! 🎉</h2>
-            <p className="text-gray-600 text-center mb-2">
-              Your custom costume request has been received!
-            </p>
-            
-            <div className="bg-lime-50 border border-lime-200 rounded-lg p-4 mb-6 text-center">
-              <p className="text-xs text-lime-700 uppercase font-semibold mb-1">Order Number</p>
-              <p className="text-lg font-bold text-lime-600">{successOrderNumber}</p>
-            </div>
-
-            <p className="text-sm text-gray-700 text-center mb-6">
-              We'll review your request and contact you within 24 hours with a professional quote and timeline for your costume.
-            </p>
 
             {buyer && buyer.email ? (
               // User is signed in
@@ -842,7 +953,24 @@ export default function CustomCostumesPage({
                 <button
                   onClick={() => {
                     setShowSuccessModal(false);
-                    // Scroll to top and reset
+                    // Reset form after closing modal
+                    setFormData({
+                      fullName: "",
+                      email: "",
+                      phone: "",
+                      address: "",
+                      city: "",
+                      state: "",
+                      postalCode: "",
+                      description: "",
+                      deliveryDate: "",
+                      quantity: 1,
+                    });
+                    setSelectedFiles([]);
+                    setPreviewUrls([]);
+                    setCurrentImageIndex(0);
+                    setCurrentStep("info");
+                    // Scroll to top
                     window.scrollTo(0, 0);
                   }}
                   className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 rounded-lg transition"
@@ -851,18 +979,91 @@ export default function CustomCostumesPage({
                 </button>
               </div>
             ) : (
-              // User is not signed in
-              <div className="space-y-3">
-                <p className="text-sm text-gray-700 text-center mb-4">
-                  <span className="font-semibold">Create an account to track your order progress</span> and chat directly with our team throughout production!
+              // User is not signed in - Show password creation form
+              <div className="space-y-4">
+                <p className="text-sm text-gray-700 text-center font-semibold">
+                  Create an account to track your order and chat with our team
                 </p>
-                <Link href="/auth">
-                  <button className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-3 rounded-lg transition">
-                    Sign Up Now
-                  </button>
-                </Link>
+                
+                {signupError && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p className="text-sm text-red-700">{signupError}</p>
+                  </div>
+                )}
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      value={formData.fullName}
+                      disabled
+                      className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Email</label>
+                    <input
+                      type="email"
+                      value={formData.email}
+                      disabled
+                      className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Order Number</label>
+                    <input
+                      type="text"
+                      value={successOrderNumber}
+                      disabled
+                      className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-600 font-semibold text-lime-600"
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Create Password</label>
+                    <input
+                      type="password"
+                      value={signupPassword}
+                      onChange={(e) => setSignupPassword(e.target.value)}
+                      placeholder="Min 8 characters"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-lime-500"
+                      disabled={isCreatingAccount}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-700 mb-1">Confirm Password</label>
+                    <input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter your password"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-lime-500"
+                      disabled={isCreatingAccount}
+                    />
+                  </div>
+                </div>
+                
+                <button
+                  onClick={handleCreateAccount}
+                  disabled={isCreatingAccount}
+                  className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                >
+                  {isCreatingAccount ? (
+                    <>
+                      <Loader className="h-4 w-4 animate-spin" />
+                      Creating Account...
+                    </>
+                  ) : (
+                    "Create Account & Track Order"
+                  )}
+                </button>
+                
                 <p className="text-xs text-gray-600 text-center">
-                  You'll be able to track your costume from design review through delivery
+                  You'll receive a confirmation email shortly
                 </p>
               </div>
             )}
@@ -909,6 +1110,7 @@ export default function CustomCostumesPage({
                     address: "",
                     city: "",
                     state: "",
+                    postalCode: "",
                     description: "",
                     deliveryDate: "",
                     quantity: 1,

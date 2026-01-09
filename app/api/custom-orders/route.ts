@@ -16,6 +16,9 @@ cloudinary.config({
  * POST /api/custom-orders
  * Creates a new custom costume order request
  * Accepts multipart form data with optional image file
+ * 
+ * OPTIMIZED: Returns immediately after saving order to DB
+ * Images are uploaded to Cloudinary asynchronously in the background
  */
 export async function POST(request: NextRequest) {
   try {
@@ -66,49 +69,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const designUrls: string[] = [];
-    let designUrl: string | null = null; // Keep first one for backward compatibility
-
-    // Upload all files to Cloudinary
-    for (let i = 0; i < designImages.length; i++) {
-      const file = designImages[i];
-      try {
-        console.log(`[API:POST] Uploading image ${i + 1}/${designImages.length}: ${file.name} (${file.type})`);
-        const buffer = await file.arrayBuffer();
-        const base64 = Buffer.from(buffer).toString("base64");
-        const dataURL = `data:${file.type};base64,${base64}`;
-
-        const uploadResult = await cloudinary.uploader.upload(dataURL, {
-          folder: "empi/custom-orders",
-          resource_type: "auto",
-          quality: "auto",
-          fetch_format: "auto",
-        });
-
-        const url = uploadResult.secure_url;
-        designUrls.push(url);
-        
-        // Keep first URL for backward compatibility
-        if (i === 0) {
-          designUrl = url;
-        }
-        
-        console.log(`✅ Design image ${i + 1}/${designImages.length} uploaded to Cloudinary:`, url);
-      } catch (uploadError) {
-        console.error(`⚠️ Failed to upload design image ${i + 1} to Cloudinary:`, uploadError);
-        // Continue uploading remaining images even if one fails
-      }
-    }
-
-    console.log(`[API:POST] Upload complete. Total images uploaded: ${designUrls.length}/${designImages.length}`);
-    console.log(`[API:POST] designUrls array:`, designUrls);
-
     // Generate unique order number using buyer's first name and short code
     const firstName = fullName.split(' ')[0]; // Get first name
     const shortCode = Math.random().toString(36).substr(2, 6).toUpperCase();
     const orderNumber = `${firstName}-${shortCode}`;
 
-    // Create custom order in database
+    // Create custom order in database IMMEDIATELY with empty design URLs
+    // This returns instantly to the user
     const orderData: any = {
       orderNumber,
       fullName,
@@ -116,8 +83,8 @@ export async function POST(request: NextRequest) {
       phone,
       city,
       description,
-      designUrl,
-      designUrls, // Store all design image URLs
+      designUrl: null, // Will be filled in by background task
+      designUrls: [], // Will be filled in by background task
       quantity: parseInt(quantity) || 1,
       status: "pending",
     };
@@ -131,40 +98,32 @@ export async function POST(request: NextRequest) {
       console.log("[API:POST /custom-orders] ✅ Adding buyerId to database:", buyerId);
     }
 
-    console.log("[API:POST /custom-orders] 📝 Order data to save:", {
-      orderNumber,
-      email,
-      buyerId: orderData.buyerId || "(not provided)",
-      fullName,
-      designUrlCount: orderData.designUrls?.length || 0,
-      designUrls: orderData.designUrls || [],
-    });
-
     const customOrder = await CustomOrder.create(orderData);
 
-    console.log("✅ Custom order created:", customOrder._id);
-    console.log("📋 Order Details:");
-    console.log("  - Order Number:", customOrder.orderNumber);
-    console.log("  - BuyerId:", customOrder.buyerId || "(not set)");
-    console.log("  - Email:", customOrder.email);
-    console.log("  - Full Name:", customOrder.fullName);
-    console.log("  - Status:", customOrder.status);
-    console.log("  - designUrl:", customOrder.designUrl || "EMPTY");
-    console.log("  - designUrls count:", customOrder.designUrls?.length || 0);
-    console.log("  - designUrls:", customOrder.designUrls || []);
+    console.log("✅ Custom order created immediately:", customOrder._id);
+    console.log("📋 Order Number:", customOrder.orderNumber);
 
-    // TODO: Send email notification to admin and customer
-    // For now, just log it
-    console.log(`📧 TODO: Send email to ${email} and admin about new custom order`);
-
-    return NextResponse.json(
+    // 🚀 FAST RETURN: Send success response to user immediately
+    // User sees confirmation without waiting for image uploads
+    const response = NextResponse.json(
       {
         success: true,
         orderNumber: customOrder.orderNumber,
-        message: "Your custom costume order has been submitted. We'll contact you within 24 hours.",
+        orderId: customOrder._id,
+        message: "Your custom costume order has been submitted successfully! Images are being processed.",
       },
       { status: 201 }
     );
+
+    // 📸 BACKGROUND TASK: Upload images asynchronously without blocking the response
+    // This happens in the background after the user gets their confirmation
+    if (designImages.length > 0) {
+      uploadImagesInBackground(customOrder._id, designImages, orderNumber).catch((err) => {
+        console.error(`[Background] Failed to upload images for order ${orderNumber}:`, err);
+      });
+    }
+
+    return response;
   } catch (error) {
     console.error("❌ Error creating custom order:", error);
 
@@ -175,6 +134,82 @@ export async function POST(request: NextRequest) {
       { message: errorMessage },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Background task to upload images to Cloudinary and update order
+ * Runs asynchronously without blocking the API response
+ */
+async function uploadImagesInBackground(
+  orderId: string,
+  designImages: File[],
+  orderNumber: string
+) {
+  try {
+    console.log(`[Background:${orderNumber}] 📸 Starting async image upload for ${designImages.length} images...`);
+
+    const designUrls: (string | undefined)[] = new Array(designImages.length).fill(undefined);
+    let designUrl: string | null = null;
+
+    // Upload all files to Cloudinary in parallel
+    const uploadPromises = designImages.map((file, i) =>
+      (async () => {
+        try {
+          console.log(`[Background:${orderNumber}] Uploading image ${i + 1}/${designImages.length}: ${file.name}`);
+          const buffer = await file.arrayBuffer();
+          const base64 = Buffer.from(buffer).toString("base64");
+          const dataURL = `data:${file.type};base64,${base64}`;
+
+          const uploadResult = await cloudinary.uploader.upload(dataURL, {
+            folder: "empi/custom-orders",
+            resource_type: "auto",
+            quality: "auto",
+            fetch_format: "auto",
+          });
+
+          const url = uploadResult.secure_url;
+          console.log(`[Background:${orderNumber}] ✅ Image ${i + 1}/${designImages.length} uploaded:`, url);
+          return { success: true, url, index: i };
+        } catch (uploadError) {
+          console.error(`[Background:${orderNumber}] ⚠️ Failed to upload image ${i + 1}:`, uploadError);
+          return { success: false, index: i };
+        }
+      })()
+    );
+
+    // Wait for all uploads in parallel
+    const uploadResults = await Promise.all(uploadPromises);
+
+    // Process results and maintain order
+    uploadResults.forEach((result) => {
+      if (result.success && result.url) {
+        designUrls[result.index] = result.url;
+        if (result.index === 0) {
+          designUrl = result.url;
+        }
+      }
+    });
+
+    // Filter out failed uploads (undefined values)
+    const successfulUrls = designUrls.filter((url): url is string => url !== undefined);
+    console.log(`[Background:${orderNumber}] ✅ Upload complete: ${successfulUrls.length}/${designImages.length} images`);
+
+    // Update the order with the uploaded image URLs
+    await connectDB();
+    const customOrder = await CustomOrder.findByIdAndUpdate(
+      orderId,
+      {
+        designUrl,
+        designUrls: successfulUrls,
+      },
+      { new: true }
+    );
+
+    console.log(`[Background:${orderNumber}] ✅ Order updated with design URLs`);
+    console.log(`[Background:${orderNumber}] 📸 Final designUrls: ${successfulUrls.length} images`);
+  } catch (error) {
+    console.error(`[Background:${orderNumber}] ❌ Error in background upload task:`, error);
   }
 }
 

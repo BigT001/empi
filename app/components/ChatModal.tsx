@@ -1863,13 +1863,13 @@ Thank you for choosing Empi! 👖✨`;
                               )}
                               <div className="flex justify-between text-xs md:text-sm gap-3">
                                 <span className="opacity-90">VAT (7.5%):</span>
-                                <span className="font-semibold">₦{Math.round(msg.quotedVAT || msg.quotedPrice * 0.075).toLocaleString()}</span>
+                                <span className="font-semibold">₦{Math.round(msg.quotedVAT || 0).toLocaleString()}</span>
                               </div>
                               <div className={`flex justify-between text-sm md:text-base font-bold border-t pt-1 md:pt-2 gap-3 ${
                                 msg.senderType === 'customer' ? 'border-white/30' : 'border-gray-300'
                               }`}>
                                 <span>Total:</span>
-                                <span>₦{Math.round(msg.quotedTotal || (msg.quotedPrice + (msg.quotedVAT || msg.quotedPrice * 0.075))).toLocaleString()}</span>
+                                <span>₦{Math.round(msg.quotedTotal || 0).toLocaleString()}</span>
                               </div>
 
                               {/* Delivery Date Section (if present) */}

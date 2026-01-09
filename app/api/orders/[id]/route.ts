@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
+import CustomOrder from '@/lib/models/CustomOrder';
 import Product from '@/lib/models/Product';
 import { serializeDoc } from '@/lib/serializer';
 
@@ -131,7 +132,7 @@ export async function GET(
   }
 }
 
-// DELETE - Delete order by ID
+// DELETE - Delete order by ID (supports both regular and custom orders)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -151,7 +152,13 @@ export async function DELETE(
       );
     }
 
-    const deletedOrder = await Order.findByIdAndDelete(id);
+    // Try to delete from regular orders first
+    let deletedOrder = await Order.findByIdAndDelete(id);
+
+    // If not found in regular orders, try custom orders
+    if (!deletedOrder) {
+      deletedOrder = await CustomOrder.findByIdAndDelete(id);
+    }
 
     if (!deletedOrder) {
       return NextResponse.json(

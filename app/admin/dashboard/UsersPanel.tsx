@@ -9,6 +9,10 @@ interface BuyerData {
   email: string;
   phone: string;
   fullName: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
   createdAt: string;
   lastLogin?: string;
   isAdmin: boolean;
@@ -425,7 +429,7 @@ export function UsersPanel() {
                               <td colSpan={6} className="px-6 py-4">
                                 <div className="space-y-4">
                                   {/* User Info Cards */}
-                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                                       <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Email</p>
                                       <p className="text-sm text-gray-900 mt-2 break-all font-medium">{buyer.email}</p>
@@ -433,6 +437,22 @@ export function UsersPanel() {
                                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                                       <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Phone</p>
                                       <p className="text-sm text-gray-900 mt-2 font-medium">{buyer.phone || '—'}</p>
+                                    </div>
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">City</p>
+                                      <p className="text-sm text-gray-900 mt-2 font-medium">{buyer.city || '—'}</p>
+                                    </div>
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">State</p>
+                                      <p className="text-sm text-gray-900 mt-2 font-medium">{buyer.state || '—'}</p>
+                                    </div>
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4 lg:col-span-2">
+                                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Address</p>
+                                      <p className="text-sm text-gray-900 mt-2 font-medium">{buyer.address || '—'}</p>
+                                    </div>
+                                    <div className="bg-white border border-gray-200 rounded-lg p-4">
+                                      <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Postal Code</p>
+                                      <p className="text-sm text-gray-900 mt-2 font-medium">{buyer.postalCode || '—'}</p>
                                     </div>
                                     <div className="bg-white border border-gray-200 rounded-lg p-4">
                                       <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Member for</p>
