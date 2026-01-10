@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import { OrderCard } from '../dashboard/components/PendingPanel/OrderCard';
 import { ArrowLeft, AlertCircle, X, Package, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import MobileAdminLayout from '../mobile-layout';
 
 export default function LogisticsPage() {
   const router = useRouter();
@@ -13,6 +14,16 @@ export default function LogisticsPage() {
   const [loading, setLoading] = useState(true);
   const [shippingConfirmModal, setShippingConfirmModal] = useState<string | null>(null);
   const [isShipping, setIsShipping] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     try {
@@ -222,7 +233,9 @@ export default function LogisticsPage() {
     );
   }
 
-  return (
+  if (!isMounted) return null;
+
+  const content = (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
       <div className="max-w-7xl mx-auto space-y-6">
         <button
@@ -387,4 +400,14 @@ export default function LogisticsPage() {
       </div>
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobileAdminLayout>
+        {content}
+      </MobileAdminLayout>
+    );
+  }
+
+  return content;
 }

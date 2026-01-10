@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import MobileAdminDashboard from "../mobile-dashboard";
-import { MobileBottomSidebar } from "./MobileBottomSidebar";
+import MobileAdminLayout from "../mobile-layout";
 import { UsersPanel } from "./UsersPanel";
 import { PendingPanel } from "./PendingPanel";
 import { ProductsPanel } from "./ProductsPanel";
@@ -115,12 +115,10 @@ export default function AdminDashboardPage() {
     return null;
   }
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-24 md:pb-0">
-      {/* Header removed per request */}
-
-      {/* Content Area - ⚡ Lazy loaded panels only render when needed - ADD PADDING BOTTOM FOR MOBILE SIDEBAR */}
-      <main className="p-4 md:p-8 w-full pb-24 md:pb-0">
+  const content = (
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-6 md:pb-0">
+      {/* Content Area - ⚡ Lazy loaded panels only render when needed */}
+      <main className="p-4 md:p-8 w-full pb-6 md:pb-0">
         {/* Overview + Panels */}
         {activeTab === 'dashboard' && (
           <div className="animate-fadeIn">
@@ -150,9 +148,16 @@ export default function AdminDashboardPage() {
 
 
       </main>
-
-      {/* Mobile Bottom Sidebar Navigation - MOBILE ONLY */}
-      <MobileBottomSidebar />
     </div>
   );
+
+  if (isMobile) {
+    return (
+      <MobileAdminLayout>
+        {content}
+      </MobileAdminLayout>
+    );
+  }
+
+  return content;
 }

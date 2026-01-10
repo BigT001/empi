@@ -7,7 +7,7 @@ import { useAdmin } from "@/app/context/AdminContext";
 
 // Mobile components
 const MobileAdminLayout = dynamic(() => import("./mobile-layout"), { ssr: false });
-const MobileAdminUpload = dynamic(() => import("./mobile-upload"), { ssr: false });
+const MobileAdminDashboard = dynamic(() => import("./mobile-dashboard"), { ssr: false });
 
 export default function AdminPage() {
   const [isMobile, setIsMobile] = useState(false);
@@ -43,7 +43,7 @@ export default function AdminPage() {
   if (isMobile) {
     return (
       <MobileAdminLayout>
-        <MobileAdminUpload />
+        <MobileAdminDashboard />
       </MobileAdminLayout>
     );
   }

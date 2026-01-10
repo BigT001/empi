@@ -154,7 +154,7 @@ export function HeroSection() {
           <div className="text-center max-w-4xl">
             {/* Accent badge */}
             <div className="mb-6 opacity-0 animate-in fade-in duration-700">
-              <span className="inline-block px-3 py-1 bg-primary/40 border border-primary/60 rounded-full text-xs md:text-sm font-medium text-primary backdrop-blur-sm">
+              <span className="inline-block px-4 py-2 bg-lime-500/30 border border-lime-400 rounded-full text-xs md:text-sm font-bold text-lime-300 backdrop-blur-sm shadow-lg shadow-lime-500/20">
                 ✨ Crafted with Excellence
               </span>
             </div>
@@ -185,7 +185,7 @@ export function HeroSection() {
 
             {/* Gradient line divider */}
             <div className="mt-6 md:mt-8 flex justify-center opacity-0 animate-in fade-in duration-700 delay-200">
-              <div className="h-1 w-16 bg-gradient-to-r from-primary/30 via-primary to-primary/30 rounded-full shadow-lg" />
+              <div className="h-1 w-16 bg-gradient-to-r from-lime-400/30 via-lime-400 to-lime-400/30 rounded-full shadow-lg shadow-lime-400/50" />
             </div>
 
             {/* Description text */}
@@ -201,9 +201,9 @@ export function HeroSection() {
 
             {/* Bottom decorative dots */}
             <div className="mt-8 md:mt-10 flex justify-center gap-2 opacity-0 animate-in fade-in duration-700 delay-500">
-              <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shadow-md" />
-              <div className="w-1.5 h-1.5 rounded-full bg-primary shadow-md" />
-              <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shadow-md" />
+              <div className="w-1.5 h-1.5 rounded-full bg-lime-400/60 shadow-md shadow-lime-400/40" />
+              <div className="w-1.5 h-1.5 rounded-full bg-lime-400 shadow-md shadow-lime-400/50" />
+              <div className="w-1.5 h-1.5 rounded-full bg-lime-400/60 shadow-md shadow-lime-400/40" />
             </div>
           </div>
         </div>
@@ -303,37 +303,16 @@ export function HeroSection() {
         {/* Dark Overlay Gradient */}
         <div className="absolute inset-0 bg-gradient-to-b from-black/20 via-transparent to-black/40 pointer-events-none" />
 
-        {/* Navigation Arrows - Cinema Style */}
-        <button
-          onClick={prevSlide}
-          className="absolute left-8 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/30 backdrop-blur-md text-white p-4 rounded-full transition-all duration-300 hover:scale-110 group border border-white/20 hover:border-white/40"
-          aria-label="Previous slide"
-        >
-          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-        </button>
-
-        <button
-          onClick={nextSlide}
-          className="absolute right-8 top-1/2 -translate-y-1/2 z-20 bg-white/10 hover:bg-white/30 backdrop-blur-md text-white p-4 rounded-full transition-all duration-300 hover:scale-110 border border-white/20 hover:border-white/40"
-          aria-label="Next slide"
-        >
-          <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-
-        {/* Dots Indicator - Movie Theater Style */}
-        <div className="absolute bottom-12 left-1/2 -translate-x-1/2 z-20 flex gap-3">
+        {/* Dots Indicator - Premium Style */}
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-2 p-3 bg-black/20 backdrop-blur-md rounded-full border border-white/20">
           {Array.from({ length: Math.ceil(HERO_IMAGES.length / 2) }).map((_, index) => (
             <button
               key={index}
               onClick={() => goToSlide(index * 2)}
-              className={`transition-all duration-500 rounded-full cursor-pointer backdrop-blur-sm ${
+              className={`transition-all duration-500 rounded-full cursor-pointer ${
                 index * 2 === currentImageIndex
-                  ? "bg-white w-10 h-3 shadow-lg"
-                  : "bg-white/40 hover:bg-white/60 w-3 h-3"
+                  ? "bg-lime-500 w-8 h-2.5 shadow-lg shadow-lime-500/50"
+                  : "bg-white/40 hover:bg-white/60 w-2.5 h-2.5 hover:w-3"
               }`}
               aria-label={`Go to slide pair ${index + 1}`}
             />
