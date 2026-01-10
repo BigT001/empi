@@ -37,15 +37,31 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   const { buyer, logout } = useBuyer();
   const { admin } = useAdmin();
 
-  // Handle category navigation
+  // Handle category navigation - scroll to products section
   const handleCategoryChange = (newCategory: string) => {
     onCategoryChange(newCategory);
     
-    // Navigate based on category
-    if (newCategory === "custom") {
-      router.push("/?category=custom");
-    } else if (newCategory === "adults" || newCategory === "kids") {
-      router.push("/?category=" + newCategory);
+    // If on home page, update URL and scroll to products section
+    if (pathname === "/") {
+      // Update URL without reloading
+      const params = new URLSearchParams();
+      params.append('category', newCategory);
+      window.history.replaceState({}, '', `/?${params.toString()}`);
+      
+      // Wait for state to update before scrolling
+      setTimeout(() => {
+        const productSection = document.getElementById("product-grid");
+        if (productSection) {
+          productSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      }, 300);
+    } else {
+      // Navigate to home page with category parameter if not on home
+      if (newCategory === "custom") {
+        router.push("/?category=custom");
+      } else if (newCategory === "adults" || newCategory === "kids") {
+        router.push("/?category=" + newCategory);
+      }
     }
     
     // Close mobile menu after selection
@@ -186,8 +202,8 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
             onClick={() => handleCategoryChange("adults")}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
               category === "adults"
-                ? "bg-gray-900 text-white border-gray-900 shadow-lg"
-                : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
+                : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
             }`}
           >
             <span className="flex items-center gap-2">
@@ -201,8 +217,8 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
             onClick={() => handleCategoryChange("kids")}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
               category === "kids"
-                ? "bg-gray-900 text-white border-gray-900 shadow-lg"
-                : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
+                : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
             }`}
           >
             <span className="flex items-center gap-2">
@@ -216,8 +232,8 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
             onClick={() => handleCategoryChange("custom")}
             className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
               category === "custom"
-                ? "bg-gray-900 text-white border-gray-900 shadow-lg"
-                : "bg-white text-gray-700 border-gray-300 hover:border-gray-400"
+                ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
+                : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
             }`}
           >
             <span className="flex items-center gap-2">

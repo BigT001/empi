@@ -251,28 +251,24 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
   return (
     <div 
-      className={`bg-white/90 backdrop-blur-md rounded-xl shadow-lg border border-gray-100/50 p-5 w-full max-w-sm transition-all duration-300 ${
-        mode === "register" 
-          ? "" 
-          : ""
-      }`}
+      className="bg-white rounded-2xl shadow-2xl border border-gray-200/30 p-8 w-full max-w-md transition-all duration-300"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Tabs */}
-      <div className="flex gap-1.5 mb-4">
+      <div className="flex gap-2 mb-6">
         <button
           onClick={() => {
             setMode("login");
             setError("");
             setSuccess("");
           }}
-          className={`flex-1 flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg font-semibold text-xs transition duration-300 ${
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition duration-300 ${
             mode === "login"
-              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-md hover:shadow-lg"
+              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-lg hover:shadow-xl"
               : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
           }`}
         >
-          <LogIn className="h-3 w-3" />
+          <LogIn className="h-4 w-4" />
           Login
         </button>
         <button
@@ -281,72 +277,72 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
             setError("");
             setSuccess("");
           }}
-          className={`flex-1 flex items-center justify-center gap-1 py-2 px-2.5 rounded-lg font-semibold text-xs transition duration-300 ${
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition duration-300 ${
             mode === "register"
-              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-md hover:shadow-lg"
+              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-lg hover:shadow-xl"
               : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
           }`}
         >
-          <UserPlus className="h-3 w-3" />
+          <UserPlus className="h-4 w-4" />
           Register
         </button>
       </div>
 
       {/* Title & Description */}
-      <div className="mb-3.5">
-        <h1 className="text-xl font-bold text-gray-900 mb-0.5">
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">
           {mode === "login" ? "Welcome Back!" : "Join EMPI"}
         </h1>
-        <p className="text-gray-500 text-xs leading-tight">
+        <p className="text-gray-500 text-sm leading-snug">
           {mode === "login"
-            ? "Sign in to continue"
-            : "Create an account"}
+            ? "Sign in to your account to continue shopping"
+            : "Create an account to get started"}
         </p>
       </div>
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-2.5 py-2 rounded-lg mb-3 flex items-start gap-1.5 text-xs">
-          <span className="text-sm mt-0.5 flex-shrink-0">⚠️</span>
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-start gap-2 text-sm">
+          <span className="text-base mt-0.5 flex-shrink-0">⚠️</span>
           <span className="leading-snug">{error}</span>
         </div>
       )}
 
       {/* Success Message */}
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-2.5 py-2 rounded-lg mb-3 flex items-start gap-1.5 text-xs">
-          <span className="text-sm mt-0.5 flex-shrink-0">✅</span>
+        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-start gap-2 text-sm">
+          <span className="text-base mt-0.5 flex-shrink-0">✅</span>
           <span className="leading-snug">{success}</span>
         </div>
       )}
 
       {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-3">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {/* Login: Email/Phone Toggle */}
         {mode === "login" && (
-          <div className="flex gap-1.5 mb-3">
+          <div className="flex gap-2 mb-4">
             <button
               type="button"
               onClick={() => setLoginType("email")}
-              className={`flex-1 py-1.5 px-2 rounded-lg font-medium text-xs transition flex items-center justify-center gap-1 ${
+              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${
                 loginType === "email"
                   ? "bg-lime-100 text-lime-700 border border-lime-300 shadow-sm"
                   : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
               }`}
             >
-              <Mail className="h-3 w-3" />
+              <Mail className="h-4 w-4" />
               Email
             </button>
             <button
               type="button"
               onClick={() => setLoginType("phone")}
-              className={`flex-1 py-1.5 px-2 rounded-lg font-medium text-xs transition flex items-center justify-center gap-1 ${
+              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${
                 loginType === "phone"
                   ? "bg-lime-100 text-lime-700 border border-lime-300 shadow-sm"
                   : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
               }`}
             >
-              <Phone className="h-3 w-3" />
+              <Phone className="h-4 w-4" />
               Phone
             </button>
           </div>
@@ -478,11 +474,11 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         <button
           type="submit"
           disabled={loading || oauthLoading}
-          className="w-full bg-gradient-to-r from-lime-600 to-lime-500 hover:from-lime-700 hover:to-lime-600 disabled:from-gray-300 disabled:to-gray-300 text-white font-bold py-2 px-4 rounded-lg transition duration-300 shadow-md hover:shadow-lg mt-4 text-sm"
+          className="w-full bg-gradient-to-r from-lime-600 to-lime-500 hover:from-lime-700 hover:to-lime-600 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold py-3 px-4 rounded-xl transition duration-300 shadow-lg hover:shadow-xl mt-6 text-base"
         >
           {loading ? (
-            <span className="flex items-center justify-center gap-2 text-xs">
-              <span className="animate-spin inline-block w-3 h-3 border-2 border-white border-t-transparent rounded-full"></span>
+            <span className="flex items-center justify-center gap-2">
+              <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
               Processing...
             </span>
           ) : mode === "login" ? (
@@ -494,7 +490,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
       </form>
 
       {/* Toggle Mode */}
-      <p className="text-center text-xs text-gray-600 mt-3">
+      <p className="text-center text-sm text-gray-600 mt-6">
         {mode === "login" ? "No account? " : "Have an account? "}
         <button
           onClick={() => {
@@ -513,19 +509,6 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           {mode === "login" ? "Sign up" : "Sign in"}
         </button>
       </p>
-
-      {/* Benefits Message */}
-      <div className="mt-6 p-4 bg-lime-50 rounded-lg border border-lime-200">
-        <p className="text-xs text-gray-700 text-center mb-2">
-          <span className="font-semibold text-lime-700">✨ Create an account today to:</span>
-        </p>
-        <ul className="text-xs text-gray-600 space-y-1">
-          <li>✓ Track your order in real-time</li>
-          <li>✓ Chat with our team about your costume</li>
-          <li>✓ Save your preferences and history</li>
-          <li>✓ Get exclusive updates and offers</li>
-        </ul>
-      </div>
     </div>
   );
 }

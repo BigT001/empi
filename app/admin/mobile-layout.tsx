@@ -4,7 +4,8 @@ import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Plus, BarChart3, FileText, Settings, Home, LogOut, MessageCircle, Truck, Package, Users } from "lucide-react";
+import { Plus, BarChart3, FileText, Settings, Home, LogOut, MessageCircle, Truck, Package, Users, Menu, X } from "lucide-react";
+import { useAdmin } from "@/app/context/AdminContext";
 
 interface NavItem {
   name: string;
@@ -81,7 +82,9 @@ export default function MobileAdminLayout({
 }) {
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [stats, setStats] = useState({ pendingInvoices: 0, pendingOrders: 0, totalOrders: 0, totalProducts: 0, registeredCustomers: 0 });
+  const { logout } = useAdmin();
 
   useEffect(() => {
     setIsMounted(true);
@@ -131,9 +134,9 @@ export default function MobileAdminLayout({
   if (!isMounted) return null;
 
   return (
-    <div className="flex flex-col h-screen bg-white overflow-hidden md:hidden">
-      {/* Mobile Header */}
-      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+    <div className="flex flex-col h-screen bg-white overflow-hidden md:hidden relative">
+      {/* Mobile Header with Toggle Menu */}
+      <div className="sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between shadow-sm">
         <Link href="/" className="flex items-center hover:opacity-80 transition">
           <Image
             src="/logo/EMPI-2k24-LOGO-1.PNG"
@@ -144,19 +147,41 @@ export default function MobileAdminLayout({
           />
         </Link>
         <h1 className="text-lg font-bold text-gray-900">Admin Panel</h1>
-        <div className="w-10" /> {/* Spacer for alignment */}
+        <button
+          onClick={() => setIsMenuOpen(!isMenuOpen)}
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors text-gray-700"
+          title={isMenuOpen ? "Close menu" : "Open menu"}
+        >
+          {isMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+        </button>
       </div>
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto pb-16">
-        <div className="w-full">
-          {children}
+      {/* Sliding Sidebar Menu */}
+      <div
+        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
+          isMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setIsMenuOpen(false)}
+      />
+      
+      <nav
+        className={`fixed top-0 left-0 h-screen w-64 bg-white shadow-xl z-40 transform transition-transform duration-300 ease-out overflow-y-auto ${
+          isMenuOpen ? "translate-x-0" : "-translate-x-full"
+        }`}
+      >
+        {/* Menu Header */}
+        <div className="sticky top-0 bg-gradient-to-r from-lime-500 to-lime-600 text-white p-4 flex items-center justify-between shadow-md">
+          <h2 className="font-bold text-lg">Menu</h2>
+          <button
+            onClick={() => setIsMenuOpen(false)}
+            className="p-1 hover:bg-lime-400 rounded transition"
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
-      </main>
 
-      {/* Bottom Navigation Bar - Instagram Style */}
-      <nav className="fixed bottom-4 left-4 right-4 bg-white/95 border border-gray-100 z-40 md:hidden rounded-2xl shadow-lg backdrop-blur-sm">
-        <div className="flex items-center justify-between h-16 w-full px-1">
+        {/* Menu Items */}
+        <div className="py-4 px-2 space-y-1">
           {navItems.map((item) => {
             const active = isActive(item.href, item.tab);
             return (
@@ -169,31 +194,48 @@ export default function MobileAdminLayout({
                       if (item.tab) localStorage.setItem('adminDashboardActiveTab', item.tab);
                     }
                   } catch (e) { /* ignore */ }
+                  setIsMenuOpen(false);
                 }}
-                className={`flex flex-col items-center justify-center flex-1 h-full py-2 relative transition-transform duration-200 ${
+                className={`flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all ${
                   active
-                    ? "text-lime-600 transform -translate-y-1 scale-105"
-                    : "text-gray-500 hover:text-gray-900 hover:scale-102"
+                    ? "bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md"
+                    : "text-gray-700 hover:bg-gray-100"
                 }`}
-                title={item.label}
               >
-                {/* Icon + badge container */}
-                <div className="relative mb-0.5 flex items-center justify-center">
-                  <div className={`transition-transform ${active ? 'scale-110' : 'scale-100'}`}>{item.icon}</div>
-
-                  {/* Badges (dot only - no numeric count) */}
-                  {item.name === 'Pending' && stats.pendingOrders > 0 && (
-                    <span aria-hidden className="absolute -top-1 -right-3 w-2 h-2 rounded-full bg-amber-500" />
-                  )}
-                </div>
-
-                {/* Label - small on mobile */}
-                <span className="text-[10px] font-semibold leading-none line-clamp-1 px-0.5 mt-0.5">{item.name}</span>
+                <div className="text-lg">{item.icon}</div>
+                <span>{item.name}</span>
+                {item.tab === 'pending' && stats.pendingOrders > 0 && (
+                  <span className="ml-auto inline-block w-2 h-2 rounded-full bg-amber-500" />
+                )}
               </Link>
             );
           })}
         </div>
+
+        {/* Divider */}
+        <div className="border-t border-gray-200 my-4" />
+
+        {/* Logout Button */}
+        <div className="p-4">
+          <button
+            onClick={async () => {
+              setIsMenuOpen(false);
+              await logout();
+            }}
+            className="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-all border border-red-200 hover:border-red-300"
+          >
+            <LogOut className="h-5 w-5" />
+            <span>Logout</span>
+          </button>
+        </div>
       </nav>
+
+      {/* Main Content */}
+      <main className="flex-1 overflow-y-auto pb-6">
+        <div className="w-full">
+          {children}
+        </div>
+      </main>
 
       {/* Desktop Sidebar Fallback - Hidden on Mobile */}
       <style jsx>{`

@@ -3,15 +3,14 @@
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import { Navigation } from "./components/Navigation";
+import { MobileHeader } from "./components/MobileHeader";
 import { ProductGrid } from "./components/ProductGrid";
 import { Footer } from "./components/Footer";
 import { DiscountPopup } from "./components/DiscountPopup";
-import { MobileLogoTop } from "./components/MobileLogoTop";
 import { HeroSection } from "./components/HeroSection";
 import { BrandsSection } from "./components/BrandsSection";
 import { useHomeMode } from "./context/HomeModeContext";
 import { useCurrency } from "./context/CurrencyContext";
-import { CategoryCards } from "./components/CategoryCards";
 import CustomCostumesPage from "./custom-costumes/page";
 
 export default function Home() {
@@ -67,7 +66,7 @@ export default function Home() {
 
   return (
     <div className="flex flex-col animate-in fade-in duration-500">
-      {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
+      {/* Desktop Navigation */}
       <Navigation 
         category={category}
         onCategoryChange={setCategory}
@@ -77,10 +76,16 @@ export default function Home() {
         onModeChange={setMode}
       />
 
-      {/* Mobile Header - Positioned at top of hero on mobile */}
-      <div className="md:hidden absolute top-0 left-0 right-0 z-50">
-        <MobileLogoTop />
-      </div>
+      {/* Mobile Header - Replaces old mobile logo and provides full header navigation */}
+      <MobileHeader 
+        category={category}
+        onCategoryChange={setCategory}
+        currency={currency}
+        onCurrencyChange={setCurrency}
+        mode={mode}
+        onModeChange={setMode}
+      />
+
       <HeroSection />
 
       {/* Brands/Partners Section */}
@@ -90,11 +95,7 @@ export default function Home() {
       <DiscountPopup intervalMinutes={7} />
 
       <div className="bg-white text-gray-900 flex flex-col min-h-screen">
-        {/* Category Cards - Mobile Only */}
-      <CategoryCards 
-        currentCategory={category}
-        onCategoryChange={setCategory}
-      />
+        {/* Category Cards - Mobile Only - REMOVED */}
 
       {/* Main Content - Add padding for both mobile and desktop headers */}
       <div className="pt-4 md:pt-20">
@@ -124,7 +125,9 @@ export default function Home() {
 
         {/* Custom Costumes CTA Section */}
         {/* Main Content */}
-        <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} searchQuery={searchQuery} />
+        <div id="product-grid">
+          <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} searchQuery={searchQuery} />
+        </div>
 
         {/* SEO Text Section */}
         <section className="hidden bg-gray-50 py-12 px-4">

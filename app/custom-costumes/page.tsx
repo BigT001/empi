@@ -6,8 +6,6 @@ import { Navigation } from "../components/Navigation";
 import { Footer } from "../components/Footer";
 import { Upload, AlertCircle, CheckCircle, Loader, X } from "lucide-react";
 import { useBuyer } from "../context/BuyerContext";
-import { CategoryCards } from "../components/CategoryCards";
-import { MobileLogoTop } from "../components/MobileLogoTop";
 
 interface CustomCostumesPageProps {
   category?: string;
@@ -270,22 +268,12 @@ export default function CustomCostumesPage({
 
   return (
     <div className="min-h-screen bg-white text-gray-900 flex flex-col">
-      {/* Mobile Logo Top - Part of page content, no background */}
-      <MobileLogoTop />
-
       {/* Navigation with Logo */}
-      {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
       <Navigation 
         category={localCategory}
         onCategoryChange={onCategoryChange}
         currency={localCurrency}
         onCurrencyChange={onCurrencyChange}
-      />
-
-      {/* Category Cards Navigation */}
-      <CategoryCards 
-        currentCategory="custom"
-        onCategoryChange={onCategoryChange}
       />
 
       {/* Main Content */}
