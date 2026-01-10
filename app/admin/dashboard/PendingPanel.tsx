@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { Clock, AlertCircle, Check, X } from "lucide-react";
-import { ChatModal } from "@/app/components/ChatModal";
+// ChatModal removed
 import { OrderCard } from "./components/PendingPanel/OrderCard";
 import { ConfirmPaymentModal } from "./components/PendingPanel/ConfirmPaymentModal";
 
@@ -48,6 +48,20 @@ interface PendingPanelProps {
   searchQuery?: string;
 }
 
+// Helper function to load persisted approved order IDs
+const loadPersistedApprovedIds = (): Set<string> => {
+  try {
+    const stored = sessionStorage.getItem('dashboard_approved_order_ids');
+    if (stored) {
+      const ids = JSON.parse(stored);
+      return new Set(ids);
+    }
+  } catch (error) {
+    console.error('[PendingPanel] Error loading persisted approved IDs:', error);
+  }
+  return new Set();
+};
+
 export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const [pending, setPending] = useState<PendingOrderData[]>([]);
   const [approved, setApproved] = useState<PendingOrderData[]>([]);
@@ -64,6 +78,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const [fetchedCount, setFetchedCount] = useState<number>(0);
   const [lastFetchAt, setLastFetchAt] = useState<number | null>(null);
   const [isPollingActive, setIsPollingActive] = useState<boolean>(true);
+  const [persistedApprovedIds, setPersistedApprovedIds] = useState<Set<string>>(() => loadPersistedApprovedIds());
   const prevPendingKeyRef = useRef<string>('');
   const prevPaymentStatusRef = useRef<string>('');
 
@@ -167,31 +182,59 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         console.log('[PendingPanel] First order:', combinedOrders[0]);
         console.log('[PendingPanel] First item:', combinedOrders[0]?.items?.[0]);
 
-        // Show all orders that are not final (exclude completed or cancelled)
+        // Separate pending and approved orders
         const pendingList = combinedOrders.filter((o: any) => {
           const status = (o.status || '').toString().toLowerCase();
-          if (status === 'completed' || status === 'cancelled' || status === 'deleted') return false;
+          const orderId = o._id?.toString() || o.orderNumber;
+          // Exclude orders that have been persisted as approved
+          if (persistedApprovedIds.has(orderId)) {
+            console.log(`[PendingPanel] 🔒 Excluding persisted approved order from pending: ${orderId}`);
+            return false;
+          }
+          if (status === 'completed' || status === 'cancelled' || status === 'deleted' || status === 'approved') return false;
           return true;
         });
 
-        console.log('[PendingPanel] fetched orders count:', combinedOrders.length, 'pendingList count:', pendingList.length);
+        const approvedList = combinedOrders.filter((o: any) => {
+          const status = (o.status || '').toString().toLowerCase();
+          return status === 'approved';
+        });
+        
+        console.log('[PendingPanel] Persisted approved IDs:', Array.from(persistedApprovedIds));
+        
+        // Merge approved orders with any persisted approved orders that may have been sent to logistics
+        // Find orders that are marked as persisted approved (were approved previously)
+        const persistedApproved = combinedOrders.filter(o => {
+          const orderId = o._id?.toString() || o.orderNumber;
+          return persistedApprovedIds.has(orderId);
+        });
+        const allApprovedList = [...approvedList, ...persistedApproved.filter(pa => !approvedList.some(a => (a._id?.toString() || a.orderNumber) === (pa._id?.toString() || pa.orderNumber)))];
+        
+        console.log('[PendingPanel] Persisted approved orders found:', persistedApproved.length);
+        console.log('[PendingPanel] Total approved list:', allApprovedList.length);
+
+        console.log('[PendingPanel] fetched orders count:', combinedOrders.length, 'pendingList count:', pendingList.length, 'approvedList count:', allApprovedList.length);
         console.log('[PendingPanel] fetched orderNumbers:', combinedOrders.map(o => o.orderNumber).slice(0,50));
         if (mounted) {
-          // Create a simple fingerprint of the pending list to avoid replacing state when nothing changed
-          const newKey = pendingList.map(o => o._id || o.orderNumber).join(',');
+          // Create a simple fingerprint of both pending and approved lists to detect any changes
+          const newPendingKey = pendingList.map(o => o._id || o.orderNumber).join(',');
+          const newApprovedKey = allApprovedList.map(o => o._id || o.orderNumber).join(',');
+          const newKey = `${newPendingKey}|${newApprovedKey}`;
+          
           if (newKey !== prevPendingKeyRef.current) {
             prevPendingKeyRef.current = newKey;
             setPending(pendingList);
+            setApproved(allApprovedList);
             setFetchedCount(combinedOrders.length);
             setLastFetchAt(Date.now());
             // Fetch product images
             fetchProductImages(pendingList);
             // Detect payment status by checking for invoices
             detectPaymentStatus(pendingList);
-            console.log('[PendingPanel] pending state updated (changes detected)');
+            console.log('[PendingPanel] state updated (changes detected), pending count:', pendingList.length, 'approved count:', allApprovedList.length);
           } else {
             // No meaningful change — avoid updating UI state to prevent visible refresh/jank
-            console.log('[PendingPanel] no change in pending orders — skipping state update');
+            console.log('[PendingPanel] no change in orders — skipping state update');
           }
         }
 
@@ -286,6 +329,13 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         setPending(pending.filter(o => o._id !== orderId));
         setApproved([...approved, { ...approvedOrder, status: 'approved' }]);
         setPaymentStatus(prev => ({ ...prev, [orderId]: 'approved' }));
+        
+        // Persist this order ID so it doesn't go back to pending on refresh
+        const updatedPersistedIds = new Set(persistedApprovedIds);
+        updatedPersistedIds.add(orderId);
+        setPersistedApprovedIds(updatedPersistedIds);
+        sessionStorage.setItem('dashboard_approved_order_ids', JSON.stringify(Array.from(updatedPersistedIds)));
+        console.log('[PendingPanel] ✅ Persisted approved order ID:', orderId);
       }
       showToast('Payment approved successfully!', 'success');
     } catch (err: any) {
@@ -339,16 +389,72 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const deleteOrder = async (orderId: string) => {
     try {
       setLoading(true);
+      
+      // Delete from database
       const res = await fetch(`/api/orders/${orderId}`, {
         method: 'DELETE',
       });
 
-      if (!res.ok) {
+      // If 404, order already deleted - that's fine, just remove from UI
+      if (res.status === 404) {
+        console.log(`[PendingPanel] ℹ️ Order ${orderId} not found in database (already deleted)`);
+      } else if (!res.ok) {
         const error = await res.json();
         throw new Error(error.error || 'Failed to delete order');
       }
 
+      // Remove from pending list
       setPending(pending.filter(o => o._id !== orderId));
+      
+      // Remove from persisted approved IDs if it exists there
+      const updatedApprovedIds = new Set(persistedApprovedIds);
+      updatedApprovedIds.delete(orderId);
+      setPersistedApprovedIds(updatedApprovedIds);
+      if (updatedApprovedIds.size > 0) {
+        sessionStorage.setItem('dashboard_approved_order_ids', JSON.stringify([...updatedApprovedIds]));
+      } else {
+        sessionStorage.removeItem('dashboard_approved_order_ids');
+      }
+
+      // Remove from logistics orders (active)
+      try {
+        const storedOrders = sessionStorage.getItem('logistics_orders');
+        if (storedOrders) {
+          const ordersArray = JSON.parse(storedOrders);
+          const filteredOrders = ordersArray.filter((o: any) => o._id !== orderId);
+          if (filteredOrders.length > 0) {
+            sessionStorage.setItem('logistics_orders', JSON.stringify(filteredOrders));
+          } else {
+            sessionStorage.removeItem('logistics_orders');
+          }
+        }
+      } catch (e) {
+        console.error('[PendingPanel] Error removing from logistics_orders:', e);
+      }
+
+      // Remove from logistics shipped orders
+      try {
+        const storedShipped = sessionStorage.getItem('logistics_shipped_orders');
+        if (storedShipped) {
+          const shippedArray = JSON.parse(storedShipped);
+          const filteredShipped = shippedArray.filter((o: any) => o._id !== orderId);
+          if (filteredShipped.length > 0) {
+            sessionStorage.setItem('logistics_shipped_orders', JSON.stringify(filteredShipped));
+          } else {
+            sessionStorage.removeItem('logistics_shipped_orders');
+          }
+        }
+      } catch (e) {
+        console.error('[PendingPanel] Error removing from logistics_shipped_orders:', e);
+      }
+
+      // Remove "sent to logistics" state
+      try {
+        sessionStorage.removeItem(`order_sent_to_logistics_${orderId}`);
+      } catch (e) {
+        console.error('[PendingPanel] Error removing sent to logistics state:', e);
+      }
+
       showToast('Order deleted successfully!', 'success');
     } catch (err: any) {
       console.error('[PendingPanel] Error deleting order:', err);
@@ -488,7 +594,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         )}
 
         {/* Loading State */}
-        {loading && (
+        {loading && pending.length === 0 && approved.length === 0 && (
           <div className="flex items-center justify-center py-12">
             <div className="space-y-3">
               <div className="h-8 w-8 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mx-auto" />
@@ -524,7 +630,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         )}
 
         {/* Orders Cards Grid */}
-        {!loading && !error && ((activeTab === 'pending' && pending.length > 0) || (activeTab === 'approved' && approved.length > 0)) && (
+        {!error && (pending.length > 0 || approved.length > 0) && ((activeTab === 'pending' && pending.length > 0) || (activeTab === 'approved' && approved.length > 0)) && (
           <div>
             {/* Sort Controls */}
             <div className="flex items-center justify-between mb-6">
@@ -576,6 +682,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
                       quantity={order.quantity}
                       quotedPrice={order.quotedPrice}
                       isCustomOrder={!order.items || order.items.length === 0}
+                      isApproved={activeTab === 'approved'}
                     />
                   </div>
                 ))}
@@ -600,25 +707,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
           formatCurrency={formatCurrency}
         />
 
-        {/* Chat Modal */}
-        {chatModalOpen && (
-          <ChatModal
-            isOpen={true}
-            onClose={() => setChatModalOpen(null)}
-            order={{
-              _id: chatModalOpen,
-              orderNumber: pending.find(o => o._id === chatModalOpen)?.orderNumber || 'Order',
-              email: pending.find(o => o._id === chatModalOpen)?.email || '',
-              phone: pending.find(o => o._id === chatModalOpen)?.phone || '',
-              fullName: pending.find(o => o._id === chatModalOpen) ? `${pending.find(o => o._id === chatModalOpen)?.firstName} ${pending.find(o => o._id === chatModalOpen)?.lastName}` : 'Customer',
-            }}
-            userEmail="admin@empi.com"
-            userName="Admin"
-            isAdmin={true}
-            isCustomOrder={pending.find(o => o._id === chatModalOpen)?.isCustomOrder || false}
-            paymentStatus={paymentStatus[chatModalOpen] || 'pending'}
-          />
-        )}
+        {/* Chat Modal - removed, to be replaced */}
 
         {/* Toast Notification */}
         {toast && (

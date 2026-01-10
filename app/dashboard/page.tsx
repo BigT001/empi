@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Footer } from "../components/Footer";
 import { Navigation } from "../components/Navigation";
 import { InvoiceModal } from "../components/InvoiceModal";
-import { ChatModal } from "../components/ChatModal";
+// ChatModal removed
 import { useBuyer } from "../context/BuyerContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { getBuyerInvoices, StoredInvoice } from "@/lib/invoiceStorage";
@@ -70,27 +70,7 @@ export default function BuyerDashboardPage() {
     postalCode: "",
   });
   const [isSaving, setIsSaving] = useState(false);
-  const [showSuccessMessage, setShowSuccessMessage] = useState(false);
-  const [successOrderNumber, setSuccessOrderNumber] = useState<string | null>(null);
   const router = useRouter();
-
-  // Check for signup success query parameter
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('signup') === 'success') {
-        const orderNum = params.get('order');
-        setShowSuccessMessage(true);
-        setSuccessOrderNumber(orderNum);
-        setActiveTab('orders');
-        // Clean up URL
-        window.history.replaceState({}, document.title, '/dashboard');
-        // Auto-hide message after 10 seconds
-        const timer = setTimeout(() => setShowSuccessMessage(false), 10000);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, []);
 
   // Check if first visit
   useEffect(() => {
@@ -370,19 +350,7 @@ export default function BuyerDashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900 flex flex-col">
       <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
-      {chatModalOpen && (() => {
-        const order = customOrders.find(o => o._id === chatModalOpen);
-        return order ? (
-          <ChatModal
-            isOpen={true}
-            onClose={() => setChatModalOpen(null)}
-            order={order}
-            userEmail={buyer.email}
-            userName={buyer.fullName}
-            isCustomOrder={true}
-          />
-        ) : null;
-      })()}
+      {/* ChatModal removed, to be replaced */}
 
       <Navigation
         category={category}
@@ -392,23 +360,6 @@ export default function BuyerDashboardPage() {
       />
 
       <main className="flex-1 max-w-7xl mx-auto px-4 py-6 sm:py-8 w-full mt-4 md:mt-6 lg:pt-20">
-        {/* Success Message */}
-        {showSuccessMessage && (
-          <div className="mb-6 p-4 bg-green-50 border-2 border-green-200 rounded-xl text-green-800 flex items-start gap-3 animate-in fade-in slide-in-from-top-2 duration-300">
-            <div className="flex-shrink-0 text-2xl">✅</div>
-            <div className="flex-1">
-              <h3 className="font-bold text-lg">Account Created Successfully!</h3>
-              <p className="text-sm mt-1">Your custom order <span className="font-semibold">{successOrderNumber}</span> is now linked to your account. You can track it below and chat with our team about your design.</p>
-            </div>
-            <button
-              onClick={() => setShowSuccessMessage(false)}
-              className="flex-shrink-0 text-green-600 hover:text-green-800 font-bold text-xl"
-            >
-              ✕
-            </button>
-          </div>
-        )}
-
         {/* Welcome Header */}
         <div className="mb-8 sm:mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1">

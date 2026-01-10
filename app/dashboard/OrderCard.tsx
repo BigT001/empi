@@ -63,47 +63,6 @@ export function OrderCard({
   };
 
   const getPricingDetails = (order: CustomOrder) => {
-    // Check if admin sent a quote message with exact figures
-    const quoteMessage = (order as any).messages?.find?.((msg: any) => 
-      msg.sender === 'admin' && (msg.quotedPrice !== undefined || msg.quotedTotal !== undefined)
-    );
-
-    // If admin has quoted specific amounts, use those exactly (don't recalculate)
-    if (quoteMessage && quoteMessage.quotedPrice !== undefined) {
-      const unitPrice = quoteMessage.quotedPrice || 0;
-      const quantity = quoteMessage.quantity || order.quantity || 1;
-      const discountAmount = quoteMessage.discountAmount || 0;
-      const quotedVAT = quoteMessage.quotedVAT || 0;
-      const quotedTotal = quoteMessage.quotedTotal || 0;
-      
-      // Calculate subtotal from unit price and quantity
-      const subtotal = unitPrice * quantity;
-      const subtotalAfterDiscount = subtotal - discountAmount;
-      const discountPercent = subtotal > 0 ? (discountAmount / subtotal) * 100 : 0;
-      
-      console.log('[OrderCard] Using admin quote message:', {
-        unitPrice,
-        quantity,
-        subtotal,
-        discountAmount,
-        discountPercent,
-        subtotalAfterDiscount,
-        vat: quotedVAT,
-        total: quotedTotal
-      });
-      
-      return { 
-        quantity, 
-        subtotal, 
-        discount: discountAmount, 
-        discountPercent: Math.round(discountPercent),
-        subtotalAfterDiscount, 
-        vat: quotedVAT, 
-        total: quotedTotal 
-      };
-    }
-
-    // Fallback: calculate from quotedPrice (old behavior)
     const basePrice = order.quotedPrice || 0;
     const quantity = order.quantity || 1;
     const subtotal = basePrice * quantity;
@@ -115,17 +74,6 @@ export function OrderCard({
     const vat = subtotalAfterDiscount * 0.075;
     const total = subtotalAfterDiscount + vat;
     
-    console.log('[OrderCard] Using calculated pricing (no quote message):', {
-      basePrice,
-      quantity,
-      subtotal,
-      discountPercent,
-      discount,
-      subtotalAfterDiscount,
-      vat,
-      total
-    });
-    
     return { quantity, subtotal, discount, discountPercent, subtotalAfterDiscount, vat, total };
   };
 
@@ -135,6 +83,7 @@ export function OrderCard({
       'approved': { badge: 'bg-blue-50 text-blue-700 border-blue-200', text: 'text-blue-600' },
       'in-progress': { badge: 'bg-purple-50 text-purple-700 border-purple-200', text: 'text-purple-600' },
       'ready': { badge: 'bg-green-50 text-green-700 border-green-200', text: 'text-green-600' },
+      'shipped': { badge: 'bg-indigo-50 text-indigo-700 border-indigo-200', text: 'text-indigo-600' },
       'completed': { badge: 'bg-emerald-50 text-emerald-700 border-emerald-200', text: 'text-emerald-600' },
       'rejected': { badge: 'bg-red-50 text-red-700 border-red-200', text: 'text-red-600' }
     };
@@ -214,60 +163,7 @@ export function OrderCard({
             </p>
           </div>
         )}
-
-
-        {/* Quick Stats Grid - 2 columns */}
-        {(() => {
-          const pricing = getPricingDetails(order);
-          return (
-            <div className="grid grid-cols-2 gap-2">
-              {/* Quantity */}
-              <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 border border-blue-200 rounded-lg p-2.5">
-                <div className="flex items-center gap-1 text-blue-700 mb-1">
-                  <Package className="h-3.5 w-3.5" />
-                  <span className="text-xs font-bold">Qty</span>
-                </div>
-                <p className="text-base font-bold text-blue-900">{pricing.quantity}</p>
-              </div>
-
-              {/* Subtotal Price */}
-              <div className="bg-gradient-to-br from-gray-50 to-gray-100/50 border border-gray-200 rounded-lg p-2.5">
-                <div className="flex items-center gap-1 text-gray-700 mb-1">
-                  <DollarSign className="h-3.5 w-3.5" />
-                  <span className="text-xs font-bold">Subtotal</span>
-                </div>
-                <p className="text-sm font-bold text-gray-900">₦{Number(pricing.subtotal).toLocaleString('en-NG')}</p>
-              </div>
-
-              {/* Discount (if applicable) */}
-              {pricing.discount > 0 && (
-                <div className="bg-gradient-to-br from-green-50 to-green-100/50 border border-green-200 rounded-lg p-2.5">
-                  <div className="flex items-center gap-1 text-green-700 mb-1">
-                    <span className="text-xs font-bold">Discount</span>
-                  </div>
-                  <p className="text-sm font-bold text-green-900">-₦{Number(pricing.discount).toLocaleString('en-NG')}</p>
-                </div>
-              )}
-
-              {/* VAT */}
-              <div className="bg-gradient-to-br from-yellow-50 to-yellow-100/50 border border-yellow-200 rounded-lg p-2.5">
-                <div className="flex items-center gap-1 text-yellow-700 mb-1">
-                  <span className="text-xs font-bold">VAT (7.5%)</span>
-                </div>
-                <p className="text-sm font-bold text-yellow-900">₦{Number(pricing.vat).toLocaleString('en-NG')}</p>
-              </div>
-
-              {/* Total Price */}
-              <div className="bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200 rounded-lg p-2.5">
-                <div className="flex items-center gap-1 text-emerald-700 mb-1">
-                  <DollarSign className="h-3.5 w-3.5" />
-                  <span className="text-xs font-bold">Total</span>
-                </div>
-                <p className="text-base font-bold text-emerald-900">₦{Number(pricing.total).toLocaleString('en-NG')}</p>
-              </div>
-            </div>
-          );
-        })()}
+        {/* Quick Stats Grid - removed empty pricing fields */}
 
         {/* Countdown Timer */}
         {order.timerStartedAt && order.deadlineDate && (
@@ -341,28 +237,6 @@ export function OrderCard({
             <span>View Design ({order.designUrls?.length || 1})</span>
           </button>
         ) : null}
-
-        {/* Chat Button */}
-        <div className="relative flex-1">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onChat();
-            }}
-            className="w-full bg-gradient-to-br from-lime-500 to-green-500 hover:from-lime-600 hover:to-green-600 text-white p-2.5 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg hover:scale-105 flex items-center justify-center gap-2 font-semibold text-sm"
-            title="Open chat"
-          >
-            <MessageCircle className="h-5 w-5" />
-            <span>Chat</span>
-          </button>
-
-          {messageCount.unread > 0 && (
-            <span className="absolute -top-2 -right-2 inline-flex items-center justify-center h-6 w-6 rounded-full bg-red-500 text-white text-xs font-bold shadow-lg border-2 border-white">
-              {messageCount.unread > 99 ? '99+' : messageCount.unread}
-            </span>
-          )}
-        </div>
       </div>
     </div>
   );

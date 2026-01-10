@@ -6,6 +6,8 @@ interface OrderInfoProps {
   rentalDays?: number;
   cautionFee?: number;
   formatCurrency: (amount: number) => string;
+  isApproved?: boolean;
+  hidePaymentStatus?: boolean;
 }
 
 export function OrderInfo({
@@ -14,9 +16,11 @@ export function OrderInfo({
   rentalDays,
   cautionFee,
   formatCurrency,
+  isApproved = false,
+  hidePaymentStatus = false,
 }: OrderInfoProps) {
   return (
-    <div className="pt-3 border-t border-red-200">
+    <div className="pt-3 border-t border-lime-200">
       <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wider">Order Info</p>
       <div className="space-y-2">
         <div className="flex items-center gap-2 text-xs text-gray-600">
@@ -25,12 +29,16 @@ export function OrderInfo({
         </div>
         <div className="flex items-center gap-2 text-xs">
           <Clock className="h-3.5 w-3.5" />
-          {isPaid ? (
-            <span className="text-green-600 font-semibold flex items-center gap-1">
-              <span>✅ Payment Received</span>
-            </span>
-          ) : (
-            <span className="text-yellow-600 font-semibold">Status: Awaiting Payment</span>
+          {!hidePaymentStatus && (
+            <>
+              {(isPaid || isApproved) ? (
+                <span className="text-green-600 font-semibold flex items-center gap-1">
+                  <span>✅ Payment Received</span>
+                </span>
+              ) : (
+                <span className="text-yellow-600 font-semibold">Status: Awaiting Payment</span>
+              )}
+            </>
           )}
         </div>
         {/* Rental Days & Caution Fee */}

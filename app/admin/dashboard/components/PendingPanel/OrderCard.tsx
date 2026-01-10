@@ -1,9 +1,11 @@
+import React from "react";
 import { OrderCardHeader } from "./OrderCardHeader";
 import { ProductItemsList } from "./ProductItemsList";
 import { OrderStats } from "./OrderStats";
 import { OrderInfo } from "./OrderInfo";
 import { ActionButtons } from "./ActionButtons";
 import Image from "next/image";
+import { ChevronDown } from "lucide-react";
 
 interface OrderItem {
   productId?: string;
@@ -37,6 +39,15 @@ interface OrderCardProps {
   quantity?: number;
   quotedPrice?: number;
   isCustomOrder?: boolean;
+  isApproved?: boolean;
+  // Logistics page props
+  hidePricingDetails?: boolean;
+  hideReadyButton?: boolean;
+  hideDeleteButton?: boolean;
+  hidePaymentStatus?: boolean;
+  onShipped?: () => void;
+  disableShippedButton?: boolean;
+  onDeleteConfirm?: (orderId: string) => Promise<void>;
 }
 
 export function OrderCard({
@@ -61,16 +72,26 @@ export function OrderCard({
   quantity,
   quotedPrice,
   isCustomOrder,
+  isApproved = false,
+  hidePricingDetails = false,
+  hideReadyButton = false,
+  hideDeleteButton = false,
+  hidePaymentStatus = false,
+  onShipped,
+  disableShippedButton = false,
+  onDeleteConfirm,
 }: OrderCardProps) {
+  const [expandPricing, setExpandPricing] = React.useState(false);
   const isCustom = isCustomOrder || (description && !items?.length);
   
   return (
-    <div className="bg-gradient-to-br from-red-50 to-rose-50 rounded-2xl border-2 border-red-200 overflow-hidden shadow-md hover:shadow-xl hover:border-red-300 transition-all flex flex-col">
+    <div className="bg-gradient-to-br from-lime-50 to-green-50 rounded-2xl border-2 border-lime-300 overflow-hidden shadow-md hover:shadow-xl hover:border-lime-400 transition-all flex flex-col">
       <OrderCardHeader
         firstName={firstName}
         lastName={lastName}
         email={email}
         phone={phone}
+        isApproved={isApproved}
       />
 
       <div className="p-5 space-y-4 flex-1 flex flex-col">
@@ -111,7 +132,7 @@ export function OrderCard({
 
             {/* Description */}
             {description && (
-              <div className="bg-white rounded-lg p-3 border border-red-200">
+              <div className="bg-white rounded-lg p-3 border border-lime-200">
                 <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Description</p>
                 <p className="text-sm text-gray-900 line-clamp-3">{description}</p>
               </div>
@@ -119,7 +140,7 @@ export function OrderCard({
 
             {/* Quantity */}
             {quantity && (
-              <div className="bg-white rounded-lg p-3 border border-red-200">
+              <div className="bg-white rounded-lg p-3 border border-lime-200">
                 <p className="text-xs font-semibold text-gray-600 uppercase mb-1">Quantity</p>
                 <p className="text-sm text-gray-900">{quantity} piece(s)</p>
               </div>
@@ -127,8 +148,19 @@ export function OrderCard({
           </div>
         )}
 
-        {/* Show stats for regular orders */}
-        {!isCustom && (
+        {/* Expand/Collapse Button for Pricing Details */}
+        {!isCustom && !hidePricingDetails && (
+          <button
+            onClick={() => setExpandPricing(!expandPricing)}
+            className="w-full flex items-center justify-between px-4 py-2 bg-gradient-to-r from-lime-100 to-green-50 hover:from-lime-200 hover:to-green-100 border-t border-lime-200 transition-colors"
+          >
+            <span className="text-sm font-semibold text-gray-700">Pricing Details</span>
+            <ChevronDown className={`h-5 w-5 text-gray-600 transition-transform ${expandPricing ? 'rotate-180' : ''}`} />
+          </button>
+        )}
+
+        {/* Show stats for regular orders - Expandable */}
+        {!isCustom && expandPricing && (
           <OrderStats
             itemCount={items?.length || 0}
             total={total}
@@ -136,6 +168,7 @@ export function OrderCard({
             items={items}
             rentalDays={rentalDays}
             cautionFee={cautionFee}
+            isApproved={isApproved}
           />
         )}
 
@@ -159,6 +192,8 @@ export function OrderCard({
           rentalDays={rentalDays}
           cautionFee={cautionFee}
           formatCurrency={formatCurrency}
+          isApproved={isApproved}
+          hidePaymentStatus={hidePaymentStatus}
         />
 
         <ActionButtons
@@ -168,6 +203,32 @@ export function OrderCard({
           onApprove={onApprove}
           onChat={onChat}
           onDelete={onDelete}
+          isApproved={isApproved}
+          hideReadyButton={hideReadyButton}
+          hideDeleteButton={hideDeleteButton}
+          hidePaymentStatus={hidePaymentStatus}
+          onShipped={onShipped}
+          disableShippedButton={disableShippedButton}
+          onDeleteConfirm={onDeleteConfirm}
+          orderData={{
+            _id: orderId,
+            orderNumber,
+            firstName,
+            lastName,
+            email,
+            phone,
+            items,
+            total,
+            isPaid,
+            isApproved,
+            rentalDays,
+            cautionFee,
+            description,
+            designUrls,
+            quantity,
+            quotedPrice,
+            isCustomOrder,
+          }}
         />
       </div>
     </div>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FileText, Clock, CheckCircle, AlertCircle, Phone, Mail, DollarSign, Calendar, MessageCircle, MapPin, ChevronDown, Trash2, XCircle, Search } from "lucide-react";
-import { ChatModal } from "@/app/components/ChatModal";
+// ChatModal removed
 import { useAdmin } from "@/app/context/AdminContext";
 import { StatusTabs } from "./components/StatusTabs";
 import { ApprovedOrderCard } from "./components/ApprovedOrderCard";
@@ -72,7 +72,6 @@ export function CustomOrdersPanel() {
   const [selectedStatus, setSelectedStatus] = useState<string>("pending");
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
-  const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
   const [confirmModal, setConfirmModal] = useState<{ type: 'decline' | 'delete' | 'cancel' | 'approve'; orderId: string } | null>(null);
   const [imageIndexes, setImageIndexes] = useState<Record<string, number>>({});
   const [imageModalOpen, setImageModalOpen] = useState<{ orderId: string; index: number } | null>(null);
@@ -592,7 +591,6 @@ export function CustomOrdersPanel() {
               <ApprovedOrderCard
                 key={order._id}
                 order={order as any}
-                onChatClick={() => setChatModalOpen(order._id)}
                 onStartProduction={(orderId) => updateOrderStatus(orderId, "in-progress")}
               />
             ))
@@ -605,7 +603,6 @@ export function CustomOrdersPanel() {
                 expanded={expandedOrder === order._id}
                 onExpandClick={() => setExpandedOrder(expandedOrder === order._id ? null : order._id)}
                 onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
-                onChatClick={() => setChatModalOpen(order._id)}
                 onDeclineClick={() => setConfirmModal({ type: 'decline', orderId: order._id })}
                 onCancelClick={() => setConfirmModal({ type: 'cancel', orderId: order._id })}
                 onStatusChangeClick={(status) => {
@@ -617,29 +614,6 @@ export function CustomOrdersPanel() {
             ))
           )}
         </div>
-      )}
-
-      {/* Chat Modal */}
-      {filteredOrders && chatModalOpen && filteredOrders.find(o => o._id === chatModalOpen) && (
-        <ChatModal
-          isOpen={!!chatModalOpen}
-          onClose={() => {
-            setChatModalOpen(null);
-            // Refresh orders when modal closes
-            fetchOrders();
-          }}
-          onMessageSent={() => {
-            // Refresh orders when message is sent
-            fetchOrders();
-          }}
-          order={Object.assign({}, filteredOrders.find(o => o._id === chatModalOpen)!, { phone: filteredOrders.find(o => o._id === chatModalOpen)?.phone || '' })}
-          userEmail={admin?.email || ''}
-          userName={admin?.fullName || 'Admin'}
-          isAdmin={true}
-          adminName="Empi Costumes"
-          orderStatus={selectedStatus}
-          isCustomOrder={true}
-        />
       )}
 
       {/* Confirmation Modal */}

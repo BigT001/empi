@@ -7,9 +7,10 @@ interface OrderStatsProps {
   items?: Array<{ name?: string; quantity: number; price: number; mode?: 'buy' | 'rent'; rentalDays?: number }>;
   rentalDays?: number;
   cautionFee?: number;
+  isApproved?: boolean;
 }
 
-export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, cautionFee = 0 }: OrderStatsProps) {
+export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, cautionFee = 0, isApproved = false }: OrderStatsProps) {
   // The order.total is the source of truth from checkout
   // We calculate rental subtotal from items (with rental days) for display
   
@@ -66,7 +67,7 @@ export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, ca
   const finalTotal = total;
 
   return (
-    <div className="space-y-3 pt-3 border-t border-red-200">
+    <div className="space-y-3 pt-3 border-t border-lime-200">
       {/* Items Count */}
       <div className="bg-red-50 rounded-lg p-2 text-center border border-red-300">
         <p className="text-2xl font-bold text-red-700">{itemCount || '—'}</p>
@@ -126,14 +127,14 @@ export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, ca
           : 'bg-red-50 border-red-300'
       }`}>
         <p className={`text-xs font-medium ${
-          isPaid
+          (isPaid || isApproved)
             ? 'text-green-600'
             : 'text-red-600'
         }`}>
-          {isPaid ? '✅ PAID' : '⏳ Total Due'}
+          {(isPaid || isApproved) ? '✅ PAID' : '⏳ Total Due'}
         </p>
         <p className={`text-2xl font-bold ${
-          isPaid
+          (isPaid || isApproved)
             ? 'text-green-700'
             : 'text-red-700'
         }`}>

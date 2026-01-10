@@ -40,7 +40,6 @@ interface OtherStatusOrderCardProps {
   expanded: boolean;
   onExpandClick: () => void;
   onImageClick: () => void;
-  onChatClick: () => void;
   onDeclineClick: () => void;
   onCancelClick: () => void;
   onStatusChangeClick: (newStatus: string) => void;
@@ -53,7 +52,6 @@ export function OtherStatusOrderCard({
   expanded,
   onExpandClick,
   onImageClick,
-  onChatClick,
   onDeclineClick,
   onCancelClick,
   onStatusChangeClick,
@@ -335,13 +333,6 @@ export function OtherStatusOrderCard({
               </button>
             )}
             <div className="flex gap-2">
-              <button
-                onClick={onChatClick}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition"
-              >
-                <MessageSquare className="h-4 w-4" />
-                Chat with Buyer
-              </button>
               {order.paymentVerified ? (
                 <button
                   onClick={onApproveClick}
@@ -440,13 +431,6 @@ export function OtherStatusOrderCard({
                 View Design
               </button>
             )}
-            <button
-              onClick={onChatClick}
-              className="flex items-center justify-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs rounded transition"
-            >
-              <MessageSquare className="h-3 w-3" />
-              Chat
-            </button>
             {actions.length > 0 && (
               <div className="relative w-full">
                 <button
@@ -571,13 +555,6 @@ export function OtherStatusOrderCard({
                     View Design
                   </button>
                 )}
-                <button
-                  onClick={onChatClick}
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                  Chat
-                </button>
                 {actions.length > 0 && (
                   <div className="relative">
                     <button
