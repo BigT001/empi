@@ -97,7 +97,7 @@ export default function FinancePage() {
   const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"vat" | "overview" | "analytics" | "transactions" | "expenses">("overview");
+  const [activeTab, setActiveTab] = useState<"vat" | "overview" | "analytics" | "transactions" | "offline" | "expenses">("overview");
   const [showOfflineOrderForm, setShowOfflineOrderForm] = useState(false);
   const [showOfflineExpenseForm, setShowOfflineExpenseForm] = useState(false);
 
@@ -232,6 +232,19 @@ export default function FinancePage() {
               </div>
             </button>
             <button
+              onClick={() => setActiveTab("offline")}
+              className={`py-4 px-2 font-medium border-b-2 transition ${
+                activeTab === "offline"
+                  ? "border-lime-600 text-lime-600"
+                  : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="h-5 w-5" />
+                💸 Offline Sales & Rentals
+              </div>
+            </button>
+            <button
               onClick={() => setActiveTab("vat")}
               className={`py-4 px-2 font-medium border-b-2 transition ${
                 activeTab === "vat"
@@ -281,27 +294,11 @@ export default function FinancePage() {
         {activeTab === "overview" && (
           <>
         {/* Top KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {/* Total Revenue */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          {/* Total Income */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">Total Revenue</p>
-              <DollarSign className="h-5 w-5 text-green-600" />
-            </div>
-            <p className="text-3xl font-bold text-gray-900">
-              ₦{metrics.totalRevenue.toLocaleString("en-NG", {
-                minimumFractionDigits: 2,
-              })}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              {metrics.conversionMetrics.totalTransactions} total transactions
-            </p>
-          </div>
-
-          {/* Completed Income */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">Completed Income</p>
+              <p className="text-sm font-medium text-gray-600">Total Income</p>
               <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
             <p className="text-3xl font-bold text-green-600">
@@ -314,42 +311,10 @@ export default function FinancePage() {
             </p>
           </div>
 
-          {/* Completed Outgoing */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">Completed Outgoing</p>
-              <TrendingDown className="h-5 w-5 text-red-600" />
-            </div>
-            <p className="text-3xl font-bold text-red-600">
-              ₦{metrics.completedOutgoing.toLocaleString("en-NG", {
-                minimumFractionDigits: 2,
-              })}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              Refunds & Returns
-            </p>
-          </div>
-
-          {/* Pending Amount */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
-            <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">Pending Amount</p>
-              <Calendar className="h-5 w-5 text-orange-600" />
-            </div>
-            <p className="text-3xl font-bold text-orange-600">
-              ₦{metrics.pendingAmount.toLocaleString("en-NG", {
-                minimumFractionDigits: 2,
-              })}
-            </p>
-            <p className="text-xs text-gray-500 mt-2">
-              {metrics.conversionMetrics.pendingTransactions} pending
-            </p>
-          </div>
-
           {/* Total Sales Amount */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">Total Sales Amount</p>
+              <p className="text-sm font-medium text-gray-600">Total Sales</p>
               <ShoppingCart className="h-5 w-5 text-blue-600" />
             </div>
             <p className="text-3xl font-bold text-blue-600">
@@ -365,7 +330,7 @@ export default function FinancePage() {
           {/* Total Rentals Amount */}
           <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-md transition">
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-medium text-gray-600">Total Rentals Amount</p>
+              <p className="text-sm font-medium text-gray-600">Total Rentals</p>
               <Calendar className="h-5 w-5 text-purple-600" />
             </div>
             <p className="text-3xl font-bold text-purple-600">
@@ -497,6 +462,8 @@ export default function FinancePage() {
         )}
 
         {activeTab === "transactions" && <TransactionHistory metrics={metrics} />}
+
+        {activeTab === "offline" && <TransactionHistory metrics={metrics} offlineTab={true} />}
 
         {activeTab === "expenses" && (
           <DailyExpenses onAddExpenseClick={() => setShowOfflineExpenseForm(true)} />

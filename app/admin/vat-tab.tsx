@@ -40,6 +40,8 @@ interface MonthlyVATData {
   vatPayable: number;
   orderCount: number;
   totalOrderAmount: number;
+  expenseCount?: number;
+  totalExpenseAmount?: number;
   daysRemaining?: number;
 }
 
@@ -48,6 +50,17 @@ interface VATHistoryItem {
   description: string;
   amount: number;
   type: "output" | "input" | "payment";
+}
+
+interface VATPeriod {
+  startDate: Date;
+  endDate: Date;
+  isCurrentPeriod: boolean;
+  daysRemaining: number;
+  daysToDeadline: number;
+  deadlineDate: Date;
+  status: "active" | "upcoming" | "overdue";
+  notificationLevel: "warning" | "critical" | "normal";
 }
 
 interface OrderTransaction {
@@ -70,11 +83,68 @@ export default function VATTab() {
   const [activeSubTab, setActiveSubTab] = useState<"overview" | "offline">("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [vatPeriod, setVatPeriod] = useState<VATPeriod | null>(null);
+
+  // Calculate current VAT period (21st to 20th of next month)
+  const calculateVATPeriod = (): VATPeriod => {
+    const now = new Date();
+    const currentDay = now.getDate();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    let startDate: Date;
+    let endDate: Date;
+    let deadlineDate: Date;
+
+    if (currentDay >= 21) {
+      // Current period: 21st of this month to 20th of next month
+      startDate = new Date(currentYear, currentMonth, 21);
+      endDate = new Date(currentYear, currentMonth + 1, 20);
+      // Deadline is the 21st of next month
+      deadlineDate = new Date(currentYear, currentMonth + 1, 21);
+    } else {
+      // Current period: 21st of last month to 20th of this month
+      startDate = new Date(currentYear, currentMonth - 1, 21);
+      endDate = new Date(currentYear, currentMonth, 20);
+      // Deadline is the 21st of this month
+      deadlineDate = new Date(currentYear, currentMonth, 21);
+    }
+
+    const daysRemaining = Math.max(0, Math.floor((endDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+    const daysToDeadline = Math.max(0, Math.floor((deadlineDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+
+    let status: "active" | "upcoming" | "overdue" = "active";
+    let notificationLevel: "warning" | "critical" | "normal" = "normal";
+
+    if (daysToDeadline <= 0 && currentDay <= 20) {
+      status = "overdue";
+      notificationLevel = "critical";
+    } else if (daysToDeadline <= 3 && daysToDeadline > 0) {
+      notificationLevel = "critical";
+    } else if (daysToDeadline <= 7) {
+      notificationLevel = "warning";
+    }
+
+    return {
+      startDate,
+      endDate,
+      isCurrentPeriod: currentDay >= 21,
+      daysRemaining,
+      daysToDeadline,
+      deadlineDate,
+      status,
+      notificationLevel,
+    };
+  };
 
   useEffect(() => {
     const fetchVATMetrics = async () => {
       try {
         setLoading(true);
+        
+        // Calculate VAT period
+        const period = calculateVATPeriod();
+        setVatPeriod(period);
         
         // Fetch VAT analytics and order data
         const [vatRes, ordersRes] = await Promise.all([
@@ -173,14 +243,7 @@ export default function VATTab() {
   };
 
   const calculateDaysUntilDeadline = (): number => {
-    const today = new Date();
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    // VAT deadline is typically 21st of next month
-    const deadline = new Date(currentYear, currentMonth + 1, 21);
-    const diffTime = deadline.getTime() - today.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return Math.max(0, diffDays);
+    return vatPeriod?.daysToDeadline ?? 0;
   };
 
   if (loading) {
@@ -228,7 +291,7 @@ export default function VATTab() {
       {/* VAT Deadline Alert */}
       <div className={`rounded-2xl border-2 p-6 ${daysToDeadline <= 7 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"}`}>
         <div className="flex items-start gap-4">
-          <Calendar className={`h-6 w-6 mt-0.5 flex-shrink-0 ${daysToDeadline <= 7 ? "text-red-600" : "text-amber-600"}`} />
+          <Calendar className={`h-6 w-6 mt-0.5 shrink-0 ${daysToDeadline <= 7 ? "text-red-600" : "text-amber-600"}`} />
           <div className="flex-1">
             <h3 className={`font-semibold text-lg ${daysToDeadline <= 7 ? "text-red-900" : "text-amber-900"}`}>
               VAT Payment Deadline
@@ -239,7 +302,7 @@ export default function VATTab() {
               ) : daysToDeadline === 1 ? (
                 <span className="font-bold">Due tomorrow</span>
               ) : (
-                <>Due in <span className="font-bold">{daysToDeadline} days</span> (21st of next month)</>
+                <>Due in <span className="font-bold">{daysToDeadline} days</span> ({vatPeriod?.deadlineDate.toLocaleDateString('en-NG', { month: 'long', day: 'numeric' })})</>
               )}
             </p>
             <p className="text-xs mt-2 opacity-75">
@@ -252,73 +315,58 @@ export default function VATTab() {
         </div>
       </div>
 
-      {/* VAT KPI Cards - Directly under deadline alert */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {/* Current Month VAT */}
-        <div className="bg-gradient-to-br from-green-50 to-green-50 rounded-2xl p-6 border border-green-200 shadow-sm hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-600">Current Month VAT</p>
-            <DollarSign className="h-5 w-5 text-green-600" />
+      {/* VAT Period Summary */}
+      {vatPeriod && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-6 border-2 border-blue-200 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className="text-sm font-semibold text-blue-700">Current VAT Period</p>
+                <p className="text-xs text-blue-600 mt-1">21st-20th each month</p>
+              </div>
+              <Calendar className="h-6 w-6 text-blue-600" />
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-blue-600">Period Start</p>
+                <p className="text-sm font-bold text-blue-900">{vatPeriod.startDate.toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+              </div>
+              <div>
+                <p className="text-xs text-blue-600">Period End</p>
+                <p className="text-sm font-bold text-blue-900">{vatPeriod.endDate.toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })}</p>
+              </div>
+            </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">
-            ₦{metrics.estimatedMonthlyVAT.toLocaleString("en-NG", {
-              minimumFractionDigits: 2,
-            })}
-          </p>
-          <div className="flex items-center gap-2 mt-2 text-green-600">
-            <TrendingUp className="h-4 w-4" />
-            <p className="text-xs">VAT Rate: {metrics.rate}%</p>
-          </div>
-        </div>
 
-        {/* Annual VAT Total */}
-        <div className="bg-gradient-to-br from-blue-50 to-blue-50 rounded-2xl p-6 border border-blue-200 shadow-sm hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-600">Annual VAT Total</p>
-            <BarChart3 className="h-5 w-5 text-blue-600" />
+          <div className={`${vatPeriod.notificationLevel === 'critical' ? 'bg-gradient-to-br from-red-50 to-red-100 border-red-200' : vatPeriod.notificationLevel === 'warning' ? 'bg-gradient-to-br from-amber-50 to-amber-100 border-amber-200' : 'bg-gradient-to-br from-green-50 to-green-100 border-green-200'} rounded-xl p-6 border-2 shadow-sm`}>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <p className={`text-sm font-semibold ${vatPeriod.notificationLevel === 'critical' ? 'text-red-700' : vatPeriod.notificationLevel === 'warning' ? 'text-amber-700' : 'text-green-700'}`}>
+                  Payment Deadline
+                </p>
+                <p className={`text-xs mt-1 ${vatPeriod.notificationLevel === 'critical' ? 'text-red-600' : vatPeriod.notificationLevel === 'warning' ? 'text-amber-600' : 'text-green-600'}`}>
+                  {vatPeriod.deadlineDate.toLocaleDateString('en-NG', { month: 'long', day: 'numeric' })}
+                </p>
+              </div>
+              <AlertCircle className={`h-6 w-6 ${vatPeriod.notificationLevel === 'critical' ? 'text-red-600' : vatPeriod.notificationLevel === 'warning' ? 'text-amber-600' : 'text-green-600'}`} />
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className={`text-xs ${vatPeriod.notificationLevel === 'critical' ? 'text-red-600' : vatPeriod.notificationLevel === 'warning' ? 'text-amber-600' : 'text-green-600'}`}>Deadline Date</p>
+                <p className={`text-sm font-bold ${vatPeriod.notificationLevel === 'critical' ? 'text-red-900' : vatPeriod.notificationLevel === 'warning' ? 'text-amber-900' : 'text-green-900'}`}>
+                  {vatPeriod.deadlineDate.toLocaleDateString('en-NG', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              </div>
+              <div>
+                <p className={`text-xs ${vatPeriod.notificationLevel === 'critical' ? 'text-red-600' : vatPeriod.notificationLevel === 'warning' ? 'text-amber-600' : 'text-green-600'}`}>Days Remaining</p>
+                <p className={`text-lg font-bold ${vatPeriod.notificationLevel === 'critical' ? 'text-red-900' : vatPeriod.notificationLevel === 'warning' ? 'text-amber-900' : 'text-green-900'}`}>
+                  {vatPeriod.daysToDeadline} days
+                </p>
+              </div>
+            </div>
           </div>
-          <p className="text-3xl font-bold text-gray-900">
-            ₦{metrics.annualVATTotal.toLocaleString("en-NG", {
-              minimumFractionDigits: 2,
-            })}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            Based on actual monthly data
-          </p>
         </div>
-
-        {/* Total Output VAT (Sales) */}
-        <div className="bg-gradient-to-br from-orange-50 to-orange-50 rounded-2xl p-6 border border-orange-200 shadow-sm hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-600">Total Output VAT</p>
-            <ArrowUp className="h-5 w-5 text-orange-600" />
-          </div>
-          <p className="text-3xl font-bold text-gray-900">
-            ₦{metrics.outputVAT.toLocaleString("en-NG", {
-              minimumFractionDigits: 2,
-            })}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            VAT on all sales
-          </p>
-        </div>
-
-        {/* Total Input VAT */}
-        <div className="bg-gradient-to-br from-purple-50 to-purple-50 rounded-2xl p-6 border border-purple-200 shadow-sm hover:shadow-md transition">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-600">Total Input VAT</p>
-            <TrendingDown className="h-5 w-5 text-purple-600" />
-          </div>
-          <p className="text-3xl font-bold text-gray-900">
-            ₦{metrics.inputVAT.toLocaleString("en-NG", {
-              minimumFractionDigits: 2,
-            })}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">
-            Deductible VAT
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* VAT Tab Navigation */}
       <div className="bg-white border-b border-gray-200 rounded-t-2xl overflow-hidden">
@@ -427,7 +475,7 @@ export default function VATTab() {
             VAT Calculation Breakdown
           </h3>
           
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Online Output VAT */}
             <div className="bg-gradient-to-r from-blue-50 to-transparent rounded-lg p-6 border-l-4 border-blue-400">
               <div className="flex items-center justify-between mb-2">
@@ -485,47 +533,50 @@ export default function VATTab() {
               </div>
             </div>
 
-            {/* Divider */}
-            <div className="flex items-center gap-4 my-4">
-              <div className="flex-1 border-t-2 border-gray-300"></div>
-              <span className="text-sm font-semibold text-gray-500">LESS</span>
-              <div className="flex-1 border-t-2 border-gray-300"></div>
-            </div>
+            {/* LESS and Input VAT Section */}
+            <div className="space-y-4">
+              {/* Divider */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1 border-t-2 border-gray-300"></div>
+                <span className="text-sm font-semibold text-gray-500">LESS</span>
+                <div className="flex-1 border-t-2 border-gray-300"></div>
+              </div>
 
-            {/* Input VAT */}
-            <div className="bg-gradient-to-r from-teal-50 to-transparent rounded-lg p-6 border-l-4 border-teal-400">
-              <div className="flex items-center justify-between mb-2">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                    <span className="inline-block w-2 h-2 rounded-full bg-teal-500"></span>
-                    Total Input VAT (Deductible)
+              {/* Input VAT */}
+              <div className="bg-gradient-to-r from-teal-50 to-transparent rounded-lg p-6 border-l-4 border-teal-400">
+                <div className="flex items-center justify-between mb-2">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                      <span className="inline-block w-2 h-2 rounded-full bg-teal-500"></span>
+                      Total Input VAT (Deductible)
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">VAT paid on business purchases & expenses (Inward)</p>
+                  </div>
+                  <p className="text-2xl font-bold text-teal-600">
+                    (₦{metrics.inputVAT.toLocaleString("en-NG", {
+                      minimumFractionDigits: 2,
+                    })})
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">VAT paid on business purchases & expenses (Inward)</p>
                 </div>
-                <p className="text-2xl font-bold text-teal-600">
-                  (₦{metrics.inputVAT.toLocaleString("en-NG", {
-                    minimumFractionDigits: 2,
-                  })})
-                </p>
+              </div>
+
+              {/* Equals Divider */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1 border-t-2 border-red-400"></div>
+                <span className="text-sm font-bold text-red-600">EQUALS</span>
+                <div className="flex-1 border-t-2 border-red-400"></div>
               </div>
             </div>
 
-            {/* Equals Divider */}
-            <div className="flex items-center gap-4 my-4">
-              <div className="flex-1 border-t-2 border-red-400"></div>
-              <span className="text-sm font-bold text-red-600">EQUALS</span>
-              <div className="flex-1 border-t-2 border-red-400"></div>
-            </div>
-
             {/* Total VAT Payable */}
-            <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-6 border-l-4 border-red-500">
+            <div className="col-span-1 md:col-span-2 bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-6 border-l-4 border-red-500">
               <div className="flex items-center justify-between mb-2">
                 <div>
                   <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                     <span className="inline-block w-2 h-2 rounded-full bg-red-600"></span>
                     Total Annual VAT Payable
                   </p>
-                  <p className="text-xs text-gray-600 mt-1">Amount due to tax authority by 21st of next month</p>
+                  <p className="text-xs text-gray-600 mt-1">Amount due to tax authority by {vatPeriod?.deadlineDate.toLocaleDateString('en-NG', { month: 'long', day: 'numeric' })}</p>
                 </div>
                 <p className="text-4xl font-bold text-red-600">
                   ₦{metrics.vatPayable.toLocaleString("en-NG", {
@@ -571,74 +622,50 @@ export default function VATTab() {
         </div>
       </div>
 
-      {/* Monthly Breakdown Table */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-6">Monthly VAT Breakdown (This Year)</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200">
-                <th className="text-left py-4 px-4 font-semibold text-gray-900">Month</th>
-                <th className="text-right py-4 px-4 font-semibold text-gray-900">Orders</th>
-                <th className="text-right py-4 px-4 font-semibold text-gray-900">Sales Ex VAT</th>
-                <th className="text-right py-4 px-4 font-semibold text-gray-900">Output VAT</th>
-                <th className="text-right py-4 px-4 font-semibold text-gray-900">Input VAT</th>
-                <th className="text-right py-4 px-4 font-semibold text-gray-900">VAT Payable</th>
-              </tr>
-            </thead>
-            <tbody>
-              {metrics.monthlyBreakdown.map((month, index) => (
-                <tr
-                  key={index}
-                  className={`border-b border-gray-100 hover:bg-gray-50 transition ${
-                    month.daysRemaining !== undefined ? "bg-lime-50" : ""
-                  }`}
-                >
-                  <td className="py-4 px-4">
-                    <span className="font-medium text-gray-900">{month.month}</span>
-                    {month.daysRemaining !== undefined && (
-                      <span className="ml-2 text-xs bg-lime-200 text-lime-700 px-2 py-1 rounded-full font-semibold">
-                        Current ({month.daysRemaining}d left)
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-4 px-4 text-right font-semibold text-gray-900">
-                    {month.orderCount}
-                  </td>
-                  <td className="py-4 px-4 text-right font-semibold text-gray-900">
-                    ₦{month.salesExVAT.toLocaleString("en-NG", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </td>
-                  <td className="py-4 px-4 text-right font-semibold text-orange-600">
-                    ₦{month.outputVAT.toLocaleString("en-NG", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </td>
-                  <td className="py-4 px-4 text-right font-semibold text-blue-600">
-                    ₦{month.inputVAT.toLocaleString("en-NG", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </td>
-                  <td className="py-4 px-4 text-right font-semibold text-red-600">
-                    ₦{month.vatPayable.toLocaleString("en-NG", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <p className="text-sm text-blue-800">
-            <strong>Note:</strong> Months with no orders display ₦0.00. Data is pulled from actual order records in the database.
-          </p>
-        </div>
-      </div>
-
       {/* VAT History */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Archived VAT Periods</h2>
+          <p className="text-sm text-gray-600 mb-6">View and manage previous VAT calculation periods (automatically archived on the 21st of each month)</p>
+          
+          {metrics.monthlyBreakdown && metrics.monthlyBreakdown.length > 0 ? (
+            <div className="space-y-3">
+              {metrics.monthlyBreakdown.map((month, index) => (
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="p-3 rounded-lg bg-purple-100">
+                      <Calendar className="h-5 w-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-gray-900">{month.month} {month.year}</p>
+                      <p className="text-xs text-gray-500">{month.orderCount} orders • {month.expenseCount} expenses</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-lg text-gray-900">
+                      ₦{month.vatPayable.toLocaleString("en-NG", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      Output: ₦{month.outputVAT.toLocaleString("en-NG", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500 text-center py-8">No archived periods yet</p>
+          )}
+        </div>
+
+        <hr className="my-8" />
+
         <h2 className="text-xl font-bold text-gray-900 mb-6">VAT Transaction History</h2>
         <div className="space-y-3">
           {metrics.vatHistory.map((item, index) => (

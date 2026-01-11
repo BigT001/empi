@@ -9,6 +9,12 @@ export async function POST(request: NextRequest) {
     await connectDB();
     const body = await request.json();
 
+    console.log('📋 [Offline Order API] Received body:', {
+      type: body.type,
+      firstName: body.firstName,
+      itemDescription: body.itemDescription,
+    });
+
     // Validate required fields
     const requiredFields = ['firstName', 'lastName', 'email', 'subtotal', 'paymentMethod'];
     for (const field of requiredFields) {
@@ -25,6 +31,16 @@ export async function POST(request: NextRequest) {
     const vatRate = 7.5;
     const vat = Math.round(subtotal * (vatRate / 100) * 100) / 100;
     const total = Math.round((subtotal + vat) * 100) / 100;
+
+    // Determine mode based on type (sale or rental)
+    const type = body.type || 'sale'; // Default to 'sale'
+    const mode = type === 'rental' ? 'rent' : 'buy';
+
+    console.log('🔧 [Offline Order API] Processing:', {
+      type,
+      mode,
+      itemDescription: body.itemDescription,
+    });
 
     // Generate unique order number for offline orders
     const orderNumber = `OFF-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
@@ -50,20 +66,22 @@ export async function POST(request: NextRequest) {
       items: body.items || [
         {
           productId: 'OFFLINE-ITEM',
-          name: body.itemDescription || 'Offline Sale',
+          name: body.itemDescription || (type === 'rental' ? 'Offline Rental' : 'Offline Sale'),
           quantity: 1,
           price: subtotal,
-          mode: 'buy',
-          rentalDays: 0,
+          mode: mode, // Set mode based on type
+          rentalDays: type === 'rental' ? 1 : 0, // Default to 1 day for rentals
         }
       ],
       country: body.country || 'Nigeria',
       isOffline: true, // Mark as offline order
+      offlineType: type, // Track the original type for reference
     });
 
     await offlineOrder.save();
 
     console.log(`✅ Offline order created: ${offlineOrder.orderNumber} for ${offlineOrder.email}`);
+    console.log(`📝 Saved item mode: ${offlineOrder.items[0].mode}, type: ${type}, offlineType: ${offlineOrder.offlineType}`);
 
     return NextResponse.json({
       success: true,

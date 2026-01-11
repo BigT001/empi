@@ -68,6 +68,83 @@ interface ConversionMetrics {
   conversionRate: number;
 }
 
+interface SalesRentalsData {
+  totalSalesAmount: number;
+  totalRentalsAmount: number;
+  totalSalesCount: number;
+  totalRentalsCount: number;
+}
+
+// ============================================
+// SALES & RENTALS CALCULATION FUNCTION
+// ============================================
+
+/**
+ * Calculate total sales and rentals from approved/completed orders
+ * Checks and validates data, returns real calculations
+ * 
+ * DATA SOURCE:
+ * - Orders collection → items array → each item with { price, quantity, mode }
+ * - Calculates: item.price × item.quantity for each item
+ * - For Sales: mode === 'buy' (regular purchase items)
+ * - For Rentals: mode === 'rent' (rental items with rentalDays)
+ * - Only from orders with status: 'confirmed', 'completed', or 'delivered'
+ */
+function calculateSalesAndRentals(completedOrders: any[]): SalesRentalsData {
+  console.log('[Finance] Calculating sales & rentals from', completedOrders.length, 'completed orders');
+
+  let totalSalesAmount = 0;
+  let totalRentalsAmount = 0;
+  let totalSalesCount = 0;
+  let totalRentalsCount = 0;
+
+  completedOrders.forEach((order: any) => {
+    console.log('[Finance] Processing Order:', {
+      orderNumber: order.orderNumber,
+      status: order.status,
+      itemsCount: order.items?.length || 0,
+    });
+
+    if (order.items && Array.isArray(order.items)) {
+      order.items.forEach((item: any, idx: number) => {
+        const itemAmount = (item.price || 0) * (item.quantity || 1);
+        
+        console.log(`[Finance] Item ${idx + 1}:`, {
+          name: item.name,
+          mode: item.mode,
+          price: item.price,
+          quantity: item.quantity,
+          amount: itemAmount,
+        });
+        
+        if (item.mode === 'buy' || item.mode === 'sale') {
+          totalSalesAmount += itemAmount;
+          totalSalesCount += item.quantity || 1;
+        } else if (item.mode === 'rent' || item.mode === 'rental') {
+          totalRentalsAmount += itemAmount;
+          totalRentalsCount += item.quantity || 1;
+        }
+      });
+    }
+  });
+
+  const result = {
+    totalSalesAmount: Math.round(totalSalesAmount * 100) / 100,
+    totalRentalsAmount: Math.round(totalRentalsAmount * 100) / 100,
+    totalSalesCount,
+    totalRentalsCount,
+  };
+
+  console.log('[Finance] Sales & Rentals Calculation:', {
+    totalSalesAmount: result.totalSalesAmount,
+    totalRentalsAmount: result.totalRentalsAmount,
+    totalSalesCount,
+    totalRentalsCount,
+  });
+
+  return result;
+}
+
 // ============================================
 // TAX CALCULATION FUNCTIONS
 // ============================================
@@ -201,11 +278,15 @@ export async function GET(request: NextRequest) {
       (order: any) =>
         order.status === 'confirmed' ||
         order.status === 'completed' ||
-        order.status === 'delivered'
+        order.status === 'delivered' ||
+        order.status === 'shipped' ||
+        order.paymentStatus === 'confirmed'
     );
 
     const pendingOrders = allOrders.filter(
-      (order: any) => order.status === 'pending' || order.status === 'processing'
+      (order: any) => 
+        (order.status === 'pending' || order.status === 'processing' || order.status === 'awaiting_payment') &&
+        order.paymentStatus !== 'confirmed'
     );
 
     const completedRevenue = completedOrders.reduce(
@@ -293,20 +374,19 @@ export async function GET(request: NextRequest) {
       allCustomOrders
     );
 
-    // Calculate total sales and rentals amounts
-    const totalSalesAmount = allOrders.reduce((sum: number, order: any) => {
-      const salesTotal = order.items?.reduce((itemSum: number, item: any) => {
-        return item.mode === 'buy' ? itemSum + (item.price * item.quantity || 0) : itemSum;
-      }, 0) || 0;
-      return sum + salesTotal;
-    }, 0);
+    // Calculate total sales and rentals using the new function
+    const salesRentalsData = calculateSalesAndRentals(completedOrders);
+    const totalSalesAmount = salesRentalsData.totalSalesAmount;
+    const totalRentalsAmount = salesRentalsData.totalRentalsAmount;
 
-    const totalRentalsAmount = allOrders.reduce((sum: number, order: any) => {
-      const rentalsTotal = order.items?.reduce((itemSum: number, item: any) => {
-        return item.mode === 'rent' ? itemSum + (item.price * item.quantity || 0) : itemSum;
-      }, 0) || 0;
-      return sum + rentalsTotal;
-    }, 0);
+    // Add custom order revenue to total sales (custom orders are considered sales)
+    const completedCustomOrderRevenue = completedCustomOrders.reduce(
+      (sum: number, order: any) => sum + (order.quotedPrice || 0),
+      0
+    );
+
+    // Total Income = Total Sales (including custom orders) + Total Rentals
+    const totalIncomeCalculated = (totalSalesAmount + completedCustomOrderRevenue) + totalRentalsAmount;
 
     // Calculate completed outgoing (refunds + returns)
     const refundedOrders = allOrders.filter(
@@ -348,12 +428,12 @@ export async function GET(request: NextRequest) {
 
     const metrics: FinanceMetrics = {
       totalRevenue,
-      totalIncome: totalCompletedRevenue,
+      totalIncome: totalIncomeCalculated,
       totalExpenses,
       pendingAmount: totalPendingRevenue,
       completedAmount: totalCompletedRevenue,
-      totalSalesAmount: Math.round(totalSalesAmount * 100) / 100,
-      totalRentalsAmount: Math.round(totalRentalsAmount * 100) / 100,
+      totalSalesAmount: totalSalesAmount + completedCustomOrderRevenue, // Include custom orders in sales
+      totalRentalsAmount,
       completedOutgoing: Math.round(completedOutgoing * 100) / 100,
       annualTurnover: Math.round(annualTurnover * 100) / 100,
       businessSize,
@@ -365,6 +445,14 @@ export async function GET(request: NextRequest) {
       averageOrderValue: Math.round(averageOrderValue * 100) / 100,
       conversionMetrics,
     };
+
+    console.log('[Finance API] Final Metrics Summary:', {
+      totalIncome: totalIncomeCalculated,
+      totalSalesAmount,
+      totalRentalsAmount,
+      completedOrders: completedOrders.length,
+      salesRentalsData,
+    });
 
     return NextResponse.json(
       { success: true, metrics },
@@ -430,16 +518,32 @@ function calculateTransactionBreakdown(
   let returnsCount = 0;
   let refundsCount = 0;
 
-  // Count items by mode
+  // Count transactions (not items) by type
+  // A transaction can have both sales and rental items
+  const transactionsWithSales = new Set<string>();
+  const transactionsWithRentals = new Set<string>();
+
   orders.forEach((order: any) => {
-    if (order.items) {
+    const orderId = order._id?.toString();
+    
+    if (order.items && Array.isArray(order.items)) {
+      let hasSales = false;
+      let hasRentals = false;
+
       order.items.forEach((item: any) => {
-        if (item.mode === 'buy') {
-          salesCount++;
-        } else if (item.mode === 'rent') {
-          rentalsCount++;
+        if (item.mode === 'buy' || item.mode === 'sale') {
+          hasSales = true;
+        } else if (item.mode === 'rent' || item.mode === 'rental') {
+          hasRentals = true;
         }
       });
+
+      if (hasSales && orderId) {
+        transactionsWithSales.add(orderId);
+      }
+      if (hasRentals && orderId) {
+        transactionsWithRentals.add(orderId);
+      }
     }
     
     // Count returns and refunds
@@ -449,6 +553,17 @@ function calculateTransactionBreakdown(
     if (order.status === 'refunded') {
       refundsCount++;
     }
+  });
+
+  salesCount = transactionsWithSales.size;
+  rentalsCount = transactionsWithRentals.size;
+
+  console.log('[Finance] Transaction Breakdown:', {
+    salesTransactions: salesCount,
+    rentalTransactions: rentalsCount,
+    customOrders: customOrders.length,
+    returns: returnsCount,
+    refunds: refundsCount,
   });
 
   return {

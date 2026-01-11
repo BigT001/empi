@@ -28,6 +28,8 @@ interface Transaction {
   paymentMethod?: string;
   type?: "income" | "expense";
   description?: string;
+  transactionType?: "sales" | "rentals";
+  items?: Array<{ mode: 'buy' | 'rent'; price: number; quantity: number; name: string }>;
 }
 
 interface OfflineSale {
@@ -43,13 +45,16 @@ interface OfflineSale {
   status: string;
   paymentMethod: string;
   createdAt: string;
+  items?: Array<{ mode: 'buy' | 'rent'; price: number; quantity: number; name: string }>;
+  transactionType?: "sales" | "rentals";
 }
 
 interface TransactionHistoryProps {
   metrics?: any;
+  offlineTab?: boolean;
 }
 
-export default function TransactionHistory({ metrics }: TransactionHistoryProps) {
+export default function TransactionHistory({ metrics, offlineTab = false }: TransactionHistoryProps) {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [offlineSales, setOfflineSales] = useState<OfflineSale[]>([]);
   const [filteredTransactions, setFilteredTransactions] = useState<Transaction[]>([]);
@@ -60,7 +65,7 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
   const [filterType, setFilterType] = useState<"all" | "income" | "expense">("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "amount-desc" | "amount-asc">("date-desc");
-  const [activeTab, setActiveTab] = useState<"orders" | "expenses">("orders");
+  const [activeTab, setActiveTab] = useState<"orders" | "expenses">(offlineTab ? "expenses" : "orders");
   const [showAddSaleForm, setShowAddSaleForm] = useState(false);
 
   useEffect(() => {
@@ -79,20 +84,44 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
       const data = await response.json();
       const orders = data.orders || [];
 
-      const allTransactions: Transaction[] = orders.map((order: any) => ({
-        _id: order._id,
-        orderNumber: order.orderNumber,
-        buyerName: `${order.firstName || ""} ${order.lastName || ""}`.trim(),
-        buyerEmail: order.email,
-        amount: order.total || order.subtotal || 0,
-        subtotal: order.subtotal || 0,
-        vat: order.vat || 0,
-        createdAt: order.createdAt,
-        status: order.status,
-        paymentMethod: order.paymentMethod,
-        type: "income",
-        description: order.items?.[0]?.name || "Order",
-      }));
+      const allTransactions: Transaction[] = orders.map((order: any) => {
+        // Determine transaction type based on items
+        let transactionType: "sales" | "rentals" = "sales";
+        if (order.items && order.items.length > 0) {
+          const hasSales = order.items.some((item: any) => item.mode === "buy");
+          const hasRentals = order.items.some((item: any) => item.mode === "rent");
+          
+          // If only rentals, mark as rentals
+          if (hasRentals && !hasSales) {
+            transactionType = "rentals";
+          }
+          // If only sales, mark as sales
+          else if (hasSales && !hasRentals) {
+            transactionType = "sales";
+          }
+          // If mixed, default to sales (primary type)
+          else {
+            transactionType = "sales";
+          }
+        }
+
+        return {
+          _id: order._id,
+          orderNumber: order.orderNumber,
+          buyerName: `${order.firstName || ""} ${order.lastName || ""}`.trim(),
+          buyerEmail: order.email,
+          amount: order.total || order.subtotal || 0,
+          subtotal: order.subtotal || 0,
+          vat: order.vat || 0,
+          createdAt: order.createdAt,
+          status: order.status,
+          paymentMethod: order.paymentMethod,
+          type: "income",
+          description: order.items?.[0]?.name || "Order",
+          transactionType,
+          items: order.items || [],
+        };
+      });
 
       setTransactions(allTransactions);
       applyFiltersAndSort(allTransactions, searchTerm, filterType, filterStatus, sortBy);
@@ -126,7 +155,15 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
       console.log(`🔍 After search filter: ${filteredSalesData.length} sales`);
     }
 
-    if (status !== "all") {
+    // Filter by transaction type (sales or rentals) OR status
+    if (status === "sales") {
+      filteredSalesData = filteredSalesData.filter((sale) => sale.transactionType === "sales");
+      console.log(`🏷️ After sales filter: ${filteredSalesData.length} sales`);
+    } else if (status === "rentals") {
+      filteredSalesData = filteredSalesData.filter((sale) => sale.transactionType === "rentals");
+      console.log(`🏷️ After rentals filter: ${filteredSalesData.length} rentals`);
+    } else if (status !== "all") {
+      // Filter by actual status (completed, pending, cancelled, etc.)
       filteredSalesData = filteredSalesData.filter((sale) => sale.status === status);
       console.log(`🏷️ After status filter: ${filteredSalesData.length} sales`);
     }
@@ -161,20 +198,44 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
       
       console.log(`📊 Found ${sales.length} offline sales`, sales);
 
-      const formattedSales: OfflineSale[] = sales.map((order: any) => ({
-        _id: order._id,
-        orderNumber: order.orderNumber,
-        firstName: order.firstName,
-        lastName: order.lastName,
-        email: order.email,
-        amount: order.total || 0,
-        subtotal: order.subtotal || 0,
-        vat: order.vat || 0,
-        total: order.total || 0,
-        status: order.status,
-        paymentMethod: order.paymentMethod,
-        createdAt: order.createdAt,
-      }));
+      const formattedSales: OfflineSale[] = sales.map((order: any) => {
+        // Determine transaction type based on items
+        let transactionType: "sales" | "rentals" = "sales";
+        if (order.items && order.items.length > 0) {
+          const hasSales = order.items.some((item: any) => item.mode === "buy");
+          const hasRentals = order.items.some((item: any) => item.mode === "rent");
+          
+          // If only rentals, mark as rentals
+          if (hasRentals && !hasSales) {
+            transactionType = "rentals";
+          }
+          // If only sales, mark as sales
+          else if (hasSales && !hasRentals) {
+            transactionType = "sales";
+          }
+          // If mixed, default to sales (primary type)
+          else {
+            transactionType = "sales";
+          }
+        }
+
+        return {
+          _id: order._id,
+          orderNumber: order.orderNumber,
+          firstName: order.firstName,
+          lastName: order.lastName,
+          email: order.email,
+          amount: order.total || 0,
+          subtotal: order.subtotal || 0,
+          vat: order.vat || 0,
+          total: order.total || 0,
+          status: order.status,
+          paymentMethod: order.paymentMethod,
+          createdAt: order.createdAt,
+          items: order.items || [],
+          transactionType,
+        };
+      });
 
       setOfflineSales(formattedSales);
       console.log("✅ Offline sales updated in state");
@@ -208,7 +269,13 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
       filtered = filtered.filter((t) => t.type === type);
     }
 
-    if (status !== "all") {
+    // Filter by transaction type (sales or rentals) OR status
+    if (status === "sales") {
+      filtered = filtered.filter((t) => t.transactionType === "sales");
+    } else if (status === "rentals") {
+      filtered = filtered.filter((t) => t.transactionType === "rentals");
+    } else if (status !== "all") {
+      // Filter by actual status (completed, pending, cancelled, etc.)
       filtered = filtered.filter((t) => t.status === status);
     }
 
@@ -324,76 +391,11 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
 
   return (
     <div className="space-y-6">
-      {/* Tab Navigation */}
-      <div className="bg-white border-b border-gray-200 rounded-t-xl overflow-hidden flex">
-        <button
-          onClick={() => setActiveTab("orders")}
-          className={`flex-1 py-4 px-6 font-semibold text-center transition ${
-            activeTab === "orders"
-              ? "bg-lime-600 text-white border-b-4 border-lime-700"
-              : "bg-gray-50 text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          📦 Orders & Transactions
-        </button>
-        <button
-          onClick={() => setActiveTab("expenses")}
-          className={`flex-1 py-4 px-6 font-semibold text-center transition ${
-            activeTab === "expenses"
-              ? "bg-lime-600 text-white border-b-4 border-lime-700"
-              : "bg-gray-50 text-gray-700 hover:bg-gray-100"
-          }`}
-        >
-          💸 Offline Sales & Rentals (Output VAT)
-        </button>
-      </div>
-
-      {/* Orders Tab Content */}
-      {activeTab === "orders" && (
+      {/* Orders Tab Content - Only shown when not in offlineTab mode */}
+      {!offlineTab && (
         <div className="space-y-6">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Total Transactions */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-medium text-gray-600">Total Transactions</p>
-                <TrendingUp className="h-5 w-5 text-blue-600" />
-              </div>
-              <p className="text-3xl font-bold text-blue-600">{totalTransactions}</p>
-              <p className="text-xs text-gray-500 mt-2">All recorded transactions</p>
-            </div>
-
-            {/* Total Income */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-medium text-gray-600">Total Income</p>
-                <ArrowDownLeft className="h-5 w-5 text-green-600" />
-              </div>
-              <p className="text-3xl font-bold text-green-600">
-                ₦{totalIncome.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
-              </p>
-              <p className="text-xs text-gray-500 mt-2">From all transactions</p>
-            </div>
-
-            {/* Total Outgoing Transactions */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-medium text-gray-600">Total Outgoing</p>
-                <TrendingDown className="h-5 w-5 text-red-600" />
-              </div>
-              <p className="text-3xl font-bold text-red-600">
-                ₦{filteredTransactions
-                  .filter((t) => t.status === "cancelled" || t.type === "expense")
-                  .reduce((sum, t) => sum + t.amount, 0)
-                  .toLocaleString("en-NG", { minimumFractionDigits: 2 })}
-              </p>
-              <p className="text-xs text-gray-500 mt-2">Expenses & refunds</p>
-            </div>
-          </div>
-
           {/* Filters */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Filter & Search</h3>
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               {/* Search */}
               <div className="relative">
@@ -416,8 +418,8 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
                 <option value="all">All Status</option>
                 <option value="completed">Completed</option>
                 <option value="pending">Pending</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+                <option value="cancelled">Cancelled</option>                <option value="sales">Sales</option>
+                <option value="rentals">Rentals</option>              </select>
 
               {/* Sort */}
               <select
@@ -449,6 +451,7 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
                       <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Date</th>
                       <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Order #</th>
                       <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Customer</th>
+                      <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Type</th>
                       <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Payment</th>
                       <th className="text-right px-6 py-4 font-semibold text-gray-900 text-sm">Amount</th>
                       <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Status</th>
@@ -475,6 +478,15 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
                             <p className="font-medium text-gray-900">{transaction.buyerName}</p>
                             <p className="text-gray-500 text-xs">{transaction.buyerEmail}</p>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                            transaction.transactionType === 'rentals'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {transaction.transactionType === 'rentals' ? '🎪 Rental' : '🛒 Sale'}
+                          </span>
                         </td>
                         <td className="px-6 py-4">
                           <span className="text-lg">{getPaymentMethodIcon(transaction.paymentMethod)}</span>
@@ -533,8 +545,8 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
         </div>
       )}
 
-      {/* Expenses Tab Content */}
-      {activeTab === "expenses" && (
+      {/* Offline Sales Tab - Only shown when in offlineTab mode */}
+      {offlineTab && (
         <div className="space-y-6">
           {/* Add Sale Button */}
           {/* Summary Cards for Offline Sales */}
@@ -600,8 +612,8 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
                 <option value="all">All Status</option>
                 <option value="completed">Completed</option>
                 <option value="pending">Pending</option>
-                <option value="cancelled">Cancelled</option>
-              </select>
+                <option value="cancelled">Cancelled</option>                <option value="sales">Sales</option>
+                <option value="rentals">Rentals</option>              </select>
 
               {/* Sort */}
               <select
@@ -642,7 +654,7 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
                       <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Date</th>
                       <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Order #</th>
                       <th className="text-left px-6 py-4 font-semibold text-gray-900 text-sm">Customer</th>
-                      <th className="text-right px-6 py-4 font-semibold text-gray-900 text-sm">Amount</th>
+                      <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Type</th>
                       <th className="text-right px-6 py-4 font-semibold text-gray-900 text-sm">Amount</th>
                       <th className="text-right px-6 py-4 font-semibold text-gray-900 text-sm">Output VAT</th>
                       <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Status</th>
@@ -669,6 +681,15 @@ export default function TransactionHistory({ metrics }: TransactionHistoryProps)
                             <p className="font-medium text-gray-900">{sale.firstName} {sale.lastName}</p>
                             <p className="text-gray-500 text-xs">{sale.email}</p>
                           </div>
+                        </td>
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
+                            sale.items?.[0]?.mode === 'rent' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {sale.items?.[0]?.mode === 'rent' ? '🎪 Rental' : '🛒 Sale'}
+                          </span>
                         </td>
                         <td className="px-6 py-4 text-right">
                           <div className="text-sm font-bold text-gray-900">
@@ -782,6 +803,7 @@ function AddOfflineSaleForm({ onClose, onSuccess }: AddOfflineSaleFormProps) {
         phone: formData.phone || undefined,
         subtotal: parseFloat(formData.amount),
         itemDescription: formData.type === "rental" ? "Offline Rental" : "Offline Sale",
+        type: formData.type, // Pass the type to the API
         paymentMethod: formData.paymentMethod,
         status: "completed",
       };
