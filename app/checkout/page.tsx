@@ -9,6 +9,7 @@ import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
 import { ShoppingBag, AlertCircle, CreditCard } from "lucide-react";
 import { getDiscountPercentage, VAT_RATE } from "@/lib/discountCalculator";
+import { PresaleNotice } from "../components/PresaleNotice";
 
 const SHIPPING_OPTIONS = {
   empi: { id: "empi", name: "EMPI Delivery", cost: 2500, estimatedDays: "2-5 business days" },
@@ -517,6 +518,9 @@ export default function CheckoutPage() {
                   <span className="text-purple-600">₦{displayTotal.toLocaleString()}</span>
                 </div>
               </div>
+
+              {/* Presale Notice */}
+              <PresaleNotice variant="alert" />
 
               {/* Customer Info */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">

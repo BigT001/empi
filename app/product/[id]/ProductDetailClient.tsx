@@ -9,6 +9,7 @@ import { ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, Check, AlertCircle,
 import { CURRENCY_RATES } from "@/app/components/constants";
 import { useCart } from "@/app/components/CartContext";
 import { useMode } from "@/app/context/ModeContext";
+import { PresaleNotice } from "@/app/components/PresaleNotice";
 
 interface Product {
   id: string;
@@ -332,6 +333,9 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 </div>
               )}
             </div>
+
+            {/* Presale Notice */}
+            <PresaleNotice variant="compact" />
 
             {/* Action Buttons Section */}
             <div className="space-y-4">

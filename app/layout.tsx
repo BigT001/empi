@@ -10,6 +10,7 @@ import { CurrencyProvider } from "./context/CurrencyContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { MobileHeaderWrapper } from "./components/MobileHeaderWrapper";
+import { PresaleNotice } from "./components/PresaleNotice";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,8 +35,14 @@ export const metadata: Metadata = {
   keywords: ["costume maker Lagos", "costume rental Lagos", "party costumes Nigeria", "themed costumes", "costume shop Lagos", "adult costumes", "kids costumes"],
   robots: "index, follow",
   icons: {
-    icon: "/favicon.ico",
+    icon: [
+      { url: "/favicon.png", sizes: "any", type: "image/png" },
+      { url: "/favicon.png", sizes: "192x192", type: "image/png" },
+      { url: "/favicon.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: { url: "/favicon.png" },
   },
+  manifest: "/site.webmanifest",
   openGraph: {
     type: "website",
     locale: "en_NG",
@@ -68,12 +75,17 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="icon" href="/favicon.ico" />
+        <link rel="icon" href="/favicon.png" sizes="any" type="image/png" />
+        <link rel="icon" href="/favicon.png" sizes="192x192" type="image/png" />
+        <link rel="icon" href="/favicon.png" sizes="512x512" type="image/png" />
+        <link rel="apple-touch-icon" href="/favicon.png" />
+        <meta name="theme-color" content="#22c55e" />
         <script src="https://js.paystack.co/v1/inline.js"></script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased pb-20 md:pb-0`}
       >
+        <PresaleNotice variant="banner" />
         <CartProvider>
           <BuyerProvider>
             <NotificationProvider>

@@ -4,6 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/app/components/Footer";
+import { PresaleNotice } from "@/app/components/PresaleNotice";
 import {
   CheckCircle,
   Package,
@@ -341,6 +342,9 @@ function OrderConfirmationContent() {
                 </p>
                 <p className="text-lg font-bold text-green-600">Completed</p>
               </div>
+
+              {/* Presale Notice */}
+              <PresaleNotice variant="inline" />
 
               {/* Action Buttons */}
               <div className="space-y-3">

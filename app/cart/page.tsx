@@ -12,6 +12,7 @@ import { DeliverySelector } from "../components/DeliverySelector";
 import { RentalPolicyModal } from "../components/RentalPolicyModal";
 import { DeliveryModal } from "../components/DeliveryModal";
 import { RentalScheduleModal } from "../components/RentalScheduleModal";
+import { PresaleNotice } from "../components/PresaleNotice";
 import { ShoppingBag, Trash2, Plus, Minus, Info, ArrowLeft, AlertCircle, Truck, MapPin, Zap, Package, Edit2 } from "lucide-react";
 import { AuthForm } from "../components/AuthForm";
 import { CartItemDelivery, DeliveryQuote } from "@/app/lib/deliveryCalculator";
@@ -507,6 +508,9 @@ export default function CartPage() {
                 <div className="flex justify-between items-center mb-6 text-xl">
                   <span className="font-semibold">Total</span><span className="font-bold text-lime-600">{formatPrice(totalAmount)}</span>
                 </div>
+
+                {/* Presale Notice */}
+                <PresaleNotice variant="inline" />
 
                 <button onClick={() => { buyer ? router.push("/checkout") : setShowAuthModal(true); }} className="block w-full bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-4 rounded-lg text-center transition mb-3 disabled:opacity-50 disabled:cursor-not-allowed" disabled={items.some(i => i.mode === 'rent') && !rentalSchedule ? true : false}>
                   Proceed to Checkout
