@@ -68,6 +68,14 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
     setShowMobileMenu(false);
   };
 
+  // Handle logo click - return to home page
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    onCategoryChange("adults"); // Reset to default category
+    router.push("/"); // Navigate to home
+    window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll to top
+  };
+
   // Log admin state changes for debugging
   useEffect(() => {
     if (admin) {
@@ -173,17 +181,19 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
 
   return (
     <>
-      {/* Main Header Container with Hide-on-Scroll */}
+      {/* Main Header Container with Hide-on-Scroll - Positioned below banner */}
       <div 
-        className={`md:fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out md:${
-          headerVisible ? 'translate-y-0' : '-translate-y-full'
-        }`}
-        style={{ boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}
+        className="md:fixed left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out"
+        style={{ 
+          top: '56px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)'
+        }}
       >
         {/* Desktop Navigation */}
         <div className="hidden md:flex items-center justify-between gap-8 flex-1 px-6 py-4">
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0">
+          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 hover:opacity-80 transition">
             <Image
               src="/logo/EMPI-2k24-LOGO-1.PNG"
               alt="EMPI Logo"
@@ -194,65 +204,65 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
           </Link>
 
           {/* Navigation */}
-          <nav className="gap-8 text-sm font-medium flex items-center">
-        {/* Premium Animated Category Toggle - With Inset Depth */}
-        <div className="flex items-center gap-2">
-          {/* Adults Button */}
-          <button
-            onClick={() => handleCategoryChange("adults")}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
-              category === "adults"
-                ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
-                : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span className="text-lg">👔</span>
-              <span>Adults</span>
-            </span>
-          </button>
+          <nav className="gap-12 text-sm font-medium flex items-center">
+            {/* Category Links - Clean Text Style */}
+            <div className="flex items-center gap-8">
+              <button
+                onClick={() => handleCategoryChange("adults")}
+                className={`relative px-1 py-2 transition-colors duration-300 ${
+                  category === "adults"
+                    ? "text-lime-600 font-semibold"
+                    : "text-gray-700 hover:text-lime-600"
+                }`}
+              >
+                Adults
+                {category === "adults" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-lime-600 rounded-full"></div>
+                )}
+              </button>
 
-          {/* Kids Button */}
-          <button
-            onClick={() => handleCategoryChange("kids")}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
-              category === "kids"
-                ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
-                : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span className="text-lg">👶</span>
-              <span>Kids</span>
-            </span>
-          </button>
+              <button
+                onClick={() => handleCategoryChange("kids")}
+                className={`relative px-1 py-2 transition-colors duration-300 ${
+                  category === "kids"
+                    ? "text-lime-600 font-semibold"
+                    : "text-gray-700 hover:text-lime-600"
+                }`}
+              >
+                Kids
+                {category === "kids" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-lime-600 rounded-full"></div>
+                )}
+              </button>
 
-          {/* Custom Button */}
-          <button
-            onClick={() => handleCategoryChange("custom")}
-            className={`px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
-              category === "custom"
-                ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
-                : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
-            }`}
-          >
-            <span className="flex items-center gap-2">
-              <span className="text-lg">🎨</span>
-              <span>Custom</span>
-            </span>
-          </button>
-        </div>
+              <button
+                onClick={() => handleCategoryChange("custom")}
+                className={`relative px-1 py-2 transition-colors duration-300 ${
+                  category === "custom"
+                    ? "text-lime-600 font-semibold"
+                    : "text-gray-700 hover:text-lime-600"
+                }`}
+              >
+                Custom
+                {category === "custom" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-lime-600 rounded-full"></div>
+                )}
+              </button>
 
-        <Link 
-          href="/about" 
-          className={`transition font-semibold ${
-            pathname === "/about"
-              ? "text-lime-600 border-b-2 border-lime-600 pb-1"
-              : "text-gray-700 hover:text-lime-600"
-          }`}
-        >
-          About Us
-        </Link>
+              <Link 
+                href="/about" 
+                className={`relative px-1 py-2 transition-colors duration-300 ${
+                  pathname === "/about"
+                    ? "text-lime-600 font-semibold"
+                    : "text-gray-700 hover:text-lime-600"
+                }`}
+              >
+                About Us
+                {pathname === "/about" && (
+                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-lime-600 rounded-full"></div>
+                )}
+              </Link>
+            </div>
           </nav>
 
           {/* Search */}
@@ -271,37 +281,6 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
 
           {/* Desktop Actions */}
           <div className="flex items-center gap-4">
-        {/* Currency Switcher */}
-        <div className="relative hidden md:block">
-          <button
-            ref={setCurrencyButtonRef}
-            onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
-            className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 hover:border-lime-600 text-gray-700 hover:text-lime-600 text-sm font-medium transition"
-            data-modal-trigger
-          >
-            {CURRENCY_RATES[currency].symbol}
-            <span>{currency}</span>
-            <ChevronDown className="h-4 w-4" />
-          </button>
-          {showCurrencyDropdown && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-lg z-50" data-modal>
-              {Object.entries(CURRENCY_RATES).map(([code, data]) => (
-                <button
-                  key={code}
-                  onClick={() => {
-                    onCurrencyChange(code);
-                    setShowCurrencyDropdown(false);
-                  }}
-                  className={`w-full text-left px-4 py-2 text-sm hover:bg-lime-50 hover:text-lime-600 transition ${
-                    currency === code ? "bg-lime-100 text-lime-600 font-semibold" : "text-gray-700"
-                  }`}
-                >
-                  {data.symbol} {code} - {data.name}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
         {admin ? (
           <Link href="/admin" className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-orange-600 hover:border-orange-600 hover:bg-orange-100 font-semibold transition">
             <Settings className="h-4 w-4" />

@@ -143,7 +143,7 @@ export function HeroSection() {
   const nextImage = HERO_IMAGES[(currentImageIndex + 1) % HERO_IMAGES.length];
 
   return (
-    <section className="relative w-full md:h-screen h-screen md:pt-0 overflow-hidden bg-black">
+    <section className="relative w-full md:h-screen h-screen pt-28 md:pt-28 overflow-hidden bg-black">
       {/* Image Carousel - Side by Side on Large Screens */}
       <div className="relative w-full h-full">
         {/* Animated Gradient Overlay */}

@@ -11,6 +11,7 @@ import { useBuyer } from "../context/BuyerContext";
 import { useAdmin } from "../context/AdminContext";
 import { CURRENCY_RATES } from "./constants";
 import { NotificationBell } from "./NotificationBell";
+import { PresaleNotice } from "./PresaleNotice";
 
 interface MobileHeaderProps {
   category?: string;
@@ -73,6 +74,17 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
     }
     
     // Close mobile menu after selection
+    setShowMobileMenu(false);
+  };
+
+  // Handle logo click - return to home page
+  const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
+    e.preventDefault();
+    if (onCategoryChange) {
+      onCategoryChange("adults"); // Reset to default category
+    }
+    router.push("/"); // Navigate to home
+    window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll to top
     setShowMobileMenu(false);
   };
 
@@ -159,17 +171,24 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
 
   return (
     <>
-      {/* Mobile Top Navigation Header */}
+      {/* Presale Banner - Above Header - Hide on scroll */}
+      <div className={`fixed top-0 left-0 right-0 z-50 h-14 transition-transform duration-300 ease-in-out ${
+        headerVisible ? 'translate-y-0' : '-translate-y-full'
+      }`}>
+        <PresaleNotice variant="banner" />
+      </div>
+
+      {/* Mobile Top Navigation Header - Positioned below banner */}
       <div 
-        className={`md:hidden fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out ${
+        className={`md:hidden fixed left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out ${
           headerVisible ? 'translate-y-0' : '-translate-y-full'
         }`}
-        style={{ boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}
+        style={{ top: '56px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}
       >
         {/* Header Top Row - Logo and Menu Toggle */}
         <div className="flex items-center justify-between px-4 py-3 gap-3">
           {/* Logo */}
-          <Link href="/" className="flex-shrink-0">
+          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 hover:opacity-80 transition">
             <Image
               src="/logo/EMPI-2k24-LOGO-1.PNG"
               alt="EMPI Logo"
@@ -234,15 +253,15 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
         {/* Mobile Menu - Slide Down */}
         {showMobileMenu && (
           <div className="border-t border-gray-200 bg-white" data-mobile-menu>
-            <div className="px-4 py-3 space-y-3">
-              {/* Category Buttons and About - Same Line */}
-              <div className="flex gap-2 flex-wrap">
+            <div className="px-4 py-4 space-y-4">
+              {/* Category Navigation - Clean Text Links */}
+              <nav className="space-y-3">
                 <button
                   onClick={() => handleCategoryChange("adults")}
-                  className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
+                  className={`block w-full text-left px-0 py-2 font-medium transition-all duration-300 ${
                     category === "adults"
-                      ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
-                      : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
+                      ? "text-lime-600 border-b-2 border-lime-600"
+                      : "text-gray-700 hover:text-lime-600 border-b-2 border-transparent hover:border-gray-300"
                   }`}
                 >
                   Adults
@@ -250,10 +269,10 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
 
                 <button
                   onClick={() => handleCategoryChange("kids")}
-                  className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
+                  className={`block w-full text-left px-0 py-2 font-medium transition-all duration-300 ${
                     category === "kids"
-                      ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
-                      : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
+                      ? "text-lime-600 border-b-2 border-lime-600"
+                      : "text-gray-700 hover:text-lime-600 border-b-2 border-transparent hover:border-gray-300"
                   }`}
                 >
                   Kids
@@ -261,10 +280,10 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
 
                 <button
                   onClick={() => handleCategoryChange("custom")}
-                  className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
+                  className={`block w-full text-left px-0 py-2 font-medium transition-all duration-300 ${
                     category === "custom"
-                      ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
-                      : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
+                      ? "text-lime-600 border-b-2 border-lime-600"
+                      : "text-gray-700 hover:text-lime-600 border-b-2 border-transparent hover:border-gray-300"
                   }`}
                 >
                   Custom
@@ -272,16 +291,16 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
 
                 <Link 
                   href="/about" 
-                  className={`px-3 py-2 rounded-lg font-semibold text-sm transition-all duration-300 border-2 ${
+                  className={`block px-0 py-2 font-medium transition-all duration-300 ${
                     pathname === "/about"
-                      ? "bg-gradient-to-r from-lime-500 to-lime-400 text-white border-lime-500 shadow-lg"
-                      : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
+                      ? "text-lime-600 border-b-2 border-lime-600"
+                      : "text-gray-700 hover:text-lime-600 border-b-2 border-transparent hover:border-gray-300"
                   }`}
                   onClick={() => setShowMobileMenu(false)}
                 >
-                  About
+                  About Us
                 </Link>
-              </div>
+              </nav>
 
               {/* Divider */}
               <div className="border-t border-gray-200"></div>

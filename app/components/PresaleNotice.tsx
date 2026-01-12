@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertCircle, Clock } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 
 interface PresaleNoticeProps {
   variant?: "banner" | "inline" | "alert" | "compact";
@@ -10,9 +10,8 @@ export const PresaleNotice = ({ variant = "inline" }: PresaleNoticeProps) => {
   switch (variant) {
     case "banner":
       return (
-        <div className="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 px-4">
-          <div className="flex items-center justify-center gap-2 text-sm font-semibold">
-            <Clock className="w-4 h-4" />
+        <div className="bg-gradient-to-r from-lime-600 to-green-600 text-white h-14 px-4 flex items-center justify-center">
+          <div className="flex items-center justify-center gap-2 text-xs md:text-sm font-semibold text-center">
             <span>All orders are PRE-SALES. Minimum 1 week delivery. Processing time varies by quantity & type.</span>
           </div>
         </div>
@@ -50,7 +49,6 @@ export const PresaleNotice = ({ variant = "inline" }: PresaleNoticeProps) => {
     case "compact":
       return (
         <div className="flex items-center gap-2 text-sm text-amber-800 bg-amber-100 px-3 py-2 rounded-md mb-4">
-          <Clock className="w-4 h-4" />
           <span>
             Pre-sale order: <strong>Minimum 1 week delivery</strong>
           </span>

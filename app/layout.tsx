@@ -36,11 +36,11 @@ export const metadata: Metadata = {
   robots: "index, follow",
   icons: {
     icon: [
-      { url: "/favicon.png", sizes: "any", type: "image/png" },
-      { url: "/favicon.png", sizes: "192x192", type: "image/png" },
-      { url: "/favicon.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.ico" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+      { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
     ],
-    apple: { url: "/favicon.png" },
+    apple: { url: "/apple-touch-icon.png" },
   },
   manifest: "/site.webmanifest",
   openGraph: {
@@ -75,18 +75,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <link rel="shortcut icon" href="/favicon.png" type="image/png" />
-        <link rel="icon" href="/favicon.png" sizes="any" type="image/png" />
-        <link rel="icon" href="/favicon.png" sizes="192x192" type="image/png" />
-        <link rel="icon" href="/favicon.png" sizes="512x512" type="image/png" />
-        <link rel="apple-touch-icon" href="/favicon.png" />
-        <meta name="theme-color" content="#22c55e" />
+        <link rel="icon" href="/favicon.ico" />
         <script src="https://js.paystack.co/v1/inline.js"></script>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased pb-20 md:pb-0`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <PresaleNotice variant="banner" />
         <CartProvider>
           <BuyerProvider>
             <NotificationProvider>
