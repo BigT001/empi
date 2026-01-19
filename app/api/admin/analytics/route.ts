@@ -5,6 +5,7 @@ import Buyer from '@/lib/models/Buyer';
 import Product from '@/lib/models/Product';
 import CustomOrder from '@/lib/models/CustomOrder';
 import CautionFeeTransaction from '@/lib/models/CautionFeeTransaction';
+import Expense from '@/lib/models/Expense';
 import { aggregateRevenueMetrics, calculateOrderRevenue } from '@/lib/utils/revenueUtils';
 
 interface DailyMetrics {
@@ -48,6 +49,30 @@ interface DashboardAnalytics {
     returningCustomers: number;
     customerRetentionRate: number;
   };
+  revenueBreakdown?: {
+    onlineSalesRevenue: number;
+    onlineRentalRevenue: number;
+  };
+  offlineRevenueBreakdown?: {
+    salesRevenue: number;
+    rentalRevenue: number;
+  };
+  orderTypeBreakdown?: {
+    online: number;
+    offline: number;
+  };
+  vatMetrics?: {
+    totalVAT: number;
+    inputVAT: number;
+    outputVAT: number;
+    vatPayable: number;
+    vatExempt: number;
+  };
+  expenseMetrics?: {
+    count: number;
+    totalAmount: number;
+    totalVAT: number;
+  };
 }
 
 function formatDate(date: Date): string {
@@ -67,12 +92,13 @@ export async function GET(request: NextRequest) {
     console.log('[Dashboard Analytics API] Fetching comprehensive data...');
 
     // Fetch all required data
-    const [orders, buyers, products, customOrders, cautionFees] = await Promise.all([
+    const [orders, buyers, products, customOrders, cautionFees, expenses] = await Promise.all([
       Order.find({}, '', { lean: true }),
       Buyer.find({}, '', { lean: true }),
       Product.find({}, '', { lean: true }),
       CustomOrder.find({}, '', { lean: true }).catch(() => []),
       CautionFeeTransaction.find({}, '', { lean: true }),
+      Expense.find({}, '', { lean: true }),
     ]);
 
     console.log('[Dashboard Analytics] Data retrieved:', {
@@ -81,6 +107,7 @@ export async function GET(request: NextRequest) {
       products: products.length,
       customOrders: customOrders?.length || 0,
       cautionFees: cautionFees.length,
+      expenses: expenses.length,
     });
 
     // ==================== USE UTILITY: AGGREGATE REVENUE ====================
@@ -325,6 +352,99 @@ export async function GET(request: NextRequest) {
       averageRefundDays,
     });
 
+    // ==================== EXPENSE METRICS ====================
+    let totalExpensesAmount = 0;
+    let totalExpensesVAT = 0;
+    let expenseCount = 0;
+
+    if (Array.isArray(expenses)) {
+      expenses.forEach((expense) => {
+        const expenseObj = expense as Record<string, unknown>;
+        const expenseAmount = (expenseObj.amount as number) || 0;
+        const expenseVAT = (expenseObj.vat as number) || 0;
+
+        totalExpensesAmount += expenseAmount;
+        totalExpensesVAT += expenseVAT;
+        expenseCount += 1;
+      });
+    }
+
+    console.log('[Dashboard Analytics] Expense Calculation:', {
+      totalExpensesAmount,
+      totalExpensesVAT,
+      expenseCount,
+      averageExpense: expenseCount > 0 ? Math.round(totalExpensesAmount / expenseCount) : 0,
+    });
+
+    // ==================== VAT METRICS ====================
+    // Calculate VAT from orders (output VAT) and expenses (input VAT)
+    let totalOrderVAT = 0;
+    let totalExpenseVATDeductible = 0;
+
+    orders.forEach((order) => {
+      const orderObj = order as Record<string, unknown>;
+      const orderVAT = (orderObj.vat as number) || 0;
+      totalOrderVAT += orderVAT;
+    });
+
+    // Input VAT is from expenses that are VAT applicable
+    expenses.forEach((expense) => {
+      const expenseObj = expense as Record<string, unknown>;
+      const isVATApplicable = (expenseObj.isVATApplicable as boolean) !== false;
+      if (isVATApplicable) {
+        const expenseVAT = (expenseObj.vat as number) || 0;
+        totalExpenseVATDeductible += expenseVAT;
+      }
+    });
+
+    const vatPayable = Math.max(0, totalOrderVAT - totalExpenseVATDeductible);
+
+    console.log('[Dashboard Analytics] VAT Calculation:', {
+      outputVAT: totalOrderVAT,
+      inputVAT: totalExpenseVATDeductible,
+      vatPayable,
+    });
+
+    // ==================== BREAKDOWN BY ONLINE/OFFLINE ====================
+    // Use isOffline field to determine if order is offline or online
+    let onlineSalesRevenue = 0;
+    let onlineRentalRevenue = 0;
+    let offlineSalesRevenue = 0;
+    let offlineRentalRevenue = 0;
+    let onlineTransactionCount = 0;
+    let offlineTransactionCount = 0;
+
+    orders.forEach((order) => {
+      const orderObj = order as Record<string, unknown>;
+      const isOfflineOrder = Boolean(orderObj.isOffline);
+      const items = (orderObj.items ?? []) as unknown[];
+      
+      // Process items to get sales vs rental breakdown
+      const convertedItems = items.map(item => {
+        const obj = item as Record<string, unknown>;
+        return {
+          productId: String(obj.productId || ''),
+          name: String(obj.name || ''),
+          quantity: Number(obj.quantity || 1),
+          price: Number(obj.price || 0),
+          mode: (obj.mode === 'rent' ? 'rent' : 'buy') as 'buy' | 'rent',
+          rentalDays: Number(obj.rentalDays || 0),
+        };
+      });
+
+      const itemRevenue = calculateOrderRevenue(convertedItems);
+      
+      if (isOfflineOrder) {
+        offlineSalesRevenue += itemRevenue.salesRevenue;
+        offlineRentalRevenue += itemRevenue.rentalRevenue;
+        offlineTransactionCount += 1;
+      } else {
+        onlineSalesRevenue += itemRevenue.salesRevenue;
+        onlineRentalRevenue += itemRevenue.rentalRevenue;
+        onlineTransactionCount += 1;
+      }
+    });
+
     // ==================== BUILD RESPONSE ====================
     const analytics: DashboardAnalytics = {
       summary: {
@@ -357,7 +477,32 @@ export async function GET(request: NextRequest) {
         returningCustomers,
         customerRetentionRate,
       },
-    };
+      // Add fields that FinanceProjectOverview component expects
+      revenueBreakdown: {
+        onlineSalesRevenue,
+        onlineRentalRevenue,
+      },
+      offlineRevenueBreakdown: {
+        salesRevenue: offlineSalesRevenue,
+        rentalRevenue: offlineRentalRevenue,
+      },
+      orderTypeBreakdown: {
+        online: onlineTransactionCount,
+        offline: offlineTransactionCount,
+      },
+      vatMetrics: {
+        totalVAT: totalOrderVAT + totalExpensesVAT, // Total VAT on all transactions
+        inputVAT: totalExpenseVATDeductible, // Deductible VAT from expenses
+        outputVAT: totalOrderVAT, // VAT charged on sales
+        vatPayable, // VAT to be paid to government
+        vatExempt: 0, // TODO: Track exempt transactions if needed
+      },
+      expenseMetrics: {
+        count: expenseCount,
+        totalAmount: totalExpensesAmount,
+        totalVAT: totalExpensesVAT,
+      },
+    } as any;
 
     console.log('[Dashboard Analytics] Calculated metrics:', {
       totalRevenue,

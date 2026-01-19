@@ -4,11 +4,12 @@ import React, { useEffect, useState } from 'react';
 import { ArrowLeft, AlertCircle, X, Package, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PermissionGuard } from '@/app/components/PermissionGuard';
-import MobileAdminLayout from '../mobile-layout';
+import { useResponsive } from '@/app/hooks/useResponsive';
 import { LogisticsOrderCard } from './LogisticsOrderCard';
 
 function LogisticsPageContent() {
   const router = useRouter();
+  const { mounted } = useResponsive();
   const [ordersData, setOrdersData] = useState<any[]>([]);
   const [shippedOrders, setShippedOrders] = useState<any[]>([]);
   const [enrichedOrders, setEnrichedOrders] = useState<any[]>([]);
@@ -17,16 +18,6 @@ function LogisticsPageContent() {
   const [loading, setLoading] = useState(true);
   const [shippingConfirmModal, setShippingConfirmModal] = useState<string | null>(null);
   const [isShipping, setIsShipping] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, []);
 
   // Fetch buyer details from admin/buyers endpoint (most reliable)
   const fetchBuyerDetailsFromAdmin = async () => {
@@ -397,7 +388,7 @@ function LogisticsPageContent() {
     );
   }
 
-  if (!isMounted) return null;
+  if (!mounted) return null;
 
   const content = (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-8">
@@ -516,14 +507,6 @@ function LogisticsPageContent() {
       </div>
     </div>
   );
-
-  if (isMobile) {
-    return (
-      <MobileAdminLayout>
-        {content}
-      </MobileAdminLayout>
-    );
-  }
 
   return content;
 }

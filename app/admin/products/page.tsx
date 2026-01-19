@@ -4,15 +4,13 @@ import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import { Trash2, AlertCircle, ChevronDown, Edit2 } from 'lucide-react';
+import { useResponsive } from "@/app/hooks/useResponsive";
 
-// Mobile components
-const MobileProductsPage = dynamic(() => import("../mobile-products"), { ssr: false });
-import MobileAdminLayout from "../mobile-layout";
+// Components
 import EditProductModal, { Product } from "../components/EditProductModal";
 
 export default function ProductsPage() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const { mounted } = useResponsive();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -23,18 +21,7 @@ export default function ProductsPage() {
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Detect mobile device - MUST be called before any early returns
-  useEffect(() => {
-    setIsMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // Fetch products from database - MUST be called before any early returns
+  // Fetch products from database
   const fetchProducts = async () => {
     setLoading(true);
     setError('');
@@ -54,17 +41,8 @@ export default function ProductsPage() {
     fetchProducts();
   }, []);
 
-  // Show mobile view on small screens - AFTER all hooks are defined
-  if (!isMounted) {
+  if (!mounted) {
     return null;
-  }
-
-  if (isMobile) {
-    return (
-      <MobileAdminLayout>
-        <MobileProductsPage />
-      </MobileAdminLayout>
-    );
   }
 
   const handleDeleteProduct = async (productId: string, imageUrls: string[]) => {

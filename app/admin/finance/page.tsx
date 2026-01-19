@@ -95,7 +95,7 @@ function FinancePageContent() {
   const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<"vat" | "overview" | "analytics" | "transactions" | "offline" | "expenses">("overview");
+  const [activeTab, setActiveTab] = useState<"vat" | "overview" | "transactions" | "offline" | "expenses">("overview");
   const [showOfflineOrderForm, setShowOfflineOrderForm] = useState(false);
   const [showOfflineExpenseForm, setShowOfflineExpenseForm] = useState(false);
 
@@ -175,86 +175,73 @@ function FinancePageContent() {
         </div>
       </header>
 
-      {/* Tab Navigation */}
-      <div className="bg-white border-b border-gray-200 sticky top-16 z-30">
-        <div className="mx-auto max-w-7xl px-6">
-          <div className="flex gap-8">
+      {/* Tab Navigation - Scrollable on Mobile */}
+      <div className="bg-white border-b border-gray-200 sticky top-16 z-30 overflow-x-auto">
+        <div className="px-4 sm:px-6">
+          <div className="flex gap-1 sm:gap-8 min-w-min sm:min-w-0">
             <button
               onClick={() => setActiveTab("overview")}
-              className={`py-4 px-2 font-medium border-b-2 transition ${
+              className={`py-4 px-2 sm:px-3 font-medium border-b-2 transition whitespace-nowrap ${
                 activeTab === "overview"
                   ? "border-lime-600 text-lime-600"
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" />
-                Project Overview
+              <div className="flex items-center gap-1 sm:gap-2">
+                <DollarSign className="h-4 sm:h-5 w-4 sm:w-5 flex-shrink-0" />
+                <span className="hidden sm:inline">Project Overview</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab("transactions")}
-              className={`py-4 px-2 font-medium border-b-2 transition ${
+              className={`py-4 px-2 sm:px-3 font-medium border-b-2 transition whitespace-nowrap ${
                 activeTab === "transactions"
                   ? "border-lime-600 text-lime-600"
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                Transaction History
+              <div className="flex items-center gap-1 sm:gap-2">
+                <ShoppingCart className="h-4 sm:h-5 w-4 sm:w-5 flex-shrink-0" />
+                <span className="hidden sm:inline">Transaction History</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab("offline")}
-              className={`py-4 px-2 font-medium border-b-2 transition ${
+              className={`py-4 px-2 sm:px-3 font-medium border-b-2 transition whitespace-nowrap ${
                 activeTab === "offline"
                   ? "border-lime-600 text-lime-600"
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <ShoppingCart className="h-5 w-5" />
-                💸 Offline Sales & Rentals
+              <div className="flex items-center gap-1 sm:gap-2">
+                <ShoppingCart className="h-4 sm:h-5 w-4 sm:w-5 flex-shrink-0" />
+                <span className="hidden sm:inline">💸 Offline Sales & Rentals</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab("vat")}
-              className={`py-4 px-2 font-medium border-b-2 transition ${
+              className={`py-4 px-2 sm:px-3 font-medium border-b-2 transition whitespace-nowrap ${
                 activeTab === "vat"
                   ? "border-lime-600 text-lime-600"
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <Calendar className="h-5 w-5" />
-                VAT Management
-              </div>
-            </button>
-            <button
-              onClick={() => setActiveTab("analytics")}
-              className={`py-4 px-2 font-medium border-b-2 transition ${
-                activeTab === "analytics"
-                  ? "border-lime-600 text-lime-600"
-                  : "border-transparent text-gray-600 hover:text-gray-900"
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <BarChart3 className="h-5 w-5" />
-                Analytics
+              <div className="flex items-center gap-1 sm:gap-2">
+                <Calendar className="h-4 sm:h-5 w-4 sm:w-5 flex-shrink-0" />
+                <span className="hidden sm:inline">VAT Management</span>
               </div>
             </button>
             <button
               onClick={() => setActiveTab("expenses")}
-              className={`py-4 px-2 font-medium border-b-2 transition ${
+              className={`py-4 px-2 sm:px-3 font-medium border-b-2 transition whitespace-nowrap ${
                 activeTab === "expenses"
                   ? "border-lime-600 text-lime-600"
                   : "border-transparent text-gray-600 hover:text-gray-900"
               }`}
             >
-              <div className="flex items-center gap-2">
-                <TrendingDown className="h-5 w-5" />
-                Daily Expenses
+              <div className="flex items-center gap-1 sm:gap-2">
+                <TrendingDown className="h-4 sm:h-5 w-4 sm:w-5 flex-shrink-0" />
+                <span className="hidden sm:inline">Daily Expenses</span>
               </div>
             </button>
           </div>
@@ -267,12 +254,6 @@ function FinancePageContent() {
         
         {activeTab === "overview" && (
           <FinanceProjectOverview loading={loading} />
-        )}
-
-        {activeTab === "analytics" && (
-          <div className="bg-white rounded-lg sm:rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-8 text-center">
-            <p className="text-gray-600 text-base sm:text-lg">Analytics dashboard coming soon...</p>
-          </div>
         )}
 
         {activeTab === "transactions" && <TransactionHistory metrics={metrics} />}

@@ -53,6 +53,7 @@ export interface IOrder extends Document {
   status: string; // 'pending', 'awaiting_payment', 'payment_confirmed', 'completed', 'cancelled'
   items: IOrderItem[];
   isOffline?: boolean; // Mark as offline/manual order
+  offlineType?: string; // 'sale' or 'rental' for offline orders
   isCustomOrder?: boolean; // Mark as payment for custom order (should not show in regular orders tab)
   customOrderId?: string; // Reference to the CustomOrder being paid for
   // Payment tracking
@@ -139,6 +140,7 @@ const orderSchema = new Schema<IOrder>(
     status: { type: String, default: 'pending' }, // 'pending', 'awaiting_payment', 'payment_confirmed', 'completed', 'cancelled'
     items: [orderItemSchema],
     isOffline: { type: Boolean, default: false }, // Mark as offline/manual order
+    offlineType: { type: String }, // 'sale' or 'rental' for offline orders
     isCustomOrder: { type: Boolean, default: false }, // Mark as payment for custom order
     customOrderId: { type: Schema.Types.ObjectId, ref: 'CustomOrder' }, // Reference to CustomOrder
     // Payment tracking

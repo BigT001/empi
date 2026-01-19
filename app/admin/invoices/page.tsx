@@ -1,49 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import dynamic from "next/dynamic";
 import { Footer } from "../../components/Footer";
 import { ManualInvoiceGenerator } from "./ManualInvoiceGenerator";
 import { SavedInvoices } from "./SavedInvoices";
-
-// Mobile components
-const MobileInvoicesPage = dynamic(() => import("../mobile-invoices"), { ssr: false });
-import MobileAdminLayout from "../mobile-layout";
+import { useResponsive } from "@/app/hooks/useResponsive";
 
 export default function AdminInvoicesPage() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const { mounted } = useResponsive();
   const [activeTab, setActiveTab] = useState<"manual" | "saved">("saved");
   const [isHydrated, setIsHydrated] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
 
-  // Show mobile view on small screens
-  if (!isMounted) {
+  if (!mounted || !isHydrated) {
     return null;
   }
-
-  if (isMobile) {
-    return (
-      <MobileAdminLayout>
-        <MobileInvoicesPage />
-      </MobileAdminLayout>
-    );
-  }
-
-  if (!isHydrated) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">

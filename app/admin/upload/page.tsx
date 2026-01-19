@@ -1,37 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useResponsive } from "@/app/hooks/useResponsive";
 import MobileAdminUpload from "../mobile-upload";
-import MobileAdminLayout from "../mobile-layout";
 
 export default function AdminUploadPage() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const { mounted } = useResponsive();
 
-  useEffect(() => {
-    setIsMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  if (!isMounted) {
+  if (!mounted) {
     return null;
   }
 
-  // Show mobile layout on mobile devices
-  if (isMobile) {
-    return (
-      <MobileAdminLayout>
-        <MobileAdminUpload />
-      </MobileAdminLayout>
-    );
-  }
-
-  // Show desktop version (MobileAdminUpload is responsive and works on desktop too)
+  // Show responsive version
   return (
     <div className="flex-1">
       <MobileAdminUpload />

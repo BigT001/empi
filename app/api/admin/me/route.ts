@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     const sessionToken = request.cookies.get('admin_session')?.value;
     
     console.log('[Admin/Me API] GET /api/admin/me called');
-    console.log('[Admin/Me API] admin_session cookie value:', sessionToken ? 'present' : 'NOT FOUND');
+    console.log('[Admin/Me API] admin_session cookie value:', sessionToken ? `present (${sessionToken.substring(0, 8)}...)` : 'NOT FOUND');
 
     if (!sessionToken) {
       console.log('[Admin/Me API] ❌ No session cookie found - returning 401');
@@ -23,26 +23,59 @@ export async function GET(request: NextRequest) {
     }
 
     // Find admin with this session token
+    console.log('[Admin/Me API] Searching for admin with session token...');
     const admin = await Admin.findOne({
       'sessions.token': sessionToken,
     });
 
-    if (!admin || !admin.isActive) {
-      console.log('[Admin/Me API] ❌ Admin not found, or inactive - returning 401');
+    if (!admin) {
+      console.log('[Admin/Me API] ❌ Admin not found with this session token');
+      console.log('[Admin/Me API] Total admins in DB:', await Admin.countDocuments({}));
+      
+      // Check if ANY admin has any sessions to debug
+      const adminsWithSessions = await Admin.countDocuments({ sessions: { $exists: true, $ne: [] } });
+      console.log('[Admin/Me API] Admins with sessions:', adminsWithSessions);
+      
       return NextResponse.json(
         { error: 'Session expired or invalid' },
         { status: 401 }
       );
     }
 
+    if (!admin.isActive) {
+      console.log('[Admin/Me API] ❌ Admin account inactive');
+      return NextResponse.json(
+        { error: 'Admin account has been disabled' },
+        { status: 403 }
+      );
+    }
+
+    console.log('[Admin/Me API] ✅ Found admin:', admin.email, '- Session count:', admin.sessions?.length || 0);
+
+    // Handle case where sessions array doesn't exist (legacy admin)
+    if (!admin.sessions || !Array.isArray(admin.sessions)) {
+      console.log('[Admin/Me API] ⚠️ Admin has no sessions array - reinitializing');
+      await Admin.updateOne(
+        { _id: admin._id },
+        { sessions: [] }
+      );
+      return NextResponse.json(
+        { error: 'Session not found - please log in again' },
+        { status: 401 }
+      );
+    }
+
     const session = admin.sessions.find((s: any) => s.token === sessionToken);
     if (!session) {
-      console.log('[Admin/Me API] ❌ Session not found');
+      console.log('[Admin/Me API] ❌ Session token not found in sessions array');
+      console.log('[Admin/Me API] Sessions in document:', admin.sessions.map((s: any) => ({ token: s.token?.substring(0, 8) + '...', createdAt: s.createdAt })));
       return NextResponse.json(
         { error: 'Session not found' },
         { status: 401 }
       );
     }
+
+    console.log('[Admin/Me API] ✅ Session found - Created:', session.createdAt, 'Expires:', session.expiresAt);
 
     // Check if session has expired
     if (new Date() > new Date(session.expiresAt)) {

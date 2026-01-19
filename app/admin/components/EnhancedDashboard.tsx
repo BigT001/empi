@@ -42,6 +42,30 @@ interface Analytics {
     refundRate: number;
     averageRefundDays: number;
   };
+  expenseMetrics?: {
+    count: number;
+    totalAmount: number;
+    totalVAT: number;
+  };
+  vatMetrics?: {
+    totalVAT: number;
+    inputVAT: number;
+    outputVAT: number;
+    vatPayable: number;
+    vatExempt: number;
+  };
+  revenueBreakdown?: {
+    onlineSalesRevenue: number;
+    onlineRentalRevenue: number;
+  };
+  offlineRevenueBreakdown?: {
+    salesRevenue: number;
+    rentalRevenue: number;
+  };
+  orderTypeBreakdown?: {
+    online: number;
+    offline: number;
+  };
   dailyMetrics: DailyMetrics[];
   topProducts: Array<{ name: string; unitsSold: number; revenue: number }>;
   customerMetrics: {
@@ -149,61 +173,112 @@ export function EnhancedDashboard() {
     return null;
   }
 
-  const { summary, dailyMetrics, topProducts, customerMetrics } = analytics;
+  const { summary, dailyMetrics, topProducts, customerMetrics, expenseMetrics, vatMetrics, revenueBreakdown, offlineRevenueBreakdown, orderTypeBreakdown } = analytics;
 
-  const statCards: StatCard[] = [
+  // Calculate derived metrics
+  const totalExpenses = expenseMetrics?.totalAmount || 0;
+  const vatPayable = vatMetrics?.vatPayable || 0;
+  const grossProfit = summary.totalRevenue - totalExpenses;
+  const netProfit = grossProfit - vatPayable;
+  const profitMargin = summary.totalRevenue > 0 ? ((netProfit / summary.totalRevenue) * 100) : 0;
+
+  // Online/Offline breakdown
+  const onlineSalesRevenue = revenueBreakdown?.onlineSalesRevenue || 0;
+  const onlineRentalRevenue = revenueBreakdown?.onlineRentalRevenue || 0;
+  const offlineSalesRevenue = offlineRevenueBreakdown?.salesRevenue || 0;
+  const offlineRentalRevenue = offlineRevenueBreakdown?.rentalRevenue || 0;
+  const onlineTransactions = orderTypeBreakdown?.online || 0;
+  const offlineTransactions = orderTypeBreakdown?.offline || 0;
+
+  // PRIMARY FINANCIAL METRICS (Large cards in 4-column grid)
+  const primaryCards: StatCard[] = [
     {
       label: 'Total Revenue',
       value: `₦${summary.totalRevenue.toLocaleString()}`,
       color: 'bg-blue-50 border-blue-200',
     },
     {
-      label: 'Sales Revenue',
-      value: `₦${summary.totalSalesRevenue.toLocaleString()}`,
-      subtext: `Sales orders made`,
+      label: 'Online Sales',
+      value: `₦${onlineSalesRevenue.toLocaleString()}`,
+      subtext: `${onlineTransactions} transactions`,
       color: 'bg-green-50 border-green-200',
     },
     {
-      label: 'Rental Revenue',
-      value: `₦${summary.totalRentalRevenue.toLocaleString()}`,
-      subtext: `Rental orders made`,
-      color: 'bg-amber-50 border-amber-200',
+      label: 'Online Rentals',
+      value: `₦${onlineRentalRevenue.toLocaleString()}`,
+      subtext: `${onlineTransactions > 0 ? Math.round(onlineRentalRevenue / onlineTransactions) : 0} avg`,
+      color: 'bg-teal-50 border-teal-200',
     },
+    {
+      label: 'Offline Sales',
+      value: `₦${offlineSalesRevenue.toLocaleString()}`,
+      subtext: `${offlineTransactions} transactions`,
+      color: 'bg-yellow-50 border-yellow-200',
+    },
+    {
+      label: 'Offline Rentals',
+      value: `₦${offlineRentalRevenue.toLocaleString()}`,
+      subtext: `Manual entries`,
+      color: 'bg-orange-50 border-orange-200',
+    },
+    {
+      label: 'Daily Expenses',
+      value: `₦${totalExpenses.toLocaleString()}`,
+      subtext: `${expenseMetrics?.count || 0} recorded`,
+      color: 'bg-red-50 border-red-200',
+    },
+    {
+      label: 'VAT Payable',
+      value: `₦${vatPayable.toLocaleString()}`,
+      subtext: `Output: ₦${(vatMetrics?.outputVAT || 0).toLocaleString()}`,
+      color: 'bg-purple-50 border-purple-200',
+    },
+    {
+      label: 'Net Profit',
+      value: `₦${netProfit.toLocaleString()}`,
+      subtext: `${profitMargin.toFixed(1)}% margin`,
+      color: 'bg-emerald-50 border-emerald-200',
+    },
+  ];
+
+  // SECONDARY METRICS (Compact cards in 6-column grid for supporting data)
+  const secondaryCards: StatCard[] = [
     {
       label: 'Total Orders',
       value: summary.totalOrders,
       subtext: `${summary.completedOrders} completed`,
-      color: 'bg-purple-50 border-purple-200',
+      color: 'bg-indigo-50 border-indigo-200',
     },
     {
       label: 'Total Products',
       value: summary.totalProducts,
       subtext: `In catalog`,
-      color: 'bg-red-50 border-red-200',
+      color: 'bg-pink-50 border-pink-200',
     },
     {
       label: 'Total Customers',
       value: summary.totalCustomers,
       subtext: `${summary.registeredCustomers} registered`,
-      color: 'bg-pink-50 border-pink-200',
+      color: 'bg-cyan-50 border-cyan-200',
     },
     {
       label: 'Avg Order Value',
       value: `₦${summary.averageOrderValue.toLocaleString()}`,
-      color: 'bg-teal-50 border-teal-200',
+      color: 'bg-rose-50 border-rose-200',
     },
     {
       label: 'Completion Rate',
       value: `${summary.completionRate.toFixed(1)}%`,
-      color: 'bg-indigo-50 border-indigo-200',
+      color: 'bg-violet-50 border-violet-200',
     },
     {
       label: 'New Customers',
       value: customerMetrics.newCustomersThisMonth,
       subtext: 'This month',
-      color: 'bg-cyan-50 border-cyan-200',
+      color: 'bg-sky-50 border-sky-200',
     },
   ];
+
 
   const statColorMap: { [key: string]: string } = {
     'bg-blue-50': 'text-blue-900',
@@ -214,6 +289,10 @@ export function EnhancedDashboard() {
     'bg-teal-50': 'text-teal-900',
     'bg-indigo-50': 'text-indigo-900',
     'bg-cyan-50': 'text-cyan-900',
+    'bg-red-50': 'text-red-900',
+    'bg-yellow-50': 'text-yellow-900',
+    'bg-orange-50': 'text-orange-900',
+    'bg-emerald-50': 'text-emerald-900',
   };
 
   const borderColorMap: { [key: string]: string } = {
@@ -225,6 +304,10 @@ export function EnhancedDashboard() {
     'border-teal-200': 'border-teal-200',
     'border-indigo-200': 'border-indigo-200',
     'border-cyan-200': 'border-cyan-200',
+    'border-red-200': 'border-red-200',
+    'border-yellow-200': 'border-yellow-200',
+    'border-orange-200': 'border-orange-200',
+    'border-emerald-200': 'border-emerald-200',
   };
 
   return (
@@ -237,29 +320,60 @@ export function EnhancedDashboard() {
         <p className="text-gray-600">Real-time business metrics and performance data</p>
       </div>
 
-      {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {statCards.map((card, index) => {
-          const bgClass = card.color.split(' ')[0];
-          const borderClass = card.color.split(' ')[1];
-          const textColor = statColorMap[bgClass] || 'text-gray-900';
-          const borderColor = borderColorMap[borderClass] || 'border-gray-200';
+      {/* PRIMARY FINANCIAL METRICS Grid */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Financial Metrics</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {primaryCards.map((card, index) => {
+            const bgClass = card.color.split(' ')[0];
+            const borderClass = card.color.split(' ')[1];
+            const textColor = statColorMap[bgClass] || 'text-gray-900';
+            const borderColor = borderColorMap[borderClass] || 'border-gray-200';
 
-          return (
-            <div
-              key={index}
-              className={`${bgClass} ${borderColor} border rounded-lg p-6 shadow-sm hover:shadow-md transition`}
-            >
-              <p className="text-sm font-medium text-gray-600 mb-2">{card.label}</p>
-              <p className={`text-2xl md:text-3xl font-bold ${textColor}`}>
-                {card.value}
-              </p>
-              {card.subtext && (
-                <p className="text-xs text-gray-500 mt-2">{card.subtext}</p>
-              )}
-            </div>
-          );
-        })}
+            return (
+              <div
+                key={index}
+                className={`${bgClass} ${borderColor} border rounded-lg p-6 shadow-sm hover:shadow-md transition`}
+              >
+                <p className="text-sm font-medium text-gray-600 mb-2">{card.label}</p>
+                <p className={`text-2xl md:text-3xl font-bold ${textColor}`}>
+                  {card.value}
+                </p>
+                {card.subtext && (
+                  <p className="text-xs text-gray-500 mt-2">{card.subtext}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* SECONDARY METRICS Grid - Compact & Minimal */}
+      <div className="mb-8">
+        <h2 className="text-lg font-bold text-gray-900 mb-4">Business Metrics</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+          {secondaryCards.map((card, index) => {
+            const bgClass = card.color.split(' ')[0];
+            const borderClass = card.color.split(' ')[1];
+            const textColor = statColorMap[bgClass] || 'text-gray-900';
+            const borderColor = borderColorMap[borderClass] || 'border-gray-200';
+
+            return (
+              <div
+                key={index}
+                className={`${bgClass} ${borderColor} border rounded-md p-3 shadow-xs hover:shadow-sm transition`}
+              >
+                <p className="text-xs font-semibold text-gray-600 mb-1 truncate">{card.label}</p>
+                <p className={`text-lg md:text-xl font-bold ${textColor}`}>
+                  {card.value}
+                </p>
+                {card.subtext && (
+                  <p className="text-xs text-gray-500 mt-1 truncate">{card.subtext}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
       </div>
 
       {/* Caution Fee Metrics - Top Visibility */}

@@ -90,7 +90,7 @@ export function FinanceProjectOverview({ data, loading }: FinanceOverviewProps) 
         outputVAT: analytics.vatMetrics?.outputVAT || 0,
         vatPayable: analytics.vatMetrics?.vatPayable || 0,
         vatExempt: analytics.vatMetrics?.vatExempt || 0,
-        totalDailyExpenses: analytics.summary?.totalExpenses || 0,
+        totalDailyExpenses: analytics.expenseMetrics?.totalAmount || 0,
         expenseCount: analytics.expenseMetrics?.count || 0,
         totalOnlineTransactions: analytics.orderTypeBreakdown?.online || 0,
         totalOfflineTransactions: analytics.orderTypeBreakdown?.offline || 0,

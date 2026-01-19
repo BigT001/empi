@@ -23,13 +23,14 @@ export function useSessionExpiry() {
     // Prevent duplicate redirects
     if (hasRedirected.current) return;
 
-    // If no admin and there's a session error, redirect to login
-    if (!admin && sessionError && !hasRedirected.current) {
-      console.log('[useSessionExpiry] Detected session expiry, redirecting to login');
+    // ONLY redirect if we have an explicit sessionError (401 from API)
+    // Don't redirect just because admin is null - there might be other reasons
+    if (sessionError && !admin && !hasRedirected.current) {
+      console.log('[useSessionExpiry] Detected session expiry (401), redirecting to login:', sessionError);
       hasRedirected.current = true;
       // Use setTimeout to ensure React state updates are complete
       setTimeout(() => {
-        router.push('/admin/login');
+        router.push('/admin/login?expired=true');
       }, 500);
     }
   }, [admin, sessionError, router]);

@@ -31,9 +31,14 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState<AdminProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
+  const authCheckAttempted = React.useRef(false);
 
   // Check if admin is already logged in
   useEffect(() => {
+    if (authCheckAttempted.current) return;
+    authCheckAttempted.current = true;
+    
     console.log('[AdminContext] Mounting - checking auth on load');
     checkAuth();
   }, []);
@@ -42,12 +47,16 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   // Server extends session on each API call using sliding window
   // Admin only logs out when manually clicking the logout button
 
-  const checkAuth = async () => {
-    console.log('[AdminContext] checkAuth() called');
+  const checkAuth = async (retryCount = 0) => {
+    console.log(`[AdminContext] checkAuth() called (attempt ${retryCount + 1})`);
     try {
       const response = await fetch('/api/admin/me', {
         method: 'GET',
         credentials: 'include',
+        headers: {
+          'Cache-Control': 'no-cache',
+          'Pragma': 'no-cache',
+        },
       });
 
       console.log('[AdminContext] checkAuth response status:', response.status);
@@ -63,24 +72,46 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
           permissions: data.permissions,
           lastLogin: data.lastLogin,
         });
-        setSessionError(null); // Clear any previous errors
+        setSessionError(null);
+        setHasCheckedAuth(true);
+        setIsLoading(false);
+        return;
       } else if (response.status === 401) {
-        // Session expired or invalid
+        // Session expired or invalid - ONLY set sessionError for explicit 401
         console.log('[AdminContext] ❌ Admin session expired or invalid (401)');
         const errorData = await response.json().catch(() => ({}));
         setSessionError(errorData.error || 'Session expired. Please log in again.');
         setAdmin(null);
-      } else {
-        console.log('[AdminContext] ❌ Auth check failed with status:', response.status);
-        setSessionError('Authentication check failed. Please try again.');
-        setAdmin(null);
+        setHasCheckedAuth(true);
+        setIsLoading(false);
+        return;
+      } else if (response.status >= 500) {
+        // Server error - retry after delay
+        if (retryCount < 2) {
+          console.log('[AdminContext] ⚠️ Server error, retrying...');
+          await new Promise(resolve => setTimeout(resolve, 500 * (retryCount + 1)));
+          return checkAuth(retryCount + 1);
+        }
       }
+      
+      // Other non-401 errors or final retry failed
+      console.log('[AdminContext] ⚠️ Auth check returned status:', response.status);
+      setAdmin(null);
+      setHasCheckedAuth(true);
+      setIsLoading(false);
     } catch (error) {
       console.error('[AdminContext] Auth check error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Network error. Please check your connection.';
-      setSessionError(errorMessage);
+      
+      // Network error - retry once
+      if (retryCount < 1) {
+        console.log('[AdminContext] Network error, retrying in 500ms...');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        return checkAuth(retryCount + 1);
+      }
+      
+      console.log('[AdminContext] Auth check failed after retries');
       setAdmin(null);
-    } finally {
+      setHasCheckedAuth(true);
       setIsLoading(false);
     }
   };

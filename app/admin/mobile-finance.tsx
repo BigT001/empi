@@ -23,7 +23,7 @@ export default function MobileFinancePage() {
   const [stats, setStats] = useState<FinanceStats | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "vat" | "analytics" | "expenses">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "transactions" | "vat" | "expenses">("overview");
 
   useEffect(() => {
     loadFinanceData();
@@ -145,10 +145,6 @@ export default function MobileFinancePage() {
             <Calendar className="h-4 w-4" />
             VAT
           </button>
-          <button onClick={() => setActiveTab("analytics")} className={`flex items-center gap-1 py-3 px-3 whitespace-nowrap border-b-2 font-medium transition text-sm ${activeTab === "analytics" ? "border-lime-600 text-lime-600" : "border-transparent text-gray-600"}`}>
-            <BarChart3 className="h-4 w-4" />
-            Analytics
-          </button>
           <button onClick={() => setActiveTab("expenses")} className={`flex items-center gap-1 py-3 px-3 whitespace-nowrap border-b-2 font-medium transition text-sm ${activeTab === "expenses" ? "border-lime-600 text-lime-600" : "border-transparent text-gray-600"}`}>
             <TrendingDown className="h-4 w-4" />
             Expenses
@@ -178,7 +174,6 @@ export default function MobileFinancePage() {
         )}
         {activeTab === "transactions" && <TransactionHistory />}
         {activeTab === "vat" && <VATTab />}
-        {activeTab === "analytics" && <div className="bg-white rounded-xl p-6 text-center"><p className="text-gray-600">Analytics Coming Soon</p></div>}
         {activeTab === "expenses" && <DailyExpenses />}
       </main>
     </div>

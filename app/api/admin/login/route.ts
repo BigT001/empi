@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find admin by email
-    const admin = await Admin.findOne({ email: email.toLowerCase() });
+    let admin = await Admin.findOne({ email: email.toLowerCase() });
 
     if (!admin) {
       recordFailedAttempt(clientIP);
@@ -106,23 +106,62 @@ export async function POST(request: NextRequest) {
     const sessionToken = crypto.randomBytes(32).toString('hex');
     const sessionExpiry = new Date(Date.now() + SESSION_EXPIRY);
 
+    // Initialize sessions array if it doesn't exist (for legacy admins)
+    let adminSessions = admin.sessions;
+    if (!adminSessions || !Array.isArray(adminSessions)) {
+      console.log(`[Admin Login] ⚠️ Initializing sessions array for admin: ${admin.email}`);
+      await Admin.updateOne(
+        { _id: admin._id },
+        { $set: { sessions: [] } }
+      );
+      adminSessions = [];
+    }
+
     // Add this session to the admin's sessions array (allows multiple concurrent logins)
-    await Admin.updateOne(
+    const newSession = {
+      token: sessionToken,
+      createdAt: new Date(),
+      lastActivity: new Date(),
+      expiresAt: sessionExpiry,
+    };
+
+    const updateResult = await Admin.updateOne(
       { _id: admin._id },
       {
         lastLogin: new Date(),
         $push: {
-          sessions: {
-            token: sessionToken,
-            createdAt: new Date(),
-            lastActivity: new Date(),
-            expiresAt: sessionExpiry,
-          }
+          sessions: newSession
         }
       }
     );
 
-    console.log(`✅ Admin logged in with secure token: ${email} from IP: ${clientIP}`);
+    console.log(`[Admin Login] Session update result:`, {
+      matchedCount: updateResult.matchedCount,
+      modifiedCount: updateResult.modifiedCount,
+      acknowledged: updateResult.acknowledged
+    });
+
+    if (updateResult.modifiedCount === 0) {
+      console.error(`[Admin Login] ❌ Failed to update admin sessions for: ${email}`);
+      return NextResponse.json(
+        { error: 'Login failed - could not create session' },
+        { status: 500 }
+      );
+    }
+
+    // VERIFY the session was saved
+    const verifyAdmin = await Admin.findOne({ _id: admin._id });
+    const savedSession = verifyAdmin?.sessions?.find((s: any) => s.token === sessionToken);
+    if (!savedSession) {
+      console.error(`[Admin Login] ❌ Session not found after save - verification failed`);
+      return NextResponse.json(
+        { error: 'Login failed - session could not be verified' },
+        { status: 500 }
+      );
+    }
+
+    console.log(`✅ Admin logged in successfully: ${email} from IP: ${clientIP}`);
+    console.log(`[Admin Login] Session verified in database - token: ${sessionToken.substring(0, 8)}...`);
 
     // Create response with admin data
     const response = NextResponse.json(
@@ -143,11 +182,13 @@ export async function POST(request: NextRequest) {
       name: 'admin_session',
       value: sessionToken,
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      secure: process.env.NODE_ENV === 'production' || process.env.NEXTAUTH_URL?.startsWith('https'),
       sameSite: 'lax',
       maxAge: SESSION_EXPIRY / 1000, // Convert to seconds
       path: '/',
     });
+
+    console.log(`[Admin Login] ✅ Session cookie set for: ${admin.email}, expires in ${SESSION_EXPIRY / (1000 * 60 * 60 * 24)} days`);
 
     return response;
   } catch (error: any) {

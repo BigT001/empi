@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import MobileAdminDashboard from "../mobile-dashboard";
-import MobileAdminLayout from "../mobile-layout";
 import { EnhancedDashboard } from "../components/EnhancedDashboard";
 import { UsersPanel } from "./UsersPanel";
 import { PendingPanel } from "./PendingPanel";
 import { ProductsPanel } from "./ProductsPanel";
 import { useSessionExpiry } from "@/lib/hooks/useSessionExpiry";
+import { useResponsive } from "@/app/hooks/useResponsive";
+import { useAdmin } from "@/app/context/AdminContext";
 import { BarChart3, AlertTriangle } from "lucide-react";
 
 // ⚡ LAZY LOAD panels with code splitting - dramatically reduces initial bundle size
@@ -33,8 +33,8 @@ const TABS = [
 ] as const;
 
 export default function AdminDashboardPage() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const { mounted } = useResponsive();
+  const { admin, isLoading: authLoading } = useAdmin();
   // Active dashboard tab (dashboard | users | pending | products)
   const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'pending' | 'products'>(() => {
     try {
@@ -48,19 +48,6 @@ export default function AdminDashboardPage() {
   
   // Use session expiry hook to detect logout
   const { sessionError } = useSessionExpiry();
-
-  useEffect(() => {
-    setIsMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // Fetch tab counts
-  // No tab counts to fetch — overview-only dashboard
 
   // Persist active tab to localStorage when it changes
   useEffect(() => {
@@ -89,12 +76,13 @@ export default function AdminDashboardPage() {
     return () => window.removeEventListener('adminTabChange', onAdminTabChange as EventListener);
   }, []);
 
-  const handleTabClick = (tabId: string) => {
-    setActiveTab(tabId as any);
-  };
+  // Early returns AFTER all hooks are called
+  if (!mounted || authLoading) {
+    return null;
+  }
 
   // Show session error banner if present
-  if (isMounted && sessionError) {
+  if (mounted && sessionError) {
     return (
       <div className="min-h-screen bg-red-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-8 text-center">
@@ -112,14 +100,10 @@ export default function AdminDashboardPage() {
     );
   }
 
-  if (!isMounted) {
-    return null;
-  }
-
-  const content = (
+  return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-6 md:pb-0">
       {/* Content Area - ⚡ Lazy loaded panels only render when needed */}
-      <main className="p-4 md:p-8 w-full pb-6 md:pb-0">
+      <main className="px-4 sm:px-6 lg:px-8 py-6 md:py-8 w-full pb-6 md:pb-0">
         {/* Enhanced Analytics Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="animate-fadeIn">
@@ -151,14 +135,4 @@ export default function AdminDashboardPage() {
       </main>
     </div>
   );
-
-  if (isMobile) {
-    return (
-      <MobileAdminLayout>
-        {content}
-      </MobileAdminLayout>
-    );
-  }
-
-  return content;
 }

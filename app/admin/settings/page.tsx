@@ -3,20 +3,15 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import dynamic from "next/dynamic";
 import { useAdmin } from "@/app/context/AdminContext";
+import { useResponsive } from "@/app/hooks/useResponsive";
 import { Save, Bell, Lock, User, Shield, Users, Trash2, AlertTriangle, DollarSign } from "lucide-react";
-
-// Mobile components
-const MobileSettingsPage = dynamic(() => import("../mobile-settings"), { ssr: false });
-import MobileAdminLayout from "../mobile-layout";
 
 export default function SettingsPage() {
   // HOOKS MUST BE CALLED FIRST - BEFORE ANY CONDITIONAL LOGIC
   const { admin } = useAdmin();
   const router = useRouter();
-  const [isMobile, setIsMobile] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const { mounted } = useResponsive();
   const [activeTab, setActiveTab] = useState<"store" | "notifications" | "security" | "bank">("store");
   const [adminName, setAdminName] = useState("Admin");
   const [adminEmail, setAdminEmail] = useState("admin@empi.com");
@@ -32,28 +27,8 @@ export default function SettingsPage() {
   const [resetLoading, setResetLoading] = useState(false);
   const [resetMessage, setResetMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  // Detect mobile device
-  useEffect(() => {
-    setIsMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
-
-  // Show mobile view on small screens
-  if (!isMounted) {
+  if (!mounted) {
     return null;
-  }
-
-  if (isMobile) {
-    return (
-      <MobileAdminLayout>
-        <MobileSettingsPage />
-      </MobileAdminLayout>
-    );
   }
 
   const handleSave = () => {
