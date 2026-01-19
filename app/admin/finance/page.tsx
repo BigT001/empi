@@ -14,6 +14,7 @@ import {
   ArrowUp,
   Plus,
 } from "lucide-react";
+import { PermissionGuard } from "@/app/components/PermissionGuard";
 
 // Mobile components
 const MobileFinancePage = dynamic(() => import("../mobile-finance"), {
@@ -91,7 +92,7 @@ interface ConversionMetrics {
   conversionRate: number;
 }
 
-export default function FinancePage() {
+function FinancePageContent() {
   const [isMobile, setIsMobile] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
@@ -512,5 +513,14 @@ export default function FinancePage() {
         />
       )}
     </div>
+  );
+}
+
+// Wrap with permission guard
+export default function FinancePage() {
+  return (
+    <PermissionGuard requiredPermission="view_finance">
+      <FinancePageContent />
+    </PermissionGuard>
   );
 }

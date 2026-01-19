@@ -195,3 +195,56 @@ export async function PUT(request: NextRequest) {
     );
   }
 }
+
+/**
+ * PATCH /api/buyers
+ * Update buyer profile information
+ * 🔒 Requires valid session cookie
+ */
+export async function PATCH(request: NextRequest) {
+  try {
+    await connectDB();
+    const body = await request.json();
+    const { buyerId, updates } = body;
+
+    if (!buyerId) {
+      return NextResponse.json(
+        { error: "buyerId is required" },
+        { status: 400 }
+      );
+    }
+
+    // Find and update buyer
+    const buyer = await Buyer.findById(buyerId);
+    
+    if (!buyer) {
+      return NextResponse.json(
+        { error: "Buyer not found" },
+        { status: 404 }
+      );
+    }
+
+    // Update allowed fields only
+    const allowedFields = ['fullName', 'phone', 'address', 'city', 'state', 'postalCode'];
+    Object.keys(updates).forEach(key => {
+      if (allowedFields.includes(key)) {
+        (buyer as any)[key] = updates[key];
+      }
+    });
+
+    await buyer.save();
+
+    const buyerData = serializeDoc(buyer);
+    delete (buyerData as any).password;
+
+    console.log(`✅ Profile updated for buyer: ${buyer.email}`);
+
+    return NextResponse.json(buyerData, { status: 200 });
+  } catch (error: any) {
+    console.error("Error updating buyer profile:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to update profile" },
+      { status: 500 }
+    );
+  }
+}

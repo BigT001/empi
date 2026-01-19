@@ -123,7 +123,7 @@ function OrderConfirmationContent() {
             <h1 className="text-2xl font-bold text-gray-900">⏳ Loading...</h1>
           </div>
         </header>
-        <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
+        <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full pt-20 sm:pt-24 md:pt-20">
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
               <Loader className="h-12 w-12 animate-spin text-lime-600 mx-auto mb-4" />
@@ -144,7 +144,7 @@ function OrderConfirmationContent() {
             <h1 className="text-2xl font-bold text-gray-900">⚠️ Error</h1>
           </div>
         </header>
-        <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
+        <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full pt-20 sm:pt-24 md:pt-20">
           <div className="bg-red-50 border border-red-200 rounded-2xl p-8 text-center">
             <AlertCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
             <h1 className="text-2xl font-bold text-red-900 mb-2">Order Not Found</h1>
@@ -169,7 +169,7 @@ function OrderConfirmationContent() {
           <h1 className="text-2xl font-bold text-gray-900">✅ Order Confirmed!</h1>
         </div>
       </header>
-      <main className="flex-1 max-w-5xl mx-auto px-4 py-8 w-full">
+      <main className="flex-1 max-w-5xl mx-auto px-4 py-8 w-full pt-20 sm:pt-24 md:pt-20">
         {/* Success Header */}
         <div className="bg-white rounded-3xl shadow-lg border border-gray-200 p-12 mb-8">
           <div className="flex flex-col items-center text-center mb-8">

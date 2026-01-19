@@ -3,8 +3,8 @@ import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 import CustomOrder from '@/lib/models/CustomOrder';
 import Invoice from '@/lib/models/Invoice';
-import { sendInvoiceEmail } from '@/lib/email';
-import { generateProfessionalInvoiceHTML } from '@/lib/professionalInvoice';
+
+
 
 export async function GET(request: NextRequest) {
   try {
@@ -68,7 +68,8 @@ export async function GET(request: NextRequest) {
       const paymentCustomer = data.data.customer || {};
       
       // Use email from query params (passed from checkout) first, fall back to Paystack data
-      const customerEmail = queryEmail || paymentCustomer.email || '';
+      // IMPORTANT: Lowercase email to match invoice query logic
+      const customerEmail = (queryEmail || paymentCustomer.email || '').toLowerCase();
       const customerName = queryName || paymentCustomer.customer_code?.split('_')[0] || paymentCustomer.first_name || 'Customer';
       
       console.log('[verify-payment] 💳 Payment data extracted:');
@@ -84,6 +85,29 @@ export async function GET(request: NextRequest) {
         await connectDB();
         console.log('[verify-payment] ✅ Database connected!');
         
+        // Check if this is a custom order to get quote items
+        let invoiceItems: any[] = [{
+          name: 'Payment for Order',
+          quantity: 1,
+          price: paymentAmount,
+          mode: 'buy',
+        }];
+        let invoiceSubtotal = paymentAmount;
+        
+        const customOrder = await CustomOrder.findOne({ orderNumber: reference });
+        if (customOrder && customOrder.quoteItems && customOrder.quoteItems.length > 0) {
+          console.log('[verify-payment] 🎯 Found custom order with quote items');
+          invoiceItems = customOrder.quoteItems.map((item: any) => ({
+            name: item.itemName,
+            quantity: item.quantity,
+            price: item.unitPrice,
+            mode: 'buy',
+          }));
+          invoiceSubtotal = customOrder.quoteItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
+          console.log('[verify-payment]   - Quote items:', invoiceItems.length);
+          console.log('[verify-payment]   - Subtotal:', invoiceSubtotal);
+        }
+        
         const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
         const invoiceDate = new Date();
         const dueDate = new Date();
@@ -96,23 +120,18 @@ export async function GET(request: NextRequest) {
         console.log('[verify-payment]   - paymentVerified: true');
         console.log('[verify-payment]   - type: automatic');
         
-        // Create invoice with basic payment information (order details will be filled when order is created)
+        // Create invoice with quote items if custom order
         const invoice = new Invoice({
           invoiceNumber,
           orderNumber: paymentReference,
           customerName: customerName,
           customerEmail: customerEmail,
           customerPhone: paymentCustomer.phone || '',
-          subtotal: paymentAmount,
+          subtotal: invoiceSubtotal,
           shippingCost: 0,
           taxAmount: 0,
           totalAmount: paymentAmount,
-          items: [{
-            name: 'Payment for Order',
-            quantity: 1,
-            price: paymentAmount,
-            mode: 'buy',
-          }],
+          items: invoiceItems,
           invoiceDate,
           dueDate,
           currency: 'NGN',
@@ -144,43 +163,7 @@ export async function GET(request: NextRequest) {
         console.log('[verify-payment]   - orderNumber:', invoice.orderNumber);
         console.log('[verify-payment]   - paymentVerified:', invoice.paymentVerified);
         console.log('[verify-payment]   - customerEmail:', invoice.customerEmail);
-        
-        // Send invoice email to customer
-        try {
-          console.log('[verify-payment] 📧 Sending invoice email to customer');
-          const invoiceHtml = generateProfessionalInvoiceHTML({
-            invoiceNumber,
-            customerName: invoice.customerName,
-            customerEmail: invoice.customerEmail,
-            customerPhone: invoice.customerPhone,
-            customerAddress: '',
-            customerCity: '',
-            customerState: '',
-            customerPostalCode: '',
-            subtotal: invoice.subtotal,
-            shippingCost: invoice.shippingCost,
-            taxAmount: invoice.taxAmount,
-            totalAmount: invoice.totalAmount,
-            items: invoice.items,
-            invoiceDate: invoice.invoiceDate,
-            dueDate: invoice.dueDate,
-            currency: 'NGN',
-            currencySymbol: '₦',
-            taxRate: invoice.taxRate,
-          });
-          
-          const emailResult = await sendInvoiceEmail(
-            customerEmail,
-            customerName,
-            invoiceNumber,
-            invoiceHtml,
-            paymentReference
-          );
-          
-          console.log('[verify-payment] ✅ Invoice email sent to:', customerEmail);
-        } catch (emailError) {
-          console.error('[verify-payment] ❌ Failed to send invoice email:', emailError);
-        }
+        console.log('[verify-payment] 📋 Invoice will appear in user dashboard Invoices tab');
         
         // Send admin and buyer payment notification messages
         try {

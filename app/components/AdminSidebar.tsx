@@ -6,6 +6,8 @@ import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home, Truck, MessageCircle, Clock, Package, Users } from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
+import { hasPermission } from "@/lib/permissions";
+import type { Permission } from "@/lib/permissions";
 import {
   Sidebar,
   SidebarContent,
@@ -24,6 +26,7 @@ interface SidebarItem {
   href: string;
   icon: React.ReactNode;
   tab?: string; // optional dashboard tab id when href === '/admin/dashboard'
+  permission?: string; // required permission to view this item
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -32,54 +35,64 @@ const sidebarItems: SidebarItem[] = [
     href: "/admin/dashboard",
     icon: <Home className="h-5 w-5" />,
     tab: 'dashboard',
+    permission: 'view_dashboard',
   },
   {
     name: "Users",
     href: "/admin/dashboard",
     icon: <Users className="h-5 w-5" />,
     tab: 'users',
+    permission: 'view_dashboard',
   },
   {
     name: "Orders",
     href: "/admin/dashboard",
     icon: <Clock className="h-5 w-5" />,
     tab: 'pending',
+    permission: 'view_orders',
   },
   {
     name: "Products",
     href: "/admin/dashboard",
     icon: <Package className="h-5 w-5" />,
     tab: 'products',
+    permission: 'view_products',
   },
   {
     name: "Add Product",
     href: "/admin/upload",
     icon: <Plus className="h-5 w-5" />,
+    permission: 'view_products',
   },
   {
     name: "Finance",
     href: "/admin/finance",
     icon: <BarChart3 className="h-5 w-5" />,
+    permission: 'view_finance',
   },
   {
     name: "Invoices",
     href: "/admin/invoices",
     icon: <FileText className="h-5 w-5" />,
+    permission: 'view_invoices',
   },
   {
     name: "Reviews",
     href: "/admin/reviews",
     icon: <MessageCircle className="h-5 w-5" />,
+    permission: 'view_products',
   },
   {
     name: "Logistics",
     href: "/admin/logistics",
     icon: <Truck className="h-5 w-5" />,
+    permission: 'view_logistics',
   },
   {
     name: "Settings",
     href: "/admin/settings",
     icon: <Settings className="h-5 w-5" />,
+    permission: 'view_settings',
   },
 ];
 
@@ -87,7 +100,7 @@ export function AdminSidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const { state, isMobile, setOpenMobile } = useSidebar();
-  const { logout } = useAdmin();
+  const { logout, admin } = useAdmin();
   const [stats, setStats] = useState({ pendingInvoices: 0, pendingOrders: 0, totalOrders: 0, totalProducts: 0, registeredCustomers: 0 });
 
   const isActive = (href: string, tab?: string) => {
@@ -107,6 +120,13 @@ export function AdminSidebar() {
     }
 
     return pathname.startsWith(href);
+  };
+
+  // Check if item should be visible based on permissions
+  const isItemVisible = (item: SidebarItem): boolean => {
+    if (!item.permission) return true; // No permission required
+    if (!admin?.permissions) return false; // No admin or permissions
+    return hasPermission(admin.permissions, item.permission as Permission);
   };
 
   const handleMenuClick = () => {
@@ -169,7 +189,9 @@ export function AdminSidebar() {
 
       <SidebarContent className="py-4">
         <SidebarMenu className="gap-2">
-          {sidebarItems.map((item) => (
+          {sidebarItems
+            .filter(item => isItemVisible(item))
+            .map((item) => (
             <SidebarMenuItem key={item.name}>
               <SidebarMenuButton
                 asChild

@@ -204,6 +204,29 @@ export default function CustomCostumesPage({
       return;
     }
 
+    // Validate required fields
+    const missingFields: string[] = [];
+    if (!formData.fullName) missingFields.push("Full Name");
+    if (!formData.email) missingFields.push("Email");
+    if (!formData.phone) missingFields.push("Phone");
+    if (!formData.city) missingFields.push("City");
+    if (!formData.description) missingFields.push("Description");
+
+    if (missingFields.length > 0) {
+      setErrorMessage(`Please fill in the following fields: ${missingFields.join(", ")}`);
+      setIsLoading(false);
+      return;
+    }
+
+    console.log("[CustomCostumes] ✅ All required fields present:", {
+      fullName: formData.fullName,
+      email: formData.email,
+      phone: formData.phone,
+      city: formData.city,
+      description: formData.description,
+      images: selectedFiles.length,
+    });
+
     try {
       // Prepare FormData for multipart upload
       const uploadFormData = new FormData();

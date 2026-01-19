@@ -6,8 +6,9 @@ export interface AdminProfile {
   id: string;
   email: string;
   fullName: string;
-  role: 'super_admin' | 'admin';
+  role: 'super_admin' | 'admin' | 'finance_admin' | 'logistics_admin';
   permissions: string[];
+  department?: 'general' | 'finance' | 'logistics';
   lastLogin?: Date;
 }
 
@@ -22,8 +23,9 @@ interface AdminContextType {
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-// Session validation interval (check every 5 minutes)
-const SESSION_CHECK_INTERVAL = 5 * 60 * 1000;
+// Session validation - disabled
+// Sessions are now persistent until manual logout
+// The server extends session on each request (sliding window)
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState<AdminProfile | null>(null);
@@ -36,21 +38,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     checkAuth();
   }, []);
 
-  // Set up periodic session validation
-  useEffect(() => {
-    if (!admin) return;
-
-    console.log('[AdminContext] Setting up session validation interval (every 5 minutes)');
-    const intervalId = setInterval(() => {
-      console.log('[AdminContext] Running periodic session validation...');
-      checkAuth();
-    }, SESSION_CHECK_INTERVAL);
-
-    return () => {
-      console.log('[AdminContext] Clearing session validation interval');
-      clearInterval(intervalId);
-    };
-  }, [admin]);
+  // Session is now persistent - no periodic validation
+  // Server extends session on each API call using sliding window
+  // Admin only logs out when manually clicking the logout button
 
   const checkAuth = async () => {
     console.log('[AdminContext] checkAuth() called');

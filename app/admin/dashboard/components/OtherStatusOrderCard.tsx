@@ -76,7 +76,7 @@ export function OtherStatusOrderCard({
       paymentVerified: order.paymentVerified,
       paymentReference: order.paymentReference
     });
-  }, [order._id]);
+  }, [order._id, order.status]);
 
   const statusColors: Record<string, { bg: string; text: string; border: string }> = {
     pending: { bg: "bg-yellow-50", text: "text-yellow-700", border: "border-yellow-200" },
@@ -111,6 +111,8 @@ export function OtherStatusOrderCard({
   };
 
   const actions = statusActions[order.status] || [];
+
+  console.log(`[OtherStatusOrderCard] Rendering card for order ${order._id}: status="${order.status}", will render as: ${order.status === "pending" ? "PENDING" : order.status === "approved" ? "APPROVED" : order.status === "in-progress" ? "IN-PROGRESS" : "STANDARD"}`);
 
   return (
     <div className={`${statusConfig.bg} border-2 ${statusConfig.border} rounded-lg p-4 transition hover:shadow-lg ${
@@ -335,7 +337,10 @@ export function OtherStatusOrderCard({
             <div className="flex gap-2">
               {order.paymentVerified ? (
                 <button
-                  onClick={onApproveClick}
+                  onClick={() => {
+                    console.log(`[OtherStatusOrderCard] ✅ Approve button clicked for order: ${order._id}`);
+                    onApproveClick();
+                  }}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-lg transition"
                 >
                   <CheckCircle className="h-4 w-4" />
@@ -351,6 +356,97 @@ export function OtherStatusOrderCard({
                 </button>
               )}
             </div>
+            {order.paymentVerified && (
+              <button
+                onClick={onDeleteClick}
+                className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            )}
+          </div>
+        </div>
+      ) : order.status === "approved" ? (
+        // Approved Card View - Ready for Production
+        <div className="h-full flex flex-col">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg p-4 text-white mb-3 flex-shrink-0">
+            <h3 className="font-bold text-lg">{order.fullName || order.costumeName}</h3>
+            <p className="text-sm text-blue-100">{order.email || order.customerEmail}</p>
+          </div>
+
+          {/* Order Details */}
+          <div className="bg-white rounded-lg p-3 border-2 border-blue-200 mb-3 flex-shrink-0">
+            <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Order Details</p>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <p className="text-xs text-gray-600 font-semibold">Qty</p>
+                <p className="text-lg font-bold text-blue-700">{order.quantity || order.quantityOfPieces || 1}</p>
+              </div>
+              <div>
+                <p className="text-xs text-gray-600 font-semibold">Price</p>
+                <p className="text-lg font-bold text-blue-700">₦{(order.quotedPrice || order.price || 0).toLocaleString()}</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Description */}
+          {order.description && (
+            <div className="bg-white rounded-lg p-3 border-2 border-blue-200 mb-3 flex-shrink-0">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-1">Description</p>
+              <p className="text-sm text-gray-700">{order.description}</p>
+            </div>
+          )}
+
+          {/* Design Images */}
+          {order.designUrls && order.designUrls.length > 0 && (
+            <div className="bg-white rounded-lg p-3 border-2 border-blue-200 mb-3 flex-shrink-0">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Design Images</p>
+              <div className="grid grid-cols-3 gap-2">
+                {order.designUrls.slice(0, 3).map((url: string, idx: number) => (
+                  <div key={idx} className="relative aspect-square bg-gray-100 rounded border border-blue-300 overflow-hidden">
+                    <img
+                      src={url}
+                      alt={`Design ${idx + 1}`}
+                      className="w-full h-full object-cover cursor-pointer hover:opacity-80"
+                      onClick={onImageClick}
+                    />
+                  </div>
+                ))}
+              </div>
+              {(order.designUrls?.length ?? 0) > 3 && (
+                <button onClick={onImageClick} className="text-xs text-blue-600 font-semibold mt-2 hover:text-blue-700">
+                  View all {order.designUrls.length} images
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-2 mt-auto">
+            <button
+              onClick={() => {
+                console.log(`[OtherStatusOrderCard] 🎬 Start Production clicked for order: ${order._id}`);
+                onStatusChangeClick("in-progress");
+              }}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-lg transition"
+            >
+              ▶ Start Production
+            </button>
+            <button
+              onClick={onCancelClick}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white font-bold text-sm rounded-lg transition"
+            >
+              Cancel Order
+            </button>
+            <button
+              onClick={onDeleteClick}
+              className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </button>
           </div>
         </div>
       ) : order.status === "in-progress" ? (

@@ -100,6 +100,7 @@ export async function PATCH(
     const body = await request.json();
 
     console.log(`[API:PATCH /custom-orders/:id] 📝 Updating order ${id} with:`, body);
+    console.log(`[API:PATCH /custom-orders/:id] 📝 Received quoteItems?:`, body.quoteItems ? `YES - ${JSON.stringify(body.quoteItems)}` : 'NO');
 
     // Validate that id is a valid MongoDB ObjectId
     if (!id || id.length !== 24) {
@@ -111,18 +112,23 @@ export async function PATCH(
     }
 
     // Only allow specific fields to be updated
-    const allowedUpdates = ["status", "paymentReference", "buyerAgreedToDate", "deliveryDate", "shippingType", "address", "busStop", "city", "state", "zipCode"];
+    const allowedUpdates = ["status", "quotedPrice", "quoteItems", "paymentReference", "buyerAgreedToDate", "deliveryDate", "shippingType", "address", "busStop", "city", "state", "zipCode"];
     const updates: Record<string, any> = {};
 
     for (const key of Object.keys(body)) {
       if (allowedUpdates.includes(key)) {
         updates[key] = body[key];
+        console.log(`[API:PATCH] ✓ Including update for key: ${key} = ${typeof body[key] === 'object' ? JSON.stringify(body[key]) : body[key]}`);
+      } else {
+        console.log(`[API:PATCH] ✗ Skipping key (not in allowedUpdates): ${key}`);
       }
     }
+    
+    console.log(`[API:PATCH] Final updates object:`, JSON.stringify(updates));
 
     // Validate status if provided
     if (updates.status) {
-      const validStatuses = ["pending", "quoted", "accepted", "approved", "in-progress", "ready", "shipped", "rejected", "completed"];
+      const validStatuses = ["pending", "paid", "quoted", "accepted", "approved", "in-progress", "ready", "shipped", "rejected", "completed"];
       if (!validStatuses.includes(updates.status)) {
         return NextResponse.json(
           { message: "Invalid status value" },
@@ -146,6 +152,8 @@ export async function PATCH(
     }
 
     console.log(`✅ Custom order ${id} updated:`, updates);
+    console.log(`[API:PATCH] 📊 Updated order from DB now has quoteItems?:`, updatedOrder.quoteItems ? `YES - ${JSON.stringify(updatedOrder.quoteItems)}` : 'NO');
+    console.log(`[API:PATCH] 📊 Updated order quotedPrice:`, updatedOrder.quotedPrice);
 
     // Send email notification if order was rejected
     if (updates.status === "rejected") {

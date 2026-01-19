@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import MobileAdminDashboard from "../mobile-dashboard";
 import MobileAdminLayout from "../mobile-layout";
+import { EnhancedDashboard } from "../components/EnhancedDashboard";
 import { UsersPanel } from "./UsersPanel";
 import { PendingPanel } from "./PendingPanel";
 import { ProductsPanel } from "./ProductsPanel";
@@ -116,13 +117,13 @@ export default function AdminDashboardPage() {
   }
 
   const content = (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pb-6 md:pb-0">
+    <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-6 md:pb-0">
       {/* Content Area - ⚡ Lazy loaded panels only render when needed */}
       <main className="p-4 md:p-8 w-full pb-6 md:pb-0">
-        {/* Overview + Panels */}
+        {/* Enhanced Analytics Dashboard */}
         {activeTab === 'dashboard' && (
           <div className="animate-fadeIn">
-            <MobileAdminDashboard />
+            <EnhancedDashboard />
           </div>
         )}
 

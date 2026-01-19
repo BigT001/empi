@@ -30,6 +30,7 @@ export interface ICustomOrder extends Document {
   status: 'pending' | 'approved' | 'in-progress' | 'ready' | 'completed' | 'rejected';
   notes?: string;
   quotedPrice?: number;
+  quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>; // Line items for quote
   unitPrice?: number; // Unit price per item (for auto-recalculation when quantity changes)
   paymentVerified?: boolean; // Whether payment has been verified (for UI display)
   paymentReference?: string; // Reference from payment gateway (Paystack)
@@ -107,6 +108,13 @@ const customOrderSchema = new Schema(
     },
     notes: String,
     quotedPrice: Number,
+    quoteItems: [
+      {
+        itemName: String,
+        quantity: Number,
+        unitPrice: Number,
+      }
+    ],
     unitPrice: Number, // Unit price per item (for auto-recalculation when quantity changes)
     paymentVerified: {
       type: Boolean,

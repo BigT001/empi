@@ -31,13 +31,53 @@ interface CustomOrder {
   deliveryDate?: string;
   proposedDeliveryDate?: string;
   buyerAgreedToDate?: boolean;
-  status: "pending" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
+  status: "pending" | "paid" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
   notes?: string;
   quotedPrice?: number;
+  quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
   productId?: string;
   deadlineDate?: string;
   timerStartedAt?: string;
   timerDurationDays?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface RegularOrder {
+  _id: string;
+  orderNumber: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country: string;
+  items: Array<{
+    productId: string;
+    product?: any;
+    name: string;
+    quantity: number;
+    price: number;
+    mode: 'buy' | 'rent';
+    selectedSize?: string;
+    imageUrl?: string;
+  }>;
+  status: string;
+  subtotal: number;
+  vat: number;
+  total: number;
+  shippingType: string;
+  shippingCost: number;
+  pricing?: {
+    subtotal?: number;
+    discount?: number;
+    discountPercentage?: number;
+    subtotalAfterDiscount?: number;
+    tax?: number;
+    total?: number;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -48,6 +88,7 @@ export default function BuyerDashboardPage() {
   const [category, setCategory] = useState("adults");
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
+  const [regularOrders, setRegularOrders] = useState<RegularOrder[]>([]);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
   const [activeTab, setActiveTab] = useState<"invoices" | "orders" | "profile">(() => {
     if (typeof window !== 'undefined') {
@@ -142,15 +183,38 @@ export default function BuyerDashboardPage() {
       }
       
       const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
+      console.log('[Dashboard] 🔄 Polling custom orders with:', queryParam);
       const response = await fetch(`/api/custom-orders?${queryParam}`);
       const data = await response.json();
       
       if (data.orders && Array.isArray(data.orders)) {
+        console.log('[Dashboard] ✅ Fetched', data.orders.length, 'custom orders');
         setCustomOrders(data.orders);
         fetchMessageCounts(data.orders);
       }
     } catch (error) {
       console.error("[Dashboard] Error fetching custom orders:", error);
+    }
+  };
+
+  // Fetch regular orders
+  const fetchRegularOrders = async () => {
+    try {
+      if (!buyer?.id && !buyer?.email) {
+        return;
+      }
+      
+      const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
+      console.log('[Dashboard] 🔄 Polling regular orders with:', queryParam);
+      const response = await fetch(`/api/orders?${queryParam}`);
+      const data = await response.json();
+      
+      if (data.orders && Array.isArray(data.orders)) {
+        console.log('[Dashboard] ✅ Fetched', data.orders.length, 'regular orders');
+        setRegularOrders(data.orders);
+      }
+    } catch (error) {
+      console.error("[Dashboard] Error fetching regular orders:", error);
     }
   };
 
@@ -167,55 +231,86 @@ export default function BuyerDashboardPage() {
     const fetchAndProcess = async () => {
       try {
         const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
-        const response = await fetch(`/api/custom-orders?${queryParam}`);
-        const data = await response.json();
         
-        if (data.orders && Array.isArray(data.orders)) {
-          setCustomOrders(data.orders);
-          fetchMessageCounts(data.orders);
+        // Fetch custom orders
+        const customResponse = await fetch(`/api/custom-orders?${queryParam}`);
+        const customData = await customResponse.json();
+        
+        if (customData.orders && Array.isArray(customData.orders)) {
+          setCustomOrders(customData.orders);
+          fetchMessageCounts(customData.orders);
+        }
 
-          const params = new URLSearchParams(window.location.search);
-          const orderNumber = params.get("order");
+        // Fetch regular orders
+        const regularResponse = await fetch(`/api/orders?${queryParam}`);
+        const regularData = await regularResponse.json();
+        
+        if (regularData.orders && Array.isArray(regularData.orders)) {
+          setRegularOrders(regularData.orders);
+        }
+
+        const params = new URLSearchParams(window.location.search);
+        const orderNumber = params.get("order");
+        
+        if (orderNumber) {
+          setActiveTab("orders");
           
-          if (orderNumber) {
-            setActiveTab("orders");
-            
-            const matchingOrder = data.orders.find((o: CustomOrder) => o.orderNumber === orderNumber);
-            if (matchingOrder) {
-              setTimeout(() => {
-                const orderElement = document.getElementById(`order-${matchingOrder._id}`);
-                if (orderElement) {
-                  orderElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-              }, 300);
-            }
+          // Check in custom orders first
+          const matchingCustomOrder = customData.orders?.find((o: CustomOrder) => o.orderNumber === orderNumber);
+          if (matchingCustomOrder) {
+            setTimeout(() => {
+              const orderElement = document.getElementById(`order-${matchingCustomOrder._id}`);
+              if (orderElement) {
+                orderElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 300);
+          }
+          
+          // Then check in regular orders
+          const matchingRegularOrder = regularData.orders?.find((o: RegularOrder) => o.orderNumber === orderNumber);
+          if (matchingRegularOrder) {
+            setTimeout(() => {
+              const orderElement = document.getElementById(`order-${matchingRegularOrder._id}`);
+              if (orderElement) {
+                orderElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }
+            }, 300);
           }
         }
       } catch (error) {
-        console.error('[Dashboard] Error fetching custom orders:', error);
+        console.error('[Dashboard] Error fetching orders:', error);
       }
     };
     
     fetchAndProcess();
   }, [buyer?.email, isHydrated]);
 
-  // Polling for updates
+  // Polling for updates - check every 3 seconds for live updates
   useEffect(() => {
-    if (!buyer?.email) return;
+    if (!buyer?.email) {
+      console.log('[Dashboard] Skipping polling - no buyer email');
+      return;
+    }
     
+    console.log('[Dashboard] 🔔 Starting polling for updates (every 3 seconds)');
+
     const handleVisibilityChange = () => {
       if (!document.hidden) {
+        console.log('[Dashboard] 👀 Page became visible - fetching updates');
         fetchCustomOrders();
+        fetchRegularOrders();
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
+    // Poll every 3 seconds for faster updates
     const pollingInterval = setInterval(() => {
       if (!document.hidden) {
         fetchCustomOrders();
+        fetchRegularOrders();
       }
-    }, 8000);
+    }, 3000);
 
     return () => {
       clearInterval(pollingInterval);
@@ -332,8 +427,10 @@ export default function BuyerDashboardPage() {
   const handleSaveProfile = async () => {
     try {
       setIsSaving(true);
-      updateProfile(editFormData);
+      await updateProfile(editFormData);
       setIsEditingProfile(false);
+    } catch (error) {
+      console.error('Error saving profile:', error);
     } finally {
       setIsSaving(false);
     }
@@ -359,7 +456,7 @@ export default function BuyerDashboardPage() {
         onCurrencyChange={setCurrency}
       />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-6 sm:py-8 w-full mt-4 md:mt-6 lg:pt-20">
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-6 sm:py-8 w-full pt-20 sm:pt-24 md:pt-20 lg:pt-20">
         {/* Welcome Header */}
         <div className="mb-8 sm:mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1">
@@ -381,7 +478,7 @@ export default function BuyerDashboardPage() {
         {/* Tab Navigation */}
         <div className="mb-12 flex gap-2 sm:gap-4">
           {[
-            { id: "orders", label: "Orders", count: customOrders.length, color: "text-lime-700 border-lime-300", badgeColor: "bg-lime-600 text-white" },
+            { id: "orders", label: "Orders", count: customOrders.length + regularOrders.length, color: "text-lime-700 border-lime-300", badgeColor: "bg-lime-600 text-white" },
             { id: "invoices", label: "Invoices", count: invoices.length, color: "text-blue-700 border-blue-300", badgeColor: "bg-blue-600 text-white" },
             { id: "profile", label: "Profile", count: null, color: "text-indigo-700 border-indigo-300", badgeColor: "bg-indigo-600 text-white" }
           ].map((tab) => (
@@ -411,6 +508,7 @@ export default function BuyerDashboardPage() {
         {activeTab === "orders" && (
           <OrdersTab
             customOrders={customOrders}
+            regularOrders={regularOrders}
             messageCountPerOrder={messageCountPerOrder}
             setChatModalOpen={setChatModalOpen}
             setImageModalOpen={setImageModalOpen}

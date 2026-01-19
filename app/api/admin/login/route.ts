@@ -4,7 +4,8 @@ import Admin from '@/lib/models/Admin';
 import crypto from 'crypto';
 import { isRateLimited, recordFailedAttempt, clearRateLimit, getRemainingAttempts, getLockoutRemainingTime } from '@/lib/rate-limit';
 
-const SESSION_EXPIRY = 7 * 24 * 60 * 60 * 1000; // 7 days
+// Session expires only on manual logout - set to 30 days (very long)
+const SESSION_EXPIRY = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 /**
  * Extract client IP address from request
@@ -69,6 +70,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Debug: Log the admin role
+    console.log(`[Admin Login] Found admin: ${admin.email}, role: ${admin.role}`);
+
     // Check if admin is active
     if (!admin.isActive) {
       recordFailedAttempt(clientIP);
@@ -102,11 +106,15 @@ export async function POST(request: NextRequest) {
     const sessionToken = crypto.randomBytes(32).toString('hex');
     const sessionExpiry = new Date(Date.now() + SESSION_EXPIRY);
 
-    // Update admin with session info
-    admin.lastLogin = new Date();
-    admin.sessionToken = sessionToken;
-    admin.sessionExpiry = sessionExpiry;
-    await admin.save();
+    // Update admin with session info - use updateOne to avoid validation
+    await Admin.updateOne(
+      { _id: admin._id },
+      {
+        lastLogin: new Date(),
+        sessionToken: sessionToken,
+        sessionExpiry: sessionExpiry,
+      }
+    );
 
     console.log(`✅ Admin logged in with secure token: ${email} from IP: ${clientIP}`);
 

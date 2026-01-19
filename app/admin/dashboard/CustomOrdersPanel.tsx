@@ -1,11 +1,11 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
+import { flushSync } from "react-dom";
 import { FileText, Clock, CheckCircle, AlertCircle, Phone, Mail, DollarSign, Calendar, MessageCircle, MapPin, ChevronDown, Trash2, XCircle, Search } from "lucide-react";
 // ChatModal removed
 import { useAdmin } from "@/app/context/AdminContext";
 import { StatusTabs } from "./components/StatusTabs";
-import { ApprovedOrderCard } from "./components/ApprovedOrderCard";
 import { OtherStatusOrderCard } from "./components/OtherStatusOrderCard";
 import { ImageModal } from "./components/ImageModal";
 import { ConfirmationModal } from "./components/ConfirmationModal";
@@ -116,6 +116,12 @@ export function CustomOrdersPanel() {
   }, []);
 
   useEffect(() => {
+    console.log(`[CustomOrdersPanel] 🔄 Filter effect triggered:`, {
+      selectedStatus,
+      totalOrders: orders.length,
+      searchQuery
+    });
+    
     let filtered: CustomOrder[];
     
     if (selectedStatus === "all") {
@@ -124,6 +130,14 @@ export function CustomOrdersPanel() {
       filtered = orders.filter((o) => o.status === "rejected");
     } else {
       filtered = orders.filter((o) => o.status === selectedStatus);
+    }
+
+    console.log(`[CustomOrdersPanel] 📊 After status filter: ${filtered.length} orders match selectedStatus="${selectedStatus}"`);
+    
+    // Log matching orders
+    if (selectedStatus !== "all") {
+      const matchingOrders = orders.filter((o) => o.status === selectedStatus);
+      console.log(`[CustomOrdersPanel] 🔍 Orders with status="${selectedStatus}":`, matchingOrders.map(o => ({ _id: o._id, status: o.status })));
     }
 
     // Apply search filter
@@ -135,6 +149,7 @@ export function CustomOrdersPanel() {
       );
     }
 
+    console.log(`[CustomOrdersPanel] ✅ Setting filteredOrders with ${filtered.length} items`);
     setFilteredOrders(filtered);
   }, [orders, selectedStatus, searchQuery]);
 
@@ -430,16 +445,15 @@ export function CustomOrdersPanel() {
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      console.log(`[CustomOrdersPanel] ðŸ"„ Updating order ${orderId} status to: ${newStatus}`);
+      console.log(`[CustomOrdersPanel] 🔄 Updating order ${orderId} status to: ${newStatus}`);
       
       const updatePayload: Record<string, any> = { status: newStatus };
-            // Find the order to check if it's a custom order
       const order = orders.find(o => o._id === orderId);
       if (order) {
-        updatePayload.isCustomOrder = order.isCustomOrder !== false; // Default to true if not set
+        updatePayload.isCustomOrder = order.isCustomOrder !== false;
         console.log(`[CustomOrdersPanel] Order type: ${updatePayload.isCustomOrder ? 'Custom Order' : 'Regular Order'}`);
       }
-            // If transitioning to "in-progress", set the productionStartedAt timestamp
+      
       if (newStatus === "in-progress") {
         updatePayload.productionStartedAt = new Date().toISOString();
       }
@@ -467,7 +481,10 @@ export function CustomOrdersPanel() {
         throw new Error(data.message || `Failed to update order status to ${newStatus}`);
       }
 
-      // Use the order we found earlier to send a system message
+      const actualNewStatus = data.order?.status || newStatus;
+      console.log(`[CustomOrdersPanel] 🔍 API returned status: "${actualNewStatus}"`);
+
+      // Send system message to user
       if (order) {
         const statusMessages: Record<string, string> = {
           "in-progress": "Your order production has started! We'll keep you updated.",
@@ -475,8 +492,7 @@ export function CustomOrdersPanel() {
           "completed": "Your order has been completed!"
         };
         
-        if (statusMessages[newStatus]) {
-          // Send the main status message
+        if (statusMessages[actualNewStatus]) {
           await fetch("/api/messages", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -486,13 +502,12 @@ export function CustomOrdersPanel() {
               senderEmail: admin?.email || "admin@empi.com",
               senderName: "System",
               senderType: "admin",
-              content: statusMessages[newStatus],
+              content: statusMessages[actualNewStatus],
               messageType: "system",
             }),
           });
 
-          // If marked as ready, send delivery confirmation options
-          if (newStatus === "ready") {
+          if (actualNewStatus === "ready") {
             const deliveryOptionsMessage = `🚚 **CONFIRM YOUR DELIVERY CHOICE** 🚚\n\nYour costume is ready! Please confirm how you'd like to receive it:\n\nDELIVERY OPTIONS`;
             
             await fetch("/api/messages", {
@@ -512,13 +527,44 @@ export function CustomOrdersPanel() {
         }
       }
       
-      setOrders(orders.map(o => 
-        o._id === orderId ? { ...o, status: newStatus as any } : o
-      ));
-      showToast(`Order status updated to ${newStatus}!`, "success");
+      // Update local state - use flushSync to ensure it happens synchronously
+      console.log(`[CustomOrdersPanel] 📝 Updating local state with status: ${actualNewStatus}`);
+      flushSync(() => {
+        setOrders(orders.map(o => 
+          o._id === orderId ? { ...o, status: actualNewStatus as any } : o
+        ));
+      });
+      console.log(`[CustomOrdersPanel] ✅ Local state updated synchronously`);
+
+      // Now switch tab - this happens AFTER orders are updated
+      console.log(`[CustomOrdersPanel] 🔍 Switching to tab for status: "${actualNewStatus}"`);
+      if (actualNewStatus === "approved") {
+        console.log('[CustomOrdersPanel] 📌 EXECUTING: Auto-switching to Approved tab');
+        flushSync(() => {
+          setSelectedStatus("approved");
+        });
+      } else if (actualNewStatus === "in-progress") {
+        console.log('[CustomOrdersPanel] 📌 EXECUTING: Auto-switching to In Progress tab');
+        flushSync(() => {
+          setSelectedStatus("in-progress");
+        });
+      } else if (actualNewStatus === "ready") {
+        console.log('[CustomOrdersPanel] 📌 EXECUTING: Auto-switching to Ready tab');
+        flushSync(() => {
+          setSelectedStatus("ready");
+        });
+      } else if (actualNewStatus === "completed") {
+        console.log('[CustomOrdersPanel] 📌 EXECUTING: Auto-switching to Completed tab');
+        flushSync(() => {
+          setSelectedStatus("completed");
+        });
+      }
+
+      console.log(`[CustomOrdersPanel] ✅ Tab switched, showing toast`);
+      showToast(`Order status updated to ${actualNewStatus}!`, "success");
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.error("[CustomOrdersPanel] âŒ Error updating order status:", errorMsg);
+      console.error("[CustomOrdersPanel] ❌ Error updating order status:", errorMsg);
       showToast(`Failed to update order status: ${errorMsg}`, "error");
     }
   };
@@ -584,35 +630,27 @@ export function CustomOrdersPanel() {
 
       {/* Orders List View - When a status tab is selected */}
       {!isLoading && selectedStatus !== "all" && filteredOrders.length > 0 && (
-        <div className={selectedStatus === "approved" || selectedStatus === "pending" ? "grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6" : "grid grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-6"}>
-          {selectedStatus === "approved" ? (
-            // Approved cards using ApprovedOrderCard component
-            filteredOrders.map((order) => (
-              <ApprovedOrderCard
-                key={order._id}
-                order={order as any}
-                onStartProduction={(orderId) => updateOrderStatus(orderId, "in-progress")}
-              />
-            ))
-          ) : (
-            // Pending cards using OtherStatusOrderCard component
-            filteredOrders.map((order) => (
-              <OtherStatusOrderCard
-                key={order._id}
-                order={order as any}
-                expanded={expandedOrder === order._id}
-                onExpandClick={() => setExpandedOrder(expandedOrder === order._id ? null : order._id)}
-                onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
-                onDeclineClick={() => setConfirmModal({ type: 'decline', orderId: order._id })}
-                onCancelClick={() => setConfirmModal({ type: 'cancel', orderId: order._id })}
-                onStatusChangeClick={(status) => {
-                  updateOrderStatus(order._id, status);
-                }}
-                onDeleteClick={() => setConfirmModal({ type: 'delete', orderId: order._id })}
-                onApproveClick={() => updateOrderStatus(order._id, 'approved')}
-              />
-            ))
-          )}
+        <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {filteredOrders.map((order) => (
+            <OtherStatusOrderCard
+              key={order._id}
+              order={order as any}
+              expanded={expandedOrder === order._id}
+              onExpandClick={() => setExpandedOrder(expandedOrder === order._id ? null : order._id)}
+              onImageClick={() => setImageModalOpen({ orderId: order._id, index: 0 })}
+              onDeclineClick={() => setConfirmModal({ type: 'decline', orderId: order._id })}
+              onCancelClick={() => setConfirmModal({ type: 'cancel', orderId: order._id })}
+              onStatusChangeClick={(status) => {
+                console.log(`[CustomOrdersPanel] 🎯 onStatusChangeClick: order=${order._id}, status=${status}`);
+                updateOrderStatus(order._id, status);
+              }}
+              onDeleteClick={() => setConfirmModal({ type: 'delete', orderId: order._id })}
+              onApproveClick={() => {
+                console.log(`[CustomOrdersPanel] 🎯 onApproveClick called for order: ${order._id}`);
+                updateOrderStatus(order._id, 'approved');
+              }}
+            />
+          ))}
         </div>
       )}
 

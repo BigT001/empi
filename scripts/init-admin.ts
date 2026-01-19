@@ -16,9 +16,11 @@ async function initializeAdmin() {
     }
 
     // Create super admin
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@empicostumes.com';
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Mastercode@empicostumes';
     const superAdmin = new Admin({
-      email: 'sta99175@gmail.com',
-      password: 'empi',
+      email: adminEmail,
+      password: adminPassword,
       fullName: 'Admin',
       role: 'super_admin',
       permissions: [
@@ -36,8 +38,8 @@ async function initializeAdmin() {
 
     await superAdmin.save();
     console.log('✅ Super admin created successfully');
-    console.log('Email: sta99175@gmail.com');
-    console.log('Password: empi');
+    console.log('Email:', adminEmail);
+    console.log('Password:', adminPassword);
     process.exit(0);
   } catch (error) {
     console.error('❌ Error initializing admin:', error);

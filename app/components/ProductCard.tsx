@@ -99,10 +99,11 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
   const displayPrice = cardMode === "rent" ? formatPrice(product.rentPrice) : formatPrice(product.sellPrice);
 
   return (
-    <article 
-      className="group flex flex-col border border-gray-200 rounded-lg md:rounded-xl overflow-hidden hover:border-gray-400 hover:shadow-lg transition break-inside-avoid"
-    >
-      {/* Main Image Section - Clickable */}
+    <>
+      <article 
+        className="group flex flex-col border border-gray-200 rounded-lg md:rounded-xl overflow-hidden hover:border-gray-400 hover:shadow-lg transition break-inside-avoid"
+      >
+        {/* Main Image Section - Clickable */}
       <Link href={`/product/${productId}?mode=${cardMode}`} className="relative w-full aspect-[4/5] overflow-hidden flex-shrink-0 bg-gray-50 cursor-pointer">
         {product.badge && (
           <div className="absolute top-2 md:top-3 right-2 md:right-3 z-10 bg-lime-600 text-white text-xs font-bold px-2 md:px-3 py-1 rounded-full">
@@ -242,20 +243,36 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
         </div>
       </div>
 
-      {/* Add to Cart Notification - Bottom of screen */}
+      </article>
+
+      {/* Add to Cart Notification - Portal-style notification outside article */}
       {showNotification && (
-        <div className="fixed bottom-6 left-4 right-4 md:left-auto md:right-6 md:w-80 z-50 animate-in slide-in-from-bottom duration-300">
-          <div className="bg-lime-600 text-white rounded-lg shadow-lg p-4 flex items-center gap-3">
-            <div className="flex-shrink-0">
-              <Check className="h-5 w-5" />
-            </div>
-            <div className="flex-grow">
-              <p className="font-semibold text-sm">Added to cart!</p>
-              <p className="text-xs opacity-90">{product.name}</p>
+        <div style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          pointerEvents: 'none',
+          zIndex: 99999
+        }}>
+          <div style={{ 
+            position: 'fixed', 
+            bottom: '24px', 
+            left: '16px',
+            right: '16px',
+            pointerEvents: 'auto'
+          }}
+          className="md:left-auto md:right-6 md:w-80">
+            <div className="bg-lime-600 text-white rounded-lg shadow-2xl p-4 flex items-center gap-3 animate-in slide-in-from-bottom duration-300">
+              <div className="shrink-0">
+                <Check className="h-5 w-5" />
+              </div>
+              <div className="grow">
+                <p className="font-semibold text-sm">Added to cart successfully!</p>
+                <p className="text-xs opacity-90">{product.name}</p>
+              </div>
             </div>
           </div>
         </div>
       )}
-    </article>
+    </>
   );
 }

@@ -32,6 +32,7 @@ export interface IDeliveryDetails {
 export interface IOrder extends Document {
   buyerId?: string;
   orderNumber: string;
+  orderType: 'rental' | 'sales' | 'mixed'; // Explicit categorization
   firstName: string;
   lastName: string;
   email: string;
@@ -70,6 +71,7 @@ export interface IOrder extends Document {
   // Rental schedule (shared for all rental items)
   rentalSchedule?: IRentalSchedule;
   cautionFee?: number; // 50% of total rental amount
+  cautionFeeTransactionId?: string; // Reference to CautionFeeTransaction for tracking
   // Pricing breakdown
   pricing?: {
     subtotal?: number;
@@ -110,6 +112,13 @@ const orderSchema = new Schema<IOrder>(
   {
     buyerId: { type: Schema.Types.ObjectId, ref: 'Buyer' },
     orderNumber: { type: String, required: true, unique: true },
+    orderType: {
+      type: String,
+      enum: ['rental', 'sales', 'mixed'],
+      default: 'sales',
+      required: true,
+      index: true,
+    },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     email: { type: String, required: true },
@@ -160,6 +169,7 @@ const orderSchema = new Schema<IOrder>(
     // Rental schedule (shared for all rental items)
     rentalSchedule: rentalScheduleSchema,
     cautionFee: { type: Number, default: 0 }, // 50% of total rental amount
+    cautionFeeTransactionId: { type: Schema.Types.ObjectId, ref: 'CautionFeeTransaction' }, // Link to caution fee tracking
     // Pricing breakdown
     pricing: {
       subtotal: Number,

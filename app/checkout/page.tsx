@@ -57,11 +57,33 @@ export default function CheckoutPage() {
         
         console.log('[Checkout] Processed quote with values:', completeQuote);
         setCustomQuote(completeQuote);
+
+        // Load customer info from the custom order if not logged in as a buyer
+        if (quote.orderId && !buyer?.id) {
+          console.log('[Checkout] Loading customer info from custom order:', quote.orderId);
+          fetch(`/api/custom-orders/${quote.orderId}`)
+            .then(res => res.json())
+            .then(customOrder => {
+              if (customOrder && customOrder.fullName) {
+                setGuestCustomer({
+                  fullName: customOrder.fullName || '',
+                  email: (customOrder.email || '').toLowerCase(), // Normalize email to lowercase
+                  phone: customOrder.phone || '',
+                });
+                console.log('[Checkout] ✅ Loaded guest customer from custom order:', {
+                  fullName: customOrder.fullName,
+                  email: customOrder.email,
+                  phone: customOrder.phone,
+                });
+              }
+            })
+            .catch(err => console.error('[Checkout] Error loading custom order:', err));
+        }
       } catch (err) {
         console.error('[Checkout] Error parsing quote:', err);
       }
     }
-  }, []);
+  }, [buyer?.id]);
 
   // Handle payment success - save order (invoice auto-generated via API)
   const handlePaymentSuccess = async (response: any) => {
@@ -90,38 +112,57 @@ export default function CheckoutPage() {
         const taxAmount = customQuote.quotedVAT || 0;
         const totalAmount = customQuote.quotedTotal || (subtotal + taxAmount + shippingCost);
 
-        orderData = {
-          reference: response.reference,
-          buyerId: buyer?.id || null,
-          customer: {
-            name: customerInfo.fullName,
-            email: customerInfo.email,
-            phone: customerInfo.phone,
-          },
-          items: [{
-            id: customQuote.orderId,
-            name: `Order #${customQuote.orderNumber}`,
-            quantity: customQuote.quantity || 1,
-            price: customQuote.quotedPrice || 0,
-            mode: 'buy'
-          }],
-          rentalSchedule: null,
-          shippingType: shippingOption || 'standard',
-          status: 'confirmed',
-          shippingCost: 0,
-          pricing: {
-            subtotal: subtotal,
-            goodsSubtotal: subtotal,
-            cautionFee: 0,
-            tax: taxAmount,
-            shipping: 0,
-            total: totalAmount,
-            discount: customQuote?.discountAmount || 0,
-          },
-          createdAt: new Date().toISOString(),
-          isCustomOrder: true,
-          customOrderId: customQuote?.orderId || null,
-        };
+        // For custom orders, just update the status to 'paid' in the CustomOrder document
+        // Don't create a new Order entry
+        try {
+          const updateRes = await fetch(`/api/custom-orders/${customQuote.orderId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              status: 'paid',
+              paymentReference: response.reference,
+              paymentVerified: true,
+            }),
+          });
+
+          if (updateRes.ok) {
+            const updateData = await updateRes.json();
+            console.log("✅ Custom order status updated to 'paid':", updateData);
+          } else {
+            const errorData = await updateRes.json();
+            console.error("❌ Failed to update custom order status:", errorData);
+          }
+        } catch (err) {
+          console.error("Error updating custom order status:", err);
+        }
+
+        // Call verify-payment to trigger invoice generation for custom orders
+        console.log("📧 Triggering invoice generation for custom order...");
+        try {
+          const params = new URLSearchParams();
+          params.append('reference', response.reference);
+          params.append('email', customerInfo.email.toLowerCase());
+          params.append('name', customerInfo.fullName);
+          const verifyRes = await fetch(`/api/verify-payment?${params.toString()}`);
+          const verifyData = await verifyRes.json();
+          
+          if (verifyData.success) {
+            console.log("✅ Invoice generated for custom order:", verifyData.invoiceNumber || 'N/A');
+          } else {
+            console.warn("⚠️ Invoice generation returned non-success:", verifyData);
+          }
+        } catch (err) {
+          console.error("❌ Error calling verify-payment for invoice:", err);
+        }
+
+        // Don't need to create a separate order, but we can still log payment success
+        console.log("🎉 Payment successful for custom order!");
+        setPaymentSuccessful(true);
+        setSuccessReference(response.reference);
+        
+        // Clear custom quote from sessionStorage
+        sessionStorage.removeItem('customOrderQuote');
+        return;
       } else {
         const buyItems = items.filter((item: any) => item.mode === 'buy');
         const rentalItems = items.filter((item: any) => item.mode === 'rent');
@@ -387,12 +428,24 @@ export default function CheckoutPage() {
     shippingCost = 0;
     taxEstimate = quotedVAT;
     totalAmount = quotedTotal || (quotedPrice + quotedVAT);
-    displayItems = [{
-      name: `Custom Order #${customQuote.orderNumber}`,
-      quantity: customQuote.quantity || 1,
-      price: quotedPrice,
-      total: quotedPrice * (customQuote.quantity || 1)
-    }];
+    
+    // Build display items from quote items if available
+    if (customQuote.items && Array.isArray(customQuote.items) && customQuote.items.length > 0) {
+      displayItems = customQuote.items.map((item: any) => ({
+        name: item.itemName || 'Custom Item',
+        quantity: item.quantity || 1,
+        price: item.unitPrice || 0,
+        total: (item.quantity || 1) * (item.unitPrice || 0)
+      }));
+    } else {
+      displayItems = [{
+        name: `Custom Order`,
+        quantity: customQuote.quantity || 1,
+        price: quotedPrice,
+        total: quotedPrice * (customQuote.quantity || 1)
+      }];
+    }
+    
     displaySubtotal = quotedPrice;
     displayTotal = totalAmount;
     
@@ -400,6 +453,7 @@ export default function CheckoutPage() {
       quotedPrice,
       quotedVAT,
       quotedTotal,
+      displayItems,
       displaySubtotal,
       displayTotal,
     });
@@ -459,7 +513,7 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full">
+      <main className="flex-1 max-w-4xl mx-auto px-4 py-12 w-full pt-20 sm:pt-24 md:pt-20">
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Payment Form */}
           <div className="lg:col-span-2">

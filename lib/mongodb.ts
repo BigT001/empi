@@ -2,10 +2,6 @@ import mongoose from 'mongoose';
 
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
-if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env');
-}
-
 let cached: { conn: typeof mongoose | null; promise: Promise<typeof mongoose> | null } = {
   conn: null,
   promise: null,
@@ -31,6 +27,11 @@ if (!globalWithMongo.mongoose) {
 }
 
 async function connectDB(): Promise<typeof mongoose> {
+  // Check environment variable when function is called, not at module load time
+  if (!MONGODB_URI) {
+    throw new Error('Please define the MONGODB_URI environment variable inside .env');
+  }
+
   if (globalWithMongo.mongoose.conn) {
     console.log('[MongoDB] ✅ Using cached connection');
     return globalWithMongo.mongoose.conn;

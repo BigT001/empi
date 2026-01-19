@@ -114,6 +114,8 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
   const login = (buyerData: BuyerProfile) => {
     const updatedBuyer = {
       ...buyerData,
+      // Normalize email to lowercase for consistency in queries
+      email: buyerData.email.toLowerCase(),
       lastLogin: new Date().toISOString(),
     };
     setBuyer(updatedBuyer);
@@ -144,10 +146,16 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
 
   const register = async (data: Omit<BuyerProfile, 'id' | 'createdAt' | 'lastLogin'>): Promise<BuyerProfile | null> => {
     try {
+      // Normalize email to lowercase
+      const normalizedData = {
+        ...data,
+        email: data.email.toLowerCase(),
+      };
+      
       const response = await fetch("/api/buyers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(normalizedData),
       });
 
       if (!response.ok) {
@@ -155,6 +163,8 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
       }
 
       const newBuyer = await response.json();
+      // Ensure email is lowercase in the response too
+      newBuyer.email = newBuyer.email.toLowerCase();
       setBuyer(newBuyer);
       return newBuyer;
     } catch (error) {
@@ -162,6 +172,7 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
       // Fallback to local registration if API fails
       const localBuyer: BuyerProfile = {
         ...data,
+        email: data.email.toLowerCase(),
         id: `BUYER-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`,
         createdAt: new Date().toISOString(),
         lastLogin: new Date().toISOString(),
@@ -173,7 +184,9 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
 
   const loginByEmail = async (email: string, phone: string): Promise<BuyerProfile | null> => {
     try {
-      const response = await fetch(`/api/buyers?email=${encodeURIComponent(email)}`, {
+      // Normalize email to lowercase
+      const normalizedEmail = email.toLowerCase();
+      const response = await fetch(`/api/buyers?email=${encodeURIComponent(normalizedEmail)}`, {
         method: "GET",
       });
 
@@ -183,6 +196,8 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
       }
 
       const buyerData = await response.json();
+      // Ensure email is lowercase in the returned data too
+      buyerData.email = buyerData.email.toLowerCase();
       login(buyerData);
       return buyerData;
     } catch (error) {
@@ -191,12 +206,49 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateProfile = (updates: Partial<BuyerProfile>) => {
+  const updateProfile = async (updates: Partial<BuyerProfile>) => {
     if (buyer) {
-      setBuyer({
+      const updatedBuyer = {
         ...buyer,
         ...updates,
-      });
+      };
+      
+      // Update local state immediately for UX
+      setBuyer(updatedBuyer);
+      
+      // Save to database
+      try {
+        const response = await fetch('/api/buyers', {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            buyerId: buyer.id,
+            updates: {
+              fullName: updates.fullName || buyer.fullName,
+              phone: updates.phone || buyer.phone,
+              address: updates.address || buyer.address,
+              city: updates.city || buyer.city,
+              state: updates.state || buyer.state,
+              postalCode: updates.postalCode || buyer.postalCode,
+            },
+          }),
+        });
+
+        if (!response.ok) {
+          console.error("Failed to update profile in database");
+          // Revert local state on error
+          setBuyer(buyer);
+          throw new Error("Failed to update profile");
+        }
+
+        const savedBuyer = await response.json();
+        console.log("✅ Profile updated in database:", savedBuyer);
+        setBuyer(savedBuyer);
+      } catch (error) {
+        console.error("Error updating profile:", error);
+        // Keep the local update but log the error
+      }
     }
   };
 

@@ -5,9 +5,10 @@ export interface IAdmin extends Document {
   email: string;
   password: string;
   fullName: string;
-  role: 'super_admin' | 'admin';
+  role: 'super_admin' | 'admin' | 'finance_admin' | 'logistics_admin';
   permissions: string[];
   isActive: boolean;
+  department?: 'general' | 'finance' | 'logistics';
   lastLogin?: Date;
   lastLogout?: Date;
   sessionToken?: string;    // Secure session token
@@ -22,12 +23,22 @@ const adminSchema = new Schema<IAdmin>(
     email: { type: String, required: true, unique: true, lowercase: true },
     password: { type: String, required: true },
     fullName: { type: String, required: true },
-    role: { type: String, enum: ['super_admin', 'admin'], default: 'admin' },
+    role: { 
+      type: String, 
+      enum: ['super_admin', 'admin', 'finance_admin', 'logistics_admin'], 
+      default: 'admin',
+      required: true,
+    },
     permissions: {
       type: [String],
       default: ['view_dashboard', 'view_products', 'view_orders', 'view_finance', 'view_invoices', 'view_settings'],
     },
     isActive: { type: Boolean, default: true },
+    department: { 
+      type: String, 
+      enum: ['general', 'finance', 'logistics'], 
+      default: 'general' 
+    },
     lastLogin: Date,
     lastLogout: Date,
     sessionToken: { type: String, default: null },   // Secure session token
@@ -54,4 +65,7 @@ adminSchema.methods.comparePassword = async function(candidatePassword: string) 
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-export default mongoose.models.Admin || mongoose.model<IAdmin>('Admin', adminSchema);
+// Ensure the model is properly defined with the correct schema
+const Admin = mongoose.models.Admin || mongoose.model<IAdmin>('Admin', adminSchema);
+
+export default Admin;

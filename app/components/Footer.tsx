@@ -100,14 +100,14 @@ export function Footer() {
             <div className="space-y-3 text-xs md:text-sm">
               <div className="flex items-start gap-2 md:gap-3">
                 <Mail className="h-4 w-4 md:h-5 md:w-5 text-lime-600 flex-shrink-0 mt-0.5" />
-                <a href="mailto:support@empi.ng" className="text-gray-700 hover:text-lime-600 transition font-medium break-all">
-                  support@empi.ng
+                <a href="mailto:support@empicostumes.com" className="text-gray-700 hover:text-lime-600 transition font-medium break-all">
+                  support@empicostumes.com
                 </a>
               </div>
               <div className="flex items-start gap-2 md:gap-3">
                 <Phone className="h-4 w-4 md:h-5 md:w-5 text-lime-600 flex-shrink-0 mt-0.5" />
-                <a href="tel:+2348012345678" className="text-gray-700 hover:text-lime-600 transition font-medium">
-                  +234 801 234 5678
+                <a href="tel:+2348085779180" className="text-gray-700 hover:text-lime-600 transition font-medium">
+                  +234 808 577 9180
                 </a>
               </div>
               <div className="flex items-start gap-2 md:gap-3">

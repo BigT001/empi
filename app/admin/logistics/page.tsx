@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { OrderCard } from '../dashboard/components/PendingPanel/OrderCard';
 import { ArrowLeft, AlertCircle, X, Package, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { PermissionGuard } from '@/app/components/PermissionGuard';
 import MobileAdminLayout from '../mobile-layout';
+import { LogisticsOrderCard } from './LogisticsOrderCard';
 
-export default function LogisticsPage() {
+function LogisticsPageContent() {
   const router = useRouter();
   const [ordersData, setOrdersData] = useState<any[]>([]);
   const [shippedOrders, setShippedOrders] = useState<any[]>([]);
+  const [enrichedOrders, setEnrichedOrders] = useState<any[]>([]);
+  const [enrichedShippedOrders, setEnrichedShippedOrders] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'active' | 'shipped'>('active');
   const [loading, setLoading] = useState(true);
   const [shippingConfirmModal, setShippingConfirmModal] = useState<string | null>(null);
@@ -25,26 +28,187 @@ export default function LogisticsPage() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  useEffect(() => {
+  // Fetch buyer details from admin/buyers endpoint (most reliable)
+  const fetchBuyerDetailsFromAdmin = async () => {
     try {
-      // Load active orders
-      const storedOrders = sessionStorage.getItem('logistics_orders');
-      if (storedOrders) {
-        const parsedOrders = JSON.parse(storedOrders);
-        setOrdersData(Array.isArray(parsedOrders) ? parsedOrders : []);
+      const response = await fetch(`/api/admin/buyers`);
+      if (response.ok) {
+        const data = await response.json();
+        // Return as a map for easy lookup by email or id
+        const buyerMap: Record<string, any> = {};
+        data.buyers?.forEach((buyer: any) => {
+          buyerMap[buyer.email?.toLowerCase()] = buyer;
+          buyerMap[buyer._id] = buyer;
+        });
+        return buyerMap;
+      }
+      return {};
+    } catch (error) {
+      console.error('[Logistics] Error fetching buyers from admin endpoint:', error);
+      return {};
+    }
+  };
+
+  // Fetch buyer details to enrich order data with full user information
+  const fetchBuyerDetails = async (email: string, buyerId?: string, buyerMap?: Record<string, any>) => {
+    // First try to use the pre-fetched buyer map
+    if (buyerMap) {
+      const buyerByEmail = buyerMap[email?.toLowerCase()];
+      if (buyerByEmail) {
+        console.log(`[Logistics] Found buyer in map for ${email}:`, buyerByEmail);
+        return buyerByEmail;
       }
       
-      // Load shipped orders
-      const storedShipped = sessionStorage.getItem('logistics_shipped_orders');
-      if (storedShipped) {
-        const parsedShipped = JSON.parse(storedShipped);
-        setShippedOrders(Array.isArray(parsedShipped) ? parsedShipped : []);
+      if (buyerId) {
+        const buyerById = buyerMap[buyerId];
+        if (buyerById) {
+          console.log(`[Logistics] Found buyer in map by ID ${buyerId}:`, buyerById);
+          return buyerById;
+        }
       }
-    } catch (error) {
-      console.error('Error retrieving orders data:', error);
-    } finally {
-      setLoading(false);
     }
+
+    // Fallback to fetching by email
+    try {
+      const response = await fetch(`/api/buyers/${encodeURIComponent(email)}?type=email`);
+      
+      if (response.ok) {
+        const buyerData = await response.json();
+        console.log(`[Logistics] Fetched buyer by email ${email}:`, buyerData);
+        return buyerData;
+      }
+      
+      // Fallback to buyerId if available
+      if (buyerId) {
+        const fallbackResponse = await fetch(`/api/buyers/${buyerId}`);
+        if (fallbackResponse.ok) {
+          const buyerData = await fallbackResponse.json();
+          console.log(`[Logistics] Fetched buyer by ID ${buyerId}:`, buyerData);
+          return buyerData;
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error(`[Logistics] Error fetching buyer details for ${email}:`, error);
+      return null;
+    }
+  };
+
+  // Fetch custom order details to get deliveryDetails field
+  const fetchCustomOrderDetails = async (orderId: string) => {
+    try {
+      const response = await fetch(`/api/custom-orders?id=${orderId}`);
+      if (response.ok) {
+        const data = await response.json();
+        
+        // The API returns an array for GET, but for a specific id query it should return one
+        // If it's an array, get the first item
+        const orderData = Array.isArray(data) ? data[0] : data;
+        
+        console.log(`[Logistics] Fetched custom order ${orderId}:`, {
+          deliveryDetails: orderData?.deliveryDetails,
+          address: orderData?.address,
+          city: orderData?.city,
+          state: orderData?.state,
+        });
+        
+        return orderData;
+      }
+      return null;
+    } catch (error) {
+      console.error(`[Logistics] Error fetching custom order details for ${orderId}:`, error);
+      return null;
+    }
+  };
+
+  // Enrich orders with full user and delivery details
+  const enrichOrders = async (orders: any[], buyerMap?: Record<string, any>) => {
+    const enrichedList = await Promise.all(
+      orders.map(async (order) => {
+        // Fetch buyer profile for general user info
+        const buyerDetails = await fetchBuyerDetails(order.email, order.buyerId, buyerMap);
+        
+        // Fetch custom order details to get deliveryDetails field
+        const customOrderDetails = await fetchCustomOrderDetails(order._id);
+        
+        const enrichedOrder = {
+          ...order,
+          userDetails: buyerDetails || {
+            email: order.email,
+            fullName: order.fullName || 'Unknown',
+            phone: order.phone || 'N/A',
+            address: order.address || 'Not provided',
+            city: order.city || 'Not provided',
+            state: order.state || 'Not provided',
+          },
+          // Include delivery details from custom order
+          deliveryDetails: customOrderDetails?.deliveryDetails || order.deliveryDetails || {},
+        };
+
+        console.log(`[Logistics] Enriched order ${order.orderNumber}:`, {
+          userName: enrichedOrder.userDetails.fullName,
+          userEmail: enrichedOrder.userDetails.email,
+          userAddress: enrichedOrder.userDetails.address,
+          userCity: enrichedOrder.userDetails.city,
+          userState: enrichedOrder.userDetails.state,
+        });
+
+        return enrichedOrder;
+      })
+    );
+    return enrichedList;
+  };
+
+  useEffect(() => {
+    const loadAndEnrichOrders = async () => {
+      try {
+        // First, fetch all buyers from admin endpoint for quick lookup
+        console.log('[Logistics] 🔍 Fetching all buyers from admin endpoint...');
+        const buyerMap = await fetchBuyerDetailsFromAdmin();
+        console.log('[Logistics] ✅ Buyer map loaded with', Object.keys(buyerMap).length, 'keys');
+
+        // Load active orders (from production team)
+        const storedOrders = sessionStorage.getItem('logistics_orders');
+        console.log('[Logistics] 📦 sessionStorage "logistics_orders":', storedOrders);
+        const parsedOrders = storedOrders ? JSON.parse(storedOrders) : [];
+        console.log('[Logistics] ✅ Parsed', parsedOrders.length, 'active orders');
+        
+        // Load shipped orders
+        const storedShipped = sessionStorage.getItem('logistics_shipped_orders');
+        console.log('[Logistics] 📦 sessionStorage "logistics_shipped_orders":', storedShipped);
+        const parsedShipped = storedShipped ? JSON.parse(storedShipped) : [];
+        console.log('[Logistics] ✅ Parsed', parsedShipped.length, 'shipped orders');
+
+        setOrdersData(Array.isArray(parsedOrders) ? parsedOrders : []);
+        setShippedOrders(Array.isArray(parsedShipped) ? parsedShipped : []);
+
+        // Enrich orders with user details
+        if (parsedOrders.length > 0) {
+          console.log('[Logistics] 🔄 Enriching', parsedOrders.length, 'active orders...');
+          const enriched = await enrichOrders(parsedOrders, buyerMap);
+          console.log('[Logistics] ✅ Enriched active orders:', enriched);
+          setEnrichedOrders(enriched);
+        } else {
+          console.log('[Logistics] ⚠️ No active orders in sessionStorage');
+        }
+
+        if (parsedShipped.length > 0) {
+          console.log('[Logistics] 🔄 Enriching', parsedShipped.length, 'shipped orders...');
+          const enrichedShipped = await enrichOrders(parsedShipped, buyerMap);
+          console.log('[Logistics] ✅ Enriched shipped orders:', enrichedShipped);
+          setEnrichedShippedOrders(enrichedShipped);
+        } else {
+          console.log('[Logistics] ⚠️ No shipped orders in sessionStorage');
+        }
+      } catch (error) {
+        console.error('[Logistics] ❌ Error retrieving orders data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAndEnrichOrders();
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -277,39 +441,15 @@ export default function LogisticsPage() {
         </div>
 
         {/* Active Orders Tab */}
-        {activeTab === 'active' && ordersData.length > 0 && (
+        {activeTab === 'active' && enrichedOrders.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {ordersData.map((order) => (
-              <OrderCard
+            {enrichedOrders.map((order) => (
+              <LogisticsOrderCard
                 key={order._id}
-                orderId={order._id}
-                firstName={order.firstName || ''}
-                lastName={order.lastName || ''}
-                email={order.email}
-                phone={order.phone}
-                items={order.items}
-                total={order.total}
-                orderNumber={order.orderNumber}
-                isPaid={order.isPaid}
-                isApproving={false}
-                onApprove={() => {}}
-                onChat={() => {}}
-                onDelete={() => {}}
-                onDeleteConfirm={async () => {}}
+                order={order}
+                onMarkShipped={() => setShippingConfirmModal(order._id)}
+                onDelete={() => deleteOrder(order._id)}
                 formatCurrency={formatCurrency}
-                rentalDays={order.rentalDays}
-                cautionFee={order.cautionFee}
-                description={order.description}
-                designUrls={order.designUrls}
-                quantity={order.quantity}
-                quotedPrice={order.quotedPrice}
-                isCustomOrder={order.isCustomOrder}
-                isApproved={order.isApproved}
-                hidePricingDetails={true}
-                hideReadyButton={true}
-                hideDeleteButton={true}
-                hidePaymentStatus={true}
-                onShipped={() => setShippingConfirmModal(order._id)}
               />
             ))}
           </div>
@@ -323,39 +463,15 @@ export default function LogisticsPage() {
         )}
 
         {/* Shipped Orders Tab */}
-        {activeTab === 'shipped' && shippedOrders.length > 0 && (
+        {activeTab === 'shipped' && enrichedShippedOrders.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {shippedOrders.map((order) => (
-              <OrderCard
+            {enrichedShippedOrders.map((order) => (
+              <LogisticsOrderCard
                 key={order._id}
-                orderId={order._id}
-                firstName={order.firstName || ''}
-                lastName={order.lastName || ''}
-                email={order.email}
-                phone={order.phone}
-                items={order.items}
-                total={order.total}
-                orderNumber={order.orderNumber}
-                isPaid={order.isPaid}
-                isApproving={false}
-                onApprove={() => {}}
-                onChat={() => {}}
-                onDelete={() => {}}
-                onDeleteConfirm={async () => {}}
+                order={order}
+                onMarkShipped={() => {}}
+                onDelete={() => deleteOrder(order._id)}
                 formatCurrency={formatCurrency}
-                rentalDays={order.rentalDays}
-                cautionFee={order.cautionFee}
-                description={order.description}
-                designUrls={order.designUrls}
-                quantity={order.quantity}
-                quotedPrice={order.quotedPrice}
-                isCustomOrder={order.isCustomOrder}
-                isApproved={order.isApproved}
-                hidePricingDetails={true}
-                hideReadyButton={true}
-                hideDeleteButton={true}
-                hidePaymentStatus={true}
-                disableShippedButton={true}
               />
             ))}
           </div>
@@ -410,4 +526,13 @@ export default function LogisticsPage() {
   }
 
   return content;
+}
+
+// Wrap with permission guard
+export default function LogisticsPage() {
+  return (
+    <PermissionGuard requiredPermission="view_logistics">
+      <LogisticsPageContent />
+    </PermissionGuard>
+  );
 }

@@ -46,9 +46,17 @@ export async function POST(request: NextRequest) {
     const designImages = formData.getAll("designImages") as File[];
 
     // Validate required fields
-    if (!fullName || !email || !phone || !city || !description) {
+    const missingFields: string[] = [];
+    if (!fullName) missingFields.push("fullName");
+    if (!email) missingFields.push("email");
+    if (!phone) missingFields.push("phone");
+    if (!city) missingFields.push("city");
+    if (!description) missingFields.push("description");
+
+    if (missingFields.length > 0) {
+      console.error("[API:POST /custom-orders] ❌ Missing fields:", missingFields);
       return NextResponse.json(
-        { message: "Missing required fields" },
+        { message: `Missing required fields: ${missingFields.join(", ")}` },
         { status: 400 }
       );
     }
@@ -79,7 +87,7 @@ export async function POST(request: NextRequest) {
     const orderData: any = {
       orderNumber,
       fullName,
-      email,
+      email: email.toLowerCase(), // Lowercase email for consistency with invoice queries
       phone,
       city,
       description,
@@ -414,7 +422,7 @@ export async function PATCH(request: NextRequest) {
     const isCustomOrderFlag = body.isCustomOrder ?? true; // Default to custom order for backward compatibility
     
     // Only allow specific fields to be updated
-    const allowedUpdates = ["status", "buyerAgreedToDate", "deliveryDate", "quantity", "shippingType", "address", "busStop", "city", "state", "zipCode", "deliveryOption"];
+    const allowedUpdates = ["status", "quotedPrice", "buyerAgreedToDate", "deliveryDate", "quantity", "shippingType", "address", "busStop", "city", "state", "zipCode", "deliveryOption"];
     const updates: Record<string, any> = {};
 
     for (const key of Object.keys(body)) {
@@ -488,6 +496,65 @@ export async function PATCH(request: NextRequest) {
       }
 
       console.log(`✅ Regular order ${id} updated:`, updates);
+    }
+
+    // Create invoice when order is approved
+    if (updates.status === "approved" && isCustomOrderFlag) {
+      console.log(`[API:PATCH] 📄 Creating invoice for approved custom order ${updatedOrder.orderNumber}`);
+      try {
+        // Get quote items from the order
+        const quoteItems = updatedOrder.quoteItems || [];
+        const subtotal = quoteItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
+        const VAT_RATE = 0.075;
+        const taxAmount = subtotal * VAT_RATE;
+        const totalAmount = subtotal + taxAmount;
+
+        // Map quote items to invoice items
+        const items = quoteItems.map((item: any) => ({
+          name: item.itemName,
+          quantity: item.quantity,
+          price: item.unitPrice,
+          mode: 'buy',
+        }));
+
+        const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+        const invoiceDate = new Date();
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 30);
+
+        // Create invoice
+        const invoice = new Invoice({
+          invoiceNumber,
+          orderNumber: updatedOrder.orderNumber,
+          customerName: updatedOrder.fullName,
+          customerEmail: updatedOrder.email.toLowerCase(),
+          customerPhone: updatedOrder.phone || '',
+          customerAddress: updatedOrder.address || '',
+          customerCity: updatedOrder.city || '',
+          customerState: updatedOrder.state || '',
+          customerPostalCode: '',
+          subtotal,
+          shippingCost: 0,
+          taxAmount,
+          totalAmount,
+          items,
+          invoiceDate,
+          dueDate,
+          currency: 'NGN',
+          currencySymbol: '₦',
+          taxRate: VAT_RATE * 100,
+          type: 'automatic',
+          status: 'sent',
+          paymentVerified: true,
+          paymentReference: updatedOrder.paymentReference || updatedOrder.orderNumber,
+        });
+
+        await invoice.save();
+        console.log(`[API:PATCH] ✅ Invoice created for approved order: ${invoiceNumber}`);
+        console.log(`[API:PATCH] 📋 Invoice saved with customerEmail: ${updatedOrder.email.toLowerCase()}`);
+      } catch (invoiceError) {
+        console.error("[API:PATCH] ⚠️ Failed to create invoice for approved order (non-blocking):", invoiceError);
+      }
     }
 
     // Send email notification if order was rejected

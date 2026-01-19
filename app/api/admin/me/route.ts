@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
 
+// Session extension time - extends on each request (sliding window)
+const SESSION_EXTENSION = 30 * 24 * 60 * 60 * 1000; // 30 days
+
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -35,7 +38,15 @@ export async function GET(request: NextRequest) {
     }
 
     console.log('[Admin/Me API] ✅ Admin authenticated:', admin.email);
-    return NextResponse.json({
+    
+    // Extend session expiry on each request (sliding window pattern)
+    const newSessionExpiry = new Date(Date.now() + SESSION_EXTENSION);
+    await Admin.updateOne(
+      { _id: admin._id },
+      { sessionExpiry: newSessionExpiry }
+    );
+
+    const response = NextResponse.json({
       _id: admin._id,
       id: admin._id,
       email: admin.email,
@@ -44,6 +55,19 @@ export async function GET(request: NextRequest) {
       permissions: admin.permissions,
       lastLogin: admin.lastLogin,
     });
+
+    // Refresh the session cookie to extend expiry
+    response.cookies.set({
+      name: 'admin_session',
+      value: admin.sessionToken,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: SESSION_EXTENSION / 1000, // Convert to seconds
+      path: '/',
+    });
+
+    return response;
   } catch (error: any) {
     console.error('[Admin/Me API] Auth check error:', error);
     return NextResponse.json(

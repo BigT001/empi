@@ -163,7 +163,7 @@ export default function CartPage() {
       {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
       <Navigation category={category} onCategoryChange={setCategory} currency={currency} onCurrencyChange={setCurrency} />
 
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-12 w-full mt-20">
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-12 w-full pt-20 sm:pt-24 md:pt-20">
         <div className="mb-8">
           <Link href="/" className="inline-flex items-center gap-2 text-lime-600 hover:text-lime-700 font-medium mb-4">
             <ArrowLeft className="h-4 w-4" /> Continue Shopping

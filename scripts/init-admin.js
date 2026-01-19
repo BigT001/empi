@@ -45,11 +45,13 @@ async function initializeAdmin() {
 
     // Create super admin using raw bcrypt
     const bcrypt = require('bcryptjs');
+    const adminPassword = process.env.ADMIN_PASSWORD || 'Mastercode@empicostumes';
+    const adminEmail = process.env.ADMIN_EMAIL || 'admin@empicostumes.com';
     const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash('empi', salt);
+    const hashedPassword = await bcrypt.hash(adminPassword, salt);
 
     const superAdmin = new Admin({
-      email: 'sta99175@gmail.com',
+      email: adminEmail,
       password: hashedPassword,
       fullName: 'Admin',
       role: 'super_admin',
@@ -68,8 +70,8 @@ async function initializeAdmin() {
 
     await superAdmin.save();
     console.log('✅ Super admin created successfully');
-    console.log('📧 Email: sta99175@gmail.com');
-    console.log('🔑 Password: empi');
+    console.log('📧 Email:', adminEmail);
+    console.log('🔑 Password:', adminPassword);
     await mongoose.connection.close();
     process.exit(0);
   } catch (error) {

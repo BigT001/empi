@@ -62,10 +62,16 @@ export async function POST(req: NextRequest) {
     const timestamp = Date.now().toString();
     const orderNumber = `ORD-${timestamp.slice(-9)}-${Math.random().toString(36).substr(2, 5).toUpperCase()}`;
 
+    // Determine order type based on items
+    const hasRentalItems = items.some((item: any) => item.mode === 'rent');
+    const hasSalesItems = items.some((item: any) => item.mode !== 'rent');
+    const orderType: 'rental' | 'sales' | 'mixed' = hasRentalItems && hasSalesItems ? 'mixed' : hasRentalItems ? 'rental' : 'sales';
+
     // Create order with awaiting_payment status
     const order = new Order({
       buyerId,
       orderNumber,
+      orderType: orderType,
       firstName,
       lastName,
       email,

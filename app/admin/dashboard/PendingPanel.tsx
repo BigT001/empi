@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { Clock, AlertCircle, Check, X } from "lucide-react";
 // ChatModal removed
 import { OrderCard } from "./components/PendingPanel/OrderCard";
+import { CustomOrderCard } from "./components/CustomOrderCard";
 import { ConfirmPaymentModal } from "./components/PendingPanel/ConfirmPaymentModal";
 
 interface OrderItem {
@@ -36,6 +37,8 @@ interface PendingOrderData {
   quotedPrice?: number;
   quantity?: number;
   fullName?: string;
+  paymentVerified?: boolean;
+  quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
 }
 
 interface ProductWithImage {
@@ -48,24 +51,11 @@ interface PendingPanelProps {
   searchQuery?: string;
 }
 
-// Helper function to load persisted approved order IDs
-const loadPersistedApprovedIds = (): Set<string> => {
-  try {
-    const stored = sessionStorage.getItem('dashboard_approved_order_ids');
-    if (stored) {
-      const ids = JSON.parse(stored);
-      return new Set(ids);
-    }
-  } catch (error) {
-    console.error('[PendingPanel] Error loading persisted approved IDs:', error);
-  }
-  return new Set();
-};
-
 export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const [pending, setPending] = useState<PendingOrderData[]>([]);
   const [approved, setApproved] = useState<PendingOrderData[]>([]);
-  const [activeTab, setActiveTab] = useState<'pending' | 'approved'>('pending');
+  const [inProgress, setInProgress] = useState<PendingOrderData[]>([]);
+  const [activeTab, setActiveTab] = useState<'pending' | 'approved' | 'in-progress'>('pending');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'amount'>('newest');
@@ -78,7 +68,6 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const [fetchedCount, setFetchedCount] = useState<number>(0);
   const [lastFetchAt, setLastFetchAt] = useState<number | null>(null);
   const [isPollingActive, setIsPollingActive] = useState<boolean>(true);
-  const [persistedApprovedIds, setPersistedApprovedIds] = useState<Set<string>>(() => loadPersistedApprovedIds());
   const prevPendingKeyRef = useRef<string>('');
   const prevPaymentStatusRef = useRef<string>('');
 
@@ -183,55 +172,56 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         console.log('[PendingPanel] First item:', combinedOrders[0]?.items?.[0]);
 
         // Separate pending and approved orders
+        // PENDING: Only orders NOT yet paid/approved
         const pendingList = combinedOrders.filter((o: any) => {
           const status = (o.status || '').toString().toLowerCase();
-          const orderId = o._id?.toString() || o.orderNumber;
-          // Exclude orders that have been persisted as approved
-          if (persistedApprovedIds.has(orderId)) {
-            console.log(`[PendingPanel] 🔒 Excluding persisted approved order from pending: ${orderId}`);
-            return false;
-          }
-          if (status === 'completed' || status === 'cancelled' || status === 'deleted' || status === 'approved') return false;
+          // Exclude orders that have moved to approved or beyond
+          if (status === 'completed' || status === 'cancelled' || status === 'deleted' || status === 'approved' || status === 'in-progress' || status === 'ready' || status === 'rejected') return false;
           return true;
         });
 
+        // Approved list: ONLY orders with status === 'approved'
+        // NOTE: We filter by current status ONLY, ignoring persisted IDs
+        // This ensures orders move out of approved once status changes
         const approvedList = combinedOrders.filter((o: any) => {
           const status = (o.status || '').toString().toLowerCase();
           return status === 'approved';
         });
-        
-        console.log('[PendingPanel] Persisted approved IDs:', Array.from(persistedApprovedIds));
-        
-        // Merge approved orders with any persisted approved orders that may have been sent to logistics
-        // Find orders that are marked as persisted approved (were approved previously)
-        const persistedApproved = combinedOrders.filter(o => {
-          const orderId = o._id?.toString() || o.orderNumber;
-          return persistedApprovedIds.has(orderId);
-        });
-        const allApprovedList = [...approvedList, ...persistedApproved.filter(pa => !approvedList.some(a => (a._id?.toString() || a.orderNumber) === (pa._id?.toString() || pa.orderNumber)))];
-        
-        console.log('[PendingPanel] Persisted approved orders found:', persistedApproved.length);
-        console.log('[PendingPanel] Total approved list:', allApprovedList.length);
 
-        console.log('[PendingPanel] fetched orders count:', combinedOrders.length, 'pendingList count:', pendingList.length, 'approvedList count:', allApprovedList.length);
+        // In-Progress list: ONLY orders with status === 'in-progress'
+        const inProgressList = combinedOrders.filter((o: any) => {
+          const status = (o.status || '').toString().toLowerCase();
+          return status === 'in-progress';
+        });
+        
+        // DO NOT add orders back to approved list based on persisted IDs
+        // Use only current database status for display
+        const allApprovedList = approvedList;
+        
+        console.log('[PendingPanel] Approved list (current status only):', allApprovedList.length);
+        console.log('[PendingPanel] In-progress list:', inProgressList.length);
+
+        console.log('[PendingPanel] fetched orders count:', combinedOrders.length, 'pendingList count:', pendingList.length, 'approvedList count:', allApprovedList.length, 'inProgressList count:', inProgressList.length);
         console.log('[PendingPanel] fetched orderNumbers:', combinedOrders.map(o => o.orderNumber).slice(0,50));
         if (mounted) {
           // Create a simple fingerprint of both pending and approved lists to detect any changes
           const newPendingKey = pendingList.map(o => o._id || o.orderNumber).join(',');
           const newApprovedKey = allApprovedList.map(o => o._id || o.orderNumber).join(',');
-          const newKey = `${newPendingKey}|${newApprovedKey}`;
+          const newInProgressKey = inProgressList.map(o => o._id || o.orderNumber).join(',');
+          const newKey = `${newPendingKey}|${newApprovedKey}|${newInProgressKey}`;
           
           if (newKey !== prevPendingKeyRef.current) {
             prevPendingKeyRef.current = newKey;
             setPending(pendingList);
             setApproved(allApprovedList);
+            setInProgress(inProgressList);
             setFetchedCount(combinedOrders.length);
             setLastFetchAt(Date.now());
             // Fetch product images
             fetchProductImages(pendingList);
             // Detect payment status by checking for invoices
             detectPaymentStatus(pendingList);
-            console.log('[PendingPanel] state updated (changes detected), pending count:', pendingList.length, 'approved count:', allApprovedList.length);
+            console.log('[PendingPanel] state updated (changes detected), pending count:', pendingList.length, 'approved count:', allApprovedList.length, 'inProgress count:', inProgressList.length);
           } else {
             // No meaningful change — avoid updating UI state to prevent visible refresh/jank
             console.log('[PendingPanel] no change in orders — skipping state update');
@@ -323,20 +313,8 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         throw new Error(error.error || 'Failed to approve payment');
       }
 
-      // Move order from pending to approved
-      const approvedOrder = pending.find(o => o._id === orderId);
-      if (approvedOrder) {
-        setPending(pending.filter(o => o._id !== orderId));
-        setApproved([...approved, { ...approvedOrder, status: 'approved' }]);
-        setPaymentStatus(prev => ({ ...prev, [orderId]: 'approved' }));
-        
-        // Persist this order ID so it doesn't go back to pending on refresh
-        const updatedPersistedIds = new Set(persistedApprovedIds);
-        updatedPersistedIds.add(orderId);
-        setPersistedApprovedIds(updatedPersistedIds);
-        sessionStorage.setItem('dashboard_approved_order_ids', JSON.stringify(Array.from(updatedPersistedIds)));
-        console.log('[PendingPanel] ✅ Persisted approved order ID:', orderId);
-      }
+      // Let the polling logic handle moving the order to approved
+      // Just show success message
       showToast('Payment approved successfully!', 'success');
     } catch (err: any) {
       console.error('[PendingPanel] Error approving payment:', err);
@@ -406,16 +384,6 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
       // Remove from pending list
       setPending(pending.filter(o => o._id !== orderId));
       
-      // Remove from persisted approved IDs if it exists there
-      const updatedApprovedIds = new Set(persistedApprovedIds);
-      updatedApprovedIds.delete(orderId);
-      setPersistedApprovedIds(updatedApprovedIds);
-      if (updatedApprovedIds.size > 0) {
-        sessionStorage.setItem('dashboard_approved_order_ids', JSON.stringify([...updatedApprovedIds]));
-      } else {
-        sessionStorage.removeItem('dashboard_approved_order_ids');
-      }
-
       // Remove from logistics orders (active)
       try {
         const storedOrders = sessionStorage.getItem('logistics_orders');
@@ -577,6 +545,17 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
             <Check className="h-4 w-4 inline mr-2" />
             Approved ({approved.length})
           </button>
+          <button
+            onClick={() => setActiveTab('in-progress')}
+            className={`flex-1 py-4 px-6 font-semibold text-center transition-colors ${
+              activeTab === 'in-progress'
+                ? 'text-purple-600 border-b-2 border-purple-600 bg-white'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            <Clock className="h-4 w-4 inline mr-2" />
+            In Progress ({inProgress.length})
+          </button>
         </div>
       </div>
 
@@ -629,8 +608,21 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
           </div>
         )}
 
+        {/* Empty State - In Progress */}
+        {!loading && !error && activeTab === 'in-progress' && inProgress.length === 0 && (
+          <div className="flex flex-col items-center justify-center py-12">
+            <div className="text-center">
+              <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
+                <Clock className="h-6 w-6 text-purple-600" />
+              </div>
+              <p className="font-semibold text-gray-900">No orders in progress</p>
+              <p className="text-gray-600 text-sm mt-1">In progress orders will appear here</p>
+            </div>
+          </div>
+        )}
+
         {/* Orders Cards Grid */}
-        {!error && (pending.length > 0 || approved.length > 0) && ((activeTab === 'pending' && pending.length > 0) || (activeTab === 'approved' && approved.length > 0)) && (
+        {!error && (pending.length > 0 || approved.length > 0 || inProgress.length > 0) && ((activeTab === 'pending' && pending.length > 0) || (activeTab === 'approved' && approved.length > 0) || (activeTab === 'in-progress' && inProgress.length > 0)) && (
           <div>
             {/* Sort Controls */}
             <div className="flex items-center justify-between mb-6">
@@ -651,41 +643,60 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
             </div>
 
             {/* Cards Grid */}
-            {(activeTab === 'pending' ? filteredPending : approved).length === 0 ? (
+            {(activeTab === 'pending' ? filteredPending : (activeTab === 'approved' ? approved : inProgress)).length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 font-semibold">No orders found</p>
               </div>
             ) : (
               <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-3 gap-6">
-                {(activeTab === 'pending' ? filteredPending : approved).map((order) => (
-                  <div key={order._id} className="break-inside-avoid mb-6">
-                    <OrderCard
-                      orderId={order._id}
-                      firstName={order.firstName || order.fullName?.split(' ')[0] || ''}
-                      lastName={order.lastName || order.fullName?.split(' ').slice(1).join(' ') || ''}
-                      email={order.email}
-                      phone={order.phone}
-                      items={order.items}
-                      total={order.total}
-                      orderNumber={order.orderNumber}
-                      isPaid={paymentStatus[order._id] === 'paid' || paymentStatus[order._id] === 'approved'}
-                      isApproving={approvingOrderId === order._id}
-                      rentalDays={order.rentalSchedule?.rentalDays}
-                      cautionFee={order.cautionFee || undefined}
-                      onApprove={activeTab === 'pending' ? () => setConfirmModalOpen(order._id) : () => {}}
-                      onChat={() => setChatModalOpen(order._id)}
-                      onDelete={deleteOrder}
-                      formatCurrency={formatCurrency}
-                      // Custom order fields
-                      description={order.description}
-                      designUrls={order.designUrls}
-                      quantity={order.quantity}
-                      quotedPrice={order.quotedPrice}
-                      isCustomOrder={!order.items || order.items.length === 0}
-                      isApproved={activeTab === 'approved'}
-                    />
-                  </div>
-                ))}
+                {(activeTab === 'pending' ? filteredPending : (activeTab === 'approved' ? approved : inProgress)).map((order) => {
+                  const isCustom = !order.items || order.items.length === 0;
+                  
+                  return (
+                    <div key={order._id} className="break-inside-avoid mb-6">
+                      {isCustom ? (
+                        <CustomOrderCard
+                          orderId={order._id}
+                          orderNumber={order.orderNumber}
+                          fullName={order.fullName || `${order.firstName} ${order.lastName}`.trim()}
+                          email={order.email}
+                          phone={order.phone || ''}
+                          quantity={order.quantity || 1}
+                          description={order.description || ''}
+                          designUrls={order.designUrls || []}
+                          status={order.status as any || 'pending'}
+                          quotedPrice={order.quotedPrice}
+                          quoteItems={order.quoteItems}
+                          paymentVerified={order.paymentVerified || false}
+                        />
+                      ) : (
+                        <OrderCard
+                          orderId={order._id}
+                          firstName={order.firstName || order.fullName?.split(' ')[0] || ''}
+                          lastName={order.lastName || order.fullName?.split(' ').slice(1).join(' ') || ''}
+                          email={order.email}
+                          phone={order.phone}
+                          items={order.items}
+                          total={order.total}
+                          orderNumber={order.orderNumber}
+                          isPaid={paymentStatus[order._id] === 'paid' || paymentStatus[order._id] === 'approved'}
+                          isApproving={approvingOrderId === order._id}
+                          rentalDays={order.rentalSchedule?.rentalDays}
+                          cautionFee={order.cautionFee || undefined}
+                          onApprove={activeTab === 'pending' ? () => setConfirmModalOpen(order._id) : () => {}}
+                          onChat={() => setChatModalOpen(order._id)}
+                          onDelete={deleteOrder}
+                          formatCurrency={formatCurrency}
+                          description={order.description}
+                          designUrls={order.designUrls}
+                          quantity={order.quantity}
+                          quotedPrice={order.quotedPrice}
+                          isApproved={activeTab === 'approved' || activeTab === 'in-progress'}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

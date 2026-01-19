@@ -92,4 +92,4 @@ invoiceSchema.index({ type: 1 });
 invoiceSchema.index({ status: 1 });
 invoiceSchema.index({ createdAt: -1 });
 
-export default mongoose.models.Invoice || mongoose.model<IInvoice>('Invoice', invoiceSchema);
+export default (mongoose.models?.Invoice || mongoose.model<IInvoice>('Invoice', invoiceSchema)) as any;

@@ -200,7 +200,7 @@ export async function GET(request: NextRequest) {
     
     if (invoices.length > 0) {
       console.log(`📄 First 3 invoices:`);
-      invoices.slice(0, 3).forEach((inv, idx) => {
+      invoices.slice(0, 3).forEach((inv: any, idx: number) => {
         console.log(`   ${idx + 1}. ${inv.invoiceNumber} - ${inv.customerEmail} - ₦${inv.totalAmount} - buyerId: ${inv.buyerId || 'NONE'}`);
       });
     } else {
