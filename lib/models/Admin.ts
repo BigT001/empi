@@ -76,6 +76,7 @@ adminSchema.methods.comparePassword = async function(candidatePassword: string) 
 };
 
 // Ensure the model is properly defined with the correct schema
-const Admin = mongoose.models.Admin || mongoose.model<IAdmin>('Admin', adminSchema);
+// Use type assertion to safely access mongoose.models
+const Admin = (mongoose.models?.Admin as any) || mongoose.model<IAdmin>('Admin', adminSchema);
 
 export default Admin;
