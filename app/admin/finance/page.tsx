@@ -16,17 +16,14 @@ import {
 } from "lucide-react";
 import { PermissionGuard } from "@/app/components/PermissionGuard";
 import { FinanceProjectOverview } from "./components/FinanceProjectOverview";
+import { useResponsive } from "@/app/hooks/useResponsive";
 
-// Mobile components
-const MobileFinancePage = dynamic(() => import("../mobile-finance"), {
-  ssr: false,
-});
-import MobileAdminLayout from "../mobile-layout";
-import VATTab from "../vat-tab";
-import OfflineOrderForm from "../offline-order-form";
-import OfflineExpenseForm from "../offline-expense-form";
-import TransactionHistory from "../transaction-history";
-import DailyExpenses from "../daily-expenses";
+// Lazy load these desktop-heavy components
+const VATTab = dynamic(() => import("../vat-tab"), { ssr: false });
+const OfflineOrderForm = dynamic(() => import("../offline-order-form"), { ssr: false });
+const OfflineExpenseForm = dynamic(() => import("../offline-expense-form"), { ssr: false });
+const TransactionHistory = dynamic(() => import("../transaction-history"), { ssr: false });
+const DailyExpenses = dynamic(() => import("../daily-expenses"), { ssr: false });
 
 interface FinanceMetrics {
   totalRevenue: number;
@@ -94,25 +91,13 @@ interface ConversionMetrics {
 }
 
 function FinancePageContent() {
-  const [isMobile, setIsMobile] = useState(false);
-  const [isMounted, setIsMounted] = useState(false);
+  const { mounted } = useResponsive();
   const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"vat" | "overview" | "analytics" | "transactions" | "offline" | "expenses">("overview");
   const [showOfflineOrderForm, setShowOfflineOrderForm] = useState(false);
   const [showOfflineExpenseForm, setShowOfflineExpenseForm] = useState(false);
-
-  // Detect mobile device
-  useEffect(() => {
-    setIsMounted(true);
-    const checkMobile = () => {
-      setIsMobile(window.innerWidth < 768);
-    };
-    checkMobile();
-    window.addEventListener("resize", checkMobile);
-    return () => window.removeEventListener("resize", checkMobile);
-  }, []);
 
   // Fetch finance metrics
   useEffect(() => {
@@ -132,23 +117,10 @@ function FinancePageContent() {
       }
     };
 
-    if (isMounted && !isMobile) {
+    if (mounted) {
       fetchMetrics();
     }
-  }, [isMounted, isMobile]);
-
-  // Show mobile view on small screens
-  if (!isMounted) {
-    return null;
-  }
-
-  if (isMobile) {
-    return (
-      <MobileAdminLayout>
-        <MobileFinancePage />
-      </MobileAdminLayout>
-    );
-  }
+  }, [mounted]);
 
   if (loading) {
     return (
@@ -191,12 +163,12 @@ function FinancePageContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header */}
+      {/* Header - Responsive */}
       <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="mx-auto max-w-7xl px-6 py-4 flex items-center justify-between">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Finance Dashboard</h1>
-            <p className="text-sm text-gray-600">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Finance Dashboard</h1>
+            <p className="text-xs sm:text-sm text-gray-600 mt-1">
               Track your revenue, expenses, and tax calculations
             </p>
           </div>
@@ -289,8 +261,8 @@ function FinancePageContent() {
         </div>
       </div>
 
-      {/* Content */}
-      <main className="mx-auto max-w-7xl px-6 py-12 w-full">
+      {/* Content - Responsive */}
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-12 w-full">
         {activeTab === "vat" && <VATTab />}
         
         {activeTab === "overview" && (
@@ -298,8 +270,8 @@ function FinancePageContent() {
         )}
 
         {activeTab === "analytics" && (
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8 text-center">
-            <p className="text-gray-600 text-lg">Analytics dashboard coming soon...</p>
+          <div className="bg-white rounded-lg sm:rounded-2xl shadow-sm border border-gray-200 p-4 sm:p-8 text-center">
+            <p className="text-gray-600 text-base sm:text-lg">Analytics dashboard coming soon...</p>
           </div>
         )}
 
