@@ -31,13 +31,15 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    // Find admin with this session token and clear it
+    // Find admin with this session token and remove ONLY this session
+    // (other sessions for this admin remain active)
     const admin = await Admin.findOneAndUpdate(
-      { sessionToken },
+      { 'sessions.token': sessionToken },
       { 
-        sessionToken: null, 
-        sessionExpiry: null,
-        lastLogout: new Date(), // Track logout timestamp for audit
+        $pull: {
+          sessions: { token: sessionToken }  // Remove only this specific session
+        },
+        lastLogout: new Date(),  // Track logout timestamp for audit
       },
       { new: true }
     );
@@ -50,11 +52,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`[Logout API] ✅ Session cleared for admin: ${admin.email} from IP: ${clientIP}`);
-    console.log(`[Logout API] 📊 Last login: ${admin.lastLogin?.toISOString()}`);
-    console.log(`[Logout API] 📊 Session duration: ${admin.lastLogin && admin.lastLogout ? 
-      Math.round((new Date(admin.lastLogout).getTime() - new Date(admin.lastLogin).getTime()) / 1000) + ' seconds' : 
-      'N/A'}`);
+    console.log(`[Logout API] ✅ Session removed for admin: ${admin.email} from IP: ${clientIP}`);
+    console.log(`[Logout API] 📊 Remaining sessions for this admin: ${admin.sessions.length}`);
 
     const response = NextResponse.json(
       { message: 'Logged out successfully', timestamp: new Date().toISOString() },

@@ -2,8 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
 
-// Session extension time - extends on each request (sliding window)
-const SESSION_EXTENSION = 30 * 24 * 60 * 60 * 1000; // 30 days
+const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,28 +22,62 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Find admin with valid session token
+    // Find admin with this session token
     const admin = await Admin.findOne({
-      sessionToken,
-      sessionExpiry: { $gt: new Date() } // Session not expired
+      'sessions.token': sessionToken,
     });
 
     if (!admin || !admin.isActive) {
-      console.log('[Admin/Me API] ❌ Admin not found, session expired, or inactive - returning 401');
+      console.log('[Admin/Me API] ❌ Admin not found, or inactive - returning 401');
       return NextResponse.json(
         { error: 'Session expired or invalid' },
         { status: 401 }
       );
     }
 
-    console.log('[Admin/Me API] ✅ Admin authenticated:', admin.email);
-    
-    // Extend session expiry on each request (sliding window pattern)
-    const newSessionExpiry = new Date(Date.now() + SESSION_EXTENSION);
+    const session = admin.sessions.find((s: any) => s.token === sessionToken);
+    if (!session) {
+      console.log('[Admin/Me API] ❌ Session not found');
+      return NextResponse.json(
+        { error: 'Session not found' },
+        { status: 401 }
+      );
+    }
+
+    // Check if session has expired
+    if (new Date() > new Date(session.expiresAt)) {
+      console.log('[Admin/Me API] ❌ Session expired');
+      await Admin.updateOne(
+        { _id: admin._id },
+        { $pull: { sessions: { token: sessionToken } } }
+      );
+      return NextResponse.json(
+        { error: 'Session expired' },
+        { status: 401 }
+      );
+    }
+
+    // Check inactivity timeout
+    const inactivityDuration = new Date().getTime() - new Date(session.lastActivity).getTime();
+    if (inactivityDuration > INACTIVITY_TIMEOUT) {
+      console.log('[Admin/Me API] ❌ Session inactive for too long');
+      await Admin.updateOne(
+        { _id: admin._id },
+        { $pull: { sessions: { token: sessionToken } } }
+      );
+      return NextResponse.json(
+        { error: 'Session expired due to inactivity' },
+        { status: 401 }
+      );
+    }
+
+    // Update lastActivity to extend the session window
     await Admin.updateOne(
-      { _id: admin._id },
-      { sessionExpiry: newSessionExpiry }
+      { _id: admin._id, 'sessions.token': sessionToken },
+      { $set: { 'sessions.$.lastActivity': new Date() } }
     );
+
+    console.log('[Admin/Me API] ✅ Admin authenticated:', admin.email);
 
     const response = NextResponse.json({
       _id: admin._id,
@@ -54,17 +87,6 @@ export async function GET(request: NextRequest) {
       role: admin.role,
       permissions: admin.permissions,
       lastLogin: admin.lastLogin,
-    });
-
-    // Refresh the session cookie to extend expiry
-    response.cookies.set({
-      name: 'admin_session',
-      value: admin.sessionToken,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: SESSION_EXTENSION / 1000, // Convert to seconds
-      path: '/',
     });
 
     return response;

@@ -102,17 +102,23 @@ export async function POST(request: NextRequest) {
     // Password is valid - clear rate limit
     clearRateLimit(clientIP);
 
-    // Create secure session token
+    // Create secure session token for THIS specific login
     const sessionToken = crypto.randomBytes(32).toString('hex');
     const sessionExpiry = new Date(Date.now() + SESSION_EXPIRY);
 
-    // Update admin with session info - use updateOne to avoid validation
+    // Add this session to the admin's sessions array (allows multiple concurrent logins)
     await Admin.updateOne(
       { _id: admin._id },
       {
         lastLogin: new Date(),
-        sessionToken: sessionToken,
-        sessionExpiry: sessionExpiry,
+        $push: {
+          sessions: {
+            token: sessionToken,
+            createdAt: new Date(),
+            lastActivity: new Date(),
+            expiresAt: sessionExpiry,
+          }
+        }
       }
     );
 

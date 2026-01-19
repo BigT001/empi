@@ -1,6 +1,13 @@
 import mongoose, { Schema, Document } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
+export interface IAdminSession {
+  token: string;
+  createdAt: Date;
+  lastActivity: Date;
+  expiresAt: Date;
+}
+
 export interface IAdmin extends Document {
   email: string;
   password: string;
@@ -11,8 +18,7 @@ export interface IAdmin extends Document {
   department?: 'general' | 'finance' | 'logistics';
   lastLogin?: Date;
   lastLogout?: Date;
-  sessionToken?: string;    // Secure session token
-  sessionExpiry?: Date;     // Session expiration time
+  sessions: IAdminSession[];  // Multiple concurrent sessions
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -41,8 +47,12 @@ const adminSchema = new Schema<IAdmin>(
     },
     lastLogin: Date,
     lastLogout: Date,
-    sessionToken: { type: String, default: null },   // Secure session token
-    sessionExpiry: { type: Date, default: null },    // When session expires
+    sessions: [{
+      token: { type: String, required: true },
+      createdAt: { type: Date, default: Date.now },
+      lastActivity: { type: Date, default: Date.now },
+      expiresAt: { type: Date, required: true },
+    }],
   },
   { timestamps: true }
 );
