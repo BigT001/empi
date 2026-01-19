@@ -27,6 +27,7 @@ interface SidebarItem {
   icon: React.ReactNode;
   tab?: string; // optional dashboard tab id when href === '/admin/dashboard'
   permission?: string; // required permission to view this item
+  roles?: string[]; // array of roles that can access this item (all roles if not specified)
 }
 
 const sidebarItems: SidebarItem[] = [
@@ -43,6 +44,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <Users className="h-5 w-5" />,
     tab: 'users',
     permission: 'view_dashboard',
+    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
   },
   {
     name: "Orders",
@@ -50,6 +52,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <Clock className="h-5 w-5" />,
     tab: 'pending',
     permission: 'view_orders',
+    roles: ['super_admin', 'admin', 'logistics_admin'], // Finance cannot access
   },
   {
     name: "Products",
@@ -57,42 +60,49 @@ const sidebarItems: SidebarItem[] = [
     icon: <Package className="h-5 w-5" />,
     tab: 'products',
     permission: 'view_products',
+    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
   },
   {
     name: "Add Product",
     href: "/admin/upload",
     icon: <Plus className="h-5 w-5" />,
     permission: 'view_products',
+    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
   },
   {
     name: "Finance",
     href: "/admin/finance",
     icon: <BarChart3 className="h-5 w-5" />,
     permission: 'view_finance',
+    roles: ['super_admin', 'admin', 'finance_admin'], // Finance team can access
   },
   {
     name: "Invoices",
     href: "/admin/invoices",
     icon: <FileText className="h-5 w-5" />,
     permission: 'view_invoices',
+    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
   },
   {
     name: "Reviews",
     href: "/admin/reviews",
     icon: <MessageCircle className="h-5 w-5" />,
     permission: 'view_products',
+    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
   },
   {
     name: "Logistics",
     href: "/admin/logistics",
     icon: <Truck className="h-5 w-5" />,
     permission: 'view_logistics',
+    roles: ['super_admin', 'admin', 'logistics_admin'], // Finance cannot access
   },
   {
     name: "Settings",
     href: "/admin/settings",
     icon: <Settings className="h-5 w-5" />,
     permission: 'view_settings',
+    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
   },
 ];
 
@@ -122,11 +132,21 @@ export function AdminSidebar() {
     return pathname.startsWith(href);
   };
 
-  // Check if item should be visible based on permissions
+  // Check if item should be visible based on permissions and role
   const isItemVisible = (item: SidebarItem): boolean => {
-    if (!item.permission) return true; // No permission required
-    if (!admin?.permissions) return false; // No admin or permissions
-    return hasPermission(admin.permissions, item.permission as Permission);
+    // Check if admin has the required permission
+    if (item.permission) {
+      if (!admin?.permissions) return false;
+      if (!hasPermission(admin.permissions, item.permission as Permission)) return false;
+    }
+
+    // Check if admin's role is allowed for this item
+    if (item.roles && item.roles.length > 0) {
+      if (!admin?.role) return false;
+      if (!item.roles.includes(admin.role)) return false;
+    }
+
+    return true;
   };
 
   const handleMenuClick = () => {
