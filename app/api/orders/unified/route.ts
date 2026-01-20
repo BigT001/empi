@@ -149,6 +149,32 @@ export async function POST(request: NextRequest) {
     await connectDB();
     console.log('[Unified Orders API] ✅ Connected to DB');
 
+    // Check for idempotency key to prevent duplicate order creation
+    const idempotencyKey = request.headers.get('X-Idempotency-Key');
+    if (idempotencyKey) {
+      console.log(`[Unified Orders API] 🔑 Idempotency key found: ${idempotencyKey}`);
+      
+      // Check if we already processed this request
+      const existingOrder = await UnifiedOrder.findOne({ 
+        paymentReference: idempotencyKey,
+        isActive: true 
+      });
+      
+      if (existingOrder) {
+        console.log(`[Unified Orders API] ⚠️ Order already created for this payment reference: ${existingOrder.orderNumber}`);
+        return NextResponse.json(
+          { 
+            success: true,
+            message: 'Order already exists for this payment',
+            orderId: existingOrder._id?.toString(),
+            orderNumber: existingOrder.orderNumber,
+            invoice: { invoiceNumber: 'N/A' }
+          },
+          { status: 200 }
+        );
+      }
+    }
+
     let body: Record<string, unknown> = {};
     const contentType = request.headers.get('content-type') || '';
 
@@ -272,6 +298,7 @@ export async function POST(request: NextRequest) {
       
       // Payment
       paymentVerified: orderType === 'regular' ? true : false,
+      paymentReference: idempotencyKey || (body.paymentReference as string) || undefined,
       
       // Status & Logistics
       status: 'pending',

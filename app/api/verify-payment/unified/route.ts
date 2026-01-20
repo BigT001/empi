@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import UnifiedOrder from '@/lib/models/UnifiedOrder';
 import Invoice from '@/lib/models/Invoice';
 import Message from '@/lib/models/Message';
+import { sendInvoiceEmail } from '@/lib/email';
 
 /**
  * GET /api/verify-payment/unified
@@ -110,6 +111,55 @@ export async function GET(request: NextRequest) {
     );
 
     console.log(`[Verify Payment] ✅ Order status updated to '${newStatus}'`);
+
+    // Send invoice email to customer
+    try {
+      console.log(`[Verify Payment] 📧 Sending invoice email to customer: ${order.email}`);
+      
+      // Generate a simple invoice HTML for email
+      const invoiceHtml = `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
+          <h2>Invoice ${invoiceNumber}</h2>
+          <p><strong>Order Number:</strong> ${order.orderNumber}</p>
+          <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+          <hr/>
+          <h3>Items</h3>
+          <table style="width: 100%; border-collapse: collapse;">
+            <tr>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Item</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Qty</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Price</th>
+            </tr>
+            ${order.items?.map((item: any) => `
+              <tr>
+                <td style="border: 1px solid #ddd; padding: 8px;">${item.name}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${item.quantity}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">₦${(item.price * item.quantity).toLocaleString()}</td>
+              </tr>
+            `).join('') || ''}
+          </table>
+          <hr/>
+          <div style="text-align: right; font-size: 14px;">
+            <p><strong>Subtotal:</strong> ₦${order.subtotal?.toLocaleString() || 0}</p>
+            ${order.discountPercentage ? `<p><strong>Discount (${order.discountPercentage}%):</strong> -₦${(order.discountAmount || 0).toLocaleString()}</p>` : ''}
+            <p><strong>Tax (7.5%):</strong> ₦${(order.vat || 0).toLocaleString()}</p>
+            <p style="font-size: 16px;"><strong>Total: ₦${order.total?.toLocaleString() || 0}</strong></p>
+          </div>
+        </div>
+      `;
+      
+      const emailResult = await sendInvoiceEmail(
+        order.email,
+        `${order.firstName} ${order.lastName}`,
+        invoiceNumber,
+        invoiceHtml,
+        order.orderNumber
+      );
+      
+      console.log(`[Verify Payment] 📧 Invoice email result - Customer: ${emailResult.customerSent ? '✅' : '❌'}, Admin: ${emailResult.adminSent ? '✅' : '❌'}`);
+    } catch (emailError) {
+      console.error('[Verify Payment] Warning: Could not send invoice email', emailError);
+    }
 
     // Send notification messages (tailored to order type)
     const notificationContent = order.orderType === 'custom' 

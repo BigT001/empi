@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 import CustomOrder from '@/lib/models/CustomOrder';
 import Invoice from '@/lib/models/Invoice';
+import { sendInvoiceEmail } from '@/lib/email';
 
 
 
@@ -164,6 +165,53 @@ export async function GET(request: NextRequest) {
         console.log('[verify-payment]   - paymentVerified:', invoice.paymentVerified);
         console.log('[verify-payment]   - customerEmail:', invoice.customerEmail);
         console.log('[verify-payment] 📋 Invoice will appear in user dashboard Invoices tab');
+        
+        // Send invoice email to customer
+        try {
+          console.log(`[verify-payment] 📧 Sending invoice email to customer: ${customerEmail}`);
+          
+          // Generate invoice HTML for email
+          const invoiceHtml = `
+            <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
+              <h2>Invoice ${invoiceNumber}</h2>
+              <p><strong>Order Number:</strong> ${paymentReference}</p>
+              <p><strong>Date:</strong> ${invoiceDate.toLocaleDateString()}</p>
+              <hr/>
+              <h3>Items</h3>
+              <table style="width: 100%; border-collapse: collapse;">
+                <tr>
+                  <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Item</th>
+                  <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Qty</th>
+                  <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Price</th>
+                </tr>
+                ${invoiceItems?.map((item: any) => `
+                  <tr>
+                    <td style="border: 1px solid #ddd; padding: 8px;">${item.name}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${item.quantity}</td>
+                    <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">₦${(item.price * item.quantity).toLocaleString()}</td>
+                  </tr>
+                `).join('') || ''}
+              </table>
+              <hr/>
+              <div style="text-align: right; font-size: 14px;">
+                <p><strong>Subtotal:</strong> ₦${invoiceSubtotal.toLocaleString()}</p>
+                <p style="font-size: 16px;"><strong>Total: ₦${paymentAmount.toLocaleString()}</strong></p>
+              </div>
+            </div>
+          `;
+          
+          const emailResult = await sendInvoiceEmail(
+            customerEmail,
+            customerName,
+            invoiceNumber,
+            invoiceHtml,
+            paymentReference
+          );
+          
+          console.log(`[verify-payment] 📧 Invoice email result - Customer: ${emailResult.customerSent ? '✅' : '❌'}, Admin: ${emailResult.adminSent ? '✅' : '❌'}`);
+        } catch (emailError) {
+          console.error('[verify-payment] Warning: Could not send invoice email', emailError);
+        }
         
         // Send admin and buyer payment notification messages
         try {

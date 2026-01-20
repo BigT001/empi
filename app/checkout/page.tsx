@@ -115,6 +115,14 @@ export default function CheckoutPage() {
   const handlePaymentSuccess = async (response: any) => {
     console.log("✅ Payment success handler called");
     console.log("Reference:", response?.reference);
+    
+    // CRITICAL: Prevent duplicate order creation
+    if (paymentProcessed) {
+      console.log("⚠️ Payment already processed, ignoring duplicate call");
+      return;
+    }
+    
+    setPaymentProcessed(true);
 
     try {
       // Use buyer info or guest customer info
@@ -279,10 +287,17 @@ export default function CheckoutPage() {
 
       console.log("💾 Saving order to unified endpoint...");
       console.log("Order data:", JSON.stringify(orderData, null, 2));
+      
+      // Add idempotency key to prevent duplicate order creation
+      const idempotencyKey = response?.reference || `checkout-${Date.now()}`;
+      
       // Use unified endpoint for creating regular orders
       const res = await fetch("/api/orders/unified", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "X-Idempotency-Key": idempotencyKey,
+        },
         body: JSON.stringify(orderData),
       });
 
@@ -344,6 +359,12 @@ export default function CheckoutPage() {
     const pollInterval = setInterval(async () => {
       pollCount++;
       try {
+        // Stop polling if payment already processed
+        if (paymentProcessed) {
+          clearInterval(pollInterval);
+          return;
+        }
+        
         const params = new URLSearchParams();
         params.append('reference', ref);
         if (customerEmail) params.append('email', customerEmail);
@@ -371,6 +392,12 @@ export default function CheckoutPage() {
   // Helper function to verify payment
   const verifyAndProcessPayment = async (ref: string, customerEmail: string = '', customerName: string = '') => {
     try {
+      // Skip if payment already processed
+      if (paymentProcessed) {
+        console.log("⚠️ Payment already processed, skipping verification");
+        return;
+      }
+      
       const params = new URLSearchParams();
       params.append('reference', ref);
       if (customerEmail) params.append('email', customerEmail);
