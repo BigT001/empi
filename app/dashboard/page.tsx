@@ -348,21 +348,64 @@ export default function BuyerDashboardPage() {
     
     console.log('[Dashboard] 🔔 Starting polling for updates (every 3 seconds)');
 
-    const handleVisibilityChange = () => {
+    const handleVisibilityChange = async () => {
       if (!document.hidden) {
         console.log('[Dashboard] 👀 Page became visible - fetching updates');
-        fetchCustomOrders();
-        fetchRegularOrders();
+        // Use unified fetch pattern to prevent duplicates
+        try {
+          const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
+          
+          const [customResponse, regularResponse] = await Promise.all([
+            fetch(`/api/orders/unified?${queryParam}&orderType=custom`),
+            fetch(`/api/orders/unified?${queryParam}&orderType=regular`)
+          ]);
+          
+          const customData = await customResponse.json();
+          const regularData = await regularResponse.json();
+          
+          if (customData.orders && Array.isArray(customData.orders)) {
+            setCustomOrders(customData.orders);
+          }
+          
+          if (regularData.orders && Array.isArray(regularData.orders)) {
+            setRegularOrders(regularData.orders);
+          }
+        } catch (error) {
+          console.error('[Dashboard] Error refreshing on visibility change:', error);
+        }
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Poll every 3 seconds for faster updates
-    const pollingInterval = setInterval(() => {
+    const pollingInterval = setInterval(async () => {
       if (!document.hidden) {
-        fetchCustomOrders();
-        fetchRegularOrders();
+        try {
+          const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
+          
+          const [customResponse, regularResponse] = await Promise.all([
+            fetch(`/api/orders/unified?${queryParam}&orderType=custom`),
+            fetch(`/api/orders/unified?${queryParam}&orderType=regular`)
+          ]);
+          
+          const customData = await customResponse.json();
+          const regularData = await regularResponse.json();
+          
+          if (customData.orders && Array.isArray(customData.orders)) {
+            // Deduplicate by _id to prevent showing same order twice
+            const uniqueCustom = Array.from(new Map(customData.orders.map((o: CustomOrder) => [o._id, o])).values()) as CustomOrder[];
+            setCustomOrders(uniqueCustom);
+          }
+          
+          if (regularData.orders && Array.isArray(regularData.orders)) {
+            // Deduplicate by _id to prevent showing same order twice
+            const uniqueRegular = Array.from(new Map(regularData.orders.map((o: RegularOrder) => [o._id, o])).values()) as RegularOrder[];
+            setRegularOrders(uniqueRegular);
+          }
+        } catch (error) {
+          console.warn('[Dashboard] Warning during polling update:', error);
+        }
       }
     }, 3000);
 
@@ -370,7 +413,7 @@ export default function BuyerDashboardPage() {
       clearInterval(pollingInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [buyer?.email]);
+  }, [buyer?.email, buyer?.id]);
 
   // Fetch invoices
   useEffect(() => {
