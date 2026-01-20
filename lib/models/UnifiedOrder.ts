@@ -148,7 +148,7 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
     address: String,
     city: {
       type: String,
-      required: true,
+      default: '',
     },
     state: String,
     zipCode: String,
