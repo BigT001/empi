@@ -639,11 +639,38 @@ export default function CheckoutPage() {
               {/* Customer Info */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <p className="text-xs font-semibold text-blue-900 mb-3 uppercase">Billing Information</p>
-                <div className="text-sm text-blue-800 space-y-1">
-                  <p><span className="font-semibold">Name:</span> {buyer?.fullName || "Guest Customer"}</p>
-                  <p><span className="font-semibold">Email:</span> {buyer?.email || "Not provided"}</p>
-                  <p><span className="font-semibold">Phone:</span> {buyer?.phone || "Not provided"}</p>
-                </div>
+                
+                {buyer ? (
+                  <div className="text-sm text-blue-800 space-y-1">
+                    <p><span className="font-semibold">Name:</span> {buyer.fullName}</p>
+                    <p><span className="font-semibold">Email:</span> {buyer.email}</p>
+                    <p><span className="font-semibold">Phone:</span> {buyer.phone}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    <input
+                      type="text"
+                      placeholder="Full Name"
+                      value={guestCustomer.fullName}
+                      onChange={(e) => setGuestCustomer({...guestCustomer, fullName: e.target.value})}
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                    />
+                    <input
+                      type="email"
+                      placeholder="Email Address"
+                      value={guestCustomer.email}
+                      onChange={(e) => setGuestCustomer({...guestCustomer, email: e.target.value})}
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                    />
+                    <input
+                      type="tel"
+                      placeholder="Phone Number"
+                      value={guestCustomer.phone}
+                      onChange={(e) => setGuestCustomer({...guestCustomer, phone: e.target.value})}
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                    />
+                  </div>
+                )}
               </div>
 
               {/* Payment Notice */}
