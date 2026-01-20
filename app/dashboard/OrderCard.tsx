@@ -10,11 +10,14 @@ interface CustomOrder {
   _id: string;
   orderNumber: string;
   fullName: string;
+  firstName?: string;
+  lastName?: string;
   email: string;
   phone: string;
   address?: string;
   city: string;
   state?: string;
+  country?: string;
   description: string;
   designUrl?: string;
   designUrls?: string[];
@@ -30,7 +33,17 @@ interface CustomOrder {
   timerStartedAt?: string;
   timerDurationDays?: number;
   items?: any[];
-  // Pricing breakdown
+  // Pricing fields - UNIFIED for both custom and regular orders
+  subtotal?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
+  vat?: number;
+  total?: number;
+  shippingCost?: number;
+  shippingType?: string;
+  orderType?: string;
+  // Pricing breakdown (alternative structure)
   pricing?: {
     subtotal?: number;
     discount?: number;
@@ -67,17 +80,27 @@ export function OrderCard({
 
     try {
       setIsDeleting(true);
-      const response = await fetch(`/api/custom-orders?id=${order._id}`, {
+      console.log('[OrderCard] 🗑️ Attempting to delete order:', order._id);
+      
+      const response = await fetch(`/api/orders/unified/${order._id}`, {
         method: 'DELETE',
       });
 
+      console.log('[OrderCard] Delete response status:', response.status);
+
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.message || 'Failed to delete order');
+        console.error('[OrderCard] Delete error response:', { status: response.status, data });
+        throw new Error(data.message || data.error || `Failed to delete order (${response.status})`);
       }
 
+      const deleteResult = await response.json();
+      console.log('[OrderCard] ✅ Order deleted:', deleteResult);
+      
       // Redirect to dashboard on successful deletion
-      window.location.href = '/dashboard';
+      setTimeout(() => {
+        window.location.href = '/dashboard';
+      }, 500);
     } catch (error) {
       console.error('[OrderCard] Error deleting order:', error);
       alert(error instanceof Error ? error.message : 'Failed to delete order');
@@ -153,36 +176,53 @@ export function OrderCard({
         {/* Items Section - Show if items exist */}
         {order.items && order.items.length > 0 ? (
           <div>
-            <p className="text-xs text-gray-600 font-bold uppercase tracking-wide mb-1.5">Items Ordered</p>
+            <p className="text-xs text-gray-600 font-bold uppercase tracking-wide mb-2">Items Ordered</p>
             <div className="space-y-2">
-              {order.items.map((item: any, idx: number) => (
-                <div key={idx} className="flex gap-3 bg-gradient-to-r from-lime-50 to-green-50 border border-lime-200 rounded-lg p-2.5">
-                  {/* Product Image */}
-                  <div className="relative aspect-square bg-gray-100 rounded border border-lime-300 overflow-hidden flex-shrink-0 w-14 h-14">
-                    {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name || 'Product image'}
-                          fill
-                          className="w-full h-full object-cover"
-                          onError={() => {}}
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                          <span className="text-xs text-gray-600">No Image</span>
+              {order.items.map((item: any, idx: number) => {
+                const itemPrice = item.price || item.unitPrice || 0;
+                const itemQuantity = item.quantity || 1;
+                const itemTotal = itemPrice * itemQuantity;
+                return (
+                  <div key={idx} className="bg-white border border-lime-200 rounded-lg p-3">
+                    <div className="flex gap-3">
+                      {/* Product Image */}
+                      <div className="relative aspect-square bg-gray-100 rounded border border-lime-300 overflow-hidden flex-shrink-0 w-16 h-16">
+                        {item.image || item.imageUrl ? (
+                            <Image
+                              src={item.image || item.imageUrl}
+                              alt={item.name || 'Product image'}
+                              fill
+                              className="w-full h-full object-cover"
+                              onError={() => {}}
+                            />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                              <span className="text-xs text-gray-600">No Image</span>
+                            </div>
+                          )}
+                      </div>
+                      {/* Product Details */}
+                      <div className="flex-1 flex flex-col gap-2 min-w-0">
+                        <h4 className="text-sm font-bold text-gray-900">{item.name || item.productName || 'Product'}</h4>
+                        <div className="space-y-1">
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-600">Price:</span>
+                            <span className="font-semibold text-gray-900">₦{(itemPrice).toLocaleString('en-NG')}</span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-gray-600">Qty:</span>
+                            <span className="font-semibold text-gray-900">{itemQuantity}</span>
+                          </div>
+                          <div className="flex justify-between text-sm pt-1 border-t border-gray-200">
+                            <span className="font-semibold text-gray-700">Subtotal:</span>
+                            <span className="font-bold text-lime-700">₦{(itemTotal).toLocaleString('en-NG')}</span>
+                          </div>
                         </div>
-                      )}
-                  </div>
-                  {/* Product Details */}
-                  <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
-                    <h4 className="text-sm font-bold text-gray-900 truncate">{item.name || item.productName || 'Product'}</h4>
-                    <div className="flex items-center justify-between">
-                      {item.quantity && <p className="text-xs text-gray-600">Qty: {item.quantity}</p>}
-                      {item.price && <p className="text-xs font-semibold text-lime-700">₦{(item.price).toLocaleString('en-NG')}</p>}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -240,6 +280,49 @@ export function OrderCard({
             <p className="text-sm text-amber-900 line-clamp-2">{order.notes}</p>
           </div>
         )}
+      </div>
+
+      {/* Pricing Breakdown Section - Display what admin sent */}
+      <div className="border-t border-gray-200 px-4 md:px-5 py-3 md:py-4 space-y-2 bg-gradient-to-r from-lime-50 to-green-50">
+        {/* Subtotal (Original, before discount) */}
+        {(order.subtotal || order.pricing?.subtotal) && (
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-gray-700">Subtotal:</span>
+            <span className="font-semibold text-gray-900">₦{((order.subtotal || order.pricing?.subtotal || 0)).toLocaleString('en-NG')}</span>
+          </div>
+        )}
+        
+        {/* 🎁 Discount - Highlight with emoji and green styling (from admin calculation) */}
+        {(order.discountPercentage && order.discountPercentage > 0) || order.discountAmount ? (
+          <div className="flex items-center justify-between text-sm bg-green-50 px-3 py-2 rounded border border-green-200">
+            <span className="text-green-700 font-semibold">🎁 Discount ({order.discountPercentage || 0}%):</span>
+            <span className="font-bold text-green-600">-₦{(order.discountAmount || 0).toLocaleString('en-NG')}</span>
+          </div>
+        ) : null}
+
+        {/* Subtotal After Discount (if discount applied) */}
+        {order.subtotalAfterDiscount ? (
+          <div className="flex items-center justify-between text-sm font-semibold text-gray-800 bg-white px-3 py-1.5 rounded border border-gray-200">
+            <span>Subtotal After Discount:</span>
+            <span>₦{(order.subtotalAfterDiscount).toLocaleString('en-NG')}</span>
+          </div>
+        ) : null}
+        
+        {/* VAT (7.5%) - Applied to subtotal after discount */}
+        {(order.vat !== undefined || order.pricing?.tax !== undefined || order.total) && (
+          <div className="flex items-center justify-between text-sm border-t border-gray-300 pt-2">
+            <span className="text-gray-700 font-semibold">VAT (7.5%):</span>
+            <span className="font-bold text-amber-700">₦{((order.vat !== undefined ? order.vat : order.pricing?.tax) || 0).toLocaleString('en-NG')}</span>
+          </div>
+        )}
+
+        {/* Total Amount */}
+        {order.total || order.pricing?.total ? (
+          <div className="flex items-center justify-between text-base border-t-2 border-gray-300 pt-2">
+            <span className="font-bold text-gray-900">Total Amount:</span>
+            <span className="text-lg font-bold text-green-600">₦{((order.total || order.pricing?.total || 0)).toLocaleString('en-NG')}</span>
+          </div>
+        ) : null}
       </div>
 
       {/* Footer - Actions */}

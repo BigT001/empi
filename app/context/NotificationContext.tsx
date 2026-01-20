@@ -247,7 +247,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         const buyerId = buyer?.id;
         if (!buyerId) return;
         
-        const res = await fetch(`/api/orders?limit=10&buyerId=${buyerId}`);
+        const res = await fetch(`/api/orders/unified?limit=10&buyerId=${buyerId}`);
         if (!res.ok) {
           console.warn('[NotificationContext] Poll failed with status:', res.status);
           return;

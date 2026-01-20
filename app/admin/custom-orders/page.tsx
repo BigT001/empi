@@ -53,7 +53,7 @@ export default function AdminCustomOrdersPage() {
   const fetchOrders = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch("/api/custom-orders");
+      const response = await fetch("/api/orders/unified?orderType=custom");
       if (!response.ok) throw new Error("Failed to fetch custom orders");
       const data = await response.json();
       setOrders(data.orders || []);

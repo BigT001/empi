@@ -61,16 +61,16 @@ export default function DeliveryMethodModal({
     }
 
     try {
-      // Determine API endpoint based on order type
-      const apiEndpoint = isCustomOrder ? `/api/custom-orders/${orderId}` : `/api/orders/${orderId}`;
-      console.log("🔄 Updating order delivery method at:", apiEndpoint, { isCustomOrder });
+      // Use unified endpoint for all orders
+      const apiEndpoint = `/api/orders/unified/${orderId}`;
+      console.log("🔄 Updating order delivery method at:", apiEndpoint);
       
       const updateRes = await fetch(apiEndpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          shippingType: method,
-          status: "ready",
+          deliveryOption: method,
+          status: "ready_for_delivery",
           ...(method === "empi" && deliveryForm && {
             address: deliveryForm.address,
             busStop: deliveryForm.busStop,

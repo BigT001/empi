@@ -55,3 +55,62 @@ export async function GET(
     );
   }
 }
+
+/**
+ * PATCH /api/buyers/[id]
+ * Update buyer profile information
+ * Allows updating: fullName, phone, address, city, state, postalCode
+ * Especially useful for populating missing profile fields from custom order forms
+ */
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    await connectDB();
+    
+    const { id } = await params;
+    const body = await request.json();
+    const { fullName, phone, address, city, state, postalCode } = body;
+
+    if (!id) {
+      return NextResponse.json(
+        { error: "Buyer ID is required" },
+        { status: 400 }
+      );
+    }
+
+    // Find buyer
+    const buyer = await Buyer.findById(id);
+    if (!buyer) {
+      return NextResponse.json(
+        { error: "Buyer not found" },
+        { status: 404 }
+      );
+    }
+
+    // Update only provided fields (preserves existing data)
+    if (fullName !== undefined) buyer.fullName = fullName;
+    if (phone !== undefined) buyer.phone = phone;
+    if (address !== undefined) buyer.address = address;
+    if (city !== undefined) buyer.city = city;
+    if (state !== undefined) buyer.state = state;
+    if (postalCode !== undefined) buyer.postalCode = postalCode;
+
+    await buyer.save();
+
+    console.log(`✅ Buyer profile updated: ${buyer.email}`);
+
+    // Serialize and remove password
+    const buyerData = serializeDoc(buyer);
+    delete (buyerData as any).password;
+
+    return NextResponse.json(buyerData, { status: 200 });
+  } catch (error: any) {
+    console.error("Error updating buyer profile:", error);
+    return NextResponse.json(
+      { error: error.message || "Failed to update buyer profile" },
+      { status: 500 }
+    );
+  }
+}

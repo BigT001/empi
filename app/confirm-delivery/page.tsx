@@ -24,7 +24,7 @@ export default function ConfirmDeliveryPage() {
 
       try {
         // Confirm the delivery choice and send system message
-        const response = await fetch('/api/orders/' + orderId, {
+        const response = await fetch('/api/orders/unified/' + orderId, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

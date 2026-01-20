@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Message from '@/lib/models/Message';
 import CustomOrder from '@/lib/models/CustomOrder';
 import Order from '@/lib/models/Order';
+import UnifiedOrder from '@/lib/models/UnifiedOrder';
 import { calculateQuote } from '@/lib/discountCalculator';
 
 /**
@@ -54,8 +55,11 @@ export async function GET(request: NextRequest) {
     const query = orderId ? { orderId } : { orderNumber };
     console.log('[API:GET /messages] Query:', JSON.stringify(query));
 
-    // Fetch the order to check handoff details
-    const order = await CustomOrder.findOne(query).lean() as any;
+    // Fetch the order to check handoff details - try UnifiedOrder first, then CustomOrder
+    let order = await UnifiedOrder.findOne(query).lean() as any;
+    if (!order) {
+      order = await CustomOrder.findOne(query).lean() as any;
+    }
     
     // Build message query with handler-based filtering
     let messageQuery: any = query;
@@ -156,13 +160,17 @@ export async function POST(request: NextRequest) {
     
     if (!orderId && orderNumber) {
       console.log('[API:POST /messages] Looking up order by orderNumber:', orderNumber);
-      // Try custom order first
-      let order = await CustomOrder.findOne({ orderNumber });
+      // Try UnifiedOrder first (new system)
+      let order = await UnifiedOrder.findOne({ orderNumber });
       if (!order) {
-        // Try regular order
-        order = await Order.findOne({ orderNumber });
-        if (order) {
-          orderType = 'regular';
+        // Try custom order (legacy)
+        order = await CustomOrder.findOne({ orderNumber });
+        if (!order) {
+          // Try regular order
+          order = await Order.findOne({ orderNumber });
+          if (order) {
+            orderType = 'regular';
+          }
         }
       }
       if (!order) {
@@ -180,11 +188,20 @@ export async function POST(request: NextRequest) {
       
       let order: any = null;
       
-      // Try custom order first
+      // Try UnifiedOrder first (new system)
       try {
-        order = await CustomOrder.findById(orderId);
+        order = await UnifiedOrder.findById(orderId);
       } catch (e) {
-        console.log('[API:POST /messages] ⚠️ Error finding custom order by ID:', e);
+        console.log('[API:POST /messages] ⚠️ Error finding unified order by ID:', e);
+      }
+      
+      if (!order) {
+        // Try custom order (legacy)
+        try {
+          order = await CustomOrder.findById(orderId);
+        } catch (e) {
+          console.log('[API:POST /messages] ⚠️ Error finding custom order by ID:', e);
+        }
       }
       
       if (!order) {
@@ -205,9 +222,12 @@ export async function POST(request: NextRequest) {
         // Try alternate ID field names in case it's stored differently
         console.log('[API:POST /messages] 💡 Trying alternate lookup strategies...');
         
-        // Try as string query on both custom and regular orders
+        // Try as string query on all three order models
         try {
-          let altOrder = await CustomOrder.findOne({ _id: orderId });
+          let altOrder = await UnifiedOrder.findOne({ _id: orderId });
+          if (!altOrder) {
+            altOrder = await CustomOrder.findOne({ _id: orderId });
+          }
           if (!altOrder) {
             altOrder = await Order.findOne({ _id: orderId });
             if (altOrder) {
@@ -230,9 +250,17 @@ export async function POST(request: NextRequest) {
         if (orderNumber) {
           let orderByNumber: any = null;
           try {
-            orderByNumber = await CustomOrder.findOne({ orderNumber });
+            orderByNumber = await UnifiedOrder.findOne({ orderNumber });
           } catch (e) {
-            console.log('[API:POST /messages] ⚠️ Error finding custom order by orderNumber:', e);
+            console.log('[API:POST /messages] ⚠️ Error finding unified order by orderNumber:', e);
+          }
+          
+          if (!orderByNumber) {
+            try {
+              orderByNumber = await CustomOrder.findOne({ orderNumber });
+            } catch (e) {
+              console.log('[API:POST /messages] ⚠️ Error finding custom order by orderNumber:', e);
+            }
           }
           
           if (!orderByNumber) {
@@ -354,11 +382,20 @@ export async function POST(request: NextRequest) {
         console.log('[API:POST /messages] 📦 Customer selected delivery option:', deliveryOption, 'for order:', finalOrderId);
         
         try {
-          const updatedOrder = await CustomOrder.findByIdAndUpdate(
+          let updatedOrder = await UnifiedOrder.findByIdAndUpdate(
             finalOrderId,
             { deliveryOption },
             { new: true }
           );
+          
+          // If not found in UnifiedOrder, try CustomOrder
+          if (!updatedOrder) {
+            updatedOrder = await CustomOrder.findByIdAndUpdate(
+              finalOrderId,
+              { deliveryOption },
+              { new: true }
+            );
+          }
           
           console.log('[API:POST /messages] ✅ Order updated with deliveryOption:', {
             orderId: finalOrderId,
@@ -383,7 +420,10 @@ export async function POST(request: NextRequest) {
         });
         
         // Get current order to calculate totals
-        const currentOrder = await CustomOrder.findById(finalOrderId);
+        let currentOrder = await UnifiedOrder.findById(finalOrderId);
+        if (!currentOrder) {
+          currentOrder = await CustomOrder.findById(finalOrderId);
+        }
         if (!currentOrder) {
           return NextResponse.json(
             { error: 'Order not found' },
@@ -412,11 +452,20 @@ export async function POST(request: NextRequest) {
           orderUpdate.proposedDeliveryDate = new Date(quotedDeliveryDate);
         }
         
-        const updatedOrder = await CustomOrder.findByIdAndUpdate(
+        let updatedOrder = await UnifiedOrder.findByIdAndUpdate(
           finalOrderId,
           orderUpdate,
           { new: true }
         );
+        
+        // If not found in UnifiedOrder, try CustomOrder
+        if (!updatedOrder) {
+          updatedOrder = await CustomOrder.findByIdAndUpdate(
+            finalOrderId,
+            orderUpdate,
+            { new: true }
+          );
+        }
         
         console.log('[API:POST /messages] ✅ Order updated with quote:', {
           quotedPrice: updatedOrder?.quotedPrice,

@@ -44,7 +44,7 @@ export function NotificationBell() {
     const fetchNotifications = async () => {
       try {
         // Fetch orders to get detailed notifications
-        const ordersRes = await fetch(`/api/orders?buyerId=${buyer.id}&limit=100`);
+        const ordersRes = await fetch(`/api/orders/unified?buyerId=${buyer.id}&limit=100`);
         if (!ordersRes.ok) return;
         const ordersData = await ordersRes.json();
         const orders = Array.isArray(ordersData) ? ordersData : ordersData.orders || [];

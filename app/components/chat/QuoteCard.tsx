@@ -38,15 +38,15 @@ export function QuoteCard({ msg }: QuoteCardProps) {
             <span className="font-semibold">₦{Math.round(msg.quotedPrice).toLocaleString()}</span>
           </div>
 
-          {/* Discount */}
+          {/* 🎁 Discount - Highlighted with emoji */}
           {msg.discountPercentage && msg.discountPercentage > 0 && (
             <div
-              className={`flex justify-between text-xs md:text-sm gap-3 ${
-                msg.senderType === 'customer' ? 'text-green-100' : 'text-green-600'
+              className={`flex justify-between text-xs md:text-sm gap-3 px-2 py-1.5 rounded ${
+                msg.senderType === 'customer' ? 'text-green-100 bg-green-900/20' : 'text-green-600 bg-green-50 border border-green-200'
               }`}
             >
-              <span className="opacity-90">Discount ({msg.discountPercentage}%):</span>
-              <span className="font-semibold">-₦{Math.round(msg.discountAmount || 0).toLocaleString()}</span>
+              <span className="font-semibold">🎁 Discount ({msg.discountPercentage}%):</span>
+              <span className="font-bold">-₦{Math.round(msg.discountAmount || 0).toLocaleString()}</span>
             </div>
           )}
 

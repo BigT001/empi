@@ -78,7 +78,7 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
       setLoading(true);
       setError(null);
 
-      const response = await fetch("/api/orders");
+      const response = await fetch("/api/orders/unified");
       if (!response.ok) throw new Error("Failed to fetch transactions");
 
       const data = await response.json();

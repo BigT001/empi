@@ -89,7 +89,7 @@ function LogisticsPageContent() {
   // Fetch custom order details to get deliveryDetails field
   const fetchCustomOrderDetails = async (orderId: string) => {
     try {
-      const response = await fetch(`/api/custom-orders?id=${orderId}`);
+      const response = await fetch(`/api/orders/unified/${orderId}`);
       if (response.ok) {
         const data = await response.json();
         
@@ -135,6 +135,8 @@ function LogisticsPageContent() {
           },
           // Include delivery details from custom order
           deliveryDetails: customOrderDetails?.deliveryDetails || order.deliveryDetails || {},
+          // Include design URLs from custom orders
+          designUrls: customOrderDetails?.designUrls || order.designUrls || [],
         };
 
         console.log(`[Logistics] Enriched order ${order.orderNumber}:`, {
@@ -143,6 +145,7 @@ function LogisticsPageContent() {
           userAddress: enrichedOrder.userDetails.address,
           userCity: enrichedOrder.userDetails.city,
           userState: enrichedOrder.userDetails.state,
+          designUrls: enrichedOrder.designUrls?.length || 0,
         });
 
         return enrichedOrder;
@@ -210,39 +213,97 @@ function LogisticsPageContent() {
     }).format(amount);
   };
 
-  const removeOrder = (orderId: string) => {
-    const updatedOrders = ordersData.filter(order => order._id !== orderId);
-    setOrdersData(updatedOrders);
-    if (updatedOrders.length > 0) {
-      sessionStorage.setItem('logistics_orders', JSON.stringify(updatedOrders));
-    } else {
-      sessionStorage.removeItem('logistics_orders');
-    }
-  };
-
-  const markAsShipped = (orderId: string) => {
-    const orderToShip = ordersData.find(order => order._id === orderId);
-    if (orderToShip) {
-      // Update order status to "shipped" in the database
-      updateOrderStatus(orderId, 'shipped');
+  const markAsShipped = async (orderId: string) => {
+    // Find order from enriched orders to preserve all enriched data
+    const enrichedOrderToShip = enrichedOrders.find(order => order._id === orderId);
+    const rawOrderToShip = ordersData.find(order => order._id === orderId);
+    
+    if (enrichedOrderToShip && rawOrderToShip) {
+      console.log(`[Logistics] 🚀 Starting mark as shipped process for ${orderId}`);
       
-      // Move order to shipped tab
-      const updatedShipped = [...shippedOrders, orderToShip];
+      // FIRST: Update order status to "shipped" in the database and WAIT for it
+      console.log(`[Logistics] 1️⃣ Updating database status to 'shipped' for ${orderId}...`);
+      await updateOrderStatus(orderId, 'shipped');
+      console.log(`[Logistics] ✅ Database status updated successfully for ${orderId}`);
+      
+      // SECOND: Move order to shipped tab locally - use enriched order to maintain all data
+      console.log(`[Logistics] 2️⃣ Moving order to shipped tab in local state...`);
+      const updatedEnrichedShipped = [...enrichedShippedOrders, enrichedOrderToShip];
+      setEnrichedShippedOrders(updatedEnrichedShipped);
+      
+      // Update raw shipped orders for sessionStorage
+      const updatedShipped = [...shippedOrders, rawOrderToShip];
       setShippedOrders(updatedShipped);
       sessionStorage.setItem('logistics_shipped_orders', JSON.stringify(updatedShipped));
       
-      // Remove from active orders
-      removeOrder(orderId);
+      // Remove from active orders - both raw and enriched
+      const updatedOrders = ordersData.filter(order => order._id !== orderId);
+      setOrdersData(updatedOrders);
+      if (updatedOrders.length > 0) {
+        sessionStorage.setItem('logistics_orders', JSON.stringify(updatedOrders));
+      } else {
+        sessionStorage.removeItem('logistics_orders');
+      }
       
+      // Remove from enriched active orders
+      const updatedEnrichedOrders = enrichedOrders.filter(order => order._id !== orderId);
+      setEnrichedOrders(updatedEnrichedOrders);
+      console.log(`[Logistics] ✅ Order removed from local active orders`);
+
+      // THIRD: Clean up all related sessionStorage to prevent re-adding
+      console.log(`[Logistics] 3️⃣ Cleaning up sessionStorage...`);
+      try {
+        const stored = sessionStorage.getItem('dashboard_approved_order_ids');
+        if (stored) {
+          const ids = JSON.parse(stored);
+          const filteredIds = ids.filter((id: string) => id !== orderId);
+          if (filteredIds.length > 0) {
+            sessionStorage.setItem('dashboard_approved_order_ids', JSON.stringify(filteredIds));
+          } else {
+            sessionStorage.removeItem('dashboard_approved_order_ids');
+          }
+        }
+      } catch (e) {
+        console.error('[Logistics] Error updating dashboard_approved_order_ids:', e);
+      }
+
+      // Remove sent to logistics state
+      try {
+        sessionStorage.removeItem(`order_sent_to_logistics_${orderId}`);
+      } catch (e) {
+        console.error('[Logistics] Error removing sent to logistics state:', e);
+      }
+      console.log(`[Logistics] ✅ SessionStorage cleaned up`);
+
+      // FOURTH: Broadcast event to notify dashboard/pending panel to remove this order
+      // This happens AFTER database and local state are updated
+      console.log(`[Logistics] 4️⃣ Broadcasting ordersUpdated event to all listeners...`);
+      if (typeof window !== 'undefined') {
+        // Force the event to bubble and be heard by all listeners
+        window.dispatchEvent(new CustomEvent('ordersUpdated', { 
+          detail: { 
+            orderId, 
+            action: 'shipped',
+            timestamp: Date.now(),
+            message: 'Order has been marked as shipped and removed from pending orders'
+          },
+          bubbles: true
+        }));
+        console.log(`[Logistics] 📢 Broadcasted ordersUpdated event for ${orderId}`);
+      }
+      
+      console.log(`[Logistics] ✅ Mark as shipped process complete for ${orderId}`);
       setShippingConfirmModal(null);
       setIsShipping(false);
+    } else {
+      console.error(`[Logistics] ❌ Could not find order ${orderId} in local state`);
     }
   };
 
   const deleteOrder = async (orderId: string) => {
     try {
       // Delete from database
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'DELETE',
       });
 
@@ -254,7 +315,7 @@ function LogisticsPageContent() {
         throw new Error(error.error || 'Failed to delete order');
       }
 
-      // Remove from active orders if present
+      // Remove from active orders if present - both raw and enriched
       const updatedOrders = ordersData.filter(order => order._id !== orderId);
       setOrdersData(updatedOrders);
       if (updatedOrders.length > 0) {
@@ -263,7 +324,10 @@ function LogisticsPageContent() {
         sessionStorage.removeItem('logistics_orders');
       }
 
-      // Remove from shipped orders if present
+      const updatedEnrichedOrders = enrichedOrders.filter(order => order._id !== orderId);
+      setEnrichedOrders(updatedEnrichedOrders);
+
+      // Remove from shipped orders if present - both raw and enriched
       const updatedShipped = shippedOrders.filter(order => order._id !== orderId);
       setShippedOrders(updatedShipped);
       if (updatedShipped.length > 0) {
@@ -271,6 +335,9 @@ function LogisticsPageContent() {
       } else {
         sessionStorage.removeItem('logistics_shipped_orders');
       }
+
+      const updatedEnrichedShipped = enrichedShippedOrders.filter(order => order._id !== orderId);
+      setEnrichedShippedOrders(updatedEnrichedShipped);
 
       // Remove from persisted approved IDs on dashboard
       try {
@@ -307,7 +374,7 @@ function LogisticsPageContent() {
       console.log(`[Logistics] 🔄 Updating order ${orderId} to status: ${newStatus}`);
       console.log(`[Logistics] Order ID length: ${orderId.length}`);
       
-      const response = await fetch(`/api/custom-orders/${orderId}`, {
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -323,9 +390,9 @@ function LogisticsPageContent() {
       }
 
       if (response.status === 404) {
-        console.log('[Logistics] ⚠️ Order not found in custom-orders, trying orders endpoint...');
+        console.log('[Logistics] ⚠️ Order not found, retrying with unified endpoint...');
         
-        const altResponse = await fetch(`/api/orders/${orderId}`, {
+        const altResponse = await fetch(`/api/orders/unified/${orderId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -463,6 +530,7 @@ function LogisticsPageContent() {
                 onMarkShipped={() => {}}
                 onDelete={() => deleteOrder(order._id)}
                 formatCurrency={formatCurrency}
+                isShipped={true}
               />
             ))}
           </div>
@@ -491,9 +559,16 @@ function LogisticsPageContent() {
                   Cancel
                 </button>
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setIsShipping(true);
-                    markAsShipped(shippingConfirmModal);
+                    try {
+                      await markAsShipped(shippingConfirmModal);
+                    } catch (error) {
+                      console.error('[Logistics] Error marking order as shipped:', error);
+                      alert('Failed to mark order as shipped. Please try again.');
+                    } finally {
+                      setIsShipping(false);
+                    }
                   }}
                   disabled={isShipping}
                   className="flex-1 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-emerald-700 disabled:from-gray-400 disabled:to-gray-400"

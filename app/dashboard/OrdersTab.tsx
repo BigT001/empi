@@ -30,6 +30,15 @@ interface CustomOrder {
   deadlineDate?: string;
   timerStartedAt?: string;
   timerDurationDays?: number;
+  // Pricing fields from admin quote (sent directly by admin)
+  subtotal?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
+  vat?: number;
+  total?: number;
+  paymentProofUrl?: string;
+  paymentVerified?: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -154,6 +163,14 @@ export function OrdersTab({
                   unread: 0,
                 };
 
+                console.log('[OrdersTab] Rendering custom order card:', {
+                  orderNumber: order.orderNumber,
+                  orderId: order._id,
+                  quotedPrice: order.quotedPrice,
+                  quoteItemsCount: order.quoteItems?.length || 0,
+                  hasQuoteData: !!(order.quotedPrice && order.quotedPrice > 0),
+                });
+
                 return (
                   <div key={order._id} className="break-inside-avoid mb-6">
                     {/* CUSTOM ORDER CARD - Shows quote from admin */}
@@ -165,9 +182,18 @@ export function OrdersTab({
                       status={order.status}
                       quotedPrice={order.quotedPrice}
                       quoteItems={order.quoteItems}
+                      // CRITICAL: Pass all pricing fields from admin
+                      subtotal={order.subtotal}
+                      discountPercentage={order.discountPercentage}
+                      discountAmount={order.discountAmount}
+                      subtotalAfterDiscount={order.subtotalAfterDiscount}
+                      vat={order.vat}
+                      total={order.total}
                       email={order.email}
                       phone={order.phone}
                       designUrls={order.designUrls || []}
+                      paymentProofUrl={order.paymentProofUrl}
+                      paymentVerified={order.paymentVerified}
                       onChat={() => setChatModalOpen(order._id)}
                       onProceedToPayment={handleProceedToPayment}
                     />

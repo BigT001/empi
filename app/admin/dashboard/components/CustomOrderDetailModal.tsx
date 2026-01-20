@@ -43,7 +43,7 @@ export function CustomOrderDetailModal({ isOpen, orderId, onClose }: CustomOrder
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/custom-orders/${orderId}`);
+      const response = await fetch(`/api/orders/unified/${orderId}`);
       if (!response.ok) {
         throw new Error("Failed to fetch order details");
       }

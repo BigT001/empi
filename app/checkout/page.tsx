@@ -28,10 +28,15 @@ export default function CheckoutPage() {
   const [orderError, setOrderError] = useState<string | null>(null);
   const [customQuote, setCustomQuote] = useState<any>(null);
   const [paymentSuccessful, setPaymentSuccessful] = useState(false);
+  // CRITICAL: Prevent duplicate order creation from multiple payment callbacks
+  const [paymentProcessed, setPaymentProcessed] = useState(false);
   const [guestCustomer, setGuestCustomer] = useState({
     fullName: '',
     email: '',
     phone: '',
+    city: '',
+    address: '',
+    state: '',
   });
 
   useEffect(() => {
@@ -61,17 +66,38 @@ export default function CheckoutPage() {
         // Load customer info from the custom order if not logged in as a buyer
         if (quote.orderId && !buyer?.id) {
           console.log('[Checkout] Loading customer info from custom order:', quote.orderId);
-          fetch(`/api/custom-orders/${quote.orderId}`)
+          // Use unified endpoint
+          fetch(`/api/orders/unified/${quote.orderId}`)
             .then(res => res.json())
             .then(customOrder => {
-              if (customOrder && customOrder.fullName) {
+              if (customOrder && customOrder.firstName) {
+                const fullName = `${customOrder.firstName} ${customOrder.lastName || ''}`.trim();
                 setGuestCustomer({
-                  fullName: customOrder.fullName || '',
-                  email: (customOrder.email || '').toLowerCase(), // Normalize email to lowercase
+                  fullName: fullName || '',
+                  email: (customOrder.email || '').toLowerCase(),
                   phone: customOrder.phone || '',
+                  city: customOrder.city || '',
+                  address: customOrder.address || '',
+                  state: customOrder.state || '',
                 });
-                console.log('[Checkout] ✅ Loaded guest customer from custom order:', {
-                  fullName: customOrder.fullName,
+                
+                // 🎁 ALSO LOAD DISCOUNT FROM DATABASE if it was persisted
+                if (customOrder.discountPercentage !== undefined || customOrder.discountAmount !== undefined) {
+                  console.log('[Checkout] 🎁 Loaded discount from database:', {
+                    discountPercentage: customOrder.discountPercentage,
+                    discountAmount: customOrder.discountAmount,
+                  });
+                  
+                  // Update the quote with database discount values
+                  setCustomQuote((prev: any) => ({
+                    ...prev,
+                    discountPercentage: customOrder.discountPercentage || 0,
+                    discountAmount: customOrder.discountAmount || 0,
+                  }));
+                }
+                
+                console.log('[Checkout] ✅ Loaded guest customer from unified order:', {
+                  fullName: fullName,
                   email: customOrder.email,
                   phone: customOrder.phone,
                 });
@@ -112,14 +138,14 @@ export default function CheckoutPage() {
         const taxAmount = customQuote.quotedVAT || 0;
         const totalAmount = customQuote.quotedTotal || (subtotal + taxAmount + shippingCost);
 
-        // For custom orders, just update the status to 'paid' in the CustomOrder document
-        // Don't create a new Order entry
+        // For custom orders, update via unified endpoint
+        // Status should REMAIN 'pending' - admin must explicitly approve
         try {
-          const updateRes = await fetch(`/api/custom-orders/${customQuote.orderId}`, {
+          const updateRes = await fetch(`/api/orders/unified/${customQuote.orderId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              status: 'paid',
+              status: 'pending', // Custom orders stay pending until admin approves
               paymentReference: response.reference,
               paymentVerified: true,
             }),
@@ -127,7 +153,7 @@ export default function CheckoutPage() {
 
           if (updateRes.ok) {
             const updateData = await updateRes.json();
-            console.log("✅ Custom order status updated to 'paid':", updateData);
+            console.log("✅ Custom order payment verified, status remains 'pending':", updateData);
           } else {
             const errorData = await updateRes.json();
             console.error("❌ Failed to update custom order status:", errorData);
@@ -164,6 +190,7 @@ export default function CheckoutPage() {
         sessionStorage.removeItem('customOrderQuote');
         return;
       } else {
+        console.log("[Checkout] Full items array from cart:", JSON.stringify(items, null, 2));
         const buyItems = items.filter((item: any) => item.mode === 'buy');
         const rentalItems = items.filter((item: any) => item.mode === 'rent');
         
@@ -188,24 +215,50 @@ export default function CheckoutPage() {
         const totalAmount = goodsSubtotal + (cautionFee || 0) + shippingCost + taxAmount;
 
         // Attach rentalDays to each item for persistence/visibility in admin UI
-        const itemsWithRentalDays = items.map((it: any) => ({
-          ...it,
-          rentalDays: it.rentalDays || rentalSchedule?.rentalDays || 1,
-        }));
+        const itemsWithRentalDays = items.map((it: any) => {
+          const mappedItem = {
+            ...it,
+            id: it.id,
+            name: it.name,
+            price: it.price,
+            quantity: it.quantity,
+            image: it.image || '', // Explicitly include image from cart
+            mode: it.mode,
+            unitPrice: it.price,
+            rentalDays: it.rentalDays || rentalSchedule?.rentalDays || 1,
+          };
+          console.log(`📦 Cart item "${it.name}":`, { hasImage: !!it.image, image: it.image ? it.image.substring(0, 50) : 'NO IMAGE' });
+          return mappedItem;
+        });
+
+        // Parse full name into firstName and lastName for unified schema
+        const nameParts = (customerInfo.fullName || '').trim().split(/\s+/);
+        const firstName = nameParts[0] || '';
+        const lastName = nameParts.slice(1).join(' ') || '';
 
         orderData = {
           reference: response.reference,
+          email: customerInfo.email,
+          firstName: firstName,
+          lastName: lastName,
+          phone: customerInfo.phone,
           buyerId: buyer?.id || null,
-          customer: {
-            name: customerInfo.fullName,
-            email: customerInfo.email,
-            phone: customerInfo.phone,
-          },
+          city: customerInfo.city || '',
+          address: customerInfo.address || '',
+          state: customerInfo.state || '',
+          orderType: 'regular',
           items: itemsWithRentalDays,
           rentalSchedule: rentalSchedule || null,
           shippingType: shippingOption || 'standard',
-          status: 'confirmed',
+          status: 'pending',
           shippingCost: 0,
+          subtotal: buySubtotal,
+          // CRITICAL: Add top-level discount and VAT fields (not just in pricing object)
+          discountPercentage: discountPercent,
+          discountAmount: discountAmt,
+          subtotalAfterDiscount: buySubtotalAfterDiscount,
+          vat: taxAmount,
+          total: totalAmount,
           pricing: {
             subtotal: buySubtotal,
             buySubtotal: buySubtotal,
@@ -220,14 +273,14 @@ export default function CheckoutPage() {
             subtotalAfterDiscount: buySubtotalAfterDiscount,
           },
           createdAt: new Date().toISOString(),
-          isCustomOrder: false,
-          customOrderId: null,
+          paymentVerified: true,
         };
       }
 
-      console.log("💾 Saving order...");
+      console.log("💾 Saving order to unified endpoint...");
       console.log("Order data:", JSON.stringify(orderData, null, 2));
-      const res = await fetch("/api/orders", {
+      // Use unified endpoint for creating regular orders
+      const res = await fetch("/api/orders/unified", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(orderData),
@@ -235,7 +288,7 @@ export default function CheckoutPage() {
 
       if (res.ok) {
         const orderRes = await res.json();
-        console.log("✅ Order saved");
+        console.log("✅ Order saved to unified system");
         console.log("Invoice generated:", orderRes.invoice?.invoiceNumber || "N/A");
         console.log("Order ID:", orderRes.orderId);
         
@@ -425,6 +478,10 @@ export default function CheckoutPage() {
     const quotedVAT = typeof customQuote.quotedVAT === 'number' ? customQuote.quotedVAT : parseFloat(customQuote.quotedVAT) || 0;
     const quotedTotal = typeof customQuote.quotedTotal === 'number' ? customQuote.quotedTotal : parseFloat(customQuote.quotedTotal) || 0;
     
+    // 🎁 Extract discount information from custom quote
+    discountPercentage = customQuote.discountPercentage || 0;
+    discountAmount = customQuote.discountAmount || 0;
+    
     shippingCost = 0;
     taxEstimate = quotedVAT;
     totalAmount = quotedTotal || (quotedPrice + quotedVAT);
@@ -453,6 +510,8 @@ export default function CheckoutPage() {
       quotedPrice,
       quotedVAT,
       quotedTotal,
+      discountPercentage,
+      discountAmount,
       displayItems,
       displaySubtotal,
       displayTotal,
@@ -544,9 +603,16 @@ export default function CheckoutPage() {
                 </div>
                 {/* Discount (if applicable for cart orders) */}
                 {!customQuote && discountPercentage > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount ({discountPercentage}%)</span>
+                  <div className="flex justify-between text-sm text-green-600 bg-green-50 px-3 py-2 rounded">
+                    <span>🎁 Discount ({discountPercentage}%)</span>
                     <span>-₦{Math.round(discountAmount).toLocaleString()}</span>
+                  </div>
+                )}
+                {/* Discount for custom orders */}
+                {customQuote && customQuote.discountPercentage > 0 && (
+                  <div className="flex justify-between text-sm text-green-600 bg-green-50 px-3 py-2 rounded">
+                    <span>🎁 Bulk Discount ({customQuote.discountPercentage}%)</span>
+                    <span>-₦{customQuote.discountAmount.toLocaleString()}</span>
                   </div>
                 )}
                 {/* Caution Fee (rentals) */}
@@ -554,12 +620,6 @@ export default function CheckoutPage() {
                   <div className="flex justify-between text-sm text-amber-700">
                     <span>🔒 Caution Fee (50% of rentals)</span>
                     <span>₦{Math.round(cautionFee).toLocaleString()}</span>
-                  </div>
-                )}
-                {customQuote && customQuote.discountAmount > 0 && (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount</span>
-                    <span>-₦{customQuote.discountAmount.toLocaleString()}</span>
                   </div>
                 )}
                 {/* Shipping is handled separately and intentionally hidden on checkout */}

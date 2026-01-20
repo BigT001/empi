@@ -33,6 +33,7 @@ export interface IOrder extends Document {
   buyerId?: string;
   orderNumber: string;
   orderType: 'rental' | 'sales' | 'mixed'; // Explicit categorization
+  source?: 'custom' | 'regular'; // CRITICAL: Track order origin (prevents mixing)
   firstName: string;
   lastName: string;
   email: string;
@@ -118,6 +119,12 @@ const orderSchema = new Schema<IOrder>(
       enum: ['rental', 'sales', 'mixed'],
       default: 'sales',
       required: true,
+      index: true,
+    },
+    source: {
+      type: String,
+      enum: ['custom', 'regular'],
+      default: 'regular',
       index: true,
     },
     firstName: { type: String, required: true },

@@ -83,6 +83,9 @@ export function OrderCard({
 }: OrderCardProps) {
   const [expandPricing, setExpandPricing] = React.useState(false);
   const isCustom = isCustomOrder || (description && !items?.length);
+  // Ensure prices are valid numbers to avoid NaN display
+  const safeTotal = typeof total === 'number' && !isNaN(total) ? total : 0;
+  const safeQuotedPrice = typeof quotedPrice === 'number' && !isNaN(quotedPrice) ? quotedPrice : 0;
   
   return (
     <div className="bg-gradient-to-br from-lime-50 to-green-50 rounded-2xl border-2 border-lime-300 overflow-hidden shadow-md hover:shadow-xl hover:border-lime-400 transition-all flex flex-col">
@@ -163,7 +166,7 @@ export function OrderCard({
         {!isCustom && expandPricing && (
           <OrderStats
             itemCount={items?.length || 0}
-            total={total}
+            total={safeTotal}
             isPaid={isPaid}
             items={items}
             rentalDays={rentalDays}
@@ -177,11 +180,11 @@ export function OrderCard({
           <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-200 p-4 space-y-2">
             <div className="flex justify-between text-sm">
               <span className="text-gray-600">Quoted Price</span>
-              <span className="font-semibold text-gray-900">{formatCurrency(quotedPrice || 0)}</span>
+              <span className="font-semibold text-gray-900">{formatCurrency(safeQuotedPrice)}</span>
             </div>
             <div className="pt-2 border-t border-emerald-200 flex justify-between text-lg">
               <span className="font-bold text-gray-900">Total</span>
-              <span className="font-bold text-emerald-600">{formatCurrency(total)}</span>
+              <span className="font-bold text-emerald-600">{formatCurrency(safeTotal)}</span>
             </div>
           </div>
         )}

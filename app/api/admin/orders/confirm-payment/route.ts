@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
-import Order from '@/lib/models/Order';
+import UnifiedOrder from '@/lib/models/UnifiedOrder';
 import Admin from '@/lib/models/Admin';
 import Notification from '@/lib/models/Notification';
 import { sendEmail } from '@/lib/email';
@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Get the order
-    const order = await Order.findById(orderId);
+    const order = await UnifiedOrder.findById(orderId);
     if (!order) {
       return NextResponse.json(
         { error: 'Order not found' },
@@ -41,11 +41,6 @@ export async function POST(req: NextRequest) {
     }
 
     // Update order status
-    order.paymentStatus = 'confirmed';
-    order.paymentConfirmedAt = new Date();
-    if (resolvedAdminId) {
-      order.paymentConfirmedBy = resolvedAdminId;
-    }
     order.status = 'approved';
     await order.save();
 

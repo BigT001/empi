@@ -109,7 +109,7 @@ export function CustomerChat({ order, customerEmail, customerName }: CustomerCha
 
   const handleDateAgreement = async (agreed: boolean) => {
     try {
-      const response = await fetch(`/api/custom-orders/${order._id}`, {
+      const response = await fetch(`/api/orders/unified/${order._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ buyerAgreedToDate: agreed }),

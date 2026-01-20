@@ -39,6 +39,13 @@ interface CustomOrder {
   deadlineDate?: string;
   timerStartedAt?: string;
   timerDurationDays?: number;
+  // Pricing fields from admin quote (sent directly by admin)
+  subtotal?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
+  vat?: number;
+  total?: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -66,6 +73,10 @@ interface RegularOrder {
   }>;
   status: string;
   subtotal: number;
+  // CRITICAL: Add discount fields for regular orders
+  discountPercentage?: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
   vat: number;
   total: number;
   shippingType: string;
@@ -183,12 +194,38 @@ export default function BuyerDashboardPage() {
       }
       
       const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
-      console.log('[Dashboard] 🔄 Polling custom orders with:', queryParam);
-      const response = await fetch(`/api/custom-orders?${queryParam}`);
+      console.log('[Dashboard] 🔄 Fetching unified custom orders with:', queryParam);
+      // Fetch from unified endpoint with orderType filter
+      const response = await fetch(`/api/orders/unified?${queryParam}&orderType=custom`);
       const data = await response.json();
       
       if (data.orders && Array.isArray(data.orders)) {
         console.log('[Dashboard] ✅ Fetched', data.orders.length, 'custom orders');
+        
+        // Log details of each custom order
+        data.orders.forEach((order: any) => {
+          console.log(`[Dashboard] Custom Order: ${order.orderNumber}`, {
+            requiredQuantity: order.requiredQuantity,
+            designUrls: order.designUrls?.length || 0,
+            quotedPrice: order.quotedPrice,
+            quoteItemsCount: order.quoteItems?.length || 0,
+            // CRITICAL: Log pricing/discount fields received from API
+            pricing: {
+              subtotal: order.subtotal,
+              discountPercentage: order.discountPercentage,
+              discountAmount: order.discountAmount,
+              subtotalAfterDiscount: order.subtotalAfterDiscount,
+              vat: order.vat,
+              total: order.total,
+            },
+            description: order.description ? '✅' : '❌',
+            firstName: order.firstName,
+            email: order.email,
+            city: order.city,
+            status: order.status,
+          });
+        });
+        
         setCustomOrders(data.orders);
         fetchMessageCounts(data.orders);
       }
@@ -205,12 +242,29 @@ export default function BuyerDashboardPage() {
       }
       
       const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
-      console.log('[Dashboard] 🔄 Polling regular orders with:', queryParam);
-      const response = await fetch(`/api/orders?${queryParam}`);
+      console.log('[Dashboard] 🔄 Fetching unified regular orders with:', queryParam);
+      // Fetch from unified endpoint with orderType filter
+      const response = await fetch(`/api/orders/unified?${queryParam}&orderType=regular`);
       const data = await response.json();
       
       if (data.orders && Array.isArray(data.orders)) {
         console.log('[Dashboard] ✅ Fetched', data.orders.length, 'regular orders');
+        
+        // Log details of each regular order with pricing
+        data.orders.forEach((order: any) => {
+          console.log(`[Dashboard] Regular Order: ${order.orderNumber}`, {
+            itemsCount: order.items?.length || 0,
+            subtotal: order.subtotal,
+            discountPercentage: order.discountPercentage,
+            discountAmount: order.discountAmount,
+            subtotalAfterDiscount: order.subtotalAfterDiscount,
+            vat: order.vat,
+            total: order.total,
+            shippingCost: order.shippingCost,
+            status: order.status,
+          });
+        });
+        
         setRegularOrders(data.orders);
       }
     } catch (error) {
@@ -232,8 +286,8 @@ export default function BuyerDashboardPage() {
       try {
         const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
         
-        // Fetch custom orders
-        const customResponse = await fetch(`/api/custom-orders?${queryParam}`);
+        // Fetch custom orders from unified endpoint
+        const customResponse = await fetch(`/api/orders/unified?${queryParam}&orderType=custom`);
         const customData = await customResponse.json();
         
         if (customData.orders && Array.isArray(customData.orders)) {
@@ -241,8 +295,8 @@ export default function BuyerDashboardPage() {
           fetchMessageCounts(customData.orders);
         }
 
-        // Fetch regular orders
-        const regularResponse = await fetch(`/api/orders?${queryParam}`);
+        // Fetch regular orders from unified endpoint
+        const regularResponse = await fetch(`/api/orders/unified?${queryParam}&orderType=regular`);
         const regularData = await regularResponse.json();
         
         if (regularData.orders && Array.isArray(regularData.orders)) {

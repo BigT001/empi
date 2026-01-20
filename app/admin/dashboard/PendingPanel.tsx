@@ -36,8 +36,10 @@ interface PendingOrderData {
   designUrls?: string[];
   quotedPrice?: number;
   quantity?: number;
+  requiredQuantity?: number;
   fullName?: string;
   paymentVerified?: boolean;
+  paymentProofUrl?: string;
   quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
 }
 
@@ -94,17 +96,38 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
             invoicesByReference.set(inv.orderNumber, inv.status || 'paid');
           }
         });
-        
+
         console.log('[PendingPanel] Invoice map:', Array.from(invoicesByReference.entries()));
         
         // Check each order for payment
-        orders.forEach(order => {
-          if (invoicesByReference.has(order.orderNumber)) {
-            statusMap[order._id] = 'paid'; // Invoice exists = payment was made
-            console.log(`[PendingPanel] ✅ Order ${order.orderNumber} has invoice - marked as PAID`);
-          } else {
-            statusMap[order._id] = 'pending'; // No invoice = still pending
-            console.log(`[PendingPanel] ⏳ Order ${order.orderNumber} has NO invoice - still PENDING`);
+        orders.forEach((order: any) => {
+          // For REGULAR orders: Check paymentVerified flag (payment made before order creation)
+          if (order.orderType === 'regular') {
+            if (order.paymentVerified) {
+              statusMap[order._id] = 'paid';
+              console.log(`[PendingPanel] ✅ Regular Order ${order.orderNumber} - paymentVerified=true - marked as PAID`);
+            } else {
+              statusMap[order._id] = 'pending';
+              console.log(`[PendingPanel] ⏳ Regular Order ${order.orderNumber} - paymentVerified=false - marked as PENDING`);
+            }
+          } 
+          // For CUSTOM orders: Check invoices (payment happens after quote)
+          else if (order.orderType === 'custom') {
+            if (invoicesByReference.has(order.orderNumber)) {
+              statusMap[order._id] = 'paid';
+              console.log(`[PendingPanel] ✅ Custom Order ${order.orderNumber} has invoice - marked as PAID`);
+            } else {
+              statusMap[order._id] = 'pending';
+              console.log(`[PendingPanel] ⏳ Custom Order ${order.orderNumber} has NO invoice - still PENDING`);
+            }
+          }
+          // Fallback: check invoices
+          else {
+            if (invoicesByReference.has(order.orderNumber)) {
+              statusMap[order._id] = 'paid';
+            } else {
+              statusMap[order._id] = 'pending';
+            }
           }
         });
       }
@@ -138,64 +161,152 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
           setError(null);
         }
 
-        // Fetch both regular orders and custom-orders to ensure admin sees everything
-        const ordersFetch = fetch('/api/orders?limit=200&includeCustom=true', { signal, cache: 'no-store' });
-        const customFetch = fetch('/api/custom-orders?limit=200', { signal, cache: 'no-store' });
+        // Fetch from unified endpoint instead of separate endpoints
+        console.log('[PendingPanel] 🔄 Fetching orders from /api/orders/unified?limit=200');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        const [res, customRes] = await Promise.all([ordersFetch, customFetch]);
-        if (!res.ok) throw new Error('Failed to load orders');
-        if (!customRes.ok) console.warn('[PendingPanel] /api/custom-orders returned non-OK status', customRes.status);
+        const unifiedFetch = fetch('/api/orders/unified?limit=200', { 
+          signal: signal || controller.signal, 
+          cache: 'no-store',
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        });
 
-        const data = await res.json();
-        const ordersList = Array.isArray(data) ? data : (data.orders || []);
-
-        let customList: any[] = [];
-        try {
-          const customData = await customRes.json();
-          customList = Array.isArray(customData) ? customData : (customData.orders || []);
-        } catch (e) {
-          console.warn('[PendingPanel] Failed to parse /api/custom-orders response', e);
+        const res = await unifiedFetch;
+        clearTimeout(timeoutId);
+        
+        console.log('[PendingPanel] API response status:', res.status, res.statusText);
+        
+        if (!res.ok) {
+          const errorText = await res.text();
+          console.error('[PendingPanel] API error response:', errorText);
+          throw new Error(`API error ${res.status}: ${errorText || res.statusText}`);
         }
 
-        // Merge unique orders by _id or orderNumber (custom orders may use different ids)
-        const allOrdersMap = new Map<string, any>();
-        ordersList.forEach((o: any) => {
-          allOrdersMap.set(o._id?.toString() || o.orderNumber, { ...o, isCustomOrder: false });
-        });
-        customList.forEach((o: any) => {
-          const key = o._id?.toString() || o.orderNumber || (`custom-${o.orderNumber}`);
-          if (!allOrdersMap.has(key)) allOrdersMap.set(key, { ...o, isCustomOrder: true });
-        });
-        const combinedOrders = Array.from(allOrdersMap.values());
+        let data;
+        try {
+          const rawText = await res.text();
+          if (!rawText) {
+            throw new Error('Empty response from API');
+          }
+          data = JSON.parse(rawText);
+          console.log('[PendingPanel] ✅ Parsed API response:', { 
+            success: data.success, 
+            total: data.total, 
+            ordersCount: Array.isArray(data.orders) ? data.orders.length : 'not array',
+            keys: Object.keys(data).slice(0, 10)
+          });
+        } catch (parseErr) {
+          console.error('[PendingPanel] Failed to parse JSON response:', parseErr);
+          throw new Error(`Failed to parse API response: ${parseErr instanceof Error ? parseErr.message : 'Unknown error'}`);
+        }
+
+        // Handle response - could be array or object with orders property
+        let ordersList: any[] = [];
+        if (Array.isArray(data)) {
+          ordersList = data;
+          console.log('[PendingPanel] Response was array with', ordersList.length, 'orders');
+        } else if (data && typeof data === 'object' && Array.isArray(data.orders)) {
+          ordersList = data.orders;
+          console.log('[PendingPanel] Response had orders property with', ordersList.length, 'orders');
+        } else if (data && typeof data === 'object') {
+          // Single order response
+          ordersList = [data];
+          console.log('[PendingPanel] Response was single order');
+        } else {
+          console.warn('[PendingPanel] Unexpected response format:', typeof data);
+          ordersList = [];
+        }
+
+        console.log('[PendingPanel] Orders list extracted, count:', ordersList.length);
+
+        // No need to merge - unified endpoint returns all orders
+        const customList: any[] = [];
+
+        // All orders are now in one list from unified endpoint
+        let combinedOrders: any[] = [];
+        try {
+          const allOrdersMap = new Map<string, any>();
+          ordersList.forEach((o: any) => {
+            if (o && o._id) {
+              allOrdersMap.set(o._id.toString(), { ...o, isCustomOrder: false });
+            } else if (o && o.orderNumber) {
+              allOrdersMap.set(o.orderNumber, { ...o, isCustomOrder: false });
+            }
+          });
+          customList.forEach((o: any) => {
+            const key = o._id?.toString() || o.orderNumber || (`custom-${o.orderNumber}`);
+            if (!allOrdersMap.has(key)) allOrdersMap.set(key, { ...o, isCustomOrder: true });
+          });
+          combinedOrders = Array.from(allOrdersMap.values());
+          console.log('[PendingPanel] Combined orders:', combinedOrders.length);
+        } catch (mapErr) {
+          console.error('[PendingPanel] Error processing orders map:', mapErr);
+          combinedOrders = [...ordersList, ...customList];
+        }
+
+        if (combinedOrders.length === 0) {
+          console.log('[PendingPanel] ℹ️ No orders found, setting empty state');
+          if (mounted) {
+            setPending([]);
+            setApproved([]);
+            setInProgress([]);
+            setFetchedCount(0);
+            setLastFetchAt(Date.now());
+          }
+          backoffMs = 0;
+          return;
+        }
 
         console.log('[PendingPanel] First order:', combinedOrders[0]);
         console.log('[PendingPanel] First item:', combinedOrders[0]?.items?.[0]);
 
         // Separate pending and approved orders
         // PENDING: Only orders NOT yet paid/approved
-        const pendingList = combinedOrders.filter((o: any) => {
-          const status = (o.status || '').toString().toLowerCase();
-          // Exclude orders that have moved to approved or beyond
-          if (status === 'completed' || status === 'cancelled' || status === 'deleted' || status === 'approved' || status === 'in-progress' || status === 'ready' || status === 'rejected') return false;
-          return true;
-        });
-
-        // Approved list: ONLY orders with status === 'approved'
-        // NOTE: We filter by current status ONLY, ignoring persisted IDs
-        // This ensures orders move out of approved once status changes
-        const approvedList = combinedOrders.filter((o: any) => {
-          const status = (o.status || '').toString().toLowerCase();
-          return status === 'approved';
-        });
-
-        // In-Progress list: ONLY orders with status === 'in-progress'
-        const inProgressList = combinedOrders.filter((o: any) => {
-          const status = (o.status || '').toString().toLowerCase();
-          return status === 'in-progress';
-        });
+        let pendingList: any[] = [];
+        let approvedList: any[] = [];
+        let inProgressList: any[] = [];
         
-        // DO NOT add orders back to approved list based on persisted IDs
-        // Use only current database status for display
+        try {
+          pendingList = combinedOrders.filter((o: any) => {
+            try {
+              const status = (o.status || '').toString().toLowerCase();
+              // Exclude orders that have moved to approved or beyond
+              if (status === 'completed' || status === 'cancelled' || status === 'deleted' || status === 'approved' || status === 'in_production' || status === 'ready_for_delivery' || status === 'delivered' || status === 'rejected' || status === 'shipped') return false;
+              return true;
+            } catch {
+              return true; // Include if status check fails
+            }
+          });
+
+          // Approved list: ONLY orders with status === 'approved'
+          // NOTE: We filter by current status ONLY, ignoring persisted IDs
+          // This ensures orders move out of approved once status changes
+          approvedList = combinedOrders.filter((o: any) => {
+            try {
+              const status = (o.status || '').toString().toLowerCase();
+              // CRITICAL: Do NOT include shipped orders in approved list
+              if (status === 'shipped' || status === 'completed' || status === 'delivered' || status === 'rejected' || status === 'cancelled' || status === 'deleted') return false;
+              return status === 'approved';
+            } catch {
+              return false; // Exclude if status check fails
+            }
+          });
+
+          // In-Progress list: Removed - orders go directly from approved to ready_for_delivery
+          inProgressList = [];
+          
+          console.log('[PendingPanel] Filtering complete - pending:', pendingList.length, 'approved:', approvedList.length);
+        } catch (filterErr) {
+          console.error('[PendingPanel] Error filtering orders:', filterErr);
+          // Fallback: assume all are pending if filtering fails
+          pendingList = combinedOrders;
+          approvedList = [];
+          inProgressList = [];
+        }
+        
         const allApprovedList = approvedList;
         
         console.log('[PendingPanel] Approved list (current status only):', allApprovedList.length);
@@ -269,6 +380,82 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
     };
   }, [isPollingActive]);
 
+  // Listen for orders updated event from logistics or other pages
+  useEffect(() => {
+    const handleOrdersUpdated = (event: any) => {
+      const { orderId, action, timestamp, message } = event.detail;
+      console.log(`[PendingPanel] 📢 Received ordersUpdated event:`, { orderId, action, timestamp, message });
+
+      if (action === 'approved') {
+        console.log(`[PendingPanel] ✅ APPROVED EVENT - Moving order ${orderId} from pending to approved`);
+        
+        // Remove the order from pending list
+        setPending(prevPending => {
+          const filtered = prevPending.filter(o => o._id !== orderId);
+          if (filtered.length !== prevPending.length) {
+            console.log(`[PendingPanel] ✅ Removed approved order ${orderId} from PENDING list (was ${prevPending.length}, now ${filtered.length})`);
+          }
+          return filtered;
+        });
+
+        // Add to approved list by finding the order and adding it
+        setApproved(prevApproved => {
+          // Check if order already exists in approved list
+          const orderExists = prevApproved.some(o => o._id === orderId);
+          if (!orderExists) {
+            // We need to fetch the updated order data
+            // For now, trigger a full refresh to ensure we have the latest data
+            console.log(`[PendingPanel] 📥 Order ${orderId} not in approved list yet, triggering refresh...`);
+            // The polling will pick this up automatically within the next interval
+          }
+          return prevApproved;
+        });
+
+        console.log(`[PendingPanel] ✅ Order ${orderId} has been approved and moved from pending to approved`);
+      } else if (action === 'shipped') {
+        console.log(`[PendingPanel] 🚨 SHIPPING EVENT - Removing order ${orderId} from all tabs`);
+        
+        // Remove the order from approved list
+        setPending(prevPending => {
+          const filtered = prevPending.filter(o => o._id !== orderId);
+          if (filtered.length !== prevPending.length) {
+            console.log(`[PendingPanel] ✅ Removed shipped order ${orderId} from PENDING list (was ${prevPending.length}, now ${filtered.length})`);
+          }
+          return filtered;
+        });
+
+        // Remove from approved list
+        setApproved(prevApproved => {
+          const filtered = prevApproved.filter(o => o._id !== orderId);
+          if (filtered.length !== prevApproved.length) {
+            console.log(`[PendingPanel] ✅ Removed shipped order ${orderId} from APPROVED list (was ${prevApproved.length}, now ${filtered.length})`);
+          }
+          return filtered;
+        });
+
+        // Remove from in-progress list
+        setInProgress(prevInProgress => {
+          const filtered = prevInProgress.filter(o => o._id !== orderId);
+          if (filtered.length !== prevInProgress.length) {
+            console.log(`[PendingPanel] ✅ Removed shipped order ${orderId} from IN_PROGRESS list`);
+          }
+          return filtered;
+        });
+
+        console.log(`[PendingPanel] ✅ Order ${orderId} has been shipped and removed from all pending lists`);
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('ordersUpdated', handleOrdersUpdated);
+      console.log('[PendingPanel] ✅ Event listener registered for ordersUpdated');
+      return () => {
+        window.removeEventListener('ordersUpdated', handleOrdersUpdated);
+        console.log('[PendingPanel] ❌ Event listener removed');
+      };
+    }
+  }, []);
+
   const fetchProductImages = async (orders: PendingOrderData[]) => {
     // Extract images directly from order items instead of fetching from products API
     const images: Record<string, ProductWithImage> = {};
@@ -336,7 +523,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
 
       for (const order of pending) {
         try {
-          const res = await fetch(`/api/orders/${order._id}`, {
+          const res = await fetch(`/api/orders/unified/${order._id}`, {
             method: 'DELETE',
           });
 
@@ -367,22 +554,30 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const deleteOrder = async (orderId: string) => {
     try {
       setLoading(true);
+      console.log('[PendingPanel] 🗑️ Attempting to delete order:', orderId);
       
       // Delete from database
-      const res = await fetch(`/api/orders/${orderId}`, {
+      const res = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'DELETE',
       });
+
+      console.log('[PendingPanel] Delete response status:', res.status);
 
       // If 404, order already deleted - that's fine, just remove from UI
       if (res.status === 404) {
         console.log(`[PendingPanel] ℹ️ Order ${orderId} not found in database (already deleted)`);
       } else if (!res.ok) {
         const error = await res.json();
-        throw new Error(error.error || 'Failed to delete order');
+        console.error('[PendingPanel] Delete error response:', error);
+        throw new Error(error.message || error.error || `Failed to delete order (${res.status})`);
       }
 
-      // Remove from pending list
+      console.log('[PendingPanel] ✅ Order deleted successfully');
+
+      // Remove from ALL lists (pending, approved, inProgress)
       setPending(pending.filter(o => o._id !== orderId));
+      setApproved(approved.filter(o => o._id !== orderId));
+      setInProgress(inProgress.filter(o => o._id !== orderId));
       
       // Remove from logistics orders (active)
       try {
@@ -491,13 +686,13 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
     try {
       setLoading(true);
       setError(null);
-      const res = await fetch('/api/orders?limit=200&includeCustom=true');
+      const res = await fetch('/api/orders/unified?limit=200');
       if (!res.ok) throw new Error('Failed to refresh orders');
       const data = await res.json();
       const ordersList = Array.isArray(data) ? data : (data.orders || []);
       const pendingList = ordersList.filter((o: any) => {
         const status = (o.status || '').toString().toLowerCase();
-        if (status === 'completed' || status === 'cancelled' || status === 'deleted') return false;
+        if (status === 'delivered' || status === 'cancelled' || status === 'deleted') return false;
         return true;
       });
 
@@ -545,17 +740,8 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
             <Check className="h-4 w-4 inline mr-2" />
             Approved ({approved.length})
           </button>
-          <button
-            onClick={() => setActiveTab('in-progress')}
-            className={`flex-1 py-4 px-6 font-semibold text-center transition-colors ${
-              activeTab === 'in-progress'
-                ? 'text-purple-600 border-b-2 border-purple-600 bg-white'
-                : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Clock className="h-4 w-4 inline mr-2" />
-            In Progress ({inProgress.length})
-          </button>
+
+          {/* In Progress tab removed - orders go directly from approved to ready_for_delivery */}
         </div>
       </div>
 
@@ -608,19 +794,6 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
           </div>
         )}
 
-        {/* Empty State - In Progress */}
-        {!loading && !error && activeTab === 'in-progress' && inProgress.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mb-4">
-                <Clock className="h-6 w-6 text-purple-600" />
-              </div>
-              <p className="font-semibold text-gray-900">No orders in progress</p>
-              <p className="text-gray-600 text-sm mt-1">In progress orders will appear here</p>
-            </div>
-          </div>
-        )}
-
         {/* Orders Cards Grid */}
         {!error && (pending.length > 0 || approved.length > 0 || inProgress.length > 0) && ((activeTab === 'pending' && pending.length > 0) || (activeTab === 'approved' && approved.length > 0) || (activeTab === 'in-progress' && inProgress.length > 0)) && (
           <div>
@@ -643,13 +816,13 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
             </div>
 
             {/* Cards Grid */}
-            {(activeTab === 'pending' ? filteredPending : (activeTab === 'approved' ? approved : inProgress)).length === 0 ? (
+            {(activeTab === 'pending' ? filteredPending : approved).length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 font-semibold">No orders found</p>
               </div>
             ) : (
               <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-3 gap-6">
-                {(activeTab === 'pending' ? filteredPending : (activeTab === 'approved' ? approved : inProgress)).map((order) => {
+                {(activeTab === 'pending' ? filteredPending : approved).map((order) => {
                   const isCustom = !order.items || order.items.length === 0;
                   
                   return (
@@ -661,13 +834,14 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
                           fullName={order.fullName || `${order.firstName} ${order.lastName}`.trim()}
                           email={order.email}
                           phone={order.phone || ''}
-                          quantity={order.quantity || 1}
+                          quantity={order.requiredQuantity || order.quantity || 1}
                           description={order.description || ''}
                           designUrls={order.designUrls || []}
                           status={order.status as any || 'pending'}
                           quotedPrice={order.quotedPrice}
                           quoteItems={order.quoteItems}
                           paymentVerified={order.paymentVerified || false}
+                          paymentProofUrl={order.paymentProofUrl}
                         />
                       ) : (
                         <OrderCard

@@ -6,9 +6,10 @@ interface LogisticsCardProps {
   onMarkShipped: () => void;
   onDelete: () => void;
   formatCurrency: (amount: number) => string;
+  isShipped?: boolean;
 }
 
-export function LogisticsOrderCard({ order, onMarkShipped, onDelete, formatCurrency }: LogisticsCardProps) {
+export function LogisticsOrderCard({ order, onMarkShipped, onDelete, formatCurrency, isShipped = false }: LogisticsCardProps) {
   const [expanded, setExpanded] = useState(false);
   
   const userDetails = order.userDetails || {};
@@ -70,29 +71,35 @@ export function LogisticsOrderCard({ order, onMarkShipped, onDelete, formatCurre
           </div>
         )}
 
-        {/* Design Images */}
-        {order.designUrls && order.designUrls.length > 0 && (
-          <div className="bg-white rounded-lg p-3 border border-lime-200">
-            <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Design Images</p>
-            <div className="grid grid-cols-3 gap-2">
-              {order.designUrls.slice(0, 3).map((url: string, idx: number) => (
-                <a
-                  key={idx}
-                  href={url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="relative aspect-square bg-gray-100 rounded border border-lime-300 overflow-hidden hover:border-lime-600 transition-colors"
-                >
-                  <img
-                    src={url}
-                    alt={`Design ${idx + 1}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform"
-                  />
-                </a>
-              ))}
+        {/* Product Images */}
+        {(() => {
+          const customImages = (order.designUrls || []);
+          const itemImages = order.items?.map((item: any) => item.imageUrl).filter(Boolean) || [];
+          const allImages = [...customImages, ...itemImages];
+          return allImages.length > 0 ? (
+            <div className="bg-white rounded-lg p-3 border border-lime-200">
+              <p className="text-xs font-semibold text-gray-600 uppercase mb-2">Product Images</p>
+              <div className="grid grid-cols-3 gap-2">
+                {allImages.slice(0, 6).map((url: string, idx: number) => (
+                  <a
+                    key={idx}
+                    href={url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="relative aspect-square bg-gray-100 rounded border border-lime-300 overflow-hidden hover:border-lime-600 transition-colors"
+                  >
+                    <img
+                      src={url}
+                      alt={`Product ${idx + 1}`}
+                      className="w-full h-full object-cover hover:scale-105 transition-transform"
+                      onError={(e) => { e.currentTarget.src = ''; }}
+                    />
+                  </a>
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          ) : null;
+        })()}
       </div>
 
       {/* Expandable User Details Section */}
@@ -157,10 +164,15 @@ export function LogisticsOrderCard({ order, onMarkShipped, onDelete, formatCurre
       <div className="px-5 py-4 flex gap-2 bg-lime-50 border-t border-lime-200">
         <button
           onClick={onMarkShipped}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-green-600 to-emerald-600 text-white font-semibold rounded-lg hover:from-green-700 hover:to-emerald-700 transition-colors text-sm"
+          disabled={isShipped}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 font-semibold rounded-lg transition-colors text-sm ${
+            isShipped
+              ? 'bg-gray-300 text-gray-600 cursor-not-allowed'
+              : 'bg-gradient-to-r from-green-600 to-emerald-600 text-white hover:from-green-700 hover:to-emerald-700'
+          }`}
         >
           <Truck className="w-4 h-4" />
-          Mark Shipped
+          {isShipped ? 'Completed' : 'Mark Shipped'}
         </button>
         <button
           onClick={onDelete}

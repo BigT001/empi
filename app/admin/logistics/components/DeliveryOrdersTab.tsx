@@ -72,10 +72,10 @@ export function DeliveryOrdersTab({
         orderNumber: approvalModal.orderNumber,
       });
 
-      const response = await fetch(`/api/orders/${approvalModal.orderId}`, {
+      const response = await fetch(`/api/orders/unified/${approvalModal.orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'payment_confirmed' }),
+        body: JSON.stringify({ status: 'approved' }),
       });
 
       const data = await response.json();

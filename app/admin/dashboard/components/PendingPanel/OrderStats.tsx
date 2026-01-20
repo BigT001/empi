@@ -11,34 +11,35 @@ interface OrderStatsProps {
 }
 
 export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, cautionFee = 0, isApproved = false }: OrderStatsProps) {
-  // The order.total is the source of truth from checkout
-  // We calculate rental subtotal from items (with rental days) for display
+  // Ensure total is a valid number - THIS IS THE SOURCE OF TRUTH FROM CHECKOUT
+  const safeTotal = typeof total === 'number' && !isNaN(total) ? total : 0;
   
   console.log('[OrderStats] items:', items);
   console.log('[OrderStats] rentalDays:', rentalDays);
   console.log('[OrderStats] items.length:', items?.length);
+  console.log('[OrderStats] total input (from checkout):', total, 'safeTotal:', safeTotal);
   
-  // Calculate discount ONLY on buy items, NOT rentals
-  const buyItems = items?.filter(item => item.mode === 'buy') || [];
-  const rentalItems = items?.filter(item => item.mode === 'rent') || [];
+  // Check if ANY items have a mode specified
+  const hasAnyMode = items && items.some(item => item.mode);
   
+  // If items don't have mode specified, treat them ALL as buy items (for regular orders from checkout)
+  const buyItems = hasAnyMode 
+    ? (items?.filter(item => item.mode === 'buy') || [])
+    : (items || []); // Default: all items are buy items
+  
+  const rentalItems = hasAnyMode 
+    ? (items?.filter(item => item.mode === 'rent') || [])
+    : [];
+  
+  console.log('[OrderStats] hasAnyMode:', hasAnyMode);
   console.log('[OrderStats] buyItems:', buyItems);
   console.log('[OrderStats] rentalItems:', rentalItems);
   
-  // Fallback: if no items have mode set, treat all as rentals (for legacy orders)
-  const allItemsHaveMode = items && items.some(item => item.mode);
-  const actualRentalItems = allItemsHaveMode ? rentalItems : (items || []);
-  const actualBuyItems = allItemsHaveMode ? buyItems : [];
-  
-  console.log('[OrderStats] allItemsHaveMode:', allItemsHaveMode);
-  console.log('[OrderStats] actualRentalItems:', actualRentalItems);
-  console.log('[OrderStats] actualBuyItems:', actualBuyItems);
-  
   // Calculate buy subtotal
-  const buySubtotal = actualBuyItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
+  const buySubtotal = buyItems.reduce((sum, item) => sum + (item.price * item.quantity), 0) || 0;
   
   // Calculate total buy quantity for discount tier
-  const buyQuantity = actualBuyItems.reduce((sum, item) => sum + item.quantity, 0) || 0;
+  const buyQuantity = buyItems.reduce((sum, item) => sum + item.quantity, 0) || 0;
   
   // Get discount percentage (only applies to buy items)
   const discountPercentage = getDiscountPercentage(buyQuantity);
@@ -46,9 +47,7 @@ export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, ca
   const subtotalAfterDiscount = buySubtotal - discountAmount;
   
   // Rental subtotal WITH rental days applied (multiply by rentalDays)
-  const rentalSubtotalWithDays = actualRentalItems.reduce((sum, item) => {
-    // IMPORTANT: Use the order's rentalDays prop, NOT item.rentalDays
-    // item.rentalDays is often 1 from the checkout, the real rental days are in the order.rentalSchedule
+  const rentalSubtotalWithDays = rentalItems.reduce((sum, item) => {
     const days = rentalDays || 1;
     const itemTotal = item.price * item.quantity * days;
     console.log('[OrderStats] rental item:', item.name, 'price:', item.price, 'qty:', item.quantity, 'usedDays:', days, 'itemTotal:', itemTotal);
@@ -57,14 +56,27 @@ export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, ca
   
   console.log('[OrderStats] rentalSubtotalWithDays:', rentalSubtotalWithDays);
   
-  // Total goods = buy after discount + rental (with days)
+  // Total goods BEFORE VAT = buy after discount + rental (with days)
   const goodsSubtotal = subtotalAfterDiscount + rentalSubtotalWithDays;
   
-  // VAT is calculated on goods subtotal (after rental days multiplication)
-  const vat = goodsSubtotal * VAT_RATE;
+  // === CRITICAL FIX: Extract VAT from the authoritative checkout total ===
+  // For regular orders from checkout, safeTotal is: goodsSubtotal * 1.075 (where 1.075 = 1 + 0.075)
+  // To isolate VAT: vat = safeTotal - (safeTotal / 1.075)
+  // Simplified: vat = safeTotal * (0.075 / 1.075) = safeTotal * 0.069767
+  // OR: vat = safeTotal * VAT_RATE / (1 + VAT_RATE)
+  const vatFromTotal = safeTotal > 0 ? safeTotal * (VAT_RATE / (1 + VAT_RATE)) : 0;
+  const goodsFromTotal = safeTotal > 0 ? safeTotal - vatFromTotal : 0;
   
-  // Final total = goods + VAT (order.total from checkout is source of truth)
-  const finalTotal = total;
+  // Use the checkout total breakdown if we have a valid total, otherwise fall back to calculated
+  const vat = safeTotal > 0 ? vatFromTotal : (goodsSubtotal * VAT_RATE);
+  const displayGoodsSubtotal = safeTotal > 0 ? goodsFromTotal : goodsSubtotal;
+  
+  console.log('[OrderStats] buySubtotal:', buySubtotal, 'discountPercentage:', discountPercentage, 'discountAmount:', discountAmount, 'subtotalAfterDiscount:', subtotalAfterDiscount);
+  console.log('[OrderStats] calculatedGoodsSubtotal:', goodsSubtotal, 'safeTotal:', safeTotal);
+  console.log('[OrderStats] VAT (extracted from total):', vat, 'goods (extracted):', displayGoodsSubtotal);
+  
+  // Final total = source of truth from checkout
+  const finalTotal = safeTotal;
 
   return (
     <div className="space-y-3 pt-3 border-t border-lime-200">
@@ -113,7 +125,7 @@ export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, ca
           </div>
         )}
 
-        {/* VAT */}
+        {/* VAT - Using value extracted from checkout total */}
         <div className="bg-yellow-50 rounded-lg p-2 text-center border border-yellow-300">
           <p className="text-xs text-yellow-600 font-medium">VAT (7.5%)</p>
           <p className="text-sm font-bold text-yellow-700">₦{Number(vat).toLocaleString('en-NG')}</p>

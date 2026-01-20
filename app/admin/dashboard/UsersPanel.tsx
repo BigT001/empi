@@ -43,7 +43,7 @@ export function UsersPanel() {
       setError(null);
       const [bRes, oRes] = await Promise.all([
         fetch('/api/admin/buyers'),
-        fetch('/api/orders'),
+        fetch('/api/orders/unified'),
       ]);
       
       if (!bRes.ok) {

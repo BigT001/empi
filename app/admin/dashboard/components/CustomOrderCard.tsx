@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Send, AlertCircle, CheckCircle, Clock, ChevronDown, Download, X } from 'lucide-react';
+import { AlertCircle, CheckCircle, Clock, ChevronDown, Download, X, CreditCard } from 'lucide-react';
 import Image from 'next/image';
+import { getDiscountPercentage } from '@/lib/discountCalculator';
 
 interface CustomOrderCardProps {
   orderId: string;
@@ -17,6 +18,7 @@ interface CustomOrderCardProps {
   quotedPrice?: number;
   quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
   paymentVerified?: boolean;
+  paymentProofUrl?: string;
 }
 
 export function CustomOrderCard({
@@ -32,6 +34,7 @@ export function CustomOrderCard({
   quotedPrice,
   quoteItems = [],
   paymentVerified = false,
+  paymentProofUrl = undefined,
 }: CustomOrderCardProps) {
   // Initialize with props data first, then override with database data on mount
   const [lineItems, setLineItems] = useState<Array<{ id: string; itemName: string; quantity: number; unitPrice: number }>>(
@@ -40,7 +43,8 @@ export function CustomOrderCard({
       : []
   );
   const [itemName, setItemName] = useState('');
-  const [itemQuantity, setItemQuantity] = useState('1');
+  // Initialize itemQuantity with the user's specified quantity instead of hardcoding '1'
+  const [itemQuantity, setItemQuantity] = useState(quantity ? quantity.toString() : '1');
   const [itemPrice, setItemPrice] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
@@ -55,16 +59,32 @@ export function CustomOrderCard({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showProductionConfirm, setShowProductionConfirm] = useState(false);
   const [showCompletedConfirm, setShowCompletedConfirm] = useState(false);
+  const [showApproveConfirm, setShowApproveConfirm] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
+  const [paymentData, setPaymentData] = useState({ paymentProofUrl, paymentVerified });
 
   const VAT_RATE = 0.075; // 7.5%
+
+  // Sync payment data from props
+  useEffect(() => {
+    if (paymentProofUrl !== undefined || paymentVerified !== undefined) {
+      console.log('[AdminCustomOrderCard] 💳 Payment data updated:', {
+        paymentProofUrl: paymentProofUrl ? '✅' : '❌',
+        paymentVerified,
+      });
+      setPaymentData({
+        paymentProofUrl,
+        paymentVerified,
+      });
+    }
+  }, [paymentProofUrl, paymentVerified]);
 
   // Load quote data on component mount to preserve data after refresh
   useEffect(() => {
     const loadQuoteData = async () => {
       try {
-        const response = await fetch(`/api/custom-orders/${orderId}`, {
+        const response = await fetch(`/api/orders/unified/${orderId}`, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -98,6 +118,18 @@ export function CustomOrderCard({
           setLineItems(itemsWithIds);
           setQuoteSent(true);
         }
+
+        // Also check for payment updates
+        if (order.paymentProofUrl || order.paymentVerified) {
+          console.log('[AdminCustomOrderCard] 💳 Payment detected from API:', {
+            paymentProofUrl: order.paymentProofUrl ? '✅' : '❌',
+            paymentVerified: order.paymentVerified,
+          });
+          setPaymentData({
+            paymentProofUrl: order.paymentProofUrl,
+            paymentVerified: order.paymentVerified,
+          });
+        }
       } catch (error) {
         console.error('Error loading quote data:', error);
       }
@@ -109,12 +141,87 @@ export function CustomOrderCard({
     }
   }, [orderId]);
 
-  // Calculate totals
+  // Poll for payment updates every 10 seconds when quote is sent but not paid
+  useEffect(() => {
+    if (!quoteSent || paymentData.paymentVerified) {
+      // Don't poll if quote not sent yet or already fully paid
+      return;
+    }
+
+    console.log('[AdminCustomOrderCard] 🔄 Starting payment polling...');
+    let mounted = true;
+    const interval = setInterval(async () => {
+      if (!mounted) return;
+
+      try {
+        const response = await fetch(`/api/orders/unified/${orderId}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+          },
+        });
+
+        if (!response.ok) return;
+
+        const jsonResponse = await response.json();
+        const order = jsonResponse.data || jsonResponse.customOrder || jsonResponse.order;
+
+        if (!order || !mounted) return;
+
+        // Check if payment status changed
+        if (order.paymentProofUrl !== paymentData.paymentProofUrl || order.paymentVerified !== paymentData.paymentVerified) {
+          console.log('[AdminCustomOrderCard] 💳 Payment status updated during polling:', {
+            paymentProofUrl: order.paymentProofUrl ? '✅' : '❌',
+            paymentVerified: order.paymentVerified,
+          });
+          setPaymentData({
+            paymentProofUrl: order.paymentProofUrl,
+            paymentVerified: order.paymentVerified,
+          });
+        }
+      } catch (error) {
+        console.error('[AdminCustomOrderCard] Error polling for payment:', error);
+      }
+    }, 10000); // Poll every 10 seconds
+
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, [orderId, quoteSent]);
+
+  // Calculate totals WITH BULK DISCOUNT APPLIED
   const calculateTotals = (items: typeof lineItems) => {
+    // Step 1: Calculate subtotal (before discount)
     const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    const vat = subtotal * VAT_RATE;
-    const total = subtotal + vat;
-    return { subtotal, vat, total };
+    
+    // Step 2: Calculate total quantity across all items (used for discount tier)
+    const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
+    
+    // Step 3: Get discount percentage based on TOTAL quantity
+    const discountPercentage = getDiscountPercentage(totalQuantity);
+    
+    // Step 4: Calculate discount amount
+    const discountAmount = subtotal * (discountPercentage / 100);
+    
+    // Step 5: Apply discount to get subtotal after discount
+    const subtotalAfterDiscount = subtotal - discountAmount;
+    
+    // Step 6: Calculate VAT on the discounted subtotal
+    const vat = subtotalAfterDiscount * VAT_RATE;
+    
+    // Step 7: Calculate final total
+    const total = subtotalAfterDiscount + vat;
+    
+    return { 
+      subtotal, 
+      discountPercentage, 
+      discountAmount,
+      subtotalAfterDiscount,
+      vat, 
+      total,
+      totalQuantity,
+    };
   };
 
   const totals = calculateTotals(lineItems);
@@ -188,29 +295,82 @@ export function CustomOrderCard({
     setSubmitStatus('idle');
 
     try {
+      // Step 1: Update the order with quote data including discount
+      const quoteItemsToSend = lineItems.map(({ id, ...item }) => item);
       const payload = {
-        quoteItems: lineItems.map(({ id, ...item }) => item), // Remove ID before sending
+        quoteItems: quoteItemsToSend,
         quotedPrice: totals.total,
+        // 🎁 Include ALL pricing details from admin calculation
+        subtotal: totals.subtotal,
+        discountPercentage: totals.discountPercentage,
+        discountAmount: totals.discountAmount,
+        subtotalAfterDiscount: totals.subtotalAfterDiscount,
+        vat: totals.vat,
+        total: totals.total,
+        requiredQuantity: totals.totalQuantity,
       };
       
-      console.log('[CustomOrderCard] Sending quote with payload:', payload);
+      console.log('[CustomOrderCard] 📊 Quote Details Being Sent:');
+      console.log('  ├─ orderId:', orderId);
+      console.log('  ├─ orderNumber:', orderNumber);
+      console.log('  ├─ quoteItemsCount:', quoteItemsToSend.length);
+      console.log('  ├─ quoteItems:', quoteItemsToSend);
+      console.log('  ├─ quotedPrice:', totals.total);
+      console.log('  └─ Full Payload:', payload);
       
-      const response = await fetch(`/api/custom-orders/${orderId}`, {
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
-      console.log('[CustomOrderCard] PATCH response status:', response.status);
+      console.log('[CustomOrderCard] ✅ PATCH response status:', response.status);
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error('[CustomOrderCard] PATCH response error:', errorText);
+        console.error('[CustomOrderCard] ❌ PATCH response error:', errorText);
         throw new Error('Failed to send quote');
       }
 
       const data = await response.json();
-      console.log('[CustomOrderCard] Quote saved successfully, response:', data);
+      console.log('[CustomOrderCard] ✅ Quote saved successfully');
+      console.log('[CustomOrderCard] API Response Order:', {
+        quotedPrice: data.order?.quotedPrice,
+        quoteItemsCount: data.order?.quoteItems?.length || 0,
+      });
+
+      // Step 2: Send a message notification to the customer about the quote
+      console.log('[CustomOrderCard] 📨 Sending quote message to customer...');
+      console.log('[CustomOrderCard] Message details:', { orderId, orderNumber });
+      
+      const quoteMessage = {
+        orderId: String(orderId),  // Ensure orderId is a string
+        orderNumber: String(orderNumber),  // Ensure orderNumber is a string
+        senderEmail: 'admin@empi.com',
+        senderName: 'Admin',
+        senderType: 'admin',
+        content: `Your quotation is ready! Review the quote items and total price below.`,
+        messageType: 'quote',
+        quotedPrice: totals.total,
+        isFinalPrice: false,
+      };
+
+      const messageResponse = await fetch('/api/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(quoteMessage),
+      });
+
+      if (!messageResponse.ok) {
+        const errorText = await messageResponse.text();
+        console.error('[CustomOrderCard] Message API error:', errorText);
+        console.error('[CustomOrderCard] Failed to notify customer of quote, but quote was saved to order');
+        // Don't throw error - the quote is already saved to the order, just the notification failed
+        // We'll still mark it as success since the main operation completed
+      } else {
+        const messageData = await messageResponse.json();
+        console.log('[CustomOrderCard] ✅ Quote message sent successfully:', messageData);
+      }
       
       setQuoteSent(true);
       setSubmitStatus('success');
@@ -246,11 +406,11 @@ export function CustomOrderCard({
     setSubmitStatus('idle');
 
     try {
-      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'approved', // Move to approved tab
+          status: 'approved',
         }),
       });
 
@@ -260,6 +420,18 @@ export function CustomOrderCard({
 
       setSubmitStatus('success');
       setErrorMessage('');
+      
+      // Dispatch event to notify PendingPanel to refresh orders
+      const event = new CustomEvent('ordersUpdated', {
+        detail: {
+          orderId,
+          action: 'approved',
+          timestamp: new Date().toISOString(),
+          message: 'Order approved and moved to approved tab',
+        },
+      });
+      window.dispatchEvent(event);
+      console.log('[CustomOrderCard] 📢 Dispatched ordersUpdated event for approved action');
       
       // Reset after success
       setTimeout(() => {
@@ -279,11 +451,11 @@ export function CustomOrderCard({
     setSubmitStatus('idle');
 
     try {
-      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'in-progress', // Change to in-progress for production
+          status: 'in_production', // Change to in-progress for production
         }),
       });
 
@@ -314,7 +486,7 @@ export function CustomOrderCard({
     setSubmitStatus('idle');
 
     try {
-      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
       });
@@ -347,11 +519,11 @@ export function CustomOrderCard({
 
     try {
       // Update order status to 'ready' for shipping in the database
-      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          status: 'ready', // Change to 'ready' for shipping
+          status: 'ready_for_delivery', // Change to 'ready' for shipping
         }),
       });
 
@@ -573,7 +745,7 @@ export function CustomOrderCard({
         {/* Quote Input Section - Collapsible */}
         {expandDetails && (
           <>
-            {!paymentVerified ? (
+            {!paymentData.paymentVerified ? (
               // STEP 1: Quote not yet sent, or quote sent but payment not verified
               <div className="space-y-4">
             <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">📊 Quote Builder - Add Items</h4>
@@ -641,13 +813,28 @@ export function CustomOrderCard({
               </div>
             </div>
 
-            {/* Pricing Summary */}
+            {/* Pricing Summary with Bulk Discount */}
             {lineItems.length > 0 && (
               <div className="bg-gradient-to-r from-white to-gray-50 rounded-lg p-4 border-2 border-emerald-300 space-y-2">
                 <div className="flex justify-between text-sm">
                   <span className="font-semibold text-gray-700">Subtotal:</span>
                   <span className="font-bold text-gray-900">₦{totals.subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                 </div>
+                
+                {/* Show discount if applicable */}
+                {totals.discountPercentage > 0 && (
+                  <>
+                    <div className="flex justify-between text-sm bg-blue-100 border border-blue-300 rounded px-3 py-2">
+                      <span className="font-semibold text-blue-700">🎁 Bulk Discount ({totals.discountPercentage}%):</span>
+                      <span className="font-bold text-blue-700">-₦{totals.discountAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                    <div className="flex justify-between text-sm border-t border-emerald-200 pt-2">
+                      <span className="font-semibold text-gray-700">Subtotal After Discount:</span>
+                      <span className="font-bold text-gray-900">₦{totals.subtotalAfterDiscount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                    </div>
+                  </>
+                )}
+                
                 <div className="flex justify-between text-sm border-t border-emerald-200 pt-2">
                   <span className="font-semibold text-gray-700">VAT (7.5%):</span>
                   <span className="font-bold text-emerald-600">₦{totals.vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
@@ -671,8 +858,8 @@ export function CustomOrderCard({
               </button>
             )}
             
-            {status === 'pending' && quotedPrice && (
-              // Show "Quote Sent" button after quote is sent
+            {status === 'pending' && quotedPrice && !paymentData.paymentVerified && !paymentData.paymentProofUrl && (
+              // Show "Quote Sent" button after quote is sent but no payment yet
               <button
                 onClick={handleQuoteSentClick}
                 className={`w-full px-6 py-4 font-bold text-lg rounded-lg transition-all transform text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 hover:scale-105 active:scale-95`}
@@ -680,11 +867,33 @@ export function CustomOrderCard({
                 ✅ Quote Sent
               </button>
             )}
+
+            {status === 'pending' && quotedPrice && paymentData.paymentProofUrl && !paymentData.paymentVerified && (
+              // Show "Payment Received - Awaiting Verification" when payment proof uploaded but not verified
+              <button
+                disabled
+                className={`w-full px-6 py-4 font-bold text-lg rounded-lg transition-all transform text-white bg-gradient-to-r from-blue-500 to-cyan-500 opacity-75 cursor-not-allowed flex items-center justify-center gap-2`}
+              >
+                <CreditCard className="h-5 w-5" />
+                💳 Payment Received - Verifying...
+              </button>
+            )}
+
+            {status === 'pending' && quotedPrice && paymentData.paymentVerified && (
+              // Show "Approve Order" button when payment is fully verified
+              <button
+                onClick={() => setShowApproveConfirm(true)}
+                disabled={isApproving}
+                className={`w-full px-6 py-4 font-bold text-lg rounded-lg transition-all transform text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-400 disabled:to-gray-400 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100`}
+              >
+                {isApproving ? 'Approving...' : '✅ Approve Order'}
+              </button>
+            )}
             
             {status === 'paid' && (
               // Show "Approve" button when payment has been verified
               <button
-                onClick={handleApproveOrder}
+                onClick={() => setShowApproveConfirm(true)}
                 disabled={isApproving}
                 className={`w-full px-6 py-4 font-bold text-lg rounded-lg transition-all transform text-white bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-400 disabled:to-gray-400 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100`}
               >
@@ -693,14 +902,14 @@ export function CustomOrderCard({
             )}
 
             {status === 'approved' && (
-              // Show "Start Production" and "Delete" buttons when order is approved
+              // Show "Ready" and "Delete" buttons when order is approved
               <div className="flex gap-3 items-center">
                 <button
-                  onClick={() => setShowProductionConfirm(true)}
-                  disabled={isStarting}
-                  className={`flex-1 px-6 py-4 font-bold text-lg rounded-lg transition-all transform text-white bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100`}
+                  onClick={() => setShowCompletedConfirm(true)}
+                  disabled={isMarking}
+                  className={`flex-1 px-6 py-4 font-bold text-lg rounded-lg transition-all transform text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-400 disabled:to-gray-400 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100`}
                 >
-                  {isStarting ? 'Starting...' : '🚀 Start Production'}
+                  {isMarking ? 'Processing...' : '✅ Ready'}
                 </button>
 
                 <button
@@ -743,23 +952,40 @@ export function CustomOrderCard({
               <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl border-2 border-blue-300 p-5 space-y-4">
                 <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider">✅ Payment Verified</h4>
                 
-                <div className="bg-white rounded-lg p-4 border-2 border-blue-200">
-                  <div className="flex items-center justify-between mb-3">
+                <div className="bg-white rounded-lg p-4 border-2 border-blue-200 space-y-2">
+                  {/* Discount badge if applicable */}
+                  {totals.discountPercentage > 0 && (
+                    <div className="bg-blue-100 border border-blue-300 rounded px-3 py-2 mb-2">
+                      <p className="text-xs font-semibold text-blue-700">
+                        🎁 Bulk Discount Applied: {totals.discountPercentage}% (-₦{totals.discountAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })})
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-gray-700">Total Amount</span>
                     <span className="text-2xl font-black text-blue-600">₦{totals.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                   </div>
                   <p className="text-xs text-gray-600 text-center">Customer has completed payment</p>
                 </div>
 
-                {/* Approve Button */}
-                <button
-                  onClick={handleApproveOrder}
-                  disabled={isApproving}
-                  className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold text-lg rounded-lg transition-all transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100"
-                >
-                  <CheckCircle className="h-6 w-6" />
-                  Approve Order
-                </button>
+                {/* Buttons: Approve + Call (for pending) OR Ready + Call (for approved) */}
+                <div className="flex gap-3 items-center">
+                  <button
+                    onClick={status === 'pending' ? () => setShowApproveConfirm(true) : () => setShowCompletedConfirm(true)}
+                    disabled={status === 'pending' ? isApproving : isMarking}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold text-lg rounded-lg transition-all transform hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    {status === 'pending' ? (isApproving ? 'Approving...' : '✅ Approve') : (isMarking ? 'Processing...' : '✅ Ready')}
+                  </button>
+
+                  <button
+                    onClick={() => phone && window.open(`tel:${phone}`, '_self')}
+                    className="flex-1 flex items-center justify-center gap-2 px-6 py-4 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700 text-white font-bold text-lg rounded-lg transition-all transform hover:scale-105 active:scale-95"
+                  >
+                    📞 Call
+                  </button>
+                </div>
 
                 {/* Status Messages */}
                 {submitStatus === 'success' && (
@@ -858,21 +1084,91 @@ export function CustomOrderCard({
         {showCompletedConfirm && (
           <div className="fixed inset-0 bg-black/10 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-sm mx-4 border-2 border-emerald-300 shadow-2xl">
-              <h3 className="text-lg font-bold text-gray-900 mb-3">Ready for Shipping?</h3>
-              <p className="text-sm text-gray-700 mb-5">Is this order ready for shipping? The logistics team will be notified and can start handling delivery.</p>
+              <h3 className="text-lg font-bold text-gray-900 mb-3">
+                {status === 'approved' ? '✅ Costume Item Ready & Completed?' : '📦 Ready for Shipping?'}
+              </h3>
+              <p className="text-sm text-gray-700 mb-5">
+                {status === 'approved' 
+                  ? 'Are you sure the costume item is ready and completed? This will move the order to logistics for delivery.'
+                  : 'Is this order ready for shipping? The logistics team will be notified and can start handling delivery.'}
+              </p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowCompletedConfirm(false)}
                   className="flex-1 px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold rounded-lg transition-colors"
                 >
-                  Cancel
+                  No, Cancel
                 </button>
                 <button
                   onClick={handleMarkAsCompleted}
                   disabled={isMarking}
                   className="flex-1 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-400 text-white font-bold rounded-lg transition-colors disabled:cursor-not-allowed"
                 >
-                  {isMarking ? 'Marking...' : 'Yes, Ready'}
+                  {isMarking ? 'Processing...' : 'Yes, Ready'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Approve Order Confirmation Modal */}
+        {showApproveConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 space-y-6">
+              {/* Header with Checkmark */}
+              <div className="text-center">
+                <div className="flex justify-center mb-4">
+                  <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center">
+                    <CheckCircle className="h-8 w-8 text-emerald-600" />
+                  </div>
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900">Payment Confirmed</h2>
+              </div>
+
+              {/* Order Info */}
+              <div className="bg-gray-50 rounded-lg p-4 space-y-3 border border-gray-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-semibold text-gray-600">Order</span>
+                  <span className="text-lg font-bold text-gray-900">ORD-{orderNumber}</span>
+                </div>
+                
+                {/* Payment Status */}
+                <div className="flex items-center gap-2 bg-emerald-100 rounded-lg px-3 py-2 border border-emerald-300">
+                  <CheckCircle className="h-5 w-5 text-emerald-600 flex-shrink-0" />
+                  <span className="text-sm font-semibold text-emerald-700">Payment Received</span>
+                </div>
+
+                {/* Amount */}
+                <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                  <span className="text-sm font-semibold text-gray-600">Amount</span>
+                  <span className="text-xl font-black text-emerald-600">₦{totals.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                </div>
+              </div>
+
+              {/* Message */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-center">
+                <p className="text-sm text-blue-800 font-semibold">
+                  ✅ Payment has been verified. You can now approve this order.
+                </p>
+              </div>
+
+              {/* Buttons */}
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowApproveConfirm(false)}
+                  className="flex-1 px-4 py-3 bg-gray-300 hover:bg-gray-400 text-gray-900 font-bold rounded-lg transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    handleApproveOrder();
+                    setShowApproveConfirm(false);
+                  }}
+                  disabled={isApproving}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold rounded-lg transition-colors disabled:cursor-not-allowed"
+                >
+                  {isApproving ? 'Approving...' : 'Approve Order'}
                 </button>
               </div>
             </div>

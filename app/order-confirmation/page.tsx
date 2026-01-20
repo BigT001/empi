@@ -81,7 +81,7 @@ function OrderConfirmationContent() {
 
     const fetchOrder = async () => {
       try {
-        const res = await fetch(`/api/orders?ref=${reference}`);
+        const res = await fetch(`/api/orders/unified?ref=${reference}`);
         if (!res.ok) {
           // If not found, wait a moment and retry (order might still be saving)
           if (res.status === 404) {

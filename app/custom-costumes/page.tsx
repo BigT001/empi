@@ -254,8 +254,9 @@ export default function CustomCostumesPage({
         uploadFormData.append("designImages", file);
       });
 
-      console.log("[CustomCostumes] 📤 Submitting custom order...");
-      const response = await fetch("/api/custom-orders", {
+      console.log("[CustomCostumes] 📤 Submitting custom order to unified endpoint...");
+      // Use unified endpoint for creating custom orders
+      const response = await fetch("/api/orders/unified", {
         method: "POST",
         body: uploadFormData,
       });
@@ -267,9 +268,43 @@ export default function CustomCostumesPage({
 
       const data = await response.json();
       
-      console.log("[CustomCostumes] ✅ Order submitted successfully!");
+      console.log("[CustomCostumes] ✅ Order submitted successfully to unified system!");
       console.log("[CustomCostumes] Response:", data);
       console.log("[CustomCostumes] Order Number:", data.orderNumber);
+
+      // If user is logged in, update their profile with any new information
+      if (buyer?.id) {
+        console.log("[CustomCostumes] 👤 Updating buyer profile with form data...");
+        try {
+          const profileUpdateData = {
+            fullName: formData.fullName,
+            phone: formData.phone,
+            address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            postalCode: formData.postalCode,
+          };
+
+          const profileResponse = await fetch(`/api/buyers/${buyer.id}`, {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(profileUpdateData),
+          });
+
+          if (profileResponse.ok) {
+            console.log("[CustomCostumes] ✅ Buyer profile updated successfully!");
+            const updatedBuyer = await profileResponse.json();
+            console.log("[CustomCostumes] Updated buyer:", updatedBuyer);
+          } else {
+            console.warn("[CustomCostumes] ⚠️ Failed to update buyer profile, but order was submitted");
+          }
+        } catch (profileError) {
+          console.warn("[CustomCostumes] ⚠️ Error updating profile (non-blocking):", profileError);
+          // Don't throw - order was successful, this is just a bonus feature
+        }
+      }
       
       setSubmitStatus("success");
       setSuccessOrderNumber(data.orderNumber || "");
@@ -478,13 +513,8 @@ export default function CustomCostumesPage({
                         name="fullName"
                         value={formData.fullName}
                         onChange={handleInputChange}
-                        disabled={!!buyer?.id}
                         required
-                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
-                          buyer?.id
-                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
-                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
-                        }`}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
                         placeholder="Your name"
                       />
                     </div>
@@ -500,13 +530,8 @@ export default function CustomCostumesPage({
                         name="email"
                         value={formData.email}
                         onChange={handleInputChange}
-                        disabled={!!buyer?.id}
                         required
-                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
-                          buyer?.id
-                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
-                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
-                        }`}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
                         placeholder="your@email.com"
                       />
                     </div>
@@ -522,13 +547,8 @@ export default function CustomCostumesPage({
                         name="phone"
                         value={formData.phone}
                         onChange={handleInputChange}
-                        disabled={!!buyer?.id}
                         required
-                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
-                          buyer?.id
-                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
-                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
-                        }`}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
                         placeholder="+234 123 456 7890"
                       />
                     </div>
@@ -544,13 +564,8 @@ export default function CustomCostumesPage({
                         name="city"
                         value={formData.city}
                         onChange={handleInputChange}
-                        disabled={!!buyer?.id}
                         required
-                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
-                          buyer?.id
-                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
-                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
-                        }`}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
                         placeholder="Lagos, Abuja..."
                       />
                     </div>
@@ -569,12 +584,7 @@ export default function CustomCostumesPage({
                         name="address"
                         value={formData.address}
                         onChange={handleInputChange}
-                        disabled={!!buyer?.id}
-                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
-                          buyer?.id
-                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
-                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
-                        }`}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
                         placeholder="Street address"
                       />
                     </div>
@@ -590,12 +600,7 @@ export default function CustomCostumesPage({
                         name="state"
                         value={formData.state}
                         onChange={handleInputChange}
-                        disabled={!!buyer?.id}
-                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
-                          buyer?.id
-                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
-                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
-                        }`}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
                         placeholder="State"
                       />
                     </div>
@@ -611,12 +616,7 @@ export default function CustomCostumesPage({
                         name="postalCode"
                         value={formData.postalCode}
                         onChange={handleInputChange}
-                        disabled={!!buyer?.id}
-                        className={`w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg transition text-sm md:text-base font-medium ${
-                          buyer?.id
-                            ? 'bg-green-50 border-green-200 text-gray-900 cursor-not-allowed opacity-75'
-                            : 'focus:outline-none focus:ring-2 focus:ring-blue-500'
-                        }`}
+                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
                         placeholder="Postal code"
                       />
                     </div>

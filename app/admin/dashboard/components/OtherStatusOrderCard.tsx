@@ -274,6 +274,27 @@ export function OtherStatusOrderCard({
             )}
           </div>
 
+          {/* Pricing Breakdown */}
+          {(order.quotedPrice || order.price) && (
+            <div className="bg-white rounded-lg p-3 border-2 border-yellow-200 mb-3 flex-shrink-0">
+              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Pricing Breakdown</p>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-700">Subtotal:</span>
+                  <span className="font-semibold text-gray-900">₦{((order.quotedPrice || order.price || 0)).toLocaleString('en-NG')}</span>
+                </div>
+                <div className="flex justify-between border-t border-yellow-200 pt-1.5">
+                  <span className="text-gray-700 font-semibold">VAT (7.5%):</span>
+                  <span className="font-bold text-amber-700">₦{(((order.quotedPrice || order.price || 0) * 0.075)).toLocaleString('en-NG')}</span>
+                </div>
+                <div className="flex justify-between border-t border-yellow-300 pt-1.5">
+                  <span className="font-bold text-gray-900">Total:</span>
+                  <span className="text-lg font-bold text-yellow-700">₦{(((order.quotedPrice || order.price || 0) * 1.075)).toLocaleString('en-NG')}</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Order Info & Specs - Only show if data exists */}
           {(order.pickupDate || order.pickupTime || (order.customData && (order.customData.fabricColor || order.customData.size))) && (
             <div className="bg-white rounded p-2 border border-yellow-200 mb-3 flex-shrink-0 text-xs">

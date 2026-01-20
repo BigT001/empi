@@ -79,15 +79,17 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
   const handleAddToCart = () => {
     const price = mode === "rent" ? product.rentPrice : product.sellPrice;
+    const productImage = product.imageUrl || (product.imageUrls && product.imageUrls[0]) || '';
     const cartItem: any = {
       id: productId,
       name: product.name,
       price: price,
-      image: product.imageUrl,
+      image: productImage,
       mode: mode as "buy" | "rent",
       quantity: quantity,
     };
 
+    console.log('[ProductDetail] Adding to cart:', { name: product.name, hasImage: !!productImage, image: productImage ? productImage.substring(0, 50) : 'NO' });
     addItem(cartItem);
     
     setAddedToCart(true);

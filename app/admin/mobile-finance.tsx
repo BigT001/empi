@@ -35,7 +35,7 @@ export default function MobileFinancePage() {
       setError("");
 
       // Fetch orders to calculate stats
-      const response = await fetch("/api/orders?limit=100");
+      const response = await fetch("/api/orders/unified?limit=100");
       if (!response.ok) throw new Error("Failed to fetch finance data");
 
       const data = await response.json();

@@ -156,8 +156,8 @@ export function CustomOrdersPanel() {
   const fetchOrders = async () => {
     try {
       setIsLoading(true);
-      console.log("[CustomOrdersPanel] ðŸ“‹ Fetching orders...");
-      const response = await fetch("/api/custom-orders");
+      console.log("[CustomOrdersPanel] Fetching custom orders from unified endpoint...");
+      const response = await fetch("/api/orders/unified?orderType=custom");
       console.log("[CustomOrdersPanel] Response status:", response.status);
       const data = await response.json();
       
@@ -201,8 +201,8 @@ export function CustomOrdersPanel() {
   // Background fetch - no loading state, only updates if data changed
   const fetchOrdersBackground = async () => {
     try {
-      console.log("[CustomOrdersPanel] 📋 Background polling for order updates...");
-      const response = await fetch("/api/custom-orders");
+      console.log("[CustomOrdersPanel] Background polling for order updates from unified endpoint...");
+      const response = await fetch("/api/orders/unified?orderType=custom");
       
       if (!response.ok) {
         console.error("[CustomOrdersPanel] Background fetch failed:", response.status);
@@ -294,11 +294,12 @@ export function CustomOrdersPanel() {
 
   const declineOrder = async (orderId: string) => {
     try {
-      console.log(`[CustomOrdersPanel] ðŸ“¤ Declining order: ${orderId}`);
-      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+      console.log(`[CustomOrdersPanel] Declining order: ${orderId}`);
+      // Use unified endpoint
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "rejected" }),
+        body: JSON.stringify({ status: "cancelled" }),
       });
 
       console.log(`[CustomOrdersPanel] Response status: ${response.status}`);
@@ -352,11 +353,12 @@ export function CustomOrdersPanel() {
 
   const cancelOrder = async (orderId: string) => {
     try {
-      console.log(`[CustomOrdersPanel] ðŸ“¤ Cancelling order: ${orderId}`);
-      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+      console.log(`[CustomOrdersPanel] Cancelling order: ${orderId}`);
+      // Use unified endpoint
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: "rejected" }),
+        body: JSON.stringify({ status: "cancelled" }),
       });
 
       console.log(`[CustomOrdersPanel] Response status: ${response.status}`);
@@ -410,8 +412,9 @@ export function CustomOrdersPanel() {
 
   const deleteOrder = async (orderId: string) => {
     try {
-      console.log(`[CustomOrdersPanel] ðŸ—‘ï¸ Deleting order: ${orderId}`);
-      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+      console.log(`[CustomOrdersPanel] Deleting order: ${orderId}`);
+      // Use unified endpoint
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: "DELETE",
       });
 
@@ -454,11 +457,12 @@ export function CustomOrdersPanel() {
         console.log(`[CustomOrdersPanel] Order type: ${updatePayload.isCustomOrder ? 'Custom Order' : 'Regular Order'}`);
       }
       
-      if (newStatus === "in-progress") {
+      if (newStatus === "in_production") {
         updatePayload.productionStartedAt = new Date().toISOString();
       }
       
-      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+      // Use unified endpoint
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatePayload),

@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, CheckCircle, MessageCircle, AlertCircle, Zap, ChevronDown, Trash2 } from 'lucide-react';
+import { Clock, CheckCircle, MessageCircle, AlertCircle, Zap, ChevronDown, Trash2, Hourglass } from 'lucide-react';
+import { checkPaymentStatus } from '@/lib/utils/paymentUtils';
 
 interface UserCustomOrderCardProps {
   orderId: string;
@@ -14,6 +15,15 @@ interface UserCustomOrderCardProps {
   email: string;
   phone: string;
   designUrls?: string[];
+  paymentProofUrl?: string;
+  paymentVerified?: boolean;
+  // CRITICAL: Add discount fields from admin calculation
+  subtotal?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
+  vat?: number;
+  total?: number;
   onChat?: () => void;
   onProceedToPayment?: (orderId: string, price: number, items: Array<{ itemName: string; quantity: number; unitPrice: number }>) => void;
   pollingIntervalMs?: number; // For testing, default 30s in production
@@ -30,6 +40,14 @@ export function UserCustomOrderCard({
   email,
   phone,
   designUrls = [],
+  paymentProofUrl,
+  paymentVerified = false,
+  subtotal,
+  discountPercentage,
+  discountAmount,
+  subtotalAfterDiscount,
+  vat: vatFromAdmin,
+  total: totalFromAdmin,
   onChat,
   onProceedToPayment,
   pollingIntervalMs = 10000,
@@ -42,21 +60,80 @@ export function UserCustomOrderCard({
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [paymentData, setPaymentData] = useState({ paymentProofUrl, paymentVerified });
 
-  const VAT_RATE = 0.075; // 7.5%
+  // Log initial data
+  console.log('[UserCustomOrderCard] Initialized with:', {
+    orderNumber,
+    orderId,
+    quantity,
+    designUrlsCount: designUrls.length,
+    quotedPriceFromProps: quotedPrice,
+    quoteItemsFromProps: quoteItems?.length || 0,
+    // CRITICAL: Log admin-calculated pricing fields
+    pricingFromAdmin: {
+      subtotal,
+      discountPercentage,
+      discountAmount,
+      subtotalAfterDiscount,
+      vat: vatFromAdmin,
+      total: totalFromAdmin,
+    },
+    description: description ? '✅' : '❌',
+    email,
+    phone,
+    paymentProofUrl: paymentProofUrl ? '✅' : '❌',
+    paymentVerified,
+  });
 
-  // Calculate totals from quote items
+  // Calculate totals from quote items OR use admin's calculated values
   const calculateTotals = () => {
-    if (currentQuoteItems.length > 0) {
-      const subtotal = currentQuoteItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-      const vat = subtotal * VAT_RATE;
-      const total = subtotal + vat;
-      return { subtotal, vat, total };
+    // CRITICAL FIX: If admin sent pricing, use it directly (trust admin's calculation)
+    if (subtotal !== undefined && totalFromAdmin !== undefined) {
+      console.log('[UserCustomOrderCard] 💎 USING ADMIN PRICING:', {
+        subtotal,
+        discountPercentage,
+        discountAmount,
+        subtotalAfterDiscount,
+        vat: vatFromAdmin,
+        total: totalFromAdmin,
+      });
+      return {
+        subtotal: subtotal || 0,
+        discount: discountAmount || 0,
+        discountPercentage: discountPercentage || 0,
+        subtotalAfterDiscount: subtotalAfterDiscount || 0,
+        vat: vatFromAdmin || 0,
+        total: totalFromAdmin || 0,
+      };
     }
-    return { subtotal: 0, vat: 0, total: currentQuote || 0 };
+    
+    // Fallback: recalculate from quote items if no admin pricing
+    if (currentQuoteItems.length > 0) {
+      const subtotalCalc = currentQuoteItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+      const vatCalc = subtotalCalc * VAT_RATE;
+      const totalCalc = subtotalCalc + vatCalc;
+      return { subtotal: subtotalCalc, vat: vatCalc, total: totalCalc, discount: 0, discountPercentage: 0, subtotalAfterDiscount: subtotalCalc };
+    }
+    return { subtotal: 0, vat: 0, total: currentQuote || 0, discount: 0, discountPercentage: 0, subtotalAfterDiscount: 0 };
   };
 
   const totals = calculateTotals();
+  const VAT_RATE = 0.075; // 7.5%
+
+  // Sync payment data from props
+  useEffect(() => {
+    if (paymentProofUrl !== undefined || paymentVerified !== undefined) {
+      console.log('[UserCustomOrderCard] 💳 Payment data updated:', {
+        paymentProofUrl: paymentProofUrl ? '✅' : '❌',
+        paymentVerified,
+      });
+      setPaymentData({
+        paymentProofUrl,
+        paymentVerified,
+      });
+    }
+  }, [paymentProofUrl, paymentVerified]);
 
   const handleDelete = async () => {
     if (!showDeleteConfirm) {
@@ -66,7 +143,7 @@ export function UserCustomOrderCard({
 
     try {
       setIsDeleting(true);
-      const response = await fetch(`/api/custom-orders?id=${orderId}`, {
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'DELETE',
       });
 
@@ -85,67 +162,171 @@ export function UserCustomOrderCard({
     }
   };
 
-  // Poll for quote updates if not already quoted
+  // IMPORTANT: Sync props to state first before polling
+  // This ensures we have the latest data from parent
   useEffect(() => {
-    if (currentQuote) {
+    console.log('[UserCustomOrderCard] 🔄 Prop Sync - quotedPrice:', quotedPrice, 'quoteItems count:', quoteItems?.length || 0);
+    
+    // Always sync these from props when they arrive
+    if (quotedPrice && quotedPrice > 0) {
+      console.log('[UserCustomOrderCard] 💰 Syncing quotedPrice prop to state:', quotedPrice);
+      setCurrentQuote(quotedPrice);
+    }
+    
+    if (quoteItems && quoteItems.length > 0) {
+      console.log('[UserCustomOrderCard] 📋 Syncing quoteItems prop to state:', quoteItems);
+      setCurrentQuoteItems(quoteItems);
+    }
+    
+    if (designUrls && designUrls.length > 0) {
+      console.log('[UserCustomOrderCard] 🖼️ Syncing designUrls prop to state:', designUrls.length, 'URLs');
+      setCurrentDesignUrls(designUrls);
+    }
+  }, [quotedPrice, quoteItems, designUrls]); // Re-run when props change
+
+  // CRITICAL: Stop polling when quote arrives from props
+  // This is separate from the polling effect to ensure we stop polling
+  // as soon as props update
+  useEffect(() => {
+    if (quotedPrice && quotedPrice > 0) {
+      console.log('[UserCustomOrderCard] ✅ Quote received via props, stopping poll');
       setIsPolling(false);
+    }
+  }, [quotedPrice]);
+
+  // CRITICAL: Polling logic - SEPARATE from prop syncing
+  // Only depends on orderId and polling interval
+  useEffect(() => {
+    // If polling is disabled, don't run
+    if (!isPolling) {
+      console.log('[UserCustomOrderCard] ⏸️ Polling disabled, skipping poll');
       return;
     }
 
+    console.log('[UserCustomOrderCard] 🔄 Starting polling...');
+
+    let mounted = true;
+    let interval: NodeJS.Timeout | null = null;
+
     const pollForQuote = async () => {
+      if (!mounted) return;
+      
       try {
-        console.log('[UserCustomOrderCard] Polling for quote update...');
-        const response = await fetch(`/api/custom-orders/${orderId}`, {
+        console.log('[UserCustomOrderCard] ⏱️ Polling for quote update...');
+        const response = await fetch(`/api/orders/unified/${orderId}`, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
           },
         });
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[UserCustomOrderCard] Poll response:', data);
-          
-          const order = data.customOrder || data.order || data;
-          const newQuote = order?.quotedPrice;
-          const newQuoteItems = order?.quoteItems || [];
-          const newDesignUrls = order?.designUrls || order?.designUrl ? [order.designUrl] : [];
-          
-          console.log('[UserCustomOrderCard] newQuote:', newQuote, 'currentQuote:', currentQuote);
-          console.log('[UserCustomOrderCard] newQuoteItems:', newQuoteItems);
-          
-          // Update design URLs if available
-          if (newDesignUrls.length > currentDesignUrls.length) {
-            console.log('[UserCustomOrderCard] Updated design URLs');
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[UserCustomOrderCard] ❌ Poll request failed:', {
+            status: response.status,
+            statusText: response.statusText,
+            errorResponse: errorText,
+          });
+          return;
+        }
+
+        const data = await response.json();
+        if (!mounted) return;
+        
+        console.log('[UserCustomOrderCard] 📥 Poll response received');
+        console.log('  ├─ Raw response keys:', Object.keys(data).slice(0, 15));
+        console.log('  ├─ Response structure:', {
+          hasCustomOrder: !!data.customOrder,
+          hasOrder: !!data.order,
+          hasQuotedPrice: !!data.quotedPrice,
+          hasQuoteItems: !!data.quoteItems,
+        });
+        
+        const order = data.customOrder || data.order || data;
+        const newQuote = order?.quotedPrice;
+        const newQuoteItems = order?.quoteItems || [];
+        const newDesignUrls = order?.designUrls || (order?.designUrl ? [order.designUrl] : []);
+        
+        console.log('[UserCustomOrderCard] 📊 Extracted Quote Data from API:');
+        console.log('  ├─ quotedPrice:', newQuote, typeof newQuote);
+        console.log('  ├─ quoteItemsCount:', newQuoteItems.length);
+        console.log('  ├─ quoteItems:', newQuoteItems);
+        console.log('  ├─ designUrls:', newDesignUrls.length, 'items');
+        console.log('  └─ Full order object keys:', Object.keys(order).slice(0, 20));
+        console.log('  ├─ quoteItemsCount:', newQuoteItems.length);
+        console.log('  ├─ quoteItems:', newQuoteItems);
+        console.log('  └─ Quote Changed?:', newQuote && newQuote !== currentQuote);
+        
+        // Update design URLs if they've changed
+        if (newDesignUrls.length > 0) {
+          const urlsChanged = newDesignUrls.length !== currentDesignUrls.length || 
+                             !newDesignUrls.every((url: any, idx: number) => url === currentDesignUrls[idx]);
+          if (urlsChanged) {
+            console.log('[UserCustomOrderCard] 🖼️ Updated design URLs:', newDesignUrls);
             setCurrentDesignUrls(newDesignUrls);
           }
+        }
 
-          // Update quote items if available
-          if (newQuoteItems.length > 0) {
-            console.log('[UserCustomOrderCard] Updated quote items');
+        // Update quote items if available
+        if (newQuoteItems.length > 0) {
+          const itemsChanged = newQuoteItems.length !== currentQuoteItems.length ||
+                              !newQuoteItems.every((item: any, idx: number) => 
+                                item.itemName === currentQuoteItems[idx]?.itemName &&
+                                item.quantity === currentQuoteItems[idx]?.quantity &&
+                                item.unitPrice === currentQuoteItems[idx]?.unitPrice
+                              );
+          if (itemsChanged) {
+            console.log('[UserCustomOrderCard] ✅ Updated quote items');
             setCurrentQuoteItems(newQuoteItems);
           }
-          
-          // Update quote if changed
-          if (newQuote && newQuote !== currentQuote) {
-            console.log('[UserCustomOrderCard] Quote updated:', newQuote);
-            setCurrentQuote(newQuote);
-            setIsPolling(false); // Stop polling once quote received
-          }
-          setLastChecked(new Date());
         }
+        
+        // Check for payment status updates
+        const newPaymentProofUrl = order?.paymentProofUrl;
+        const newPaymentVerified = order?.paymentVerified;
+        if (newPaymentProofUrl !== paymentData.paymentProofUrl || newPaymentVerified !== paymentData.paymentVerified) {
+          console.log('[UserCustomOrderCard] 💳 Payment status updated from API:', {
+            paymentProofUrl: newPaymentProofUrl ? '✅' : '❌',
+            paymentVerified: newPaymentVerified,
+          });
+          setPaymentData({
+            paymentProofUrl: newPaymentProofUrl,
+            paymentVerified: newPaymentVerified,
+          });
+        }
+        
+        // Update quote if changed
+        if (newQuote && newQuote > 0) {
+          console.log('[UserCustomOrderCard] 💰 Quote received from API:', newQuote);
+          console.log('  ├─ Current quote in state:', currentQuote);
+          console.log('  ├─ Quote changed?', newQuote !== currentQuote);
+          console.log('  └─ Setting state: setCurrentQuote(', newQuote, ')');
+          setCurrentQuote(newQuote);
+          if (mounted) {
+            console.log('[UserCustomOrderCard] ✅ Stopping polling - quote received');
+            setIsPolling(false);
+          }
+        } else {
+          console.log('[UserCustomOrderCard] ⏳ No quote from API yet:', { newQuote, hasValue: !!newQuote });
+        }
+        
+        setLastChecked(new Date());
       } catch (error) {
-        console.error('[UserCustomOrderCard] Error polling for quote:', error);
+        console.error('[UserCustomOrderCard] ❌ Error polling for quote:', error);
       }
     };
 
-    if (isPolling) {
-      // Check immediately, then set up interval
-      console.log('[UserCustomOrderCard] Starting poll interval...');
-      pollForQuote();
-      const interval = setInterval(pollForQuote, pollingIntervalMs);
-      return () => clearInterval(interval);
-    }
-  }, [orderId, currentQuote, isPolling, pollingIntervalMs, currentDesignUrls, currentQuoteItems]);
+    // Initial poll immediately
+    pollForQuote();
+    
+    // Then set up interval for continuous polling
+    interval = setInterval(pollForQuote, pollingIntervalMs);
+
+    return () => {
+      mounted = false;
+      if (interval) clearInterval(interval);
+    };
+  }, [orderId, pollingIntervalMs, isPolling]); // Re-run when polling flag changes
 
   const getStatusColor = (status: string) => {
     const colors: Record<string, { bg: string; text: string; icon: string }> = {
@@ -159,8 +340,52 @@ export function UserCustomOrderCard({
     return colors[status] || colors['pending'];
   };
 
+  // Check payment status
+  const paymentStatus = checkPaymentStatus({
+    paymentProofUrl: paymentData.paymentProofUrl,
+    paymentVerified: paymentData.paymentVerified,
+    status,
+  });
+
+  const getPaymentButtonState = () => {
+    if (paymentStatus.isFullyPaid) {
+      return {
+        text: '✅ Payment Verified',
+        isDisabled: true,
+        isSending: false,
+        className: 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white cursor-not-allowed opacity-75',
+      };
+    }
+    if (paymentStatus.hasMixedPayment) {
+      return {
+        text: '⏳ Awaiting Confirmation',
+        isDisabled: true,
+        isSending: false,
+        className: 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white cursor-not-allowed opacity-75',
+      };
+    }
+    return {
+      text: 'Proceed to Payment',
+      isDisabled: false,
+      isSending: false,
+      className: 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white',
+    };
+  };
+
   const colors = getStatusColor(status);
   const hasQuote = currentQuote && currentQuote > 0;
+  const paymentButtonState = getPaymentButtonState();
+
+  // CRITICAL: Log render state to debug why quote isn't showing
+  console.log('[UserCustomOrderCard] 🎨 RENDERING:', {
+    orderNumber,
+    orderId,
+    hasQuote,
+    currentQuote,
+    currentQuoteItems: currentQuoteItems.length,
+    isPolling,
+    currentDesignUrls: currentDesignUrls.length,
+  });
 
   return (
     <div className={`${colors.bg} rounded-2xl border-2 ${hasQuote ? 'border-emerald-300 shadow-lg' : 'border-yellow-300 shadow-md'} overflow-hidden transition-all duration-300`}>
@@ -283,17 +508,35 @@ export function UserCustomOrderCard({
 
             {/* Pricing Breakdown */}
             <div className="bg-white rounded-lg p-4 border-2 border-emerald-200 space-y-2">
+              {/* Subtotal (before discount) */}
               <div className="flex justify-between text-sm">
                 <span className="font-semibold text-gray-700">Subtotal:</span>
-                <span className="font-bold text-gray-900">₦{totals.subtotal.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                <span className="font-bold text-gray-900">₦{(totals.subtotal || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
               </div>
+              
+              {/* 🎁 Discount - Show if present */}
+              {totals.discountPercentage && totals.discountPercentage > 0 ? (
+                <div className="flex justify-between text-sm bg-green-50 px-3 py-2 rounded border border-green-200">
+                  <span className="font-semibold text-green-700">🎁 Discount ({totals.discountPercentage}%):</span>
+                  <span className="font-bold text-green-600">-₦{(totals.discount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                </div>
+              ) : null}
+              
+              {/* Subtotal After Discount (if discount applied) */}
+              {totals.subtotalAfterDiscount && totals.subtotalAfterDiscount > 0 && totals.subtotalAfterDiscount !== totals.subtotal ? (
+                <div className="flex justify-between text-sm font-semibold text-gray-800 bg-white px-3 py-1.5 rounded border border-gray-200">
+                  <span>Subtotal After Discount:</span>
+                  <span>₦{(totals.subtotalAfterDiscount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                </div>
+              ) : null}
+              
               <div className="flex justify-between text-sm border-t border-emerald-200 pt-2">
                 <span className="font-semibold text-gray-700">VAT (7.5%):</span>
-                <span className="font-bold text-emerald-600">₦{totals.vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                <span className="font-bold text-emerald-600">₦{(totals.vat || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between text-lg border-t-2 border-emerald-300 pt-2">
                 <span className="font-bold text-gray-900">Total:</span>
-                <span className="font-black text-emerald-600">₦{totals.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                <span className="font-black text-emerald-600">₦{(totals.total || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
 
@@ -301,10 +544,12 @@ export function UserCustomOrderCard({
             {status === 'pending' && hasQuote && (
               <div className="flex gap-3 pt-3 border-t border-emerald-300">
                 <button
-                  onClick={() => onProceedToPayment?.(orderId, totals.total, currentQuoteItems)}
-                  className="flex-1 px-4 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-bold rounded-lg transition-all transform hover:scale-105 active:scale-95 whitespace-nowrap text-sm"
+                  onClick={() => !paymentButtonState.isDisabled && onProceedToPayment?.(orderId, totals.total, currentQuoteItems)}
+                  disabled={paymentButtonState.isDisabled}
+                  className={`flex-1 px-4 py-3 ${paymentButtonState.className} font-bold rounded-lg transition-all transform ${!paymentButtonState.isDisabled ? 'hover:scale-105 active:scale-95' : ''} whitespace-nowrap text-sm`}
+                  title={paymentButtonState.isDisabled ? 'Payment is being processed. Please wait for confirmation.' : 'Click to proceed with payment'}
                 >
-                  Proceed to Payment
+                  {paymentButtonState.text}
                 </button>
                 <button
                   onClick={handleDelete}

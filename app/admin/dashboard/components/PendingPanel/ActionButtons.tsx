@@ -75,8 +75,8 @@ export function ActionButtons({
         sessionStorage.setItem('logistics_orders', JSON.stringify(ordersArray));
       }
       
-      // Update order status to "ready" in the database
-      updateOrderStatus(orderData._id, 'ready');
+      // Update order status to "ready_for_delivery" in the database
+      updateOrderStatus(orderData._id, 'ready_for_delivery');
       
       // Mark as sent and persist to sessionStorage
       setSentToLogistics(true);
@@ -89,10 +89,10 @@ export function ActionButtons({
 
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      console.log(`[ActionButtons] 🔄 Updating order ${orderId} to status: ${newStatus}`);
+      console.log(`[ActionButtons] Updating order ${orderId} to status: ${newStatus}`);
       console.log(`[ActionButtons] Order ID length: ${orderId.length}`);
       
-      const response = await fetch(`/api/custom-orders/${orderId}`, {
+      const response = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -100,7 +100,7 @@ export function ActionButtons({
         body: JSON.stringify({ status: newStatus }),
       });
 
-      console.log(`[ActionButtons] Custom-orders endpoint - Status: ${response.status} ${response.statusText}`);
+      console.log(`[ActionButtons] Unified endpoint - Status: ${response.status} ${response.statusText}`);
 
       if (response.ok) {
         console.log(`✅ Order ${orderId} status updated to ${newStatus} via custom-orders endpoint`);
@@ -108,9 +108,9 @@ export function ActionButtons({
       }
 
       if (response.status === 404) {
-        console.log('[ActionButtons] ⚠️ Order not found in custom-orders, trying orders endpoint...');
+        console.log('[ActionButtons] ⚠️ Order not found, retrying with unified endpoint...');
         
-        const altResponse = await fetch(`/api/orders/${orderId}`, {
+        const altResponse = await fetch(`/api/orders/unified/${orderId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',

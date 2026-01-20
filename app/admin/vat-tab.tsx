@@ -149,7 +149,7 @@ export default function VATTab() {
         // Fetch VAT analytics and order data
         const [vatRes, ordersRes] = await Promise.all([
           fetch("/api/admin/vat-analytics"),
-          fetch("/api/orders")
+          fetch("/api/orders/unified")
         ]);
 
         if (!vatRes.ok) {
@@ -808,7 +808,7 @@ export default function VATTab() {
                   try {
                     const [vatRes, ordersRes] = await Promise.all([
                       fetch("/api/admin/vat-analytics"),
-                      fetch("/api/orders")
+                      fetch("/api/orders/unified")
                     ]);
 
                     if (vatRes.ok) {

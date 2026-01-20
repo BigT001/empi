@@ -91,7 +91,7 @@ export function BankTransferCheckout({
       formData.append('file', file);
       formData.append('orderId', orderId);
 
-      const res = await fetch('/api/orders/upload-payment-proof', {
+      const res = await fetch('/api/orders/unified/upload-payment-proof', {
         method: 'POST',
         body: formData,
       });

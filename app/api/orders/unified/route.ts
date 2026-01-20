@@ -1,0 +1,424 @@
+import { NextRequest, NextResponse } from 'next/server';
+import connectDB from '@/lib/mongodb';
+import UnifiedOrder from '@/lib/models/UnifiedOrder';
+import { createInvoiceFromOrder } from '@/lib/createInvoiceFromOrder';
+import { v2 as cloudinary } from 'cloudinary';
+
+// Configure cloudinary
+try {
+  cloudinary.config({
+    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+} catch (err) {
+  console.warn('[API] ⚠️ Cloudinary configuration warning:', err);
+}
+
+/**
+ * GET /api/orders/unified
+ * 
+ * Fetch orders with flexible filtering
+ * Query params: email, status, orderType, currentHandler, buyerId, limit, ref
+ * 
+ * Works for both custom and regular orders!
+ */
+export async function GET(request: NextRequest) {
+  try {
+    console.log('[Unified Orders API] GET /api/orders/unified called');
+    await connectDB();
+    console.log('[Unified Orders API] ✅ Connected to DB');
+
+    const { searchParams } = new URL(request.url);
+    const email = searchParams.get('email');
+    const status = searchParams.get('status');
+    const orderType = searchParams.get('orderType');
+    const currentHandler = searchParams.get('currentHandler');
+    const buyerId = searchParams.get('buyerId');
+    const ref = searchParams.get('ref');
+    const limit = parseInt(searchParams.get('limit') || '100');
+
+    const query: Record<string, unknown> = { isActive: true };
+
+    if (email) query.email = email;
+    if (status) query.status = status;
+    if (orderType) query.orderType = orderType;
+    if (currentHandler) query.currentHandler = currentHandler;
+    if (buyerId) query.buyerId = buyerId;
+    if (ref) query.reference = ref;
+
+    console.log('[Unified Orders API] 🔍 Query:', query);
+    
+    let orders: any[] = [];
+    try {
+      const queryResult = await UnifiedOrder.find(query)
+        .sort({ createdAt: -1 })
+        .limit(limit)
+        .lean();
+      
+      // Ensure all discount fields are properly serialized
+      orders = queryResult.map((order: any) => {
+        // CRITICAL: Log pricing fields being returned
+        if (order.orderType === 'custom') {
+          console.log(`[Unified Orders API] 🔍 Custom order ${order.orderNumber} pricing from DB:`, {
+            subtotal: order.subtotal,
+            discountPercentage: order.discountPercentage,
+            discountAmount: order.discountAmount,
+            subtotalAfterDiscount: order.subtotalAfterDiscount,
+            vat: order.vat,
+            total: order.total,
+          });
+        }
+        return {
+          ...order,
+          // Ensure numeric fields are properly converted
+          subtotal: order.subtotal ?? 0,
+          vat: order.vat ?? 0,
+          total: order.total ?? 0,
+          discountPercentage: order.discountPercentage ?? 0,
+          discountAmount: order.discountAmount ?? 0,
+          subtotalAfterDiscount: order.subtotalAfterDiscount ?? 0,
+        };
+      });
+      
+      console.log(`[Unified Orders API] ✅ Found ${orders.length} orders`);
+    } catch (dbError) {
+      console.error('[Unified Orders API] ❌ Database query failed:', dbError);
+      throw new Error(`Database query failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
+    }
+    
+    // Log custom order details for debugging (wrapped in try-catch to prevent crashes)
+    try {
+      orders.forEach((order: Record<string, unknown>) => {
+        if (order.orderType === 'custom') {
+          console.log(`[Unified Orders API] Custom Order: ${order.orderNumber}`, {
+            requiredQuantity: order.requiredQuantity,
+            designUrls: Array.isArray(order.designUrls) ? order.designUrls.length : 0,
+            quotedPrice: order.quotedPrice,
+            quoteItemsCount: Array.isArray(order.quoteItems) ? order.quoteItems.length : 0,
+            quoteItems: order.quoteItems,
+            description: order.description ? '✅' : '❌',
+            firstName: order.firstName,
+            email: order.email,
+            city: order.city,
+          });
+        }
+      });
+    } catch (logError) {
+      console.warn('[Unified Orders API] Warning logging order details:', logError);
+      // Continue anyway, don't fail
+    }
+    
+    // If searching by reference and found single order, return just that order
+    if (ref && orders.length === 1) {
+      console.log('[Unified Orders API] Returning single order by reference');
+      return NextResponse.json(orders[0]);
+    }
+    
+    console.log('[Unified Orders API] ✅ Returning', orders.length, 'orders');
+    return NextResponse.json({
+      success: true,
+      total: orders.length,
+      orders,
+    });
+  } catch (error) {
+    console.error('[API] GET /orders/unified failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json(
+      { 
+        error: 'Failed to fetch orders',
+        details: errorMessage,
+        timestamp: new Date().toISOString()
+      },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * POST /api/orders/unified
+ * 
+ * Create new order (both custom and regular)
+ * Handles:
+ * - JSON body for regular orders (from checkout)
+ * - FormData for custom orders (from custom-costumes)
+ */
+export async function POST(request: NextRequest) {
+  try {
+    console.log('[Unified Orders API] POST /api/orders/unified called');
+    await connectDB();
+    console.log('[Unified Orders API] ✅ Connected to DB');
+
+    let body: Record<string, unknown> = {};
+    const contentType = request.headers.get('content-type') || '';
+
+    // Handle FormData (custom orders)
+    if (contentType.includes('multipart/form-data')) {
+      console.log('[Unified Orders API] Processing FormData (custom order)');
+      const formData = await request.formData();
+      
+      // Extract design images for background processing
+      const designImages = formData.getAll('designImages') as File[];
+      const quantity = parseInt(formData.get('quantity') as string) || 1;
+      const fullName = (formData.get('fullName') as string) || '';
+      
+      body = {
+        email: (formData.get('email') as string || '').toLowerCase(),
+        firstName: fullName?.split(/\s+/)[0] || '',
+        lastName: fullName?.split(/\s+/).slice(1).join(' ') || '',
+        phone: formData.get('phone'),
+        address: formData.get('address'),
+        city: formData.get('city'),
+        state: formData.get('state'),
+        zipCode: formData.get('postalCode'), // Map postalCode from form to zipCode in schema
+        buyerId: formData.get('buyerId'),
+        orderType: 'custom',
+        description: formData.get('description'),
+        deliveryDate: formData.get('deliveryDate'),
+        requiredQuantity: quantity,
+        quantity: quantity,
+        designImages: designImages, // Store for processing
+      };
+    } else {
+      // Handle JSON (regular orders)
+      console.log('[Unified Orders API] Processing JSON body (regular order)');
+      body = await request.json();
+      
+      // Ensure all items have proper structure
+      if (body.items && Array.isArray(body.items)) {
+        body.items = body.items.map((item: Record<string, unknown>) => ({
+          ...item,
+          image: (item.image as string) || (item.imageUrl as string) || '', // Ensure image field exists
+          imageUrl: (item.imageUrl as string) || (item.image as string) || '', // Ensure imageUrl field exists too
+        }));
+      }
+      
+      // Log item details for debugging
+      if (body.items && Array.isArray(body.items)) {
+        console.log('[Unified Orders API] Items received:');
+        body.items.forEach((item: Record<string, unknown>, idx: number) => {
+          console.log(`  [${idx}] ${item.name} - hasImage: ${!!item.image}, hasImageUrl: ${!!item.imageUrl}`);
+        });
+      }
+    }
+
+    console.log('[Unified Orders API] 📝 Body:', { email: body.email, orderType: body.orderType, firstName: body.firstName, lastName: body.lastName });
+
+    // Validate required fields
+    if (!body.email || !body.firstName || !body.lastName) {
+      console.error('[Unified Orders API] ❌ Missing required fields:', { email: !!body.email, firstName: !!body.firstName, lastName: !!body.lastName });
+      return NextResponse.json(
+        { error: 'Missing required fields: email, firstName, lastName' },
+        { status: 400 }
+      );
+    }
+
+    // Auto-detect orderType if not provided
+    const orderType = body.orderType || (body.designImages ? 'custom' : 'regular');
+
+    // For custom orders, ensure subtotal and total are provided or set defaults
+    if (orderType === 'custom') {
+      // If custom order doesn't have pricing, set placeholder values
+      if (!body.subtotal) body.subtotal = 0;
+      // Calculate VAT (7.5%)
+      const vat = (body.subtotal as number) * 0.075;
+      if (!body.vat) body.vat = vat;
+      if (!body.total) body.total = (body.subtotal as number) + vat;
+      console.log('[Unified Orders API] 💰 Custom order pricing:', { 
+        subtotal: body.subtotal, 
+        vat: body.vat,
+        total: body.total 
+      });
+    }
+
+    // Generate unique order number
+    const timestamp = Date.now();
+    const random = Math.floor(Math.random() * 10000);
+    const orderNumber = `ORD-${timestamp}-${random}`;
+
+    // Prepare order data - ensure all fields are properly mapped
+    const orderDataToSave = {
+      // Basic Info
+      orderNumber,
+      orderType,
+      
+      // Customer Info
+      firstName: (body.firstName as string) || '',
+      lastName: (body.lastName as string) || '',
+      email: (body.email as string) || '',
+      phone: (body.phone as string) || '',
+      address: (body.address as string) || undefined,
+      city: (body.city as string) || '',
+      state: (body.state as string) || undefined,
+      zipCode: (body.zipCode as string) || undefined,
+      buyerId: (body.buyerId as string) || undefined,
+      
+      // Items (empty for custom orders, will be populated when admin adds them)
+      items: (body.items as Record<string, unknown>[]) || [],
+      
+      // Custom Order Specific
+      description: (body.description as string) || undefined,
+      designUrls: [], // Will be filled by background task if images exist
+      requiredQuantity: (body.requiredQuantity as number) || (body.quantity as number) || 1,
+      
+      // Pricing
+      subtotal: (body.subtotal as number) || 0,
+      // CRITICAL: Include discount fields for regular orders
+      discountPercentage: (body.discountPercentage as number) || 0,
+      discountAmount: (body.discountAmount as number) || 0,
+      subtotalAfterDiscount: (body.subtotalAfterDiscount as number) || (body.subtotal as number) || 0,
+      vat: (body.vat as number) || 0,
+      total: (body.total as number) || 0,
+      
+      // Payment
+      paymentVerified: orderType === 'regular' ? true : false,
+      
+      // Status & Logistics
+      status: 'pending',
+      currentHandler: 'production',
+      
+      // Timeline
+      deliveryDate: body.deliveryDate ? new Date(body.deliveryDate as string) : undefined,
+      
+      // Metadata
+      isActive: true,
+    };
+
+    // Remove designImages from order data (they're not a model field, we'll process them separately)
+    const designImages = (body.designImages as File[]) || [];
+
+    const newOrder = await UnifiedOrder.create(orderDataToSave);
+
+    console.log('[Unified Orders API] ✅ Order created:', { 
+      id: newOrder._id, 
+      number: newOrder.orderNumber, 
+      type: orderType,
+      requiredQuantity: newOrder.requiredQuantity,
+      imagesCount: designImages.length,
+      firstName: newOrder.firstName,
+      lastName: newOrder.lastName,
+      email: newOrder.email,
+      city: newOrder.city,
+    });
+
+    // Process images in background if this is a custom order with images
+    if (orderType === 'custom' && designImages.length > 0) {
+      uploadCustomOrderImagesInBackground(newOrder._id, designImages, orderNumber).catch((err) => {
+        console.error(`[Background] Failed to upload images for order ${orderNumber}:`, err);
+      });
+    }
+
+    // AUTO-GENERATE INVOICE for all paid orders
+    let invoiceData = null;
+    if (body.paymentVerified || orderType === 'regular') {
+      try {
+        console.log('[Unified Orders API] 📧 Auto-generating invoice...');
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        invoiceData = await createInvoiceFromOrder(newOrder as any);
+        if (invoiceData.success) {
+          console.log('[Unified Orders API] ✅ Invoice created and sent:', invoiceData.invoiceNumber);
+        }
+      } catch (invoiceError) {
+        console.error('[Unified Orders API] ⚠️ Invoice generation failed (non-blocking):', invoiceError);
+        // Don't fail the order creation if invoice generation fails
+      }
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        order: newOrder,
+        orderNumber: newOrder.orderNumber,
+        orderId: newOrder._id,
+        invoice: invoiceData || null,
+      },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error('[API] POST /orders/unified failed:', error);
+    return NextResponse.json(
+      { error: 'Failed to create order', details: error instanceof Error ? error.message : String(error) },
+      { status: 500 }
+    );
+  }
+}
+
+/**
+ * Background task: Upload custom order design images to Cloudinary
+ * Updates the unified order with designUrls after successful upload
+ */
+async function uploadCustomOrderImagesInBackground(
+  orderId: string,
+  designImages: File[],
+  orderNumber: string
+) {
+  try {
+    console.log(`[Background:${orderNumber}] 📸 Starting image upload for ${designImages.length} images...`);
+
+    // Validate cloudinary is configured
+    if (!cloudinary || !cloudinary.uploader) {
+      console.warn(`[Background:${orderNumber}] ⚠️ Cloudinary not configured, skipping image uploads`);
+      return;
+    }
+
+    const designUrls: (string | undefined)[] = new Array(designImages.length).fill(undefined);
+
+    // Upload all images to Cloudinary in parallel
+    const uploadPromises = designImages.map((file, i) =>
+      (async () => {
+        try {
+          console.log(`[Background:${orderNumber}] Uploading image ${i + 1}/${designImages.length}: ${file.name}`);
+          const buffer = await file.arrayBuffer();
+          const base64 = Buffer.from(buffer).toString('base64');
+          const dataURL = `data:${file.type};base64,${base64}`;
+
+          const uploadResult = await cloudinary.uploader.upload(dataURL, {
+            folder: 'empi/custom-orders',
+            resource_type: 'auto',
+            quality: 'auto',
+            fetch_format: 'auto',
+          });
+
+          const url = uploadResult.secure_url;
+          console.log(`[Background:${orderNumber}] ✅ Image ${i + 1}/${designImages.length} uploaded:`, url);
+          return { success: true, url, index: i };
+        } catch (uploadError) {
+          console.error(`[Background:${orderNumber}] ⚠️ Failed to upload image ${i + 1}:`, uploadError);
+          return { success: false, index: i };
+        }
+      })()
+    );
+
+    // Wait for all uploads in parallel
+    const uploadResults = await Promise.all(uploadPromises);
+
+    // Process results and maintain order
+    uploadResults.forEach((result) => {
+      if (result.success && result.url) {
+        designUrls[result.index] = result.url;
+      }
+    });
+
+    // Filter out failed uploads
+    const successfulUrls = designUrls.filter((url): url is string => url !== undefined);
+    console.log(`[Background:${orderNumber}] ✅ Upload complete: ${successfulUrls.length}/${designImages.length} images`);
+
+    // Update the order with the uploaded image URLs
+    await connectDB();
+    const updatedOrder = await UnifiedOrder.findByIdAndUpdate(
+      orderId,
+      { designUrls: successfulUrls },
+      { new: true }
+    );
+
+    console.log(`[Background:${orderNumber}] ✅ Order updated with design URLs:`, {
+      orderId,
+      designUrlCount: successfulUrls.length,
+    });
+
+    return updatedOrder;
+  } catch (error) {
+    console.error(`[Background:${orderNumber}] ❌ Error uploading images:`, error);
+    throw error;
+  }
+}

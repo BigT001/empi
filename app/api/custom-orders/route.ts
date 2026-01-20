@@ -271,29 +271,14 @@ export async function GET(request: NextRequest) {
       console.log(`  - designUrls: ${order.designUrls?.length || 0} images`);
     });
     
-    // Fetch regular orders with pending status (for unified display)
+    // NOTE: Regular orders are now ONLY fetched from /api/orders endpoint
+    // This endpoint returns ONLY custom orders to avoid duplicate cards in dashboard
+    // The separation of concerns ensures:
+    // - /api/custom-orders returns ONLY CustomOrder documents
+    // - /api/orders returns ONLY Order documents (excluding custom order payment orders)
+    // - Dashboard displays them separately with appropriate cards
     let regularOrders = [];
-    if (!buyerId && !email) {
-      // Admin fetching all - include pending regular orders
-      // Regular orders can have status 'pending' or 'awaiting_payment' in the pending tab
-      let regularOrdersQuery: any = {};
-      if (status === 'pending') {
-        // For pending tab, fetch both 'pending' and 'awaiting_payment' statuses
-        regularOrdersQuery = { $or: [{ status: 'pending' }, { status: 'awaiting_payment' }] };
-      } else if (status) {
-        regularOrdersQuery = { status: status };
-      }
-      regularOrders = await Order.find(regularOrdersQuery).sort({ createdAt: -1 });
-      console.log("[API:GET /custom-orders] ✅ Found", regularOrders.length, "regular orders with query:", regularOrdersQuery);
-    } else if (buyerId || email) {
-      // User fetching their orders
-      const orderWhereClause: any = {};
-      if (buyerId) orderWhereClause.buyerId = buyerId;
-      if (email) orderWhereClause.email = email;
-      if (status) orderWhereClause.status = status;
-      regularOrders = await Order.find(orderWhereClause).sort({ createdAt: -1 });
-      console.log("[API:GET /custom-orders] ✅ Found", regularOrders.length, "regular orders for user");
-    }
+    console.log("[API:GET /custom-orders] ℹ️ Regular orders are now fetched from /api/orders endpoint only (to prevent duplicate cards)");
     
     // Attach payment verification status by checking invoices
     const ordersWithPaymentStatus = await Promise.all(
@@ -350,40 +335,8 @@ export async function GET(request: NextRequest) {
       })
     );
 
-    // Attach payment verification status to regular orders
-    const regularOrdersWithPaymentStatus = await Promise.all(
-      regularOrders.map(async (order) => {
-        const orderObj = order.toObject();
-        orderObj.isCustomOrder = false; // Mark as regular order
-        console.log(`[API:GET /custom-orders] 🔍 Checking payment for regular order: ${order.orderNumber}`);
-        try {
-          const invoice = await Invoice.findOne({
-            orderNumber: order.orderNumber,
-            paymentVerified: true
-          });
-          
-          if (invoice) {
-            orderObj.paymentVerified = true;
-            orderObj.paymentReference = invoice.paymentReference;
-            console.log(`[API:GET /custom-orders] ✅ Regular order ${order.orderNumber} has verified payment`);
-          } else {
-            orderObj.paymentVerified = false;
-            console.log(`[API:GET /custom-orders] ❌ Regular order ${order.orderNumber} has NO verified payment`);
-          }
-        } catch (invoiceError) {
-          console.error(`[API:GET /custom-orders] ⚠️ Error checking invoice for regular order ${order.orderNumber}:`, invoiceError);
-          orderObj.paymentVerified = false;
-        }
-        return orderObj;
-      })
-    );
-
-    // Combine custom and regular orders
-    const allOrders = [...ordersWithPaymentStatus, ...regularOrdersWithPaymentStatus].sort((a, b) => {
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    });
-
-    return NextResponse.json({ success: true, orders: allOrders }, { status: 200 });
+    // Return only custom orders (no regular orders mixed in)
+    return NextResponse.json({ success: true, orders: ordersWithPaymentStatus }, { status: 200 });
   } catch (error) {
     console.error("❌ Error fetching custom orders:", error);
     const errorMsg = error instanceof Error ? error.message : "Unknown error";
