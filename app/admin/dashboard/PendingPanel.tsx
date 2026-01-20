@@ -41,6 +41,12 @@ interface PendingOrderData {
   paymentVerified?: boolean;
   paymentProofUrl?: string;
   quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
+  // Discount fields
+  subtotal?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
+  vat?: number;
 }
 
 interface ProductWithImage {
@@ -579,44 +585,8 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
       setApproved(approved.filter(o => o._id !== orderId));
       setInProgress(inProgress.filter(o => o._id !== orderId));
       
-      // Remove from logistics orders (active)
-      try {
-        const storedOrders = sessionStorage.getItem('logistics_orders');
-        if (storedOrders) {
-          const ordersArray = JSON.parse(storedOrders);
-          const filteredOrders = ordersArray.filter((o: any) => o._id !== orderId);
-          if (filteredOrders.length > 0) {
-            sessionStorage.setItem('logistics_orders', JSON.stringify(filteredOrders));
-          } else {
-            sessionStorage.removeItem('logistics_orders');
-          }
-        }
-      } catch (e) {
-        console.error('[PendingPanel] Error removing from logistics_orders:', e);
-      }
-
-      // Remove from logistics shipped orders
-      try {
-        const storedShipped = sessionStorage.getItem('logistics_shipped_orders');
-        if (storedShipped) {
-          const shippedArray = JSON.parse(storedShipped);
-          const filteredShipped = shippedArray.filter((o: any) => o._id !== orderId);
-          if (filteredShipped.length > 0) {
-            sessionStorage.setItem('logistics_shipped_orders', JSON.stringify(filteredShipped));
-          } else {
-            sessionStorage.removeItem('logistics_shipped_orders');
-          }
-        }
-      } catch (e) {
-        console.error('[PendingPanel] Error removing from logistics_shipped_orders:', e);
-      }
-
-      // Remove "sent to logistics" state
-      try {
-        sessionStorage.removeItem(`order_sent_to_logistics_${orderId}`);
-      } catch (e) {
-        console.error('[PendingPanel] Error removing sent to logistics state:', e);
-      }
+      // Database handles order deletion - sessionStorage removed for reliability
+      console.log('[PendingPanel] Order deleted from database with status cleanup');
 
       showToast('Order deleted successfully!', 'success');
     } catch (err: any) {
@@ -866,6 +836,11 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
                           quantity={order.quantity}
                           quotedPrice={order.quotedPrice}
                           isApproved={activeTab === 'approved' || activeTab === 'in-progress'}
+                          subtotal={order.subtotal}
+                          discountPercentage={order.discountPercentage}
+                          discountAmount={order.discountAmount}
+                          subtotalAfterDiscount={order.subtotalAfterDiscount}
+                          vat={order.vat}
                         />
                       )}
                     </div>

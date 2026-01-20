@@ -162,17 +162,19 @@ function LogisticsPageContent() {
         const buyerMap = await fetchBuyerDetailsFromAdmin();
         console.log('[Logistics] ✅ Buyer map loaded with', Object.keys(buyerMap).length, 'keys');
 
-        // Load active orders (from production team)
-        const storedOrders = sessionStorage.getItem('logistics_orders');
-        console.log('[Logistics] 📦 sessionStorage "logistics_orders":', storedOrders);
-        const parsedOrders = storedOrders ? JSON.parse(storedOrders) : [];
-        console.log('[Logistics] ✅ Parsed', parsedOrders.length, 'active orders');
+        // Load active orders from DATABASE (status: ready_for_delivery)
+        console.log('[Logistics] 📦 Fetching orders with status: ready_for_delivery from database...');
+        const readyOrdersResponse = await fetch('/api/orders/unified?status=ready_for_delivery');
+        const readyOrdersData = await readyOrdersResponse.json();
+        const parsedOrders = Array.isArray(readyOrdersData) ? readyOrdersData : (readyOrdersData.orders || []);
+        console.log('[Logistics] ✅ Fetched', parsedOrders.length, 'ready orders from database');
         
-        // Load shipped orders
-        const storedShipped = sessionStorage.getItem('logistics_shipped_orders');
-        console.log('[Logistics] 📦 sessionStorage "logistics_shipped_orders":', storedShipped);
-        const parsedShipped = storedShipped ? JSON.parse(storedShipped) : [];
-        console.log('[Logistics] ✅ Parsed', parsedShipped.length, 'shipped orders');
+        // Load shipped orders from DATABASE (status: delivered)
+        console.log('[Logistics] 📦 Fetching orders with status: delivered from database...');
+        const shippedOrdersResponse = await fetch('/api/orders/unified?status=delivered');
+        const shippedOrdersData = await shippedOrdersResponse.json();
+        const parsedShipped = Array.isArray(shippedOrdersData) ? shippedOrdersData : (shippedOrdersData.orders || []);
+        console.log('[Logistics] ✅ Fetched', parsedShipped.length, 'delivered orders from database');
 
         setOrdersData(Array.isArray(parsedOrders) ? parsedOrders : []);
         setShippedOrders(Array.isArray(parsedShipped) ? parsedShipped : []);
@@ -184,7 +186,7 @@ function LogisticsPageContent() {
           console.log('[Logistics] ✅ Enriched active orders:', enriched);
           setEnrichedOrders(enriched);
         } else {
-          console.log('[Logistics] ⚠️ No active orders in sessionStorage');
+          console.log('[Logistics] ⚠️ No ready orders in database');
         }
 
         if (parsedShipped.length > 0) {
@@ -193,7 +195,7 @@ function LogisticsPageContent() {
           console.log('[Logistics] ✅ Enriched shipped orders:', enrichedShipped);
           setEnrichedShippedOrders(enrichedShipped);
         } else {
-          console.log('[Logistics] ⚠️ No shipped orders in sessionStorage');
+          console.log('[Logistics] ⚠️ No delivered orders in database');
         }
       } catch (error) {
         console.error('[Logistics] ❌ Error retrieving orders data:', error);

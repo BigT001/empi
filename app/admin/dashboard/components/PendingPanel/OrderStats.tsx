@@ -1,3 +1,5 @@
+'use client';
+
 import { getDiscountPercentage, VAT_RATE } from "@/lib/discountCalculator";
 
 interface OrderStatsProps {
@@ -8,11 +10,38 @@ interface OrderStatsProps {
   rentalDays?: number;
   cautionFee?: number;
   isApproved?: boolean;
+  // Discount fields from unified order (takes precedence over calculation)
+  subtotal?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
+  vat?: number;
 }
 
-export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, cautionFee = 0, isApproved = false }: OrderStatsProps) {
+export function OrderStats({ 
+  itemCount, 
+  total, 
+  isPaid, 
+  items, 
+  rentalDays = 1, 
+  cautionFee = 0, 
+  isApproved = false,
+  subtotal: passedSubtotal,
+  discountPercentage: passedDiscountPercentage,
+  discountAmount: passedDiscountAmount,
+  subtotalAfterDiscount: passedSubtotalAfterDiscount,
+  vat: passedVat
+}: OrderStatsProps) {
   // Ensure total is a valid number - THIS IS THE SOURCE OF TRUTH FROM CHECKOUT
   const safeTotal = typeof total === 'number' && !isNaN(total) ? total : 0;
+  
+  console.log('[OrderStats] 💾 Received pricing from unified order:', {
+    subtotal: passedSubtotal,
+    discountPercentage: passedDiscountPercentage,
+    discountAmount: passedDiscountAmount,
+    subtotalAfterDiscount: passedSubtotalAfterDiscount,
+    vat: passedVat
+  });
   
   console.log('[OrderStats] items:', items);
   console.log('[OrderStats] rentalDays:', rentalDays);
@@ -41,10 +70,17 @@ export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, ca
   // Calculate total buy quantity for discount tier
   const buyQuantity = buyItems.reduce((sum, item) => sum + item.quantity, 0) || 0;
   
-  // Get discount percentage (only applies to buy items)
-  const discountPercentage = getDiscountPercentage(buyQuantity);
-  const discountAmount = buySubtotal * (discountPercentage / 100);
-  const subtotalAfterDiscount = buySubtotal - discountAmount;
+  // 🎁 CRITICAL: Use discount data from unified order if available (passed from admin)
+  // Otherwise, fall back to calculation based on quantity
+  const finalDiscountPercentage = passedDiscountPercentage !== undefined ? passedDiscountPercentage : getDiscountPercentage(buyQuantity);
+  const finalDiscountAmount = passedDiscountAmount !== undefined ? passedDiscountAmount : (buySubtotal * (finalDiscountPercentage / 100));
+  const finalSubtotalAfterDiscount = passedSubtotalAfterDiscount !== undefined ? passedSubtotalAfterDiscount : (buySubtotal - finalDiscountAmount);
+  
+  console.log('[OrderStats] 🎁 Discount applied:', {
+    calculated: { percent: getDiscountPercentage(buyQuantity), amount: buySubtotal * (getDiscountPercentage(buyQuantity) / 100) },
+    passed: { percent: passedDiscountPercentage, amount: passedDiscountAmount },
+    final: { percent: finalDiscountPercentage, amount: finalDiscountAmount, subtotalAfter: finalSubtotalAfterDiscount }
+  });
   
   // Rental subtotal WITH rental days applied (multiply by rentalDays)
   const rentalSubtotalWithDays = rentalItems.reduce((sum, item) => {
@@ -57,7 +93,7 @@ export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, ca
   console.log('[OrderStats] rentalSubtotalWithDays:', rentalSubtotalWithDays);
   
   // Total goods BEFORE VAT = buy after discount + rental (with days)
-  const goodsSubtotal = subtotalAfterDiscount + rentalSubtotalWithDays;
+  const goodsSubtotal = finalSubtotalAfterDiscount + rentalSubtotalWithDays;
   
   // === CRITICAL FIX: Extract VAT from the authoritative checkout total ===
   // For regular orders from checkout, safeTotal is: goodsSubtotal * 1.075 (where 1.075 = 1 + 0.075)
@@ -71,7 +107,7 @@ export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, ca
   const vat = safeTotal > 0 ? vatFromTotal : (goodsSubtotal * VAT_RATE);
   const displayGoodsSubtotal = safeTotal > 0 ? goodsFromTotal : goodsSubtotal;
   
-  console.log('[OrderStats] buySubtotal:', buySubtotal, 'discountPercentage:', discountPercentage, 'discountAmount:', discountAmount, 'subtotalAfterDiscount:', subtotalAfterDiscount);
+  console.log('[OrderStats] buySubtotal:', buySubtotal, 'finalDiscountPercentage:', finalDiscountPercentage, 'finalDiscountAmount:', finalDiscountAmount, 'finalSubtotalAfterDiscount:', finalSubtotalAfterDiscount);
   console.log('[OrderStats] calculatedGoodsSubtotal:', goodsSubtotal, 'safeTotal:', safeTotal);
   console.log('[OrderStats] VAT (extracted from total):', vat, 'goods (extracted):', displayGoodsSubtotal);
   
@@ -97,23 +133,23 @@ export function OrderStats({ itemCount, total, isPaid, items, rentalDays = 1, ca
         )}
 
         {/* Discount (if applicable) */}
-        {discountPercentage > 0 ? (
+        {finalDiscountPercentage > 0 ? (
           <div className="bg-green-50 rounded-lg p-2 text-center border border-green-300">
-            <p className="text-xs text-green-600 font-medium">Discount ({discountPercentage}%)</p>
-            <p className="text-sm font-bold text-green-700">-₦{Number(discountAmount).toLocaleString('en-NG')}</p>
+            <p className="text-xs text-green-600 font-medium">Discount ({finalDiscountPercentage}%)</p>
+            <p className="text-sm font-bold text-green-700">-₦{Number(finalDiscountAmount).toLocaleString('en-NG')}</p>
           </div>
         ) : (
           <div className="bg-blue-50 rounded-lg p-2 text-center border border-blue-300">
             <p className="text-xs text-blue-600 font-medium">After Discount</p>
-            <p className="text-sm font-bold text-blue-700">₦{Number(subtotalAfterDiscount).toLocaleString('en-NG')}</p>
+            <p className="text-sm font-bold text-blue-700">₦{Number(finalSubtotalAfterDiscount).toLocaleString('en-NG')}</p>
           </div>
         )}
 
         {/* After Discount (if discount applied) */}
-        {discountPercentage > 0 && (
+        {finalDiscountPercentage > 0 && (
           <div className="bg-blue-50 rounded-lg p-2 text-center border border-blue-300">
             <p className="text-xs text-blue-600 font-medium">After Discount</p>
-            <p className="text-sm font-bold text-blue-700">₦{Number(subtotalAfterDiscount).toLocaleString('en-NG')}</p>
+            <p className="text-sm font-bold text-blue-700">₦{Number(finalSubtotalAfterDiscount).toLocaleString('en-NG')}</p>
           </div>
         )}
 

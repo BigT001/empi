@@ -1,3 +1,5 @@
+'use client';
+
 import React from "react";
 import { OrderCardHeader } from "./OrderCardHeader";
 import { ProductItemsList } from "./ProductItemsList";
@@ -40,6 +42,12 @@ interface OrderCardProps {
   quotedPrice?: number;
   isCustomOrder?: boolean;
   isApproved?: boolean;
+  // Pricing/Discount fields (from unified order)
+  subtotal?: number;
+  discountPercentage?: number;
+  discountAmount?: number;
+  subtotalAfterDiscount?: number;
+  vat?: number;
   // Logistics page props
   hidePricingDetails?: boolean;
   hideReadyButton?: boolean;
@@ -73,6 +81,11 @@ export function OrderCard({
   quotedPrice,
   isCustomOrder,
   isApproved = false,
+  subtotal,
+  discountPercentage,
+  discountAmount,
+  subtotalAfterDiscount,
+  vat,
   hidePricingDetails = false,
   hideReadyButton = false,
   hideDeleteButton = false,
@@ -172,6 +185,11 @@ export function OrderCard({
             rentalDays={rentalDays}
             cautionFee={cautionFee}
             isApproved={isApproved}
+            subtotal={subtotal}
+            discountPercentage={discountPercentage}
+            discountAmount={discountAmount}
+            subtotalAfterDiscount={subtotalAfterDiscount}
+            vat={vat}
           />
         )}
 

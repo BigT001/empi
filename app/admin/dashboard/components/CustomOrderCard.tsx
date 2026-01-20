@@ -531,38 +531,8 @@ export function CustomOrderCard({
         throw new Error('Failed to mark order as ready for shipping');
       }
 
-      // Send order to logistics
-      try {
-        const existingOrders = sessionStorage.getItem('logistics_orders');
-        const ordersArray = existingOrders ? JSON.parse(existingOrders) : [];
-        
-        // Create order object to send to logistics
-        const orderToSend = {
-          _id: orderId,
-          orderNumber,
-          fullName,
-          email,
-          phone,
-          quantity,
-          description,
-          status: 'ready',
-          designUrls: designUrls || [],
-          quoteItems: quoteItems || [],
-          createdAt: new Date().toISOString(),
-          _isCustomOrder: true,
-        };
-        
-        // Check if order already exists to avoid duplicates
-        const orderExists = ordersArray.some((order: any) => order._id === orderId);
-        if (!orderExists) {
-          ordersArray.push(orderToSend);
-          sessionStorage.setItem('logistics_orders', JSON.stringify(ordersArray));
-        }
-        
-        console.log('[CustomOrderCard] ✅ Order sent to logistics with status ready');
-      } catch (logisticsError) {
-        console.error('[CustomOrderCard] ⚠️ Failed to send to logistics (non-blocking):', logisticsError);
-      }
+      // Order status persisted in database - no sessionStorage needed
+      console.log('[CustomOrderCard] ✅ Order marked as ready and persisted in database');
 
       setSubmitStatus('success');
       setSuccessMessage('✅ Order marked as ready for shipping! Logistics team has been notified.');
