@@ -292,6 +292,40 @@ export function OtherStatusOrderCard({
             )}
           </div>
 
+          {/* Rental Schedule - If rental order */}
+          {order.rentalSchedule && (
+            <div className="bg-blue-50 rounded-lg p-3 border-2 border-blue-300 mb-3 flex-shrink-0">
+              <p className="text-xs font-semibold text-blue-700 uppercase tracking-wider mb-2">📅 Rental Schedule</p>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-700">Pickup:</span>
+                  <span className="font-semibold text-gray-900">{order.rentalSchedule.pickupDate}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-700">Time:</span>
+                  <span className="font-semibold text-gray-900">{order.rentalSchedule.pickupTime}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-700">Return:</span>
+                  <span className="font-semibold text-gray-900">{order.rentalSchedule.returnDate}</span>
+                </div>
+                <div className="flex justify-between border-t border-blue-200 pt-1.5">
+                  <span className="text-gray-700 font-semibold">Duration:</span>
+                  <span className="font-bold text-blue-700">{order.rentalSchedule.rentalDays} day{order.rentalSchedule.rentalDays > 1 ? 's' : ''}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-700">Location:</span>
+                  <span className="font-semibold text-gray-900 capitalize">{order.rentalSchedule.pickupLocation === 'iba' ? 'Ibafo' : 'Surulere'}</span>
+                </div>
+                {order.rentalPolicyAgreed && (
+                  <div className="flex items-center justify-center text-green-700 bg-green-50 px-2 py-1 rounded text-xs font-semibold border border-green-300 mt-1">
+                    ✅ Policy Agreed
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Pricing Breakdown */}
           {(order.quotedPrice || order.price) && (
             <div className="bg-white rounded-lg p-3 border-2 border-yellow-200 mb-3 flex-shrink-0">

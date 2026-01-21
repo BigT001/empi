@@ -70,15 +70,32 @@ export async function GET(request: NextRequest) {
             total: order.total,
           });
         }
+        
+        // Log rental schedule if present
+        if (order.rentalSchedule) {
+          console.log(`[Unified Orders API] 📅 Order ${order.orderNumber} has rental schedule:`, {
+            pickupDate: order.rentalSchedule.pickupDate,
+            pickupTime: order.rentalSchedule.pickupTime,
+            returnDate: order.rentalSchedule.returnDate,
+            pickupLocation: order.rentalSchedule.pickupLocation,
+            rentalDays: order.rentalSchedule.rentalDays,
+            rentalPolicyAgreed: order.rentalPolicyAgreed,
+          });
+        }
+        
         return {
           ...order,
           // Ensure numeric fields are properly converted
           subtotal: order.subtotal ?? 0,
           vat: order.vat ?? 0,
           total: order.total ?? 0,
+          cautionFee: order.cautionFee ?? 0,
           discountPercentage: order.discountPercentage ?? 0,
           discountAmount: order.discountAmount ?? 0,
           subtotalAfterDiscount: order.subtotalAfterDiscount ?? 0,
+          // Ensure rental schedule is included
+          rentalSchedule: order.rentalSchedule || undefined,
+          rentalPolicyAgreed: order.rentalPolicyAgreed || false,
         };
       });
       
@@ -313,6 +330,17 @@ export async function POST(request: NextRequest) {
       subtotalAfterDiscount: (body.subtotalAfterDiscount as number) || (body.subtotal as number) || 0,
       vat: (body.vat as number) || 0,
       total: (body.total as number) || 0,
+      cautionFee: (body.cautionFee as number) || 0,
+      
+      // Rental Schedule (if rental items exist)
+      rentalSchedule: body.rentalSchedule ? {
+        pickupDate: (body.rentalSchedule as any).pickupDate,
+        pickupTime: (body.rentalSchedule as any).pickupTime,
+        returnDate: (body.rentalSchedule as any).returnDate,
+        pickupLocation: (body.rentalSchedule as any).pickupLocation,
+        rentalDays: (body.rentalSchedule as any).rentalDays,
+      } : undefined,
+      rentalPolicyAgreed: (body as any).rentalPolicyAgreed || false,
       
       // Payment
       paymentVerified: orderType === 'regular' ? true : false,
@@ -340,6 +368,19 @@ export async function POST(request: NextRequest) {
         console.log(`  [${idx}] "${item.name}" - mode: ${item.mode || '❌ MISSING IN SAVE OBJECT'}, has mode: ${!!item.mode}`);
       });
     }
+    
+    // Log rental schedule if present
+    if ((orderDataToSave as any).rentalSchedule) {
+      console.log('[Unified Orders API] 📅 RENTAL SCHEDULE TO SAVE:');
+      console.log('  Pickup Date:', (orderDataToSave as any).rentalSchedule.pickupDate);
+      console.log('  Pickup Time:', (orderDataToSave as any).rentalSchedule.pickupTime);
+      console.log('  Return Date:', (orderDataToSave as any).rentalSchedule.returnDate);
+      console.log('  Location:', (orderDataToSave as any).rentalSchedule.pickupLocation);
+      console.log('  Days:', (orderDataToSave as any).rentalSchedule.rentalDays);
+      console.log('  Policy Agreed:', (orderDataToSave as any).rentalPolicyAgreed);
+    } else {
+      console.log('[Unified Orders API] ℹ️ No rental schedule (buy-only order)');
+    }
 
     const newOrder = await UnifiedOrder.create(orderDataToSave);
 
@@ -357,6 +398,19 @@ export async function POST(request: NextRequest) {
       newOrder.items.forEach((item: any, idx: number) => {
         console.log(`  [${idx}] "${item.name}" - mode: ${item.mode || '❌ MISSING FROM DB'}, has mode: ${!!item.mode}`);
       });
+    }
+    
+    // Log rental schedule from database
+    if ((newOrder as any).rentalSchedule) {
+      console.log('[Unified Orders API] ✅ RENTAL SCHEDULE RETRIEVED FROM DB:');
+      console.log('  Pickup Date:', (newOrder as any).rentalSchedule.pickupDate);
+      console.log('  Pickup Time:', (newOrder as any).rentalSchedule.pickupTime);
+      console.log('  Return Date:', (newOrder as any).rentalSchedule.returnDate);
+      console.log('  Location:', (newOrder as any).rentalSchedule.pickupLocation);
+      console.log('  Days:', (newOrder as any).rentalSchedule.rentalDays);
+      console.log('  Policy Agreed:', (newOrder as any).rentalPolicyAgreed);
+    } else {
+      console.log('[Unified Orders API] ❌ NO RENTAL SCHEDULE IN DATABASE');
     }
     
     // Use diagnostic function to log detailed item info

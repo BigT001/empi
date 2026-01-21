@@ -28,7 +28,14 @@ interface PendingOrderData {
   paymentStatus?: string;
   createdAt: string;
   items?: OrderItem[];
-  rentalSchedule?: { rentalDays?: number } | null;
+  rentalSchedule?: {
+    pickupDate?: string;
+    pickupTime?: string;
+    returnDate?: string;
+    pickupLocation?: 'iba' | 'surulere';
+    rentalDays?: number;
+  } | null;
+  rentalPolicyAgreed?: boolean;
   cautionFee?: number | null;
   // Custom order fields
   isCustomOrder?: boolean;
@@ -827,6 +834,8 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
                           isApproving={approvingOrderId === order._id}
                           rentalDays={order.rentalSchedule?.rentalDays}
                           cautionFee={order.cautionFee || undefined}
+                          rentalSchedule={(order as any).rentalSchedule && (order as any).rentalSchedule.pickupDate ? (order as any).rentalSchedule : undefined}
+                          rentalPolicyAgreed={order.rentalPolicyAgreed}
                           onApprove={activeTab === 'pending' ? () => setConfirmModalOpen(order._id) : () => {}}
                           onChat={() => setChatModalOpen(order._id)}
                           onDelete={deleteOrder}

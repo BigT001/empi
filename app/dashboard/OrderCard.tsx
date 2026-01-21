@@ -39,10 +39,20 @@ interface CustomOrder {
   discountAmount?: number;
   subtotalAfterDiscount?: number;
   vat?: number;
+  cautionFee?: number;
   total?: number;
   shippingCost?: number;
   shippingType?: string;
   orderType?: string;
+  // Rental fields
+  rentalSchedule?: {
+    pickupDate: string;
+    pickupTime: string;
+    returnDate: string;
+    pickupLocation: 'iba' | 'surulere';
+    rentalDays: number;
+  };
+  rentalPolicyAgreed?: boolean;
   // Pricing breakdown (alternative structure)
   pricing?: {
     subtotal?: number;
@@ -300,6 +310,43 @@ export function OrderCard({
         )}
       </div>
 
+      {/* Rental Schedule Section - if rental order */}
+      {(order as any).rentalSchedule && (
+        <div className="border-t border-gray-200 px-4 md:px-5 py-3 md:py-4 space-y-2 bg-gradient-to-r from-blue-50 to-cyan-50">
+          <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+            <Calendar className="w-4 h-4 text-blue-600" />
+            📅 Rental Schedule
+          </h4>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-gray-700">Pickup Date:</span>
+              <span className="font-semibold text-gray-900">{(order as any).rentalSchedule.pickupDate}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-700">Pickup Time:</span>
+              <span className="font-semibold text-gray-900">{(order as any).rentalSchedule.pickupTime}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-700">Return Date:</span>
+              <span className="font-semibold text-gray-900">{(order as any).rentalSchedule.returnDate}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-700">Rental Duration:</span>
+              <span className="font-semibold text-blue-600">{(order as any).rentalSchedule.rentalDays} day{(order as any).rentalSchedule.rentalDays > 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-gray-700">Pickup Location:</span>
+              <span className="font-semibold text-gray-900 capitalize">{(order as any).rentalSchedule.pickupLocation === 'iba' ? 'Ibafo Branch' : 'Surulere Branch'}</span>
+            </div>
+            {(order as any).rentalPolicyAgreed && (
+              <div className="flex items-center justify-between text-green-700 bg-green-50 px-2 py-1 rounded">
+                <span className="text-xs">✅ Rental Policy Agreed</span>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Pricing Breakdown Section - Display what admin sent */}
       <div className="border-t border-gray-200 px-4 md:px-5 py-3 md:py-4 space-y-2 bg-gradient-to-r from-lime-50 to-green-50">
         {/* Subtotal (Original, before discount) */}
@@ -327,12 +374,20 @@ export function OrderCard({
         ) : null}
         
         {/* VAT (7.5%) - Applied to subtotal after discount */}
-        {(order.vat !== undefined || order.pricing?.tax !== undefined || order.total) && (
+        {(order.vat !== null && order.vat !== undefined) || (order.pricing?.tax !== null && order.pricing?.tax !== undefined) ? (
           <div className="flex items-center justify-between text-sm border-t border-gray-300 pt-2">
             <span className="text-gray-700 font-semibold">VAT (7.5%):</span>
-            <span className="font-bold text-amber-700">₦{((order.vat !== undefined ? order.vat : order.pricing?.tax) || 0).toLocaleString('en-NG')}</span>
+            <span className="font-bold text-amber-700">₦{((order.vat !== null && order.vat !== undefined ? order.vat : order.pricing?.tax) || 0).toLocaleString('en-NG')}</span>
           </div>
-        )}
+        ) : null}
+
+        {/* Caution Fee - for rental orders (50% of rental subtotal) */}
+        {(order as any).cautionFee && (order as any).cautionFee > 0 ? (
+          <div className="flex items-center justify-between text-sm bg-orange-50 px-3 py-2 rounded border border-orange-200">
+            <span className="text-orange-700 font-semibold">⚠️ Caution Fee (50%):</span>
+            <span className="font-bold text-orange-600">₦{((order as any).cautionFee).toLocaleString('en-NG')}</span>
+          </div>
+        ) : null}
 
         {/* Total Amount */}
         {order.total || order.pricing?.total ? (

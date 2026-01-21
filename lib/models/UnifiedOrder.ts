@@ -89,6 +89,18 @@ export interface IUnifiedOrder extends Document {
   status: 'pending' | 'approved' | 'in_production' | 'ready_for_delivery' | 'delivered' | 'cancelled';
   
   // ═══════════════════════════════════════════════════════════════════
+  // RENTAL SCHEDULE (for rental orders)
+  // ═══════════════════════════════════════════════════════════════════
+  rentalSchedule?: {
+    pickupDate: string; // ISO date string (YYYY-MM-DD)
+    pickupTime: string; // HH:MM format
+    returnDate: string; // ISO date string (YYYY-MM-DD)
+    pickupLocation: 'iba' | 'surulere'; // Pickup branch location
+    rentalDays: number; // Number of days for rental
+  };
+  rentalPolicyAgreed?: boolean; // Customer agreed to rental terms
+  
+  // ═══════════════════════════════════════════════════════════════════
   // LOGISTICS
   // ═══════════════════════════════════════════════════════════════════
   currentHandler: 'production' | 'logistics';
@@ -238,6 +250,22 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
       type: Number,
       required: true,
     },
+    
+    // Rental Schedule (for rental orders)
+    rentalSchedule: {
+      pickupDate: String,  // ISO date string (YYYY-MM-DD)
+      pickupTime: String,  // HH:MM format
+      returnDate: String,  // ISO date string (YYYY-MM-DD)
+      pickupLocation: {
+        type: String,
+        enum: ['iba', 'surulere'],
+      },
+      rentalDays: Number,  // Number of days
+    },
+    rentalPolicyAgreed: {
+      type: Boolean,
+      default: false,
+    },  // Customer agreed to rental terms
     
     // Payment
     paymentReference: String,

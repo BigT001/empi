@@ -31,6 +31,14 @@ interface OrderCardProps {
   isApproving: boolean;
   rentalDays?: number;
   cautionFee?: number;
+  rentalSchedule?: {
+    pickupDate: string;
+    pickupTime: string;
+    returnDate: string;
+    pickupLocation: 'iba' | 'surulere';
+    rentalDays: number;
+  };
+  rentalPolicyAgreed?: boolean;
   onApprove: (orderId: string) => void;
   onChat: (orderId: string) => void;
   onDelete: (orderId: string) => void;
@@ -71,6 +79,8 @@ export function OrderCard({
   isApproving,
   rentalDays,
   cautionFee,
+  rentalSchedule,
+  rentalPolicyAgreed,
   onApprove,
   onChat,
   onDelete,
@@ -212,6 +222,8 @@ export function OrderCard({
           isPaid={isPaid}
           rentalDays={rentalDays}
           cautionFee={cautionFee}
+          rentalSchedule={rentalSchedule}
+          rentalPolicyAgreed={rentalPolicyAgreed}
           formatCurrency={formatCurrency}
           isApproved={isApproved}
           hidePaymentStatus={hidePaymentStatus}
