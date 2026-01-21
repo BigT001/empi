@@ -33,6 +33,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
     phone: "",
     password: "",
     fullName: "",
+    firstName: "",
+    lastName: "",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -120,13 +122,17 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
     try {
       if (mode === "register") {
         // Validation
-        if (!formData.fullName?.trim()) throw new Error("Full name is required");
+        if (!formData.firstName?.trim()) throw new Error("First name is required");
+        if (!formData.lastName?.trim()) throw new Error("Last name is required");
         if (!formData.email?.trim()) throw new Error("Email is required");
         if (!validateEmail(formData.email)) throw new Error("Please enter a valid email");
         if (!formData.phone?.trim()) throw new Error("Phone number is required");
         if (!validatePhone(formData.phone)) throw new Error("Please enter a valid phone number");
         if (!formData.password?.trim()) throw new Error("Password is required");
         if (formData.password.length < 6) throw new Error("Password must be at least 6 characters");
+
+        // Construct full name from first and last name
+        const fullName = `${formData.firstName.trim()} ${formData.lastName.trim()}`;
 
         const response = await fetch("/api/buyers", {
           method: "POST",
@@ -135,7 +141,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
             email: formData.email.toLowerCase(),
             phone: formData.phone,
             password: formData.password,
-            fullName: formData.fullName,
+            fullName: fullName,
           }),
         });
 
@@ -399,19 +405,36 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         {/* Register Fields */}
         {mode === "register" && (
           <>
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
-                <User className="h-3 w-3 text-lime-600" />
-                Full Name *
-              </label>
-              <input
-                type="text"
-                name="fullName"
-                value={formData.fullName}
-                onChange={handleChange}
-                placeholder="Your full name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
-              />
+            {/* First Name and Last Name in a Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                  <User className="h-3 w-3 text-lime-600" />
+                  First Name *
+                </label>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleChange}
+                  placeholder="John"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                  <User className="h-3 w-3 text-lime-600" />
+                  Last Name *
+                </label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleChange}
+                  placeholder="Doe"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
+                />
+              </div>
             </div>
 
             <div>
@@ -502,6 +525,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
               phone: "",
               password: "",
               fullName: "",
+              firstName: "",
+              lastName: "",
             });
           }}
           className="text-lime-600 hover:text-lime-700 font-semibold transition"

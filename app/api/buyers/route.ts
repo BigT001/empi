@@ -26,6 +26,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate that fullName contains at least first and last name (2+ words)
+    const nameParts = fullName.trim().split(/\s+/);
+    if (nameParts.length < 2) {
+      return NextResponse.json(
+        { error: "Please enter both first name and last name" },
+        { status: 400 }
+      );
+    }
+
     if (password.length < 6) {
       return NextResponse.json(
         { error: "Password must be at least 6 characters" },
