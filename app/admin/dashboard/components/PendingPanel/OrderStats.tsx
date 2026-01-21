@@ -161,6 +161,14 @@ export function OrderStats({
           </div>
         )}
 
+        {/* Caution Fee (if rentals exist) */}
+        {cautionFee > 0 && (
+          <div className="bg-amber-50 rounded-lg p-2 text-center border border-amber-300">
+            <p className="text-xs text-amber-600 font-medium">🔒 Caution Fee</p>
+            <p className="text-sm font-bold text-amber-700">₦{Number(cautionFee).toLocaleString('en-NG')}</p>
+          </div>
+        )}
+
         {/* VAT - Using value extracted from checkout total */}
         <div className="bg-yellow-50 rounded-lg p-2 text-center border border-yellow-300">
           <p className="text-xs text-yellow-600 font-medium">VAT (7.5%)</p>

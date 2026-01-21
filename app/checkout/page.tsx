@@ -9,6 +9,7 @@ import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
 import { ShoppingBag, AlertCircle, CreditCard } from "lucide-react";
 import { getDiscountPercentage, VAT_RATE } from "@/lib/discountCalculator";
+import { validateCheckoutItemsModes } from "@/lib/utils/orderDiagnostics";
 import { PresaleNotice } from "../components/PresaleNotice";
 
 const SHIPPING_OPTIONS = {
@@ -20,6 +21,20 @@ export default function CheckoutPage() {
   const { items, clearCart, total, cautionFee, rentalSchedule } = useCart();
   const { buyer } = useBuyer();
   const router = useRouter();
+
+  // CRITICAL: Log items from cart to see if they have mode
+  if (items && items.length > 0) {
+    console.log('[Checkout] 🛒 ITEMS FROM CART (START):');
+    items.forEach((item: any, idx: number) => {
+      console.log(`  [${idx + 1}] "${item.name}"`, {
+        id: item.id,
+        mode: item.mode || '❌ UNDEFINED',
+        hasMode: !!item.mode,
+        price: item.price,
+        qty: item.quantity,
+      });
+    });
+  }
 
   const [isHydrated, setIsHydrated] = useState(false);
   const shippingOption = "empi"; // Fixed to EMPI Delivery only
@@ -235,9 +250,34 @@ export default function CheckoutPage() {
             unitPrice: it.price,
             rentalDays: it.rentalDays || rentalSchedule?.rentalDays || 1,
           };
-          console.log(`📦 Cart item "${it.name}":`, { hasImage: !!it.image, image: it.image ? it.image.substring(0, 50) : 'NO IMAGE' });
+          // CRITICAL LOGGING: Verify mode is set before sending to API
+          console.log(`[Checkout] 📦 Item "${it.name}":`, { 
+            mode: mappedItem.mode,
+            hasMode: !!mappedItem.mode,
+            originalMode: it.mode,
+            qty: it.quantity,
+            price: it.price
+          });
           return mappedItem;
         });
+
+        // LOG THE ENTIRE ORDER DATA BEFORE SENDING
+        console.log('[Checkout] 🚀 ABOUT TO SEND ORDER TO API:', {
+          itemCount: itemsWithRentalDays.length,
+          items: itemsWithRentalDays.map((i: any) => ({
+            name: i.name,
+            mode: i.mode,
+            qty: i.quantity
+          })),
+          total: totalAmount
+        });
+
+        // VALIDATE item modes before sending
+        const modeValidation = validateCheckoutItemsModes(itemsWithRentalDays);
+        if (modeValidation.itemsWithoutMode > 0) {
+          console.error('[Checkout] ❌ CRITICAL: Items missing mode field!');
+          console.error('[Checkout] This will cause issues in production!');
+        }
 
         // Parse full name into firstName and lastName for unified schema
         const nameParts = (customerInfo.fullName || '').trim().split(/\s+/);
@@ -266,6 +306,7 @@ export default function CheckoutPage() {
           discountAmount: discountAmt,
           subtotalAfterDiscount: buySubtotalAfterDiscount,
           vat: taxAmount,
+          cautionFee: (cautionFee || 0),  // CRITICAL: Save caution fee to top-level field
           total: totalAmount,
           pricing: {
             subtotal: buySubtotal,
@@ -613,12 +654,35 @@ export default function CheckoutPage() {
               <div className="bg-gray-50 rounded-lg p-6 mb-8">
                 <h2 className="font-bold text-gray-900 mb-4">Items in {customQuote ? 'Order' : 'Cart'}</h2>
                 <div className="space-y-3">
-                  {displayItems.map((item: any, idx: number) => (
-                    <div key={idx} className="flex justify-between">
-                      <span>{item.name} {item.quantity && item.quantity > 1 ? `(x${item.quantity})` : ''}</span>
-                      <span className="font-semibold">₦{((item.total || item.price * (item.quantity || 1)) || 0).toLocaleString()}</span>
-                    </div>
-                  ))}
+                  {displayItems.map((item: any, idx: number) => {
+                    // Determine if this is a rental or purchase item
+                    const isRental = item.mode === 'rent';
+                    const itemMode = item.mode ? (isRental ? 'RENTAL' : 'BUY') : '';
+                    const modeColor = isRental ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700';
+                    const modeEmoji = isRental ? '🔄' : '🛍️';
+                    
+                    return (
+                      <div key={idx} className="flex justify-between items-center gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span>{item.name}</span>
+                            {itemMode && (
+                              <span className={`text-xs px-2 py-0.5 rounded font-bold ${modeColor} whitespace-nowrap`}>
+                                {modeEmoji} {itemMode}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-600 ml-0">
+                            Qty: {item.quantity || 1}
+                            {isRental && rentalSchedule?.rentalDays && (
+                              <span> • {rentalSchedule.rentalDays} days rental</span>
+                            )}
+                          </div>
+                        </div>
+                        <span className="font-semibold whitespace-nowrap">₦{((item.total || item.price * (item.quantity || 1)) || 0).toLocaleString()}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -893,6 +957,12 @@ export default function CheckoutPage() {
                   <div className="pb-4 border-b border-gray-200">
                     <p className="text-gray-600 mb-1">Rental Days</p>
                     <p className="font-semibold text-gray-900">{rentalSchedule?.rentalDays ? `${rentalSchedule.rentalDays} day${rentalSchedule.rentalDays > 1 ? 's' : ''}` : 'N/A'}</p>
+                  </div>
+                )}
+                {!customQuote && cautionFee > 0 && (
+                  <div className="pb-4 border-b border-gray-200">
+                    <p className="text-gray-600 mb-1 text-amber-700 font-semibold">🔒 Caution Fee (50% of rentals)</p>
+                    <p className="font-semibold text-amber-700">₦{Math.round(cautionFee).toLocaleString()}</p>
                   </div>
                 )}
                 <div className="pb-4 border-b border-gray-200">

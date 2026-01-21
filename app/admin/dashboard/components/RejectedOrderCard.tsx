@@ -77,7 +77,25 @@ export function RejectedOrderCard({ order, onImageClick, onChatClick, onDeleteOr
                 </div>
                 {/* Product Details */}
                 <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
-                  <h4 className="font-bold text-base text-gray-900 truncate">{item.name || item.productName || 'Product'}</h4>
+                  <div className="flex items-center gap-2">
+                    <h4 className="font-bold text-base text-gray-900 truncate">{item.name || item.productName || 'Product'}</h4>
+                    {/* Mode Badge - ONLY show if mode is explicitly set */}
+                    {item.mode === 'rent' && (
+                      <span className="text-xs px-2 py-1 rounded font-semibold whitespace-nowrap bg-purple-100 text-purple-700 border border-purple-300">
+                        🔄 RENTAL
+                      </span>
+                    )}
+                    {item.mode === 'buy' && (
+                      <span className="text-xs px-2 py-1 rounded font-semibold whitespace-nowrap bg-green-100 text-green-700 border border-green-300">
+                        🛍️ BUY
+                      </span>
+                    )}
+                    {!item.mode && (
+                      <span className="text-xs px-2 py-1 rounded font-semibold whitespace-nowrap bg-red-100 text-red-700 border border-red-300">
+                        ⚠️ MODE MISSING
+                      </span>
+                    )}
+                  </div>
                   <div className="flex gap-2 items-center text-xs">
                     <span className="text-gray-600">Qty: {item.quantity || 1}</span>
                     {item.price && <span className="font-semibold text-red-700">₦{(item.price).toLocaleString('en-NG')}</span>}

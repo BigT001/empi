@@ -154,7 +154,25 @@ export function OtherStatusOrderCard({
                     </div>
                     {/* Product Details */}
                     <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
-                      <h4 className="font-bold text-base text-gray-900 truncate">{item.name || item.productName || 'Product'}</h4>
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-bold text-base text-gray-900 truncate">{item.name || item.productName || 'Product'}</h4>
+                        {/* Mode Badge - ONLY show if mode is explicitly set */}
+                        {item.mode === 'rent' && (
+                          <span className="text-xs px-2 py-1 rounded font-semibold whitespace-nowrap bg-purple-100 text-purple-700 border border-purple-300">
+                            🔄 RENTAL
+                          </span>
+                        )}
+                        {item.mode === 'buy' && (
+                          <span className="text-xs px-2 py-1 rounded font-semibold whitespace-nowrap bg-green-100 text-green-700 border border-green-300">
+                            🛍️ BUY
+                          </span>
+                        )}
+                        {!item.mode && (
+                          <span className="text-xs px-2 py-1 rounded font-semibold whitespace-nowrap bg-red-100 text-red-700 border border-red-300">
+                            ⚠️ MODE MISSING
+                          </span>
+                        )}
+                      </div>
                       <div className="flex gap-2 items-center text-xs">
                         <span className="text-gray-600">Qty: {item.quantity || 1}</span>
                         {item.price && <span className="font-semibold text-amber-700">₦{(item.price).toLocaleString('en-NG')}</span>}
@@ -283,13 +301,20 @@ export function OtherStatusOrderCard({
                   <span className="text-gray-700">Subtotal:</span>
                   <span className="font-semibold text-gray-900">₦{((order.quotedPrice || order.price || 0)).toLocaleString('en-NG')}</span>
                 </div>
+                {/* Caution Fee (if rentals exist and caution fee is set) */}
+                {order.cautionFee && order.cautionFee > 0 && (
+                  <div className="flex justify-between border-t border-yellow-200 pt-1.5">
+                    <span className="text-gray-700 font-semibold">🔒 Caution Fee:</span>
+                    <span className="font-bold text-amber-700">₦{(order.cautionFee).toLocaleString('en-NG')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between border-t border-yellow-200 pt-1.5">
                   <span className="text-gray-700 font-semibold">VAT (7.5%):</span>
                   <span className="font-bold text-amber-700">₦{(((order.quotedPrice || order.price || 0) * 0.075)).toLocaleString('en-NG')}</span>
                 </div>
                 <div className="flex justify-between border-t border-yellow-300 pt-1.5">
                   <span className="font-bold text-gray-900">Total:</span>
-                  <span className="text-lg font-bold text-yellow-700">₦{(((order.quotedPrice || order.price || 0) * 1.075)).toLocaleString('en-NG')}</span>
+                  <span className="text-lg font-bold text-yellow-700">₦{(((order.quotedPrice || order.price || 0) * 1.075 + (order.cautionFee || 0))).toLocaleString('en-NG')}</span>
                 </div>
               </div>
             </div>

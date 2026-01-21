@@ -19,6 +19,8 @@ export interface IOrderItem {
   selectedSize?: string;
   imageUrl?: string;
   image?: string; // Alternative field name for product image
+  mode?: 'buy' | 'rent'; // Item mode: buy or rent
+  rentalDays?: number; // Rental duration if mode is 'rent'
 }
 
 export interface IUnifiedOrder extends Document {
@@ -69,6 +71,7 @@ export interface IUnifiedOrder extends Document {
   discountAmount?: number;
   subtotalAfterDiscount?: number;  // Subtotal after discount is applied
   shippingCost?: number;
+  cautionFee?: number;  // Caution fee for rental items (50% of rental subtotal)
   total: number;
   
   // ═══════════════════════════════════════════════════════════════════
@@ -178,6 +181,15 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
         selectedSize: String,
         imageUrl: String,
         image: String, // Alternative field for product image (from checkout)
+        mode: {
+          type: String,
+          enum: ['buy', 'rent'],
+          default: 'buy',
+        },
+        rentalDays: {
+          type: Number,
+          default: 1,
+        },
       },
     ],
     
@@ -218,6 +230,10 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
       default: 0,
     },  // Subtotal after discount is applied
     shippingCost: Number,
+    cautionFee: {
+      type: Number,
+      default: 0,
+    },  // Caution fee for rental items (50% of rental subtotal)
     total: {
       type: Number,
       required: true,

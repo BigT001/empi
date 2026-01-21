@@ -94,7 +94,7 @@ export function OrderCard({
   disableShippedButton = false,
   onDeleteConfirm,
 }: OrderCardProps) {
-  const [expandPricing, setExpandPricing] = React.useState(false);
+  const [expandPricing, setExpandPricing] = React.useState(true);  // EXPANDED by default for visibility
   const isCustom = isCustomOrder || (description && !items?.length);
   // Ensure prices are valid numbers to avoid NaN display
   const safeTotal = typeof total === 'number' && !isNaN(total) ? total : 0;

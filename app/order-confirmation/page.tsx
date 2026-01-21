@@ -44,6 +44,13 @@ interface Order {
   cautionFee?: number;
   vat?: number;
   total?: number;
+  rentalSchedule?: {
+    pickupDate: string;
+    pickupTime: string;
+    returnDate: string;
+    pickupLocation: string;
+    rentalDays: number;
+  };
 }
 
 function OrderConfirmationContent() {
@@ -244,7 +251,11 @@ function OrderConfirmationContent() {
                   order.items.map((item, index) => (
                     <div
                       key={index}
-                      className="flex gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition"
+                      className={`flex gap-4 p-4 rounded-lg border transition ${
+                        item.mode === 'rent'
+                          ? 'bg-purple-50 border-purple-200 hover:shadow-md hover:border-purple-300'
+                          : 'bg-gray-50 border-gray-200 hover:shadow-md hover:border-gray-300'
+                      }`}
                     >
                       {/* Product Image - Always show, with fallback */}
                       <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
@@ -270,9 +281,27 @@ function OrderConfirmationContent() {
                       </div>
                       {/* Item Details */}
                       <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-gray-900">{item.name}</p>
+                        <div className="flex items-start gap-2 mb-2">
+                          <p className="font-semibold text-gray-900">{item.name}</p>
+                          {item.mode === 'rent' && (
+                            <span className="text-xs px-2 py-0.5 rounded font-bold bg-purple-600 text-white whitespace-nowrap">
+                              🔄 RENTAL
+                            </span>
+                          )}
+                          {item.mode === 'buy' && (
+                            <span className="text-xs px-2 py-0.5 rounded font-bold bg-green-600 text-white whitespace-nowrap">
+                              🛍️ BUY
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-600">Qty: {item.quantity}</p>
-                        {item.mode && <p className="text-xs text-gray-500 mt-1">Mode: {item.mode}{item.mode === 'rent' && item.rentalDays ? ` • ${item.rentalDays} day${item.rentalDays > 1 ? 's' : ''}` : ''}</p>}
+                        {item.mode === 'rent' && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-xs font-semibold text-purple-700">
+                              📅 Rental Duration: {item.rentalDays || 'TBD'} day{(item.rentalDays || 1) > 1 ? 's' : ''}
+                            </p>
+                          </div>
+                        )}
                       </div>
                       {/* Price */}
                       <div className="flex-shrink-0 text-right">
@@ -281,6 +310,11 @@ function OrderConfirmationContent() {
                         </p>
                         {item.quantity > 1 && (
                           <p className="text-xs text-gray-500">@ {formatPrice(item.price)} ea</p>
+                        )}
+                        {item.mode === 'rent' && item.rentalDays && (
+                          <p className="text-xs text-purple-600 font-semibold">
+                            ({formatPrice(item.price)}/day)
+                          </p>
                         )}
                       </div>
                     </div>
@@ -293,6 +327,98 @@ function OrderConfirmationContent() {
 
             {/* Delivery Information */}
             {/* Delivery information removed - shipping handled separately and omitted from UI */}
+
+            {/* Rental Schedule Section - Only show if there are rental items */}
+            {order.items?.some((item: any) => item.mode === 'rent') && order.rentalSchedule && (
+              <div className="bg-white rounded-2xl shadow-md border border-purple-200 p-8">
+                <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+                  <Calendar className="h-6 w-6 text-purple-600" />
+                  🔄 Rental Schedule
+                </h2>
+
+                <div className="space-y-6">
+                  {/* Pickup Details */}
+                  <div className="bg-purple-50 rounded-lg p-6 border border-purple-200">
+                    <h3 className="text-lg font-bold text-purple-900 mb-4">📦 Pickup Details</h3>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-sm font-semibold text-purple-700 uppercase mb-2">Pickup Date</p>
+                        <p className="text-lg text-gray-900 font-bold">
+                          {new Date(order.rentalSchedule.pickupDate).toLocaleDateString('en-NG', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            weekday: 'long'
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-purple-700 uppercase mb-2">Pickup Time</p>
+                        <p className="text-lg text-gray-900 font-bold">{order.rentalSchedule.pickupTime || 'To be scheduled'}</p>
+                      </div>
+                      <div className="md:col-span-2">
+                        <p className="text-sm font-semibold text-purple-700 uppercase mb-2">Pickup Location</p>
+                        <p className="text-lg text-gray-900">{order.rentalSchedule.pickupLocation || 'To be confirmed'}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Return Details */}
+                  <div className="bg-amber-50 rounded-lg p-6 border border-amber-200">
+                    <h3 className="text-lg font-bold text-amber-900 mb-4">📅 Return Details</h3>
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div>
+                        <p className="text-sm font-semibold text-amber-700 uppercase mb-2">Return Date</p>
+                        <p className="text-lg text-gray-900 font-bold">
+                          {new Date(order.rentalSchedule.returnDate).toLocaleDateString('en-NG', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric',
+                            weekday: 'long'
+                          })}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-amber-700 uppercase mb-2">Rental Duration</p>
+                        <p className="text-lg text-gray-900 font-bold">{order.rentalSchedule.rentalDays} day{order.rentalSchedule.rentalDays > 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Rental Policies */}
+                  <div className="bg-red-50 rounded-lg p-6 border border-red-200">
+                    <h3 className="text-lg font-bold text-red-900 mb-4">🔒 Rental Policies & Caution Fee</h3>
+                    <div className="space-y-3 text-sm text-gray-700">
+                      <div className="flex gap-3">
+                        <span className="text-red-600 font-bold">•</span>
+                        <span><strong>Caution Fee:</strong> {formatPrice(order.pricing?.cautionFee ?? order.cautionFee ?? 0)} (50% of rental value - refundable deposit)</span>
+                      </div>
+                      <div className="flex gap-3">
+                        <span className="text-red-600 font-bold">•</span>
+                        <span><strong>Return Deadline:</strong> Your items MUST be returned by {new Date(order.rentalSchedule.returnDate).toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })} at 11:59 PM</span>
+                      </div>
+                      <div className="flex gap-3">
+                        <span className="text-red-600 font-bold">•</span>
+                        <span><strong>Late Return Fee:</strong> ₦5,000 per day for late returns</span>
+                      </div>
+                      <div className="flex gap-3">
+                        <span className="text-red-600 font-bold">•</span>
+                        <span><strong>Damage Policy:</strong> Normal wear and tear is acceptable. Major damage may result in caution fee deduction or additional charges</span>
+                      </div>
+                      <div className="flex gap-3">
+                        <span className="text-red-600 font-bold">•</span>
+                        <span><strong>Caution Fee Refund:</strong> Full refund will be processed within 5-7 business days of return inspection</span>
+                      </div>
+                      <div className="flex gap-3">
+                        <span className="text-red-600 font-bold">•</span>
+                        <span><strong>Contact Support:</strong> For any issues or changes, contact us at least 24 hours before pickup</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
 
           {/* Right Column - Summary & Actions */}

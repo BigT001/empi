@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import UnifiedOrder from '@/lib/models/UnifiedOrder';
 import { createInvoiceFromOrder } from '@/lib/createInvoiceFromOrder';
+import { logOrderModeDiagnostics } from '@/lib/utils/orderDiagnostics';
 import { v2 as cloudinary } from 'cloudinary';
 
 // Configure cloudinary
@@ -210,20 +211,37 @@ export async function POST(request: NextRequest) {
       console.log('[Unified Orders API] Processing JSON body (regular order)');
       body = await request.json();
       
+      // CRITICAL LOGGING: Check if items have mode BEFORE any processing
+      if (body.items && Array.isArray(body.items)) {
+        console.log('[Unified Orders API] 🔍 RECEIVED ITEMS FROM CHECKOUT:');
+        body.items.forEach((item: Record<string, unknown>, idx: number) => {
+          console.log(`  [Item ${idx + 1}] "${item.name}"`, {
+            mode: item.mode || '❌ MISSING',
+            qty: item.quantity,
+            price: item.price,
+            hasMode: !!item.mode,
+          });
+        });
+      }
+      
       // Ensure all items have proper structure
       if (body.items && Array.isArray(body.items)) {
-        body.items = body.items.map((item: Record<string, unknown>) => ({
-          ...item,
-          image: (item.image as string) || (item.imageUrl as string) || '', // Ensure image field exists
-          imageUrl: (item.imageUrl as string) || (item.image as string) || '', // Ensure imageUrl field exists too
-        }));
+        body.items = body.items.map((item: Record<string, unknown>) => {
+          const mapped = {
+            ...item,
+            image: (item.image as string) || (item.imageUrl as string) || '', // Ensure image field exists
+            imageUrl: (item.imageUrl as string) || (item.image as string) || '', // Ensure imageUrl field exists too
+          };
+          console.log(`[Unified Orders API] Item mapping: "${item.name}" original mode: ${(item as any).mode || '❌ MISSING'} -> mapped mode: ${(mapped as any).mode || '❌ MISSING'}`);
+          return mapped;
+        });
       }
       
       // Log item details for debugging
       if (body.items && Array.isArray(body.items)) {
-        console.log('[Unified Orders API] Items received:');
+        console.log('[Unified Orders API] Items after processing:');
         body.items.forEach((item: Record<string, unknown>, idx: number) => {
-          console.log(`  [${idx}] ${item.name} - hasImage: ${!!item.image}, hasImageUrl: ${!!item.imageUrl}`);
+          console.log(`  [${idx}] ${item.name} - mode: ${item.mode || '❌ MISSING'}`);
         });
       }
     }
@@ -314,19 +332,35 @@ export async function POST(request: NextRequest) {
     // Remove designImages from order data (they're not a model field, we'll process them separately)
     const designImages = (body.designImages as File[]) || [];
 
+    // CRITICAL: Log EXACTLY what's being saved to MongoDB
+    console.log('[Unified Orders API] 🔍 ABOUT TO SAVE TO MONGODB:');
+    console.log('[Unified Orders API] orderDataToSave.items:');
+    if (orderDataToSave.items && Array.isArray(orderDataToSave.items)) {
+      (orderDataToSave.items as Record<string, unknown>[]).forEach((item: Record<string, unknown>, idx: number) => {
+        console.log(`  [${idx}] "${item.name}" - mode: ${item.mode || '❌ MISSING IN SAVE OBJECT'}, has mode: ${!!item.mode}`);
+      });
+    }
+
     const newOrder = await UnifiedOrder.create(orderDataToSave);
 
+    // CRITICAL LOGGING: Verify items were saved with mode
     console.log('[Unified Orders API] ✅ Order created:', { 
       id: newOrder._id, 
       number: newOrder.orderNumber, 
       type: orderType,
-      requiredQuantity: newOrder.requiredQuantity,
-      imagesCount: designImages.length,
-      firstName: newOrder.firstName,
-      lastName: newOrder.lastName,
-      email: newOrder.email,
-      city: newOrder.city,
+      itemCount: newOrder.items?.length || 0,
     });
+    
+    // CRITICAL: Log what came back from MongoDB
+    console.log('[Unified Orders API] 🔍 RETRIEVED FROM MONGODB (after create):');
+    if (newOrder.items && Array.isArray(newOrder.items)) {
+      newOrder.items.forEach((item: any, idx: number) => {
+        console.log(`  [${idx}] "${item.name}" - mode: ${item.mode || '❌ MISSING FROM DB'}, has mode: ${!!item.mode}`);
+      });
+    }
+    
+    // Use diagnostic function to log detailed item info
+    logOrderModeDiagnostics(newOrder, `API Order ${newOrder.orderNumber}`);
 
     // Process images in background if this is a custom order with images
     if (orderType === 'custom' && designImages.length > 0) {

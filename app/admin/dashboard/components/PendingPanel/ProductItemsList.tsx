@@ -29,7 +29,7 @@ export function ProductItemsList({ items }: ProductItemsListProps) {
           
           // Get image from either field
           const itemImage = item.image ?? item.imageUrl;
-          
+
           return (
             <div
               key={`item-${idx}`}
@@ -54,20 +54,27 @@ export function ProductItemsList({ items }: ProductItemsListProps) {
         
               {/* Product Details */}
               <div className="flex-1 flex flex-col justify-center gap-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-gray-900">{item.name}</p>
+                  {/* Mode Badge - ONLY show if mode is explicitly set */}
+                  {item.mode === 'rent' && (
+                    <span className="text-xs px-2 py-1 rounded font-bold whitespace-nowrap bg-purple-100 text-purple-700 border border-purple-300">
+                      🔄 RENTAL
+                    </span>
+                  )}
+                  {item.mode === 'buy' && (
+                    <span className="text-xs px-2 py-1 rounded font-bold whitespace-nowrap bg-green-100 text-green-700 border border-green-300">
+                      🛍️ BUY
+                    </span>
+                  )}
+                  {!item.mode && (
+                    <span className="text-xs px-2 py-1 rounded font-bold whitespace-nowrap bg-red-100 text-red-700 border border-red-300">
+                      ⚠️ MODE MISSING
+                    </span>
+                  )}
+                </div>
                 <div className="flex gap-2 items-center justify-between">
-                  <div className="flex gap-2 items-center">
-                    <span className="text-xs text-gray-600">Qty: {item.quantity}</span>
-                    {item.mode && (
-                      <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
-                        item.mode === 'rent'
-                          ? 'bg-purple-100 text-purple-700'
-                          : 'bg-green-100 text-green-700'
-                      }`}>
-                        {item.mode === 'rent' ? '🔄 Rental' : '🛍️ Buy'}
-                      </span>
-                    )}
-                  </div>
+                  <span className="text-xs text-gray-600">Qty: {item.quantity}</span>
                   <p className="text-sm font-bold text-red-600">₦{safePrice.toLocaleString('en-NG')}</p>
                 </div>
               </div>

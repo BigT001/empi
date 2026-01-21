@@ -203,7 +203,25 @@ export function OrderCard({
                       </div>
                       {/* Product Details */}
                       <div className="flex-1 flex flex-col gap-2 min-w-0">
-                        <h4 className="text-sm font-bold text-gray-900">{item.name || item.productName || 'Product'}</h4>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-900">{item.name || item.productName || 'Product'}</h4>
+                          {/* Mode Badge - ONLY show if mode is explicitly set */}
+                          {item.mode === 'rent' && (
+                            <span className="text-xs px-2 py-0.5 rounded font-semibold bg-purple-100 text-purple-700 whitespace-nowrap">
+                              🔄 RENTAL
+                            </span>
+                          )}
+                          {item.mode === 'buy' && (
+                            <span className="text-xs px-2 py-0.5 rounded font-semibold bg-green-100 text-green-700 whitespace-nowrap">
+                              🛍️ BUY
+                            </span>
+                          )}
+                          {!item.mode && (
+                            <span className="text-xs px-2 py-0.5 rounded font-semibold bg-red-100 text-red-700 whitespace-nowrap">
+                              ⚠️ MODE MISSING
+                            </span>
+                          )}
+                        </div>
                         <div className="space-y-1">
                           <div className="flex justify-between text-xs">
                             <span className="text-gray-600">Price:</span>
