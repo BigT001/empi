@@ -817,19 +817,19 @@ export function CustomOrderCard({
             )}
 
             {/* Send Quote / Quote Sent / Approve Button */}
-            {status === 'pending' && !quotedPrice && (
+            {status === 'pending' && !quotedPrice && !isSubmitting && (
               // Show "Send Quote" button when no quote has been sent yet
               <button
                 onClick={handleSendQuote}
-                disabled={isSubmitting || lineItems.length === 0}
+                disabled={lineItems.length === 0}
                 className={`w-full px-6 py-4 font-bold text-lg rounded-lg transition-all transform text-white bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 disabled:from-gray-400 disabled:to-gray-400 hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:hover:scale-100`}
               >
                 Send Quote
               </button>
             )}
             
-            {status === 'pending' && quotedPrice && !paymentData.paymentVerified && !paymentData.paymentProofUrl && (
-              // Show "Quote Sent" button after quote is sent but no payment yet
+            {status === 'pending' && (quotedPrice || isSubmitting) && !paymentData.paymentVerified && !paymentData.paymentProofUrl && (
+              // Show "Quote Sent" button after quote is sent (or IMMEDIATELY while sending) but no payment yet
               <button
                 onClick={handleQuoteSentClick}
                 disabled
