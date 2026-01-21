@@ -90,16 +90,16 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Check inactivity timeout
+    // Check inactivity timeout (30 minutes of inactivity)
     const inactivityDuration = new Date().getTime() - new Date(session.lastActivity).getTime();
     if (inactivityDuration > INACTIVITY_TIMEOUT) {
-      console.log('[Admin/Me API] ❌ Session inactive for too long');
+      console.log(`[Admin/Me API] ⏱️  AUTO-LOGOUT: Admin ${admin.email} inactive for ${Math.round(inactivityDuration / 1000 / 60)} minutes - session removed`);
       await Admin.updateOne(
         { _id: admin._id },
         { $pull: { sessions: { token: sessionToken } } }
       );
       return NextResponse.json(
-        { error: 'Session expired due to inactivity' },
+        { error: 'Session expired due to inactivity (no activity for 30 minutes)' },
         { status: 401 }
       );
     }
@@ -110,7 +110,8 @@ export async function GET(request: NextRequest) {
       { $set: { 'sessions.$.lastActivity': new Date() } }
     );
 
-    console.log('[Admin/Me API] ✅ Admin authenticated:', admin.email);
+    const inactivityMinutes = Math.round(inactivityDuration / 1000 / 60);
+    console.log(`[Admin/Me API] ✅ Admin authenticated: ${admin.email} (inactive for ${inactivityMinutes} mins - session valid, timer reset)`);
 
     const response = NextResponse.json({
       _id: admin._id,

@@ -5,8 +5,19 @@ import Admin from '@/lib/models/Admin';
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
 /**
- * Check and validate session, update lastActivity timestamp
- * Also auto-logout inactive sessions
+ * POST /api/admin/session-check
+ * 
+ * Activity-based session validation endpoint
+ * Called every 5 minutes during active usage to reset the inactivity timer
+ * 
+ * Flow:
+ * 1. Admin interacts with page (mouse, keyboard, scroll, etc)
+ * 2. useActivityTracker detects activity and calls this endpoint every 5 minutes
+ * 3. This endpoint validates the session and updates lastActivity timestamp
+ * 4. If admin has been inactive > 30 mins, session is auto-logged out
+ * 5. If session is valid, lastActivity is reset (sliding window)
+ * 
+ * Result: Admin stays logged in as long as active, logs out after 30 min inactivity
  */
 export async function POST(request: NextRequest) {
   try {
@@ -51,6 +62,7 @@ export async function POST(request: NextRequest) {
         { $pull: { sessions: { token: sessionToken } } }
       );
 
+      console.log('[Session Check] ❌ Session expired (manual logout)');
       return NextResponse.json(
         { valid: false, error: 'Session expired' },
         { status: 401 }
@@ -70,9 +82,9 @@ export async function POST(request: NextRequest) {
       );
 
       console.log(
-        `[Session Check] ⚠️ Session auto-logged out due to inactivity (${Math.round(
+        `[Session Check] ⏱️  AUTO-LOGOUT: Admin ${admin.email} was inactive for ${Math.round(
           inactivityDuration / 1000 / 60
-        )} minutes) for admin: ${admin.email}`
+        )} minutes - session removed`
       );
 
       return NextResponse.json(
@@ -85,10 +97,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Session is valid - update lastActivity timestamp
+    // Session is valid - update lastActivity timestamp (sliding window)
+    // This resets the 30-minute inactivity counter
     await Admin.updateOne(
       { _id: admin._id, 'sessions.token': sessionToken },
       { $set: { 'sessions.$.lastActivity': new Date() } }
+    );
+
+    const inactivityMinutes = Math.round(inactivityDuration / 1000 / 60);
+    console.log(
+      `[Session Check] ✅ Admin ${admin.email} active - last activity was ${inactivityMinutes} mins ago (session valid, timer reset)`
     );
 
     return NextResponse.json(
@@ -104,7 +122,8 @@ export async function POST(request: NextRequest) {
         sessionInfo: {
           createdAt: session.createdAt,
           lastActivity: new Date(),
-          inactivityMinutes: Math.round(inactivityDuration / 1000 / 60),
+          inactivityMinutes,
+          message: 'Session active - inactivity timer reset due to user activity',
         },
       },
       { status: 200 }

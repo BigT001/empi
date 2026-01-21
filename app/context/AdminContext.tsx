@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { useActivityTracker } from '@/lib/hooks/useActivityTracker';
 
 export interface AdminProfile {
   id: string;
@@ -23,9 +24,23 @@ interface AdminContextType {
 
 const AdminContext = createContext<AdminContextType | undefined>(undefined);
 
-// Session validation - disabled
-// Sessions are now persistent until manual logout
-// The server extends session on each request (sliding window)
+/**
+ * ACTIVITY-BASED SESSION TIMEOUT (30 minutes of inactivity)
+ * 
+ * How it works:
+ * 1. Admin logs in - session is created with expiresAt = 30 days
+ * 2. On page load and periodically, checkAuth() calls /api/admin/me
+ * 3. /api/admin/me checks:
+ *    - If session has expired (manual logout): return 401
+ *    - If admin has been inactive > 30 minutes: auto-logout with 401
+ *    - If session valid: update lastActivity timestamp (sliding window)
+ * 4. useActivityTracker hook monitors user interactions (mouse, keyboard, scroll, etc)
+ * 5. Every 5 minutes of activity, it calls /api/admin/session-check to validate and reset timer
+ * 6. Admin only logs out if truly inactive for 30+ minutes
+ * 
+ * Result: Admin stays logged in indefinitely as long as they're active
+ *         Admin automatically logs out after 30 minutes of inactivity
+ */
 
 export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [admin, setAdmin] = useState<AdminProfile | null>(null);
@@ -33,6 +48,9 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false);
   const authCheckAttempted = React.useRef(false);
+
+  // Track user activity and keep session alive
+  useActivityTracker();
 
   // Check if admin is already logged in
   useEffect(() => {
