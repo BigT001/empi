@@ -511,7 +511,26 @@ export function CustomOrdersPanel() {
             }),
           });
 
+          // 🔔 Send email notification for "ready" status
           if (actualNewStatus === "ready") {
+            try {
+              console.log(`[CustomOrdersPanel] 📧 Sending email notification for READY status`);
+              await fetch("/api/notifications/user-status-change", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  type: "order-ready",
+                  orderNumber: order.orderNumber,
+                  orderId: order._id,
+                  email: order.email,
+                  name: order.firstName || "Valued Customer",
+                }),
+              });
+              console.log(`[CustomOrdersPanel] ✅ Order READY email notification sent`);
+            } catch (error) {
+              console.error("[CustomOrdersPanel] ❌ Failed to send ready email:", error);
+            }
+
             const deliveryOptionsMessage = `🚚 **CONFIRM YOUR DELIVERY CHOICE** 🚚\n\nYour costume is ready! Please confirm how you'd like to receive it:\n\nDELIVERY OPTIONS`;
             
             await fetch("/api/messages", {

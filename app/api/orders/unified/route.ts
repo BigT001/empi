@@ -351,6 +351,29 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 🔔 Send ADMIN NOTIFICATION for new order (non-blocking)
+    try {
+      console.log('[Unified Orders API] 📢 Sending admin notification for new order...');
+      const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+      await fetch(`${baseUrl}/api/notifications/admin-order-placed`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderNumber: newOrder.orderNumber,
+          orderId: newOrder._id,
+          buyerName: `${newOrder.firstName} ${newOrder.lastName}`,
+          buyerEmail: newOrder.email,
+          amount: newOrder.total || 0,
+          orderType: orderType,
+        }),
+      }).catch(err => {
+        console.error('[Unified Orders API] ⚠️ Failed to send admin notification:', err);
+        // Non-blocking - don't fail the order creation
+      });
+    } catch (notifError) {
+      console.error('[Unified Orders API] ⚠️ Admin notification error (non-blocking):', notifError);
+    }
+
     return NextResponse.json(
       {
         success: true,

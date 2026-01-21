@@ -236,6 +236,29 @@ function LogisticsPageContent() {
         setIsShipping(false);
         return;
       }
+
+      // 🔔 Send EMAIL NOTIFICATION for "shipped" status
+      try {
+        console.log(`[Logistics] 📧 Sending email notification for SHIPPED status`);
+        await fetch("/api/notifications/user-status-change", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "order-shipped",
+            orderNumber: rawOrderToShip.orderNumber,
+            orderId: orderId,
+            email: enrichedOrderToShip.buyerEmail || rawOrderToShip.email,
+            name: enrichedOrderToShip.buyerName || rawOrderToShip.firstName || "Valued Customer",
+            details: {
+              trackingNumber: rawOrderToShip.trackingNumber || undefined,
+            },
+          }),
+        });
+        console.log(`[Logistics] ✅ Order SHIPPED email notification sent`);
+      } catch (notificationError) {
+        console.error("[Logistics] ⚠️ Failed to send shipped email (non-critical):", notificationError);
+        // Don't fail the entire operation if email fails
+      }
       
       // SECOND: Move order to shipped tab locally - use enriched order to maintain all data
       console.log(`[Logistics] 2️⃣ Moving order to shipped tab in local state...`);
@@ -530,7 +553,7 @@ function LogisticsPageContent() {
 
         {/* Shipping Confirmation Modal */}
         {shippingConfirmModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="fixed inset-0 backdrop-blur-sm flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
               <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Shipment</h3>
               <p className="text-gray-600 mb-6">
