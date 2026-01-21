@@ -18,6 +18,7 @@ function LogisticsPageContent() {
   const [loading, setLoading] = useState(true);
   const [shippingConfirmModal, setShippingConfirmModal] = useState<string | null>(null);
   const [isShipping, setIsShipping] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
 
   // Fetch buyer details from admin/buyers endpoint (most reliable)
   const fetchBuyerDetailsFromAdmin = async () => {
@@ -223,29 +224,31 @@ function LogisticsPageContent() {
     if (enrichedOrderToShip && rawOrderToShip) {
       console.log(`[Logistics] 🚀 Starting mark as shipped process for ${orderId}`);
       
-      // FIRST: Update order status to "shipped" in the database and WAIT for it
-      console.log(`[Logistics] 1️⃣ Updating database status to 'shipped' for ${orderId}...`);
-      await updateOrderStatus(orderId, 'shipped');
-      console.log(`[Logistics] ✅ Database status updated successfully for ${orderId}`);
+      try {
+        // FIRST: Update order status to "delivered" in the database and WAIT for it
+        console.log(`[Logistics] 1️⃣ Updating database status to 'delivered' for ${orderId}...`);
+        await updateOrderStatus(orderId, 'delivered');
+        console.log(`[Logistics] ✅ Database status updated successfully for ${orderId}`);
+      } catch (statusError) {
+        console.error(`[Logistics] ❌ CRITICAL: Failed to update order status to delivered:`, statusError);
+        setOrderError('Failed to update order status. Please try again.');
+        setShippingConfirmModal(null);
+        setIsShipping(false);
+        return;
+      }
       
       // SECOND: Move order to shipped tab locally - use enriched order to maintain all data
       console.log(`[Logistics] 2️⃣ Moving order to shipped tab in local state...`);
       const updatedEnrichedShipped = [...enrichedShippedOrders, enrichedOrderToShip];
       setEnrichedShippedOrders(updatedEnrichedShipped);
       
-      // Update raw shipped orders for sessionStorage
+      // Update raw shipped orders
       const updatedShipped = [...shippedOrders, rawOrderToShip];
       setShippedOrders(updatedShipped);
-      sessionStorage.setItem('logistics_shipped_orders', JSON.stringify(updatedShipped));
       
       // Remove from active orders - both raw and enriched
       const updatedOrders = ordersData.filter(order => order._id !== orderId);
       setOrdersData(updatedOrders);
-      if (updatedOrders.length > 0) {
-        sessionStorage.setItem('logistics_orders', JSON.stringify(updatedOrders));
-      } else {
-        sessionStorage.removeItem('logistics_orders');
-      }
       
       // Remove from enriched active orders
       const updatedEnrichedOrders = enrichedOrders.filter(order => order._id !== orderId);
@@ -320,11 +323,6 @@ function LogisticsPageContent() {
       // Remove from active orders if present - both raw and enriched
       const updatedOrders = ordersData.filter(order => order._id !== orderId);
       setOrdersData(updatedOrders);
-      if (updatedOrders.length > 0) {
-        sessionStorage.setItem('logistics_orders', JSON.stringify(updatedOrders));
-      } else {
-        sessionStorage.removeItem('logistics_orders');
-      }
 
       const updatedEnrichedOrders = enrichedOrders.filter(order => order._id !== orderId);
       setEnrichedOrders(updatedEnrichedOrders);
@@ -332,11 +330,6 @@ function LogisticsPageContent() {
       // Remove from shipped orders if present - both raw and enriched
       const updatedShipped = shippedOrders.filter(order => order._id !== orderId);
       setShippedOrders(updatedShipped);
-      if (updatedShipped.length > 0) {
-        sessionStorage.setItem('logistics_shipped_orders', JSON.stringify(updatedShipped));
-      } else {
-        sessionStorage.removeItem('logistics_shipped_orders');
-      }
 
       const updatedEnrichedShipped = enrichedShippedOrders.filter(order => order._id !== orderId);
       setEnrichedShippedOrders(updatedEnrichedShipped);
@@ -384,39 +377,29 @@ function LogisticsPageContent() {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      console.log(`[Logistics] Custom-orders endpoint - Status: ${response.status} ${response.statusText}`);
+      console.log(`[Logistics] 📡 Update endpoint - Status: ${response.status} ${response.statusText}`);
 
       if (response.ok) {
-        console.log(`✅ Order ${orderId} status updated to ${newStatus} via custom-orders endpoint`);
-        return;
-      }
-
-      if (response.status === 404) {
-        console.log('[Logistics] ⚠️ Order not found, retrying with unified endpoint...');
-        
-        const altResponse = await fetch(`/api/orders/unified/${orderId}`, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ status: newStatus }),
+        const updated = await response.json();
+        console.log(`✅ Order ${orderId} status updated to ${newStatus}`);
+        console.log(`✅ Updated order data:`, { 
+          orderNumber: updated.orderNumber, 
+          status: updated.status,
+          _id: updated._id 
         });
-        
-        console.log(`[Logistics] Orders endpoint - Status: ${altResponse.status} ${altResponse.statusText}`);
-        
-        if (altResponse.ok) {
-          console.log(`✅ Order ${orderId} status updated to ${newStatus} via orders endpoint`);
-          return;
-        } else {
-          const errorData = await altResponse.json().catch(() => ({}));
-          console.error(`[Logistics] Failed to update via orders endpoint:`, errorData);
-        }
+        return;
       } else {
         const errorData = await response.json().catch(() => ({}));
-        console.error(`[Logistics] Failed to update via custom-orders endpoint:`, errorData);
+        console.error(`[Logistics] ❌ Failed to update order ${orderId}:`, {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData
+        });
+        throw new Error(`Failed to update order: ${response.statusText}`);
       }
     } catch (error) {
-      console.error('[Logistics] Error updating order status:', error);
+      console.error('[Logistics] ❌ Error updating order status:', error);
+      throw error;
     }
   };
 
@@ -495,7 +478,7 @@ function LogisticsPageContent() {
               }`}
             >
               <CheckCircle className="h-5 w-5" />
-              Shipped Orders ({shippedOrders.length})
+              Delivered Orders ({shippedOrders.length})
             </button>
           </div>
         </div>

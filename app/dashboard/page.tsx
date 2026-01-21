@@ -101,12 +101,12 @@ export default function BuyerDashboardPage() {
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
   const [regularOrders, setRegularOrders] = useState<RegularOrder[]>([]);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
-  const [activeTab, setActiveTab] = useState<"invoices" | "orders" | "profile">(() => {
+  const [activeTab, setActiveTab] = useState<"orders" | "profile">(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('buyerDashboardActiveTab');
-      return (saved as "invoices" | "orders" | "profile") || "invoices";
+      return (saved as "orders" | "profile") || "orders";
     }
-    return "invoices";
+    return "orders";
   });
   const [selectedInvoice, setSelectedInvoice] = useState<StoredInvoice | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -576,13 +576,12 @@ export default function BuyerDashboardPage() {
         <div className="mb-12 flex gap-2 sm:gap-4">
           {[
             { id: "orders", label: "Orders", count: customOrders.length + regularOrders.length, color: "text-lime-700 border-lime-300", badgeColor: "bg-lime-600 text-white" },
-            { id: "invoices", label: "Invoices", count: invoices.length, color: "text-blue-700 border-blue-300", badgeColor: "bg-blue-600 text-white" },
             { id: "profile", label: "Profile", count: null, color: "text-indigo-700 border-indigo-300", badgeColor: "bg-indigo-600 text-white" }
           ].map((tab) => (
             <button
               key={tab.id}
               onClick={() => {
-                setActiveTab(tab.id as "invoices" | "orders" | "profile");
+                setActiveTab(tab.id as "orders" | "profile");
                 localStorage.setItem('buyerDashboardActiveTab', tab.id);
               }}
               className={`relative px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
@@ -612,13 +611,13 @@ export default function BuyerDashboardPage() {
           />
         )}
 
-        {/* INVOICES TAB */}
-        {activeTab === "invoices" && (
+        {/* INVOICES TAB - HIDDEN */}
+        {/* {activeTab === "invoices" && (
           <InvoicesTab
             invoices={invoices}
             onSelectInvoice={setSelectedInvoice}
           />
-        )}
+        )} */}
 
         {/* PROFILE TAB */}
         {activeTab === "profile" && (
