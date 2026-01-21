@@ -832,7 +832,8 @@ export function CustomOrderCard({
               // Show "Quote Sent" button after quote is sent but no payment yet
               <button
                 onClick={handleQuoteSentClick}
-                className={`w-full px-6 py-4 font-bold text-lg rounded-lg transition-all transform text-white bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 hover:scale-105 active:scale-95`}
+                disabled
+                className={`w-full px-6 py-4 font-bold text-lg rounded-lg transition-all transform text-white bg-gradient-to-r from-emerald-600 to-teal-600 opacity-75 cursor-not-allowed disabled:opacity-75 disabled:cursor-not-allowed`}
               >
                 ✅ Quote Sent
               </button>
