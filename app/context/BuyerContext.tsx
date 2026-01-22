@@ -46,36 +46,31 @@ interface BuyerContextType {
 
 const BuyerContext = createContext<BuyerContextType | undefined>(undefined);
 
-// 🔒 SECURITY: Store ONLY non-sensitive preferences in localStorage
-// Full profile is fetched from server via /api/auth/me which validates session
-const MINIMAL_STORAGE_KEY = "empi_buyer_id";
-const CURRENCY_STORAGE_KEY = "empi_preferred_currency";
+// 🔒 SECURITY: All buyer data comes from server via /api/auth/me
+// Removed localStorage - prevents stale data issues
 
 export function BuyerProvider({ children }: { children: ReactNode }) {
   const [buyer, setBuyer] = useState<BuyerProfile | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
 
   // 🔒 Load buyer profile from secure server endpoint on mount
-  // Only use localStorage to check if user was logged in
+  // Server validates HTTP-only session cookie
   useEffect(() => {
     const loadBuyerProfile = async () => {
       try {
-        // Try to fetch fresh profile from server (validates HTTP-only session cookie)
+        // Try to fetch fresh profile from server
         const response = await fetch("/api/auth/me", { credentials: "include" });
 
         if (response.ok) {
           const data = await response.json();
           setBuyer(data.buyer);
-          // Store only minimal info for quick checks
-          localStorage.setItem(MINIMAL_STORAGE_KEY, data.buyer.id);
         } else {
-          // Session invalid or expired - clear any stored data
-          localStorage.removeItem(MINIMAL_STORAGE_KEY);
-          localStorage.removeItem(CURRENCY_STORAGE_KEY);
+          // Session invalid or expired
+          setBuyer(null);
         }
       } catch (error) {
         console.error("Failed to load buyer profile from server", error);
-        localStorage.removeItem(MINIMAL_STORAGE_KEY);
+        setBuyer(null);
       }
 
       setIsHydrated(true);
@@ -84,32 +79,14 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
     loadBuyerProfile();
   }, []);
 
-  // 🔒 Save ONLY preferences to localStorage (NOT full profile with PII)
-  // Full profile stays only in memory and server
+  // ✅ Buyer data is maintained in state from server only
+  // Removed localStorage to prevent stale data issues
   useEffect(() => {
     if (isHydrated) {
-      if (buyer?.id) {
-        try {
-          // Store only user ID as indicator they were logged in
-          localStorage.setItem(MINIMAL_STORAGE_KEY, buyer.id);
-          // Store currency preference (user choice, not sensitive)
-          if (buyer.preferredCurrency) {
-            localStorage.setItem(CURRENCY_STORAGE_KEY, buyer.preferredCurrency);
-          }
-        } catch (error) {
-          console.error("Failed to save minimal buyer data to localStorage", error);
-        }
-      } else {
-        // Clear localStorage when logged out
-        try {
-          localStorage.removeItem(MINIMAL_STORAGE_KEY);
-          localStorage.removeItem(CURRENCY_STORAGE_KEY);
-        } catch (error) {
-          console.error("Failed to clear buyer data from localStorage", error);
-        }
-      }
+      // Data stays in memory only - server validates all operations
+      // This prevents outdated profile info from being used
     }
-  }, [buyer?.id, buyer?.preferredCurrency, isHydrated]);
+  }, [isHydrated]);
 
   const login = (buyerData: BuyerProfile) => {
     const updatedBuyer = {
@@ -142,6 +119,11 @@ export function BuyerProvider({ children }: { children: ReactNode }) {
 
     // Clear local state (this also clears localStorage via useEffect)
     setBuyer(null);
+    
+    // Redirect to home page
+    if (typeof window !== 'undefined') {
+      window.location.href = '/';
+    }
   };
 
   const register = async (data: Omit<BuyerProfile, 'id' | 'createdAt' | 'lastLogin'>): Promise<BuyerProfile | null> => {

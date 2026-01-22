@@ -118,7 +118,7 @@ async function sendNotificationEmail(payload: {
   details?: Record<string, any>;
 }): Promise<boolean> {
   try {
-    const { type, email, name, orderNumber, amount, details } = payload;
+    const { type, email, name, orderNumber, amount, details, recipient } = payload;
 
     let subject = '';
     let html = '';
@@ -153,8 +153,13 @@ async function sendNotificationEmail(payload: {
         break;
 
       case 'order-placed':
-        subject = `📋 Order Confirmation - ${orderNumber}`;
-        html = generateOrderPlacedEmail(name, orderNumber, amount || 0, dashboardLink);
+        if (recipient === 'admin') {
+          subject = `🆕 New Order Alert! - ${orderNumber}`;
+          html = generateAdminNewOrderEmail(orderNumber, amount || 0, details, dashboardLink);
+        } else {
+          subject = `📋 Order Confirmation - ${orderNumber}`;
+          html = generateOrderPlacedEmail(name, orderNumber, amount || 0, dashboardLink);
+        }
         break;
 
       default:
@@ -262,26 +267,38 @@ async function sendDesktopPushNotification(payload: {
   try {
     const { type, email, orderNumber, amount } = payload;
 
-    // Get admin's push subscriptions from database
-    // TODO: Store push subscriptions when admin enables notifications
-    // For now, this is a placeholder
-    
     let title = '';
     let message = '';
+    let tag = '';
 
     switch (type) {
       case 'order-placed':
         title = '🆕 New Order Placed!';
-        message = `Order #${orderNumber} just came in! 🎉`;
+        message = `Order #${orderNumber} just came in! 🎉 Amount: ₦${amount?.toLocaleString('en-NG') || 'N/A'}`;
+        tag = `order-${orderNumber}`;
         break;
       default:
         return false;
     }
 
+    // Log that push notification would be sent
+    console.log(`   📤 Desktop push notification:`, {
+      title,
+      message,
+      tag,
+      adminEmail: email,
+    });
+
+    // Note: Real browser push notifications require:
+    // 1. Service Worker registered on admin dashboard
+    // 2. Push subscription stored in database
+    // 3. Web Push API (node-pushnotifications or web-push npm package)
+    // 
+    // For now, this logs the notification data that would be sent
     // In production, you would:
-    // 1. Fetch admin's push subscription from database
-    // 2. Send via Web Push (using node-pushnotifications or similar)
-    console.log(`   📤 Desktop push would be sent to admin: "${title}"`);
+    // - Store push subscriptions when admin enables notifications
+    // - Use web-push library to send to those subscriptions
+    // - Handle subscription expiration and re-registration
 
     return true;
   } catch (error) {
@@ -413,7 +430,7 @@ function generateOrderShippedEmail(name: string, orderNumber: string, trackingNu
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px; border-radius: 10px 10px 0 0;">
         <h1 style="color: white; margin: 0;">📦 Your Order is On the Way!</h1>
-        <p style="color: #dbeafe; margin: 10px 0 0 0;">Track your delivery</p>
+        <p style="color: #dbeafe; margin: 10px 0 0 0;">Your delivery is on its way to you</p>
       </div>
       
       <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 10px 10px;">
@@ -427,17 +444,14 @@ function generateOrderShippedEmail(name: string, orderNumber: string, trackingNu
           ${trackingNumber ? `<p style="color: #1e40af; margin: 5px 0;"><strong>Tracking Number:</strong> ${trackingNumber}</p>` : ''}
         </div>
         
-        <p style="color: #374151; margin: 20px 0;"><strong>Expected Delivery</strong></p>
-        <p style="color: #374151;">Your package should arrive within 2-5 business days, depending on your location.</p>
-        
-        <div style="text-align: center; margin: 30px 0;">
-          <a href="${dashboardLink || '#'}" style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
-            Track Your Order
-          </a>
-        </div>
+        <p style="color: #374151; margin: 20px 0;"><strong>Delivery Timeline</strong></p>
+        <p style="color: #374151;">Your package is on its way! Delivery timeframe depends on your location:<br><strong>• Same-day delivery</strong> for orders within Lagos<br><strong>• 2-5 business days</strong> for orders outside Lagos</p>
         
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-          Have questions? Reply to this email or contact us at ${process.env.STORE_EMAIL || 'admin@empicostumes.com'}
+          <strong>Need Help?</strong><br>
+          Email: ${process.env.STORE_EMAIL || 'admin@empicostumes.com'}<br>
+          Phone: ${process.env.STORE_PHONE || '+234 808 577 9180'}<br><br>
+          Reply to this email or contact us anytime if you have any questions about your order.
         </p>
       </div>
     </div>
@@ -556,6 +570,56 @@ function generateOrderPlacedEmail(name: string, orderNumber: string, amount: num
           <strong>EMPI Costumes</strong><br>
           Email: ${process.env.STORE_EMAIL || 'admin@empicostumes.com'}<br>
           Phone: ${process.env.STORE_PHONE || '+234 123 456 7890'}
+        </p>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * ADMIN NEW ORDER EMAIL TEMPLATE
+ * Sent to admin when a new order is placed
+ */
+function generateAdminNewOrderEmail(orderNumber: string, amount: number, details: any, dashboardLink: string): string {
+  const { buyerName, buyerEmail, orderType } = details || {};
+  
+  return `
+    <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
+      <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; border-radius: 10px 10px 0 0;">
+        <h1 style="color: white; margin: 0;">🆕 NEW ORDER ALERT!</h1>
+        <p style="color: #fef3c7; margin: 10px 0 0 0;">A new order has been placed and requires your attention</p>
+      </div>
+      
+      <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 10px 10px;">
+        <p style="color: #374151;">Hello Admin,</p>
+        
+        <p style="color: #374151; margin: 20px 0;"><strong>⏰ A new order has just come in!</strong></p>
+        
+        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin: 20px 0; border-radius: 4px;">
+          <p style="color: #92400e; margin: 0; font-size: 16px;"><strong>Order #${orderNumber}</strong></p>
+          <p style="color: #92400e; margin: 10px 0 0 0;"><strong>Amount:</strong> ₦${amount.toLocaleString('en-NG')}</p>
+          <p style="color: #92400e; margin: 5px 0;"><strong>Customer:</strong> ${buyerName || 'Unknown'}</p>
+          <p style="color: #92400e; margin: 5px 0;"><strong>Email:</strong> ${buyerEmail || 'N/A'}</p>
+          <p style="color: #92400e; margin: 5px 0;"><strong>Order Type:</strong> ${orderType || 'Regular'}</p>
+        </div>
+        
+        <p style="color: #374151; margin: 20px 0;"><strong>⚡ Next Steps:</strong></p>
+        <ul style="color: #374151;">
+          <li>✅ Review the order details</li>
+          <li>✅ Confirm with the customer if needed</li>
+          <li>✅ Approve or request modifications</li>
+          <li>✅ Start production once approved</li>
+        </ul>
+        
+        <div style="text-align: center; margin: 30px 0;">
+          <a href="${dashboardLink}" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); color: white; padding: 12px 30px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">
+            View Order in Dashboard
+          </a>
+        </div>
+        
+        <p style="color: #6b7280; font-size: 12px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+          <strong>This is an automated notification from EMPI Costumes Order System.</strong><br>
+          You received this email because an order was just placed on your system.
         </p>
       </div>
     </div>

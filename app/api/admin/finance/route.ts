@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import UnifiedOrder from '@/lib/models/UnifiedOrder';
 import Order from '@/lib/models/Order';
+import Expense from '@/lib/models/Expense';
 import CustomOrder from '@/lib/models/CustomOrder';
 import connectDB from '@/lib/mongodb';
 
@@ -81,17 +83,18 @@ interface SalesRentalsData {
 
 /**
  * Calculate total sales and rentals from approved/completed orders
- * Checks and validates data, returns real calculations
+ * 
+ * IMPORTANT: Items may not have individual prices (only order.total exists)
+ * FALLBACK: Estimate based on ratio of items with mode='buy' vs mode='rent'
  * 
  * DATA SOURCE:
  * - Orders collection → items array → each item with { price, quantity, mode }
- * - Calculates: item.price × item.quantity for each item
+ * - If item.price missing: Use order.total distributed by item mode ratio
  * - For Sales: mode === 'buy' (regular purchase items)
  * - For Rentals: mode === 'rent' (rental items with rentalDays)
- * - Only from orders with status: 'confirmed', 'completed', or 'delivered'
  */
 function calculateSalesAndRentals(completedOrders: any[]): SalesRentalsData {
-  console.log('[Finance] Calculating sales & rentals from', completedOrders.length, 'completed orders');
+  console.log('[Finance] 📊 Calculating sales & rentals from', completedOrders.length, 'completed orders');
 
   let totalSalesAmount = 0;
   let totalRentalsAmount = 0;
@@ -99,32 +102,59 @@ function calculateSalesAndRentals(completedOrders: any[]): SalesRentalsData {
   let totalRentalsCount = 0;
 
   completedOrders.forEach((order: any) => {
-    console.log('[Finance] Processing Order:', {
+    console.log('[Finance] 📦 Order:', {
       orderNumber: order.orderNumber,
-      status: order.status,
+      total: order.total,
       itemsCount: order.items?.length || 0,
+      status: order.status,
     });
 
-    if (order.items && Array.isArray(order.items)) {
-      order.items.forEach((item: any, idx: number) => {
-        const itemAmount = (item.price || 0) * (item.quantity || 1);
-        
-        console.log(`[Finance] Item ${idx + 1}:`, {
-          name: item.name,
-          mode: item.mode,
-          price: item.price,
-          quantity: item.quantity,
-          amount: itemAmount,
+    if (order.items && Array.isArray(order.items) && order.items.length > 0) {
+      // Check if items have prices
+      const itemsWithPrices = order.items.filter((i: any) => i.unitPrice && i.unitPrice > 0);
+      const hasValidPrices = itemsWithPrices.length === order.items.length;
+
+      if (hasValidPrices) {
+        // Method 1: Use individual item prices (when available)
+        console.log('[Finance]   Using individual item prices');
+        order.items.forEach((item: any) => {
+          const itemAmount = (item.unitPrice || 0) * (item.quantity || 1);
+          
+          if (item.mode === 'buy' || item.mode === 'sale') {
+            totalSalesAmount += itemAmount;
+            totalSalesCount += item.quantity || 1;
+          } else if (item.mode === 'rent' || item.mode === 'rental') {
+            totalRentalsAmount += itemAmount;
+            totalRentalsCount += item.quantity || 1;
+          }
         });
-        
-        if (item.mode === 'buy' || item.mode === 'sale') {
-          totalSalesAmount += itemAmount;
-          totalSalesCount += item.quantity || 1;
-        } else if (item.mode === 'rent' || item.mode === 'rental') {
-          totalRentalsAmount += itemAmount;
-          totalRentalsCount += item.quantity || 1;
+      } else {
+        // Method 2: Estimate based on item count ratio (when prices are missing)
+        console.log('[Finance]   ⚠️ Item prices missing - estimating from order total');
+        const salesItems = order.items.filter((i: any) => i.mode === 'buy' || i.mode === 'sale');
+        const rentalItems = order.items.filter((i: any) => i.mode === 'rent' || i.mode === 'rental');
+        const totalItems = order.items.length;
+
+        if (totalItems > 0) {
+          const salesRatio = salesItems.length / totalItems;
+          const rentalRatio = rentalItems.length / totalItems;
+          
+          const estimatedSales = (order.total || 0) * salesRatio;
+          const estimatedRental = (order.total || 0) * rentalRatio;
+
+          totalSalesAmount += estimatedSales;
+          totalRentalsAmount += estimatedRental;
+          totalSalesCount += salesItems.length;
+          totalRentalsCount += rentalItems.length;
+
+          console.log('[Finance]   Estimated split:', {
+            salesRatio: (salesRatio * 100).toFixed(1) + '%',
+            rentalRatio: (rentalRatio * 100).toFixed(1) + '%',
+            estimatedSales: estimatedSales.toFixed(2),
+            estimatedRental: estimatedRental.toFixed(2),
+          });
         }
-      });
+      }
     }
   });
 
@@ -135,9 +165,9 @@ function calculateSalesAndRentals(completedOrders: any[]): SalesRentalsData {
     totalRentalsCount,
   };
 
-  console.log('[Finance] Sales & Rentals Calculation:', {
-    totalSalesAmount: result.totalSalesAmount,
-    totalRentalsAmount: result.totalRentalsAmount,
+  console.log('[Finance] 💰 Sales & Rentals Totals:', {
+    sales: `₦${result.totalSalesAmount}`,
+    rentals: `₦${result.totalRentalsAmount}`,
     totalSalesCount,
     totalRentalsCount,
   });
@@ -216,10 +246,18 @@ function calculateEducationTax(annualTurnover: number, taxableProfit: number): n
 function generateAnnualTaxSummary(
   annualTurnover: number,
   totalRevenue: number,
-  totalExpenses: number
+  totalExpenses: number,
+  actualInputVAT: number = 0
 ): TaxBreakdown {
   const taxableProfit = totalRevenue - totalExpenses;
   const vatBreakdown = calculateVAT(totalRevenue, totalExpenses);
+  
+  // Use actual input VAT from expenses if provided
+  if (actualInputVAT > 0) {
+    vatBreakdown.inputVAT = Math.round(actualInputVAT * 100) / 100;
+    vatBreakdown.vatPayable = Math.max(0, vatBreakdown.outputVAT - vatBreakdown.inputVAT);
+  }
+  
   const corporateIncomeTax = calculateCIT(annualTurnover, taxableProfit);
   const educationTax = calculateEducationTax(annualTurnover, taxableProfit);
   const totalAnnualTax = vatBreakdown.vatPayable + corporateIncomeTax + educationTax;
@@ -256,12 +294,112 @@ export async function GET(request: NextRequest) {
     const monthStart = new Date(currentYear, currentMonth, 1);
     const monthEnd = new Date(currentYear, currentMonth + 1, 0);
 
-    // Get all orders
-    const allOrders = await Order.find({}).lean();
-    const allCustomOrders = await CustomOrder.find({}).lean();
+    // Query ALL sources: Online orders + Offline orders + Expenses
+    console.log('[Finance API] ⏳ Fetching from all sources (online + offline + expenses)...');
+    
+    const [allUnifiedOrders, offlineOrders, allExpenses, allCustomOrders] = await Promise.all([
+      UnifiedOrder.find({}).lean().catch((err: any) => {
+        console.log('[Finance API] ⚠️ Error querying UnifiedOrder:', err.message);
+        return [];
+      }),
+      Order.find({ isOffline: true }).lean().catch((err: any) => {
+        console.log('[Finance API] ⚠️ Error querying offline orders:', err.message);
+        return [];
+      }),
+      Expense.find({}).lean().catch((err: any) => {
+        console.log('[Finance API] ⚠️ Error querying expenses:', err.message);
+        return [];
+      }),
+      CustomOrder.find({}).lean().catch((err: any) => {
+        console.log('[Finance API] ⚠️ Error querying custom orders:', err.message);
+        return [];
+      }),
+    ]);
+
+    console.log('[Finance API] 📊 DATA SUMMARY:', {
+      onlineOrders: allUnifiedOrders.length,
+      offlineOrders: offlineOrders.length,
+      expenses: allExpenses.length,
+      customOrders: allCustomOrders.length,
+      totalOrders: allUnifiedOrders.length + offlineOrders.length,
+    });
+
+    // Log samples
+    if (allUnifiedOrders.length > 0) {
+      console.log('[Finance API] 📋 Sample online order:', {
+        orderNumber: allUnifiedOrders[0].orderNumber,
+        total: allUnifiedOrders[0].total,
+      });
+    }
+    if (offlineOrders.length > 0) {
+      console.log('[Finance API] 📋 Sample offline order:', {
+        orderNumber: offlineOrders[0].orderNumber,
+        total: offlineOrders[0].total,
+        isOffline: offlineOrders[0].isOffline,
+      });
+    }
+    if (allExpenses.length > 0) {
+      console.log('[Finance API] 📋 Sample expense:', {
+        description: allExpenses[0].description,
+        amount: allExpenses[0].amount,
+        category: allExpenses[0].category,
+      });
+    }
+
+    // Combine all orders: online + offline
+    const mergedOrders = [...allUnifiedOrders, ...offlineOrders];
+
+    // If no orders or expenses exist, return all zeros
+    if (mergedOrders.length === 0 && allCustomOrders.length === 0 && allExpenses.length === 0) {
+      console.log('[Finance API] ❌ No data found - returning zero metrics');
+      
+      const zeroMetrics: FinanceMetrics = {
+        totalRevenue: 0,
+        totalIncome: 0,
+        totalExpenses: 0,
+        pendingAmount: 0,
+        completedAmount: 0,
+        totalSalesAmount: 0,
+        totalRentalsAmount: 0,
+        completedOutgoing: 0,
+        annualTurnover: 0,
+        businessSize: 'small',
+        taxBreakdown: {
+          vat: { rate: 7.5, totalSalesExVAT: 0, outputVAT: 0, inputVAT: 0, vatPayable: 0 },
+          corporateIncomeTax: 0,
+          educationTax: 0,
+          totalAnnualTax: 0,
+        },
+        monthlyTax: {
+          estimatedMonthlyVAT: 0,
+          estimatedMonthlyCIT: 0,
+          estimatedMonthlyEducationTax: 0,
+          estimatedMonthlyTotal: 0,
+        },
+        weeklyProjection: [],
+        transactionBreakdown: { sales: 0, rentals: 0, customOrders: 0, returns: 0, refunds: 0 },
+        profitMargin: 0,
+        averageOrderValue: 0,
+        conversionMetrics: {
+          totalTransactions: 0,
+          completedTransactions: 0,
+          pendingTransactions: 0,
+          cancelledTransactions: 0,
+          conversionRate: 0,
+        },
+      };
+      
+      const response = NextResponse.json({ success: true, metrics: zeroMetrics }, { status: 200 });
+      response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+      response.headers.set('Pragma', 'no-cache');
+      response.headers.set('Expires', '0');
+      return response;
+    }
+
+    console.log('[Finance API] ✅ Using', mergedOrders.length, 'total orders (merged from all sources)');
 
     // Calculate financial metrics
-    const currentMonthOrders = allOrders.filter(
+    const currentMonthOrders = mergedOrders.filter(
       (order: any) =>
         new Date(order.createdAt) >= monthStart &&
         new Date(order.createdAt) <= monthEnd
@@ -273,19 +411,26 @@ export async function GET(request: NextRequest) {
         new Date(order.createdAt) <= monthEnd
     );
 
-    // Revenue calculations
-    const completedOrders = allOrders.filter(
+    // REVENUE CALCULATION - CRITICAL FOR CONSISTENCY
+    // APPROVED STATUS = Revenue recognized (payment verified, order locked in)
+    // Revenue MUST persist from approved through all delivery/completion statuses
+    const completedOrders = mergedOrders.filter(
       (order: any) =>
+        order.status === 'approved' ||
         order.status === 'confirmed' ||
-        order.status === 'completed' ||
-        order.status === 'delivered' ||
+        order.status === 'processing' ||
+        order.status === 'packed' ||
+        order.status === 'ready_for_delivery' ||
         order.status === 'shipped' ||
+        order.status === 'delivered' ||
+        order.status === 'completed' ||
         order.paymentStatus === 'confirmed'
     );
 
-    const pendingOrders = allOrders.filter(
+    // Pending orders ONLY - awaiting approval (not counted in revenue)
+    const pendingOrders = mergedOrders.filter(
       (order: any) => 
-        (order.status === 'pending' || order.status === 'processing' || order.status === 'awaiting_payment') &&
+        order.status === 'pending' &&
         order.paymentStatus !== 'confirmed'
     );
 
@@ -323,12 +468,30 @@ export async function GET(request: NextRequest) {
     // Total calculations
     const totalCompletedRevenue = completedRevenue + customOrderCompleteRevenue;
     const totalPendingRevenue = pendingRevenue + customOrderPendingRevenue;
-    const totalRevenue = totalCompletedRevenue + totalPendingRevenue;
+    // ✅ CRITICAL: Total revenue = COMPLETED revenue ONLY
+    // Pending orders are shown separately - they should NOT affect total revenue
+    // When pending → approved, revenue stays the same (both are counted)
+    const totalRevenue = totalCompletedRevenue;
 
-    // Calculate estimated expenses (typically 30-40% of revenue for e-commerce)
-    // This includes: product cost, packaging, shipping subsidies, payment gateway fees
-    const estimatedExpenseRate = 0.35; // 35% of revenue
-    const totalExpenses = totalRevenue * estimatedExpenseRate;
+    // Calculate ACTUAL expenses from database (not estimated)
+    // Sum all expenses (both online and offline)
+    const totalExpenses = allExpenses.reduce((sum: number, expense: any) => {
+      return sum + (expense.amount || 0);
+    }, 0);
+
+    // Calculate actual INPUT VAT from expenses (deductible VAT)
+    const totalInputVAT = allExpenses.reduce((sum: number, expense: any) => {
+      const isVATApplicable = expense.isVATApplicable !== false; // Default to true
+      return sum + (isVATApplicable ? (expense.vat || 0) : 0);
+    }, 0);
+
+    console.log('[Finance API] 💰 Expense & VAT Calculation:', {
+      totalExpenses,
+      totalInputVAT,
+      expenseCount: allExpenses.length,
+      vatableExpenses: allExpenses.filter((e: any) => e.isVATApplicable !== false).length,
+      avgExpense: allExpenses.length > 0 ? (totalExpenses / allExpenses.length).toFixed(2) : 0,
+    });
 
     // Calculate gross profit
     const grossProfit = totalRevenue - totalExpenses;
@@ -348,11 +511,12 @@ export async function GET(request: NextRequest) {
       (totalRevenue / daysElapsedInMonth) * daysInCurrentMonth;
     const annualTurnover = estimatedMonthlyRevenue * 12;
 
-    // Generate comprehensive tax breakdown
+    // Generate comprehensive tax breakdown (with actual input VAT from expenses)
     const taxBreakdown = generateAnnualTaxSummary(
       annualTurnover,
       totalRevenue,
-      totalExpenses
+      totalExpenses,
+      totalInputVAT  // Pass actual input VAT from expenses
     );
 
     // Get monthly tax estimates
@@ -363,14 +527,14 @@ export async function GET(request: NextRequest) {
 
     // Weekly projection (current week and next 3 weeks)
     const weeklyProjection = calculateWeeklyProjection(
-      allOrders,
+      mergedOrders,
       currentYear,
       currentMonth
     );
 
     // Transaction breakdown
     const transactionBreakdown = calculateTransactionBreakdown(
-      allOrders,
+      mergedOrders,
       allCustomOrders
     );
 
@@ -389,10 +553,10 @@ export async function GET(request: NextRequest) {
     const totalIncomeCalculated = (totalSalesAmount + completedCustomOrderRevenue) + totalRentalsAmount;
 
     // Calculate completed outgoing (refunds + returns)
-    const refundedOrders = allOrders.filter(
+    const refundedOrders = mergedOrders.filter(
       (order: any) => order.status === 'refunded'
     );
-    const returnedOrders = allOrders.filter(
+    const returnedOrders = mergedOrders.filter(
       (order: any) => order.status === 'returned'
     );
     const completedOutgoing = 
@@ -410,18 +574,18 @@ export async function GET(request: NextRequest) {
 
     // Conversion metrics
     const conversionMetrics: ConversionMetrics = {
-      totalTransactions: allOrders.length + allCustomOrders.length,
+      totalTransactions: mergedOrders.length + allCustomOrders.length,
       completedTransactions:
         completedOrders.length + completedCustomOrders.length,
       pendingTransactions:
         pendingOrders.length + pendingCustomOrders.length,
-      cancelledTransactions: allOrders.filter(
+      cancelledTransactions: mergedOrders.filter(
         (order: any) => order.status === 'cancelled'
       ).length,
       conversionRate:
-        allOrders.length > 0
+        mergedOrders.length > 0
           ? (
-              ((completedOrders.length / allOrders.length) * 100).toFixed(2) as any
+              ((completedOrders.length / mergedOrders.length) * 100).toFixed(2) as any
             )
           : 0,
     };
@@ -458,6 +622,16 @@ export async function GET(request: NextRequest) {
       { success: true, metrics },
       { status: 200 }
     );
+
+    // Return with NO-CACHE headers to prevent stale data
+    const response = NextResponse.json(
+      { success: true, metrics },
+      { status: 200 }
+    );
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    return response;
   } catch (error) {
     console.error('[FinanceAPI] Error:', error);
     return NextResponse.json(

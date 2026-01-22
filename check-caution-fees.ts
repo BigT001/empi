@@ -83,7 +83,7 @@ async function checkCautionFees() {
       {
         productId: 'test-product-1',
         name: 'Test Rental',
-        price: 1000,
+        unitPrice: 1000,  // ← FIXED: Changed from 'price' to 'unitPrice'
         quantity: 2,
         mode: 'rent',
         rentalDays: 7
@@ -93,7 +93,7 @@ async function checkCautionFees() {
     const calculatedFee = calculateCautionFeeAmount(testItems);
     const expectedTestFee = (1000 * 2) * 0.5; // 50% of rental items subtotal
 
-    console.log(`Test items: [${testItems[0].name} - ₦${testItems[0].price} × ${testItems[0].quantity}]`);
+    console.log(`Test items: [${testItems[0].name} - ₦${testItems[0].unitPrice} × ${testItems[0].quantity}]`);
     console.log(`Calculated fee: ₦${calculatedFee.toFixed(2)}`);
     console.log(`Expected fee: ₦${expectedTestFee.toFixed(2)}`);
     console.log(`Function working: ${calculatedFee === expectedTestFee ? '✅ YES' : '❌ NO'}\n`);

@@ -162,12 +162,8 @@ export function NotificationBell() {
     setIsOpen(false);
     setShowAllNotifications(false);
     
-    // Set the active tab in localStorage before navigating
-    if (notification.type === 'message' || notification.type === 'processing' || notification.type === 'completed') {
-      localStorage.setItem('buyerDashboardActiveTab', 'orders');
-    }
-    
     // Navigate intelligently based on notification type
+    // Removed localStorage - tab state is session-only
     switch(notification.type) {
       case 'message':
         // Navigate to orders tab and scroll to this specific order's messages

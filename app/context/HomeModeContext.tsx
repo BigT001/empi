@@ -1,6 +1,6 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode, useEffect } from "react";
+import React, { createContext, useContext, useState, ReactNode } from "react";
 import { useBuyer } from "./BuyerContext";
 
 interface HomeModeContextType {
@@ -11,47 +11,18 @@ interface HomeModeContextType {
 
 const HomeModeContext = createContext<HomeModeContextType | undefined>(undefined);
 
-// Generate a unique key based on buyer ID or device
-const getStorageKey = (buyerId?: string) => {
-  if (buyerId) {
-    return `empi_home_mode_${buyerId}`;
-  }
-  // For guests, use a device-specific key
-  return "empi_home_mode_guest";
-};
-
+// ✅ Removed localStorage - home mode selection is session-only
 export function HomeModeProvider({ children }: { children: ReactNode }) {
   const { buyer } = useBuyer();
   const [mode, setModeState] = useState<"buy" | "rent">("buy");
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(true);
 
-  // Load mode from localStorage on mount or when buyer changes
-  useEffect(() => {
-    try {
-      const storageKey = getStorageKey(buyer?.id);
-      const stored = localStorage.getItem(storageKey);
-      
-      if (stored === "buy" || stored === "rent") {
-        setModeState(stored);
-      } else {
-        // Default to "buy" if nothing is stored
-        setModeState("buy");
-      }
-    } catch (error) {
-      console.error("Failed to load home mode from localStorage", error);
-      setModeState("buy");
-    }
-    setIsHydrated(true);
-  }, [buyer?.id]);
+  // Home mode starts as "buy" every session
+  // No localStorage persistence to prevent stale preferences
 
   const setMode = (newMode: "buy" | "rent") => {
     setModeState(newMode);
-    try {
-      const storageKey = getStorageKey(buyer?.id);
-      localStorage.setItem(storageKey, newMode);
-    } catch (error) {
-      console.error("Failed to save home mode to localStorage", error);
-    }
+    // No localStorage - mode is session-only state
   };
 
   return (

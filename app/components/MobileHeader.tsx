@@ -319,9 +319,10 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                       <span>{buyer.fullName}</span>
                     </Link>
                     <button
-                      onClick={() => {
-                        logout();
+                      onClick={async () => {
                         setShowMobileMenu(false);
+                        await logout();
+                        router.push('/');
                       }}
                       className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 hover:border-red-600 hover:bg-red-100 font-semibold text-sm transition"
                     >

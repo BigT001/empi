@@ -1,0 +1,152 @@
+{
+  "validationSchedule": {
+    "frequency": "weekly",
+    "dayOfWeek": "sunday",
+    "time": "02:00",
+    "timezone": "Africa/Lagos",
+    "description": "Weekly data consistency validation runs every Sunday at 2:00 AM WAT"
+  },
+  "validationChecks": [
+    {
+      "name": "Collection Status",
+      "description": "Verify all required collections exist",
+      "requiredCollections": [
+        "unifiedorders",
+        "orders",
+        "expenses",
+        "invoices",
+        "cautionfeetransactions",
+        "customorders",
+        "buyers",
+        "products",
+        "admins"
+      ]
+    },
+    {
+      "name": "Document Counts",
+      "description": "Track the number of documents in each collection",
+      "alertThresholds": {
+        "unifiedorders": {
+          "min": 0,
+          "max": 100000
+        },
+        "orders": {
+          "min": 0,
+          "max": 100000
+        },
+        "expenses": {
+          "min": 0,
+          "max": 50000
+        }
+      }
+    },
+    {
+      "name": "Revenue Consistency",
+      "description": "Verify total revenue matches across orders and invoices",
+      "tolerancePercentage": 0.1,
+      "dataSources": ["unifiedorders", "orders", "invoices"]
+    },
+    {
+      "name": "Order Status Validation",
+      "description": "Ensure all orders have valid status values",
+      "validStatuses": [
+        "pending",
+        "confirmed",
+        "completed",
+        "delivered",
+        "processing",
+        "shipped",
+        "cancelled",
+        "refunded",
+        "returned"
+      ]
+    },
+    {
+      "name": "Expense Validation",
+      "description": "Check expense amounts and VAT calculations",
+      "checks": [
+        "amount_positive",
+        "vat_calculation_correct",
+        "date_valid"
+      ]
+    },
+    {
+      "name": "Invoice-Order Sync",
+      "description": "Verify every invoice has a matching order and vice versa",
+      "allowableOrphanedOrders": 0,
+      "allowableOrphanedInvoices": 0
+    },
+    {
+      "name": "Data Quality",
+      "description": "Check for missing or incomplete data",
+      "requiredFields": {
+        "buyers": ["email", "fullName", "phone"],
+        "orders": ["orderNumber", "total", "status", "createdAt"],
+        "expenses": ["amount", "category", "description"]
+      }
+    },
+    {
+      "name": "Duplicate Detection",
+      "description": "Find duplicate order numbers or other unique identifiers",
+      "uniqueFields": ["orderNumber"]
+    }
+  ],
+  "alertingRules": [
+    {
+      "condition": "orphaned_invoices",
+      "severity": "high",
+      "action": "auto_repair",
+      "notification": "email"
+    },
+    {
+      "condition": "orphaned_orders",
+      "severity": "high",
+      "action": "auto_repair",
+      "notification": "email"
+    },
+    {
+      "condition": "vat_mismatch",
+      "severity": "medium",
+      "action": "auto_repair",
+      "notification": "log"
+    },
+    {
+      "condition": "revenue_discrepancy",
+      "severity": "high",
+      "action": "alert_admin",
+      "notification": "email"
+    },
+    {
+      "condition": "duplicate_order_numbers",
+      "severity": "critical",
+      "action": "alert_admin",
+      "notification": "email"
+    }
+  ],
+  "reportGeneration": {
+    "format": "markdown",
+    "includeTimestamp": true,
+    "includeDetailedMetrics": true,
+    "outputPath": "validation-reports/",
+    "retentionDays": 90
+  },
+  "autoRepairRules": {
+    "enabled": true,
+    "backupBeforeRepair": true,
+    "repairOnDetection": [
+      "vat_calculations",
+      "missing_order_numbers",
+      "invalid_dates"
+    ],
+    "manualApprovalRequired": [
+      "duplicate_order_numbers",
+      "orphaned_documents"
+    ]
+  },
+  "notificationSettings": {
+    "emailOnCompletion": false,
+    "emailOnIssues": true,
+    "slackNotifications": false,
+    "logLevel": "info"
+  }
+}

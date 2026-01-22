@@ -114,18 +114,10 @@ export function AdminSidebar() {
   const [stats, setStats] = useState({ pendingInvoices: 0, pendingOrders: 0, totalOrders: 0, totalProducts: 0, registeredCustomers: 0 });
 
   const isActive = (href: string, tab?: string) => {
-    // If the item points to the dashboard, resolve active state from the stored active tab
+    // If the item points to the dashboard, resolve active state from pathname
     if (href === "/admin/dashboard") {
       if (!(pathname === "/admin" || pathname.startsWith("/admin/dashboard"))) return false;
-      try {
-        if (typeof window !== 'undefined') {
-          const activeTab = localStorage.getItem('adminDashboardActiveTab') || 'dashboard';
-          return !!tab && activeTab === tab;
-        }
-      } catch (e) {
-        // ignore
-      }
-      // Fallback: if no localStorage available, make 'dashboard' active when at dashboard root
+      // Default to 'dashboard' tab - removed localStorage
       return tab === 'dashboard' && (pathname === '/admin' || pathname === '/admin/dashboard');
     }
 
@@ -228,7 +220,6 @@ export function AdminSidebar() {
                     try {
                       if (typeof window !== 'undefined') {
                         if (item.tab) {
-                          localStorage.setItem('adminDashboardActiveTab', item.tab);
                           // Notify same-window listeners that the tab changed
                           window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: item.tab } }));
                         }

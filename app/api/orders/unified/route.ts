@@ -313,9 +313,20 @@ export async function POST(request: NextRequest) {
       state: (body.state as string) || undefined,
       zipCode: (body.zipCode as string) || undefined,
       buyerId: (body.buyerId as string) || undefined,
+      country: (body.country as string) || 'Nigeria',
       
       // Items (empty for custom orders, will be populated when admin adds them)
-      items: (body.items as Record<string, unknown>[]) || [],
+      // CRITICAL FIX: Map incoming 'price' field to 'unitPrice' for schema compatibility
+      items: (body.items as Record<string, unknown>[])?.map((item: Record<string, unknown>) => ({
+        name: item.name || '',
+        quantity: (item.quantity as number) || 1,
+        unitPrice: (item.unitPrice || item.price || 0) as number, // ← Map price → unitPrice
+        productId: item.productId as string | undefined,
+        selectedSize: item.selectedSize as string | undefined,
+        imageUrl: (item.imageUrl || item.image) as string | undefined,
+        image: item.image as string | undefined,
+        mode: item.mode as string || 'buy',
+      })) || [],
       
       // Custom Order Specific
       description: (body.description as string) || undefined,
@@ -332,6 +343,10 @@ export async function POST(request: NextRequest) {
       total: (body.total as number) || 0,
       cautionFee: (body.cautionFee as number) || 0,
       
+      // Shipping
+      shippingType: (body.shippingType as string) || 'standard',
+      shippingCost: (body.shippingCost as number) || 0,
+      
       // Rental Schedule (if rental items exist)
       rentalSchedule: body.rentalSchedule ? {
         pickupDate: (body.rentalSchedule as any).pickupDate,
@@ -345,6 +360,7 @@ export async function POST(request: NextRequest) {
       // Payment
       paymentVerified: orderType === 'regular' ? true : false,
       paymentReference: idempotencyKey || (body.paymentReference as string) || undefined,
+      paymentMethod: (body.paymentMethod as string) || 'card', // Default to card for online orders
       
       // Status & Logistics
       status: 'pending',
@@ -384,8 +400,9 @@ export async function POST(request: NextRequest) {
 
     const newOrder = await UnifiedOrder.create(orderDataToSave);
 
-    // CRITICAL LOGGING: Verify items were saved with mode
-    console.log('[Unified Orders API] ✅ Order created:', { 
+    // CONSOLIDATION: No longer syncing to legacy Order collection
+    // UnifiedOrder is now the single source of truth for all orders
+    console.log('[Unified Orders API] ✅ Order created in UnifiedOrder collection:', { 
       id: newOrder._id, 
       number: newOrder.orderNumber, 
       type: orderType,

@@ -36,25 +36,14 @@ export default function AdminDashboardPage() {
   const { mounted } = useResponsive();
   const { admin, isLoading: authLoading } = useAdmin();
   // Active dashboard tab (dashboard | users | pending | products)
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'pending' | 'products'>(() => {
-    try {
-      if (typeof window !== 'undefined') {
-        const saved = localStorage.getItem('adminDashboardActiveTab');
-        if (saved === 'users' || saved === 'pending' || saved === 'products' || saved === 'dashboard') return saved as any;
-      }
-    } catch (e) { /* ignore */ }
-    return 'dashboard';
-  });
+  // Default to 'dashboard' on each load - no localStorage persistence
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'pending' | 'products'>('dashboard');
   
   // Use session expiry hook to detect logout
   const { sessionError } = useSessionExpiry();
 
-  // Persist active tab to localStorage when it changes
-  useEffect(() => {
-    try {
-      if (typeof window !== 'undefined') localStorage.setItem('adminDashboardActiveTab', activeTab);
-    } catch (e) { /* ignore */ }
-  }, [activeTab]);
+  // No localStorage persistence for tab preference
+  // Each session starts fresh with Dashboard view
 
   // Listen for same-window tab changes dispatched by the sidebar
   useEffect(() => {

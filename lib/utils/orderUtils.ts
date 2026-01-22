@@ -7,7 +7,7 @@ export interface OrderItem {
   productId: string;
   name: string;
   quantity: number;
-  price: number;
+  unitPrice: number;  // ← FIXED: Match database schema (was 'price')
   mode: 'buy' | 'rent'; // CRITICAL: Always set explicitly
   rentalDays?: number;
   selectedSize?: string;
@@ -69,8 +69,8 @@ export function validateOrderItems(items: OrderItem[] | undefined | null): {
     if (!item.name) errors.push(`Item ${idx + 1}: Missing name`);
     if (typeof item.quantity !== 'number' || item.quantity <= 0)
       errors.push(`Item ${idx + 1}: Invalid quantity`);
-    if (typeof item.price !== 'number' || item.price < 0)
-      errors.push(`Item ${idx + 1}: Invalid price`);
+    if (typeof item.unitPrice !== 'number' || item.unitPrice < 0)  // ← FIXED: unitPrice
+      errors.push(`Item ${idx + 1}: Invalid unitPrice`);
     if (!item.mode || !['buy', 'rent'].includes(item.mode))
       errors.push(`Item ${idx + 1}: Invalid mode (must be 'buy' or 'rent')`);
     if (item.mode === 'rent' && (!item.rentalDays || item.rentalDays <= 0))
@@ -92,11 +92,11 @@ export function calculateOrderMetrics(items: OrderItem[]): OrderMetrics {
 
   items.forEach((item) => {
     if (item.mode === 'buy') {
-      salesSubtotal += item.price * item.quantity;
+      salesSubtotal += item.unitPrice * item.quantity;  // ← FIXED: unitPrice
       salesItemCount++;
     } else if (item.mode === 'rent') {
       const rentalDays = item.rentalDays || 1;
-      rentalSubtotal += item.price * item.quantity * rentalDays;
+      rentalSubtotal += item.unitPrice * item.quantity * rentalDays;  // ← FIXED: unitPrice
       rentalItemCount++;
     }
   });

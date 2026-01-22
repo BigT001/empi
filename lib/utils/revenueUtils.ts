@@ -24,7 +24,7 @@ export function calculateItemRevenue(item: OrderItem): {
   salesRevenue: number;
   rentalRevenue: number;
 } {
-  const itemTotal = item.price * item.quantity;
+  const itemTotal = item.unitPrice * item.quantity;  // ← FIXED: Use unitPrice (was 'price')
 
   if (item.mode === 'buy') {
     return { salesRevenue: itemTotal, rentalRevenue: 0 };

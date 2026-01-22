@@ -50,7 +50,7 @@ export function calculateCautionFeeDetailed(
   items.forEach((item) => {
     if (item.mode === 'rent') {
       const rentalDays = item.rentalDays || 1;
-      const baseCost = item.price * item.quantity;
+      const baseCost = item.unitPrice * item.quantity;  // ← FIXED: Changed from 'price' to 'unitPrice'
       const rentalCost = baseCost * rentalDays;
       const cautionFee = Math.round((rentalCost * 0.5 * 100) / 100);
 

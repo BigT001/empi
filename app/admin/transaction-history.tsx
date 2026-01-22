@@ -13,6 +13,7 @@ import {
   TrendingDown,
   Plus,
   X,
+  Trash2,
 } from "lucide-react";
 
 interface Transaction {
@@ -67,6 +68,8 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
   const [sortBy, setSortBy] = useState<"date-desc" | "date-asc" | "amount-desc" | "amount-asc">("date-desc");
   const [activeTab, setActiveTab] = useState<"orders" | "expenses">(offlineTab ? "expenses" : "orders");
   const [showAddSaleForm, setShowAddSaleForm] = useState(false);
+  const [deleting, setDeleting] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchTransactions();
@@ -247,6 +250,38 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
     }
   };
 
+  const deleteOfflineSale = async (saleId: string, orderNumber: string) => {
+    if (!confirm(`Are you sure you want to delete offline order ${orderNumber}? This cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      setDeleting(saleId);
+      setDeleteError(null);
+
+      const response = await fetch(`/api/admin/offline-orders/${saleId}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to delete offline order");
+      }
+
+      console.log(`✅ Deleted offline order: ${orderNumber}`);
+      
+      // Remove from state
+      setOfflineSales(prev => prev.filter(sale => sale._id !== saleId));
+      setFilteredSales(prev => prev.filter(sale => sale._id !== saleId));
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : "Failed to delete order";
+      setDeleteError(errorMsg);
+      console.error("❌ Error deleting offline order:", errorMsg);
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   const applyFiltersAndSort = (
     data: Transaction[],
     search: string,
@@ -389,11 +424,92 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
     );
   }
 
+  // Calculate totals for transactions
+  const totalTransactionSales = filteredTransactions
+    .filter(t => t.transactionType === 'sales')
+    .reduce((sum: number, t) => sum + (t.amount || 0), 0);
+  
+  const totalTransactionRentals = filteredTransactions
+    .filter(t => t.transactionType === 'rentals')
+    .reduce((sum: number, t) => sum + (t.amount || 0), 0);
+  
+  const totalTransactionVAT = filteredTransactions.reduce((sum: number, t) => sum + (t.vat || 0), 0);
+
+  // Calculate REVENUE (minus VAT) for online sales and rentals
+  const onlineSalesRevenue = filteredTransactions
+    .filter(t => t.transactionType === 'sales')
+    .reduce((sum: number, t) => sum + ((t.amount || 0) - (t.vat || 0)), 0);
+  
+  const onlineRentalsRevenue = filteredTransactions
+    .filter(t => t.transactionType === 'rentals')
+    .reduce((sum: number, t) => sum + ((t.amount || 0) - (t.vat || 0)), 0);
+
+  // Calculate totals for offline sales
+  const offlineSalesOnly = filteredSales.filter(s => s.transactionType === 'sales');
+  const offlineRentalsOnly = filteredSales.filter(s => s.transactionType === 'rentals');
+  const totalOfflineSalesAmount = offlineSalesOnly.reduce((sum: number, s) => sum + (s.total || 0), 0);
+  const totalOfflineRentalsAmount = offlineRentalsOnly.reduce((sum: number, s) => sum + (s.total || 0), 0);
+  const totalOfflineVATAmount = filteredSales.reduce((sum: number, s) => sum + (s.vat || 0), 0);
+  
+  // Calculate Offline Revenue (Sales + Rentals + VAT)
+  const offlineRevenue = totalOfflineSalesAmount + totalOfflineRentalsAmount + totalOfflineVATAmount;
+
   return (
     <div className="space-y-6">
       {/* Orders Tab Content - Only shown when not in offlineTab mode */}
       {!offlineTab && (
         <div className="space-y-6">
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {/* Total Sales Card */}
+            <div className="bg-white rounded-xl p-6 border border-green-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-medium text-gray-600">Total Online Sales</p>
+                <ArrowDownLeft className="h-5 w-5 text-green-600" />
+              </div>
+              <p className="text-3xl font-bold text-green-600">
+                ₦{totalTransactionSales.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">From {filteredTransactions.filter(t => t.transactionType === 'sales').length} transactions</p>
+            </div>
+
+            {/* Total Rentals Card */}
+            <div className="bg-white rounded-xl p-6 border border-blue-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-medium text-gray-600">Total Online Rentals</p>
+                <ArrowUpRight className="h-5 w-5 text-blue-600" />
+              </div>
+              <p className="text-3xl font-bold text-blue-600">
+                ₦{totalTransactionRentals.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">From {filteredTransactions.filter(t => t.transactionType === 'rentals').length} transactions</p>
+            </div>
+
+            {/* Online VAT Card */}
+            <div className="bg-white rounded-xl p-6 border border-orange-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-medium text-gray-600">Total Online VAT</p>
+                <TrendingUp className="h-5 w-5 text-orange-600" />
+              </div>
+              <p className="text-3xl font-bold text-orange-600">
+                ₦{totalTransactionVAT.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">7.5% VAT on all transactions</p>
+            </div>
+
+            {/* Online Revenue Card (Sales + Rentals + VAT) */}
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-6 border border-purple-200 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-medium text-gray-600">Online Revenue</p>
+                <TrendingUp className="h-5 w-5 text-purple-600" />
+              </div>
+              <p className="text-3xl font-bold text-purple-600">
+                ₦{(onlineSalesRevenue + onlineRentalsRevenue + totalTransactionVAT).toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-gray-500 mt-2">Sales + Rentals + VAT</p>
+            </div>
+          </div>
+
           {/* Filters */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -550,40 +666,54 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
         <div className="space-y-6">
           {/* Add Sale Button */}
           {/* Summary Cards for Offline Sales */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             {/* Total Offline Sales */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
+            <div className="bg-white rounded-xl p-4 border border-green-200 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
                 <p className="text-sm font-medium text-gray-600">Total Offline Sales</p>
-                <TrendingUp className="h-5 w-5 text-green-600" />
+                <ArrowDownLeft className="h-5 w-5 text-green-600" />
               </div>
-              <p className="text-3xl font-bold text-green-600">
-                ₦{totalOfflineSales.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              <p className="text-2xl font-bold text-green-600">
+                ₦{totalOfflineSalesAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-xs text-gray-500 mt-2">All recorded sales & rentals</p>
+              <p className="text-xs text-gray-500 mt-1">From {offlineSalesOnly.length} sales transactions</p>
             </div>
 
-            {/* Total Offline Sale Records */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-medium text-gray-600">Sale Records</p>
-                <ArrowDownLeft className="h-5 w-5 text-blue-600" />
+            {/* Total Offline Rentals */}
+            <div className="bg-white rounded-xl p-4 border border-blue-200 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-gray-600">Total Offline Rentals</p>
+                <ArrowUpRight className="h-5 w-5 text-blue-600" />
               </div>
-              <p className="text-3xl font-bold text-blue-600">{totalOfflineSalesCount}</p>
-              <p className="text-xs text-gray-500 mt-2">Total records</p>
+              <p className="text-2xl font-bold text-blue-600">
+                ₦{totalOfflineRentalsAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">From {offlineRentalsOnly.length} rental transactions</p>
             </div>
 
-            {/* Total Output VAT */}
-            <div className="bg-white rounded-xl p-6 border border-gray-200 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-sm font-medium text-gray-600">Total Output VAT</p>
-                <TrendingDown className="h-5 w-5 text-orange-600" />
+            {/* Offline VAT Card */}
+            <div className="bg-white rounded-xl p-4 border border-orange-200 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-gray-600">Offline VAT</p>
+                <TrendingUp className="h-5 w-5 text-orange-600" />
               </div>
-              <p className="text-3xl font-bold text-orange-600">
-                ₦{totalOfflineVAT
+              <p className="text-2xl font-bold text-orange-600">
+                ₦{totalOfflineVATAmount
                   .toLocaleString("en-NG", { minimumFractionDigits: 2 })}
               </p>
-              <p className="text-xs text-gray-500 mt-2">7.5% VAT on sales</p>
+              <p className="text-xs text-gray-500 mt-1">7.5% VAT on all offline transactions</p>
+            </div>
+
+            {/* Offline Revenue Card (Sales + Rentals + VAT) */}
+            <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-xl p-4 border border-purple-200 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-medium text-gray-600">Offline Revenue</p>
+                <TrendingUp className="h-5 w-5 text-purple-600" />
+              </div>
+              <p className="text-2xl font-bold text-purple-600">
+                ₦{offlineRevenue.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Sales + Rentals + VAT</p>
             </div>
           </div>
 
@@ -658,6 +788,7 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
                       <th className="text-right px-6 py-4 font-semibold text-gray-900 text-sm">Amount</th>
                       <th className="text-right px-6 py-4 font-semibold text-gray-900 text-sm">Output VAT</th>
                       <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Status</th>
+                      <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -714,6 +845,20 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
                             {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
                           </span>
                         </td>
+                        <td className="px-6 py-4 text-center">
+                          <button
+                            onClick={() => deleteOfflineSale(sale._id, sale.orderNumber)}
+                            disabled={deleting === sale._id}
+                            className="p-2 hover:bg-red-100 rounded-lg transition text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Delete this offline order"
+                          >
+                            {deleting === sale._id ? (
+                              <Loader className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-4 w-4" />
+                            )}
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -738,6 +883,14 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
               <strong>💸 Offline Sales & Rentals (Output VAT):</strong> These are offline sales and rental transactions that create Output VAT for your business. The VAT shown here is collected from your customers and must be paid to the government.
             </p>
           </div>
+
+          {/* Delete Error Message */}
+          {deleteError && (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-700 font-semibold">❌ Error Deleting Order</p>
+              <p className="text-red-600 text-sm mt-1">{deleteError}</p>
+            </div>
+          )}
         </div>
       )}
 

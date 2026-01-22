@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Get admin email from env
-    const adminEmail = process.env.ADMIN_EMAIL || 'admin@empicostumes.com';
+    const adminEmail = process.env.ADMIN_EMAIL || 'info.samuelstanley@gmail.com';
     const adminName = 'Admin';
 
     // Send multi-channel notification to admin

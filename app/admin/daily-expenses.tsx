@@ -206,18 +206,6 @@ export default function DailyExpenses({ onAddExpenseClick }: DailyExpenseProps) 
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm font-medium text-gray-600">Average Expense</p>
-            <TrendingDown className="h-5 w-5 text-purple-600" />
-          </div>
-          <p className="text-3xl font-bold text-purple-600">
-            ₦{filteredExpenses.length > 0 ? (totalAmount / filteredExpenses.length).toLocaleString("en-NG", {
-              minimumFractionDigits: 2,
-            }) : "0.00"}
-          </p>
-          <p className="text-xs text-gray-500 mt-2">Per expense</p>
-        </div>
       </div>
 
       {/* Filters */}

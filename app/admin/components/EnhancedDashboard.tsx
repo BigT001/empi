@@ -175,68 +175,109 @@ export function EnhancedDashboard() {
 
   const { summary, dailyMetrics, topProducts, customerMetrics, expenseMetrics, vatMetrics, revenueBreakdown, offlineRevenueBreakdown, orderTypeBreakdown } = analytics;
 
-  // Calculate derived metrics
-  const totalExpenses = expenseMetrics?.totalAmount || 0;
-  const vatPayable = vatMetrics?.vatPayable || 0;
-  const grossProfit = summary.totalRevenue - totalExpenses;
+  // Ensure summary exists before using it
+  if (!summary) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-linear-to-br from-gray-50 to-gray-100">
+        <div className="text-center">
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-yellow-100">
+            <svg className="w-8 h-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+          </div>
+          <p className="text-gray-600 mb-2">Analytics data is loading...</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Calculate derived metrics - add fallbacks for undefined values
+  const totalRevenue = summary?.totalRevenue ?? 0;
+  const totalExpenses = expenseMetrics?.totalAmount ?? 0;
+  const vatPayable = vatMetrics?.vatPayable ?? 0;
+  const grossProfit = totalRevenue - totalExpenses;
   const netProfit = grossProfit - vatPayable;
-  const profitMargin = summary.totalRevenue > 0 ? ((netProfit / summary.totalRevenue) * 100) : 0;
+  const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
+
+  // Safe summary metrics
+  const totalSalesRevenue = summary?.totalSalesRevenue ?? 0;
+  const totalRentalRevenue = summary?.totalRentalRevenue ?? 0;
+  const totalOrders = summary?.totalOrders ?? 0;
+  const completedOrders = summary?.completedOrders ?? 0;
+  const pendingOrders = summary?.pendingOrders ?? 0;
+  const totalProducts = summary?.totalProducts ?? 0;
+  const totalCustomers = summary?.totalCustomers ?? 0;
+  const registeredCustomers = summary?.registeredCustomers ?? 0;
+  const guestCustomers = summary?.guestCustomers ?? 0;
+  const averageOrderValue = summary?.averageOrderValue ?? 0;
+  const completionRate = summary?.completionRate ?? 0;
 
   // Online/Offline breakdown
-  const onlineSalesRevenue = revenueBreakdown?.onlineSalesRevenue || 0;
-  const onlineRentalRevenue = revenueBreakdown?.onlineRentalRevenue || 0;
-  const offlineSalesRevenue = offlineRevenueBreakdown?.salesRevenue || 0;
-  const offlineRentalRevenue = offlineRevenueBreakdown?.rentalRevenue || 0;
-  const onlineTransactions = orderTypeBreakdown?.online || 0;
-  const offlineTransactions = orderTypeBreakdown?.offline || 0;
+  const onlineSalesRevenue = revenueBreakdown?.onlineSalesRevenue ?? 0;
+  const onlineRentalRevenue = revenueBreakdown?.onlineRentalRevenue ?? 0;
+  const offlineSalesRevenue = offlineRevenueBreakdown?.salesRevenue ?? 0;
+  const offlineRentalRevenue = offlineRevenueBreakdown?.rentalRevenue ?? 0;
+  const onlineTransactions = orderTypeBreakdown?.online ?? 0;
+  const offlineTransactions = orderTypeBreakdown?.offline ?? 0;
 
   // PRIMARY FINANCIAL METRICS (Large cards in 4-column grid)
   const primaryCards: StatCard[] = [
     {
       label: 'Total Revenue',
-      value: `₦${summary.totalRevenue.toLocaleString()}`,
+      value: `₦${(totalRevenue ?? 0).toLocaleString()}`,
       color: 'bg-blue-50 border-blue-200',
     },
     {
       label: 'Online Sales',
-      value: `₦${onlineSalesRevenue.toLocaleString()}`,
+      value: `₦${(onlineSalesRevenue ?? 0).toLocaleString()}`,
       subtext: `${onlineTransactions} transactions`,
       color: 'bg-green-50 border-green-200',
     },
     {
       label: 'Online Rentals',
-      value: `₦${onlineRentalRevenue.toLocaleString()}`,
-      subtext: `${onlineTransactions > 0 ? Math.round(onlineRentalRevenue / onlineTransactions) : 0} avg`,
+      value: `₦${(onlineRentalRevenue ?? 0).toLocaleString()}`,
+      subtext: `${onlineTransactions > 0 ? Math.round((onlineRentalRevenue ?? 0) / onlineTransactions) : 0} avg`,
       color: 'bg-teal-50 border-teal-200',
     },
     {
       label: 'Offline Sales',
-      value: `₦${offlineSalesRevenue.toLocaleString()}`,
+      value: `₦${(offlineSalesRevenue ?? 0).toLocaleString()}`,
       subtext: `${offlineTransactions} transactions`,
       color: 'bg-yellow-50 border-yellow-200',
     },
     {
       label: 'Offline Rentals',
-      value: `₦${offlineRentalRevenue.toLocaleString()}`,
+      value: `₦${(offlineRentalRevenue ?? 0).toLocaleString()}`,
       subtext: `Manual entries`,
       color: 'bg-orange-50 border-orange-200',
     },
     {
       label: 'Daily Expenses',
-      value: `₦${totalExpenses.toLocaleString()}`,
-      subtext: `${expenseMetrics?.count || 0} recorded`,
+      value: `₦${(totalExpenses ?? 0).toLocaleString()}`,
+      subtext: `${expenseMetrics?.count ?? 0} recorded`,
       color: 'bg-red-50 border-red-200',
     },
     {
       label: 'VAT Payable',
-      value: `₦${vatPayable.toLocaleString()}`,
-      subtext: `Output: ₦${(vatMetrics?.outputVAT || 0).toLocaleString()}`,
+      value: `₦${(vatPayable ?? 0).toLocaleString()}`,
+      subtext: `Output: ₦${(vatMetrics?.outputVAT ?? 0).toLocaleString()}`,
       color: 'bg-purple-50 border-purple-200',
     },
     {
       label: 'Net Profit',
-      value: `₦${netProfit.toLocaleString()}`,
-      subtext: `${profitMargin.toFixed(1)}% margin`,
+      value: `₦${(netProfit ?? 0).toLocaleString()}`,
+      subtext: `${(profitMargin ?? 0).toFixed(1)}% margin`,
       color: 'bg-emerald-50 border-emerald-200',
     },
   ];
@@ -245,35 +286,35 @@ export function EnhancedDashboard() {
   const secondaryCards: StatCard[] = [
     {
       label: 'Total Orders',
-      value: summary.totalOrders,
-      subtext: `${summary.completedOrders} completed`,
+      value: totalOrders,
+      subtext: `${completedOrders} completed`,
       color: 'bg-indigo-50 border-indigo-200',
     },
     {
       label: 'Total Products',
-      value: summary.totalProducts,
+      value: totalProducts,
       subtext: `In catalog`,
       color: 'bg-pink-50 border-pink-200',
     },
     {
       label: 'Total Customers',
-      value: summary.totalCustomers,
-      subtext: `${summary.registeredCustomers} registered`,
+      value: totalCustomers,
+      subtext: `${registeredCustomers} registered`,
       color: 'bg-cyan-50 border-cyan-200',
     },
     {
       label: 'Avg Order Value',
-      value: `₦${summary.averageOrderValue.toLocaleString()}`,
+      value: `₦${(averageOrderValue ?? 0).toLocaleString()}`,
       color: 'bg-rose-50 border-rose-200',
     },
     {
       label: 'Completion Rate',
-      value: `${summary.completionRate.toFixed(1)}%`,
+      value: `${(completionRate ?? 0).toFixed(1)}%`,
       color: 'bg-violet-50 border-violet-200',
     },
     {
       label: 'New Customers',
-      value: customerMetrics.newCustomersThisMonth,
+      value: customerMetrics?.newCustomersThisMonth ?? 0,
       subtext: 'This month',
       color: 'bg-sky-50 border-sky-200',
     },
@@ -441,11 +482,11 @@ export function EnhancedDashboard() {
           <div className="h-[300px] flex items-center justify-center">
             <div className="text-center">
               <p className="text-4xl font-bold text-blue-600 mb-2">
-                ₦{summary.totalSalesRevenue.toLocaleString()}
+                ₦{(totalSalesRevenue ?? 0).toLocaleString()}
               </p>
               <p className="text-sm text-gray-600 mb-4">Sales</p>
               <p className="text-4xl font-bold text-amber-600 mb-2">
-                ₦{summary.totalRentalRevenue.toLocaleString()}
+                ₦{(totalRentalRevenue ?? 0).toLocaleString()}
               </p>
               <p className="text-sm text-gray-600">Rentals</p>
             </div>
@@ -511,11 +552,11 @@ export function EnhancedDashboard() {
           <div className="bg-linear-to-br from-purple-50 to-purple-100 p-6 rounded-lg">
             <p className="text-sm font-medium text-purple-900 mb-2">Guest Customers</p>
             <p className="text-3xl font-bold text-purple-900">
-              {summary.guestCustomers}
+              {guestCustomers}
             </p>
             <p className="text-xs text-purple-600 mt-2">
-              {summary.totalCustomers > 0
-                ? ((summary.guestCustomers / summary.totalCustomers) * 100).toFixed(1)
+              {totalCustomers > 0
+                ? ((guestCustomers / totalCustomers) * 100).toFixed(1)
                 : 0}% of total
             </p>
           </div>

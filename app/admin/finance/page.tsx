@@ -98,13 +98,20 @@ function FinancePageContent() {
   const [activeTab, setActiveTab] = useState<"vat" | "overview" | "transactions" | "offline" | "expenses">("overview");
   const [showOfflineOrderForm, setShowOfflineOrderForm] = useState(false);
   const [showOfflineExpenseForm, setShowOfflineExpenseForm] = useState(false);
+  const [expensesRefreshKey, setExpensesRefreshKey] = useState(0);
 
   // Fetch finance metrics
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
         setLoading(true);
-        const response = await fetch("/api/admin/finance");
+        const response = await fetch("/api/admin/finance", {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+          }
+        });
         
         if (!response.ok) throw new Error("Failed to fetch metrics");
         const financeData = await response.json();
@@ -261,7 +268,7 @@ function FinancePageContent() {
         {activeTab === "offline" && <TransactionHistory metrics={metrics} offlineTab={true} />}
 
         {activeTab === "expenses" && (
-          <DailyExpenses onAddExpenseClick={() => setShowOfflineExpenseForm(true)} />
+          <DailyExpenses key={expensesRefreshKey} onAddExpenseClick={() => setShowOfflineExpenseForm(true)} />
         )}
       </main>
 
@@ -291,7 +298,10 @@ function FinancePageContent() {
         <OfflineExpenseForm
           onClose={() => setShowOfflineExpenseForm(false)}
           onSuccess={() => {
-            // Refresh metrics after successful offline expense
+            // Trigger DailyExpenses refresh
+            setExpensesRefreshKey(prev => prev + 1);
+            
+            // Also refresh metrics
             const fetchMetrics = async () => {
               try {
                 const response = await fetch("/api/admin/finance");

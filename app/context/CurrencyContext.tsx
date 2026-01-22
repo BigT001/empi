@@ -15,33 +15,23 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
   const [isHydrated, setIsHydrated] = useState(false);
   const { buyer } = useBuyer();
 
-  // Load currency from localStorage and buyer profile on mount/login
+  // Load currency from buyer profile on mount/login
   useEffect(() => {
-    if (buyer?.id) {
-      // If user is logged in, use their saved preference (or localStorage as fallback)
-      const savedCurrency = localStorage.getItem("empi_currency");
-      // Buyer's preference will be synced via session, but localStorage works as immediate fallback
-      if (savedCurrency) {
-        setCurrency(savedCurrency);
-      }
+    if (buyer?.preferredCurrency) {
+      // Use buyer's preference from server
+      setCurrency(buyer.preferredCurrency);
     } else {
-      // If not logged in, use localStorage
-      const savedCurrency = localStorage.getItem("empi_currency");
-      if (savedCurrency) {
-        setCurrency(savedCurrency);
-      }
+      // Default to NGN
+      setCurrency("NGN");
     }
     setIsHydrated(true);
-  }, [buyer?.id]);
+  }, [buyer?.preferredCurrency]);
 
-  // Save currency to localStorage and buyer profile whenever it changes
+  // Save currency to buyer profile whenever it changes
   const handleSetCurrency = async (newCurrency: string) => {
     setCurrency(newCurrency);
-    
-    // Always save to localStorage
-    localStorage.setItem("empi_currency", newCurrency);
 
-    // If user is logged in, also save to their profile
+    // If user is logged in, save to their profile
     if (buyer?.id) {
       try {
         await fetch("/api/buyers/currency", {
@@ -56,7 +46,6 @@ export function CurrencyProvider({ children }: { children: React.ReactNode }) {
         });
       } catch (error) {
         console.error("Failed to save currency preference to profile:", error);
-        // Still keep localStorage update even if API fails
       }
     }
   };

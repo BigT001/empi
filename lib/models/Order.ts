@@ -49,6 +49,9 @@ export interface IOrder extends Document {
   subtotal: number;
   vat: number; // VAT amount (7.5% of subtotal)
   vatRate: number; // VAT rate percentage (7.5)
+  discountPercentage?: number; // Discount percentage (for bulk orders, etc)
+  discountAmount?: number; // Discount amount in currency
+  subtotalAfterDiscount?: number; // Subtotal after discount applied
   total: number;
   paymentMethod: string;
   status: string; // 'pending', 'awaiting_payment', 'payment_confirmed', 'completed', 'cancelled'
@@ -142,6 +145,9 @@ const orderSchema = new Schema<IOrder>(
     subtotal: { type: Number, required: true },
     vat: { type: Number, default: 0 }, // VAT amount (7.5% of subtotal)
     vatRate: { type: Number, default: 7.5 }, // VAT rate percentage
+    discountPercentage: { type: Number, default: 0 }, // Discount percentage (for bulk orders, etc)
+    discountAmount: { type: Number, default: 0 }, // Discount amount in currency
+    subtotalAfterDiscount: { type: Number, default: 0 }, // Subtotal after discount applied
     total: { type: Number, required: true },
     paymentMethod: { type: String, required: true },
     status: { type: String, default: 'pending' }, // 'pending', 'awaiting_payment', 'payment_confirmed', 'completed', 'cancelled'

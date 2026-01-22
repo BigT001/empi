@@ -8,44 +8,21 @@ interface DiscountPopupProps {
 }
 
 export function DiscountPopup({ intervalMinutes = 7 }: DiscountPopupProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [hasSeenOnce, setHasSeenOnce] = useState(false);
 
+  // ✅ Removed localStorage - show popup every session
+  // Popup appears on first visit only (isOpen state), then can be closed
   useEffect(() => {
-    const POPUP_KEY = "empi_discount_popup_closed";
-    const POPUP_INTERVAL_KEY = "empi_discount_popup_interval";
-
-    // Check if user has seen popup before
-    const lastClosedTime = localStorage.getItem(POPUP_INTERVAL_KEY);
-    const wasClosedBefore = localStorage.getItem(POPUP_KEY) === "true";
-
-    // Show popup on first visit or if interval has passed
-    const shouldShow = () => {
-      if (!wasClosedBefore) {
-        return true; // First visit - always show
-      }
-
-      if (!lastClosedTime) {
-        return true; // No interval data yet
-      }
-
-      const lastTime = parseInt(lastClosedTime, 10);
-      const now = Date.now();
-      const minutesElapsed = (now - lastTime) / (1000 * 60);
-
-      return minutesElapsed >= intervalMinutes;
-    };
-
-    if (shouldShow()) {
-      setIsOpen(true);
-      setHasSeenOnce(true);
+    if (hasSeenOnce) {
+      setIsOpen(false);
     }
-  }, [intervalMinutes]);
+  }, [hasSeenOnce]);
 
   const handleClose = () => {
     setIsOpen(false);
-    localStorage.setItem("empi_discount_popup_closed", "true");
-    localStorage.setItem("empi_discount_popup_interval", Date.now().toString());
+    setHasSeenOnce(true);
+    // No localStorage - popup will show again on next session
   };
 
   if (!isOpen) return null;

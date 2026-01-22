@@ -101,13 +101,7 @@ export default function BuyerDashboardPage() {
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
   const [regularOrders, setRegularOrders] = useState<RegularOrder[]>([]);
   const [isFirstVisit, setIsFirstVisit] = useState(false);
-  const [activeTab, setActiveTab] = useState<"orders" | "profile">(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('buyerDashboardActiveTab');
-      return (saved as "orders" | "profile") || "orders";
-    }
-    return "orders";
-  });
+  const [activeTab, setActiveTab] = useState<"orders" | "profile" | "analytics">("orders");
   const [selectedInvoice, setSelectedInvoice] = useState<StoredInvoice | null>(null);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [chatModalOpen, setChatModalOpen] = useState<string | null>(null);
@@ -128,14 +122,8 @@ export default function BuyerDashboardPage() {
   useEffect(() => {
     if (buyer && isHydrated) {
       const dashboardVisitKey = `dashboard_visited_${buyer.id}`;
-      const hasVisited = localStorage.getItem(dashboardVisitKey);
-      
-      if (!hasVisited) {
-        setIsFirstVisit(true);
-        localStorage.setItem(dashboardVisitKey, 'true');
-      } else {
-        setIsFirstVisit(false);
-      }
+      // Removed localStorage - always start with isFirstVisit check from server
+      setIsFirstVisit(buyer ? false : true);
     }
   }, [buyer, isHydrated]);
 
@@ -535,7 +523,7 @@ export default function BuyerDashboardPage() {
 
   const handleLogout = () => {
     logout();
-    router.push("/auth/login");
+    router.push("/");
   };
 
   if (!isHydrated) return null;
@@ -582,7 +570,7 @@ export default function BuyerDashboardPage() {
               key={tab.id}
               onClick={() => {
                 setActiveTab(tab.id as "orders" | "profile");
-                localStorage.setItem('buyerDashboardActiveTab', tab.id);
+                // Removed localStorage - tab state is session-only
               }}
               className={`relative px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
                 activeTab === tab.id
