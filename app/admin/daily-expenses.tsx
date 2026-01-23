@@ -130,6 +130,7 @@ export default function DailyExpenses({ onAddExpenseClick }: DailyExpenseProps) 
 
   const totalAmount = filteredExpenses.reduce((sum, e) => sum + e.amount, 0);
   const totalVAT = filteredExpenses.reduce((sum, e) => sum + (e.isVATApplicable ? e.vat : 0), 0);
+  const totalExpensesWithVAT = totalAmount + totalVAT; // Total Expenses = Amount + VAT
   const vatExemptCount = filteredExpenses.filter(e => !e.isVATApplicable).length;
 
   const categories = ["supplies", "utilities", "maintenance", "transportation", "other"];
@@ -169,7 +170,7 @@ export default function DailyExpenses({ onAddExpenseClick }: DailyExpenseProps) 
             <TrendingDown className="h-5 w-5 text-red-600" />
           </div>
           <p className="text-3xl font-bold text-red-600">
-            ₦{totalAmount.toLocaleString("en-NG", {
+            ₦{totalExpensesWithVAT.toLocaleString("en-NG", {
               minimumFractionDigits: 2,
             })}
           </p>

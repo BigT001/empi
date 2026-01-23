@@ -219,3 +219,4 @@ export async function getCurrentMonthVAT() {
     fromDatabase: true,
   };
 }
+

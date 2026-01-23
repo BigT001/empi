@@ -2,6 +2,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Package, Truck, Calendar, AlertCircle } from 'lucide-react';
+import { getTotalOnlineSales, getTotalOnlineRentals, getTotalOfflineSales, getTotalOfflineRentals, getTotalDailyExpenses } from '@/lib/utils/financeCalculations';
+import { getTotalOnlineVAT, getTotalOfflineVAT, getTotalInputVAT } from '@/lib/utils/vatCalculations.client';
 
 interface FinanceMetrics {
   // Online Revenue
@@ -74,26 +76,46 @@ export function FinanceProjectOverview({ data, loading }: FinanceOverviewProps) 
 
   const fetchMetrics = async () => {
     try {
-      const response = await fetch('/api/admin/analytics');
-      if (!response.ok) throw new Error('Failed to fetch analytics');
-      const analytics = await response.json();
+      // Use utility functions to fetch pre-calculated values from transaction history
+      const [onlineSales, onlineRentals, offlineSales, offlineRentals, expenses, onlineVAT, offlineVAT, inputVAT] = await Promise.all([
+        getTotalOnlineSales(),
+        getTotalOnlineRentals(),
+        getTotalOfflineSales(),
+        getTotalOfflineRentals(),
+        getTotalDailyExpenses(),
+        getTotalOnlineVAT(),
+        getTotalOfflineVAT(),
+        getTotalInputVAT()
+      ]);
+
+      const outputVAT = onlineVAT + offlineVAT;
+      const vatPayable = outputVAT - inputVAT;
+
+      // Fetch transaction counts
+      const ordersRes = await fetch("/api/orders/unified");
+      const offlineOrdersRes = await fetch("/api/admin/offline-orders");
+      const ordersData = ordersRes.ok ? await ordersRes.json() : { orders: [] };
+      const offlineOrdersData = offlineOrdersRes.ok ? await offlineOrdersRes.json() : { data: [] };
+
+      const onlineCount = ordersData.orders?.filter((o: any) => !o.isOffline).length || 0;
+      const offlineCount = offlineOrdersData.data?.length || 0;
 
       const calculated: FinanceMetrics = {
-        onlineSalesRevenue: analytics.revenueBreakdown?.onlineSalesRevenue || 0,
-        onlineRentalRevenue: analytics.revenueBreakdown?.onlineRentalRevenue || 0,
-        offlineSalesRevenue: analytics.offlineRevenueBreakdown?.salesRevenue || 0,
-        offlineRentalRevenue: analytics.offlineRevenueBreakdown?.rentalRevenue || 0,
-        cautionFeeCollected: analytics.cautionFeeMetrics?.totalCollected || 0,
-        cautionFeeRefunded: analytics.cautionFeeMetrics?.totalRefunded || 0,
-        totalVAT: analytics.vatMetrics?.totalVAT || 0,
-        inputVAT: analytics.vatMetrics?.inputVAT || 0,
-        outputVAT: analytics.vatMetrics?.outputVAT || 0,
-        vatPayable: analytics.vatMetrics?.vatPayable || 0,
-        vatExempt: analytics.vatMetrics?.vatExempt || 0,
-        totalDailyExpenses: analytics.expenseMetrics?.totalAmount || 0,
-        expenseCount: analytics.expenseMetrics?.count || 0,
-        totalOnlineTransactions: analytics.orderTypeBreakdown?.online || 0,
-        totalOfflineTransactions: analytics.orderTypeBreakdown?.offline || 0,
+        onlineSalesRevenue: onlineSales,
+        onlineRentalRevenue: onlineRentals,
+        offlineSalesRevenue: offlineSales,
+        offlineRentalRevenue: offlineRentals,
+        cautionFeeCollected: 0,
+        cautionFeeRefunded: 0,
+        totalVAT: outputVAT,
+        inputVAT,
+        outputVAT,
+        vatPayable: Math.max(vatPayable, 0),
+        vatExempt: 0,
+        totalDailyExpenses: expenses,
+        expenseCount: 0,
+        totalOnlineTransactions: onlineCount,
+        totalOfflineTransactions: offlineCount,
         generatedAt: new Date().toLocaleString(),
       };
 
@@ -182,6 +204,14 @@ export function FinanceProjectOverview({ data, loading }: FinanceOverviewProps) 
           </p>
           <div className="space-y-2 text-sm">
             <div className="flex justify-between">
+              <span className="text-gray-600">Online Revenue</span>
+              <span className="font-semibold text-gray-900">{formatCurrency(metrics.onlineSalesRevenue + metrics.onlineRentalRevenue)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Offline Revenue</span>
+              <span className="font-semibold text-gray-900">{formatCurrency(metrics.offlineSalesRevenue + metrics.offlineRentalRevenue)}</span>
+            </div>
+            <div className="flex justify-between border-t border-gray-200 pt-2 mt-2">
               <span className="text-gray-600">Total Expenses</span>
               <span className="font-semibold text-gray-900">{formatCurrency(calc.totalExpenses)}</span>
             </div>
@@ -199,18 +229,6 @@ export function FinanceProjectOverview({ data, loading }: FinanceOverviewProps) 
 
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {/* Gross Profit */}
-        <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-xs font-medium text-gray-600">Gross Profit</p>
-            <div className="bg-purple-100 p-1.5 rounded">
-              <TrendingUp className="h-4 w-4 text-purple-600" />
-            </div>
-          </div>
-          <p className="text-2xl font-bold text-gray-900">{formatCurrency(calc.grossProfit)}</p>
-          <p className="text-xs text-gray-500 mt-2">Revenue - Expenses</p>
-        </div>
-
         {/* Daily Expenses */}
         <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between mb-3">

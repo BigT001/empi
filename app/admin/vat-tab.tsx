@@ -15,6 +15,7 @@ import {
   Search,
 } from "lucide-react";
 import OfflineOrdersTable from "./offline-orders-table";
+import { getTotalOnlineVAT, getTotalOfflineVAT, getTotalInputVAT, getNetPayableVAT } from "@/lib/utils/vatCalculations.client";
 
 interface VATMetrics {
   rate: number;
@@ -85,6 +86,13 @@ export default function VATTab() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [vatPeriod, setVatPeriod] = useState<VATPeriod | null>(null);
 
+  // VAT Summary Card Values
+  const [totalOnlineVAT, setTotalOnlineVAT] = useState(0);
+  const [totalOfflineVAT, setTotalOfflineVAT] = useState(0);
+  const [totalInputVAT, setTotalInputVAT] = useState(0);
+  const [netPayableVAT, setNetPayableVAT] = useState(0);
+  const [loadingVAT, setLoadingVAT] = useState(true);
+
   // Calculate current VAT period (21st to 20th of next month)
   const calculateVATPeriod = (): VATPeriod => {
     const now = new Date();
@@ -136,6 +144,32 @@ export default function VATTab() {
       notificationLevel,
     };
   };
+
+  // Fetch VAT Summary Values
+  useEffect(() => {
+    const fetchVATSummary = async () => {
+      try {
+        setLoadingVAT(true);
+        const [onlineVAT, offlineVAT, inputVAT, netPayable] = await Promise.all([
+          getTotalOnlineVAT(),
+          getTotalOfflineVAT(),
+          getTotalInputVAT(),
+          getNetPayableVAT(),
+        ]);
+
+        setTotalOnlineVAT(onlineVAT);
+        setTotalOfflineVAT(offlineVAT);
+        setTotalInputVAT(inputVAT);
+        setNetPayableVAT(netPayable);
+      } catch (err) {
+        console.error("Error fetching VAT summary:", err);
+      } finally {
+        setLoadingVAT(false);
+      }
+    };
+
+    fetchVATSummary();
+  }, []);
 
   useEffect(() => {
     const fetchVATMetrics = async () => {
@@ -392,13 +426,95 @@ export default function VATTab() {
       {activeSubTab === "overview" && (
         <div className="space-y-8">
 
-      {/* VAT History */}
+      {/* VAT Summary Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Total Online VAT Card */}
+        <div className="bg-white rounded-xl p-6 border border-orange-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-gray-600">Total Online VAT</p>
+            <TrendingUp className="h-5 w-5 text-orange-600" />
+          </div>
+          <p className="text-3xl font-bold text-orange-600">
+            ₦{totalOnlineVAT.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">From transaction history</p>
+        </div>
+
+        {/* Total Offline VAT Card */}
+        <div className="bg-white rounded-xl p-6 border border-blue-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-gray-600">Total Offline VAT</p>
+            <TrendingUp className="h-5 w-5 text-blue-600" />
+          </div>
+          <p className="text-3xl font-bold text-blue-600">
+            ₦{totalOfflineVAT.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">From offline orders</p>
+        </div>
+
+        {/* Total Input VAT Card */}
+        <div className="bg-white rounded-xl p-6 border border-red-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-gray-600">Total Input VAT</p>
+            <TrendingDown className="h-5 w-5 text-red-600" />
+          </div>
+          <p className="text-3xl font-bold text-red-600">
+            ₦{totalInputVAT.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">From expenses</p>
+        </div>
+
+        {/* Net Payable VAT Card */}
+        <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-xl p-6 border border-green-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-sm font-medium text-gray-600">Net Payable VAT</p>
+            <DollarSign className="h-5 w-5 text-green-600" />
+          </div>
+          <p className="text-3xl font-bold text-green-600">
+            ₦{netPayableVAT.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+          </p>
+          <p className="text-xs text-gray-500 mt-2">Online + Offline - Input</p>
+        </div>
+      </div>
+
+      {/* Current VAT Period Section */}
       <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
         <div className="mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Archived VAT Periods</h2>
-          <p className="text-sm text-gray-600 mb-6">View and manage previous VAT calculation periods (automatically archived on the 21st of each month)</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Current VAT Period</h2>
+          <p className="text-sm text-gray-600 mb-6">Active VAT remittance period (21st to 20th of each month)</p>
           
-          {metrics.monthlyBreakdown && metrics.monthlyBreakdown.length > 0 ? (
+          {vatPeriod && (
+            <div className="flex items-center justify-between p-6 bg-gradient-to-r from-lime-50 to-green-50 border-2 border-lime-200 rounded-lg">
+              <div className="flex items-center gap-4 flex-1">
+                <div className="p-3 rounded-lg bg-lime-100">
+                  <Calendar className="h-6 w-6 text-lime-600" />
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-900 text-lg">
+                    {vatPeriod.startDate.toLocaleDateString('en-NG', { month: 'long', day: 'numeric' })} - {vatPeriod.endDate.toLocaleDateString('en-NG', { month: 'long', day: 'numeric' })}
+                  </p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {vatPeriod.daysRemaining} days remaining until remittance deadline
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="font-bold text-2xl text-lime-600">
+                  ₦{netPayableVAT.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
+                </p>
+                <p className="text-xs text-gray-500 mt-1">Net Payable VAT</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <hr className="my-8" />
+
+        <div>
+          <h3 className="text-lg font-bold text-gray-900 mb-6">Archived VAT Periods</h3>
+          <p className="text-sm text-gray-600 mb-6">Previous VAT periods that have been remitted (automatically archived after the 21st of each month)</p>
+          
+          {metrics?.monthlyBreakdown && metrics.monthlyBreakdown.length > 0 ? (
             <div className="space-y-3">
               {metrics.monthlyBreakdown.map((month, index) => (
                 <div
@@ -406,8 +522,8 @@ export default function VATTab() {
                   className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
                 >
                   <div className="flex items-center gap-4 flex-1">
-                    <div className="p-3 rounded-lg bg-purple-100">
-                      <Calendar className="h-5 w-5 text-purple-600" />
+                    <div className="p-3 rounded-lg bg-gray-100">
+                      <Calendar className="h-5 w-5 text-gray-600" />
                     </div>
                     <div>
                       <p className="font-semibold text-gray-900">{month.month} {month.year}</p>
@@ -416,14 +532,10 @@ export default function VATTab() {
                   </div>
                   <div className="text-right">
                     <p className="font-bold text-lg text-gray-900">
-                      ₦{month.vatPayable.toLocaleString("en-NG", {
-                        minimumFractionDigits: 2,
-                      })}
+                      ₦{month.vatPayable.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
                     </p>
                     <p className="text-xs text-gray-500">
-                      Output: ₦{month.outputVAT.toLocaleString("en-NG", {
-                        minimumFractionDigits: 2,
-                      })}
+                      Net Payable
                     </p>
                   </div>
                 </div>
@@ -438,7 +550,7 @@ export default function VATTab() {
 
         <h2 className="text-xl font-bold text-gray-900 mb-6">VAT Transaction History</h2>
         <div className="space-y-3">
-          {metrics.vatHistory.map((item, index) => (
+          {metrics?.vatHistory?.map((item, index) => (
             <div
               key={index}
               className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition"
@@ -478,21 +590,23 @@ export default function VATTab() {
             </div>
           ))}
         </div>
-      </div>
 
-          {/* Information Box */}
-          <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
-            <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" /> About VAT Calculation
-            </h3>
-            <ul className="space-y-2 text-sm text-blue-800">
-              <li>• <strong>Output VAT:</strong> The VAT you charge your customers on sales (7.5% of sales value)</li>
-              <li>• <strong>Input VAT:</strong> The VAT you pay on business expenses that can be deducted from output VAT</li>
-              <li>• <strong>VAT Payable:</strong> The net amount you owe to the tax authority (Output VAT - Input VAT)</li>
-              <li>• <strong>Filing Deadline:</strong> VAT returns must be filed by the 21st of the following month</li>
-              <li>• <strong>Monthly Frequency:</strong> VAT is calculated and paid monthly in Nigeria</li>
-            </ul>
-          </div>
+        <hr className="my-8" />
+
+        {/* Information Box */}
+        <div className="bg-blue-50 border border-blue-200 rounded-2xl p-6">
+          <h3 className="font-semibold text-blue-900 mb-3 flex items-center gap-2">
+            <AlertCircle className="h-5 w-5" /> About VAT Calculation
+          </h3>
+          <ul className="space-y-2 text-sm text-blue-800">
+            <li>• <strong>Output VAT:</strong> The VAT you charge your customers on sales (7.5% of sales value)</li>
+            <li>• <strong>Input VAT:</strong> The VAT you pay on business expenses that can be deducted from output VAT</li>
+            <li>• <strong>VAT Payable:</strong> The net amount you owe to the tax authority (Output VAT - Input VAT)</li>
+            <li>• <strong>Filing Deadline:</strong> VAT returns must be filed by the 21st of the following month</li>
+            <li>• <strong>Monthly Frequency:</strong> VAT is calculated and paid monthly in Nigeria</li>
+          </ul>
+        </div>
+      </div>
         </div>
       )}
 
