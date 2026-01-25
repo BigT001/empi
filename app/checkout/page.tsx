@@ -236,6 +236,17 @@ export default function CheckoutPage() {
         const goodsSubtotal = buySubtotalAfterDiscount + rentalSubtotal;
         const taxAmount = Number((goodsSubtotal * VAT_RATE).toFixed(2));
         const totalAmount = goodsSubtotal + (cautionFee || 0) + shippingCost + taxAmount;
+        
+        // Log the subtotal breakdown for debugging
+        console.log('[Checkout] 💰 PRICING BREAKDOWN:', {
+          buySubtotal,
+          rentalSubtotal,
+          goodsSubtotal,
+          discountAmount: discountAmt,
+          taxAmount,
+          cautionFee: cautionFee || 0,
+          totalAmount
+        });
 
         // Attach rentalDays to each item for persistence/visibility in admin UI
         const itemsWithRentalDays = items.map((it: any) => {
@@ -300,7 +311,7 @@ export default function CheckoutPage() {
           shippingType: shippingOption || 'standard',
           status: 'pending',
           shippingCost: 0,
-          subtotal: buySubtotal,
+          subtotal: goodsSubtotal,  // ← CRITICAL FIX: Use goodsSubtotal (buy + rental), not just buySubtotal
           // CRITICAL: Add top-level discount and VAT fields (not just in pricing object)
           discountPercentage: discountPercent,
           discountAmount: discountAmt,
@@ -309,7 +320,7 @@ export default function CheckoutPage() {
           cautionFee: (cautionFee || 0),  // CRITICAL: Save caution fee to top-level field
           total: totalAmount,
           pricing: {
-            subtotal: buySubtotal,
+            subtotal: goodsSubtotal,  // ← Use goodsSubtotal here too
             buySubtotal: buySubtotal,
             rentalSubtotal: rentalSubtotal,
             goodsSubtotal: goodsSubtotal,

@@ -29,6 +29,14 @@ interface Invoice {
   taxAmount: number;
 }
 
+interface ConfirmDialog {
+  isOpen: boolean;
+  invoiceId?: string;
+  currentStatus?: string;
+  newStatus?: string;
+  invoiceNumber?: string;
+}
+
 export function SavedInvoices() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -36,6 +44,8 @@ export function SavedInvoices() {
   const [filterType, setFilterType] = useState<'all' | 'automatic' | 'manual'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'sent' | 'paid' | 'overdue'>('all');
   const [searchQuery, setSearchQuery] = useState("");
+  const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({ isOpen: false });
+  const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
 
   useEffect(() => {
     loadInvoices();
@@ -78,111 +88,67 @@ export function SavedInvoices() {
     }
   };
 
-  const handleStatusChange = async (invoiceId: string, newStatus: string) => {
+  const handleStatusChange = (invoiceId: string, invoiceNumber: string, currentStatus: string, newStatus: string) => {
+    // If status hasn't changed, don't do anything
+    if (currentStatus === newStatus) return;
+
+    // Show confirmation dialog
+    setConfirmDialog({
+      isOpen: true,
+      invoiceId,
+      currentStatus,
+      newStatus,
+      invoiceNumber,
+    });
+  };
+
+  const confirmStatusChange = async () => {
+    if (!confirmDialog.invoiceId || !confirmDialog.newStatus) return;
+
+    setUpdatingInvoiceId(confirmDialog.invoiceId);
     try {
-      const response = await fetch(`/api/invoices/${invoiceId}`, {
+      const response = await fetch(`/api/invoices/${confirmDialog.invoiceId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus }),
+        body: JSON.stringify({ status: confirmDialog.newStatus }),
       });
 
       if (response.ok) {
         setInvoices(invoices.map(inv =>
-          inv._id === invoiceId ? { ...inv, status: newStatus as any } : inv
+          inv._id === confirmDialog.invoiceId ? { ...inv, status: confirmDialog.newStatus as any } : inv
         ));
+        // Update selected invoice if it's open
+        if (selectedInvoice && selectedInvoice._id === confirmDialog.invoiceId) {
+          setSelectedInvoice({ ...selectedInvoice, status: confirmDialog.newStatus as any });
+        }
+        console.log(`✅ Invoice ${confirmDialog.invoiceNumber} status updated to ${confirmDialog.newStatus}`);
+      } else {
+        alert("Failed to update invoice status");
       }
     } catch (err) {
-      console.error("Error updating invoice:", err);
+      console.error("Error updating invoice status:", err);
+      alert("Error updating invoice status");
+    } finally {
+      setUpdatingInvoiceId(null);
+      setConfirmDialog({ isOpen: false });
     }
   };
 
   const handlePrintInvoice = (invoice: Invoice) => {
-    const printWindow = window.open("", "", "width=900,height=700");
+    // Use the professional invoice HTML template for printing
+    const professionalHtml = generateProfessionalInvoiceHTML(invoice as any);
+    const printWindow = window.open("", "", "width=1200,height=800");
     if (!printWindow) return;
     
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Invoice ${invoice.invoiceNumber}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .invoice { max-width: 900px; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #22c55e; padding-bottom: 15px; }
-            .header h1 { color: #22c55e; margin: 0; }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-            .info-section h3 { margin: 0 0 10px 0; font-size: 12px; color: #666; font-weight: bold; }
-            .info-section p { margin: 5px 0; }
-            .items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .items th { background: #f3f4f6; padding: 10px; text-align: left; font-weight: bold; }
-            .items td { padding: 10px; border-bottom: 1px solid #e5e7eb; }
-            .totals { text-align: right; margin-bottom: 20px; }
-            .totals p { margin: 5px 0; }
-            .total-amount { font-size: 18px; font-weight: bold; color: #22c55e; }
-          </style>
-        </head>
-        <body>
-          <div class="invoice">
-            <div class="header">
-              <h1>EMPI - Invoice</h1>
-              <p>Invoice #${invoice.invoiceNumber}</p>
-            </div>
-
-            <div class="info-grid">
-              <div class="info-section">
-                <h3>INVOICE TO:</h3>
-                <p>${invoice.customerName}</p>
-                <p>${invoice.customerEmail}</p>
-                <p>${invoice.customerPhone}</p>
-              </div>
-              <div class="info-section">
-                <h3>INVOICE DETAILS:</h3>
-                <p><strong>Invoice Date:</strong> ${new Date(invoice.invoiceDate).toLocaleDateString()}</p>
-                ${invoice.dueDate ? `<p><strong>Due Date:</strong> ${new Date(invoice.dueDate).toLocaleDateString()}</p>` : ''}
-                <p><strong>Status:</strong> ${invoice.status.toUpperCase()}</p>
-              </div>
-            </div>
-
-            <table class="items">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th style="text-align: center;">Qty</th>
-                  <th style="text-align: right;">Price</th>
-                  <th style="text-align: right;">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${invoice.items.map(item => `
-                  <tr>
-                    <td>${item.name}</td>
-                    <td style="text-align: center;">${item.quantity}</td>
-                    <td style="text-align: right;">${invoice.currencySymbol}${item.price.toFixed(2)}</td>
-                    <td style="text-align: right;">${invoice.currencySymbol}${(item.quantity * item.price).toFixed(2)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-
-            <div class="totals">
-              <p><strong>Subtotal:</strong> ${invoice.currencySymbol}${invoice.subtotal.toFixed(2)}</p>
-              <p><strong>Tax:</strong> ${invoice.currencySymbol}${invoice.taxAmount.toFixed(2)}</p>
-              <p class="total-amount"><strong>Total:</strong> ${invoice.currencySymbol}${invoice.totalAmount.toFixed(2)}</p>
-            </div>
-
-            <p style="text-align: center; color: #666; font-size: 12px; margin-top: 30px;">
-              Thank you for your business! For inquiries, contact: support@empi.com
-            </p>
-          </div>
-        </body>
-      </html>
-    `);
+    printWindow.document.write(professionalHtml);
     printWindow.document.close();
-    setTimeout(() => printWindow.print(), 250);
+    setTimeout(() => printWindow.print(), 500);
   };
 
   const handleDownloadInvoice = (invoice: Invoice) => {
-    const html = `Invoice #${invoice.invoiceNumber} - ${invoice.customerName}`;
-    const blob = new Blob([html], { type: "text/html" });
+    // Generate the professional invoice HTML
+    const professionalHtml = generateProfessionalInvoiceHTML(invoice as any);
+    const blob = new Blob([professionalHtml], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -323,16 +289,24 @@ export function SavedInvoices() {
 
               {/* Status & Actions */}
               <div className="space-y-2">
-                <select
-                  value={invoice.status}
-                  onChange={(e) => handleStatusChange(invoice._id, e.target.value)}
-                  className={`w-full px-2 py-2 rounded text-xs font-semibold border-0 cursor-pointer transition ${statusColors[invoice.status]}`}
-                >
-                  <option value="draft">Draft</option>
-                  <option value="sent">Sent</option>
-                  <option value="paid">Paid</option>
-                  <option value="overdue">Overdue</option>
-                </select>
+                {invoice.type === 'manual' && (
+                  <select
+                    value={invoice.status}
+                    onChange={(e) => handleStatusChange(invoice._id, invoice.invoiceNumber, invoice.status, e.target.value)}
+                    disabled={updatingInvoiceId === invoice._id}
+                    className={`w-full px-2 py-2 rounded text-xs font-semibold border-0 cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed ${statusColors[invoice.status]}`}
+                  >
+                    <option value="draft">Draft</option>
+                    <option value="sent">Sent</option>
+                    <option value="paid">Paid</option>
+                    <option value="overdue">Overdue</option>
+                  </select>
+                )}
+                {invoice.type === 'automatic' && (
+                  <div className={`w-full px-2 py-2 rounded text-xs font-semibold text-center ${statusColors['paid']}`}>
+                    Paid (Automatic)
+                  </div>
+                )}
                 
                 <div className="grid grid-cols-4 gap-1.5">
                   <button
@@ -393,6 +367,63 @@ export function SavedInvoices() {
                 title={`Invoice ${selectedInvoice.invoiceNumber}`}
                 style={{ minHeight: "600px" }}
               />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Dialog for Status Change */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-4">
+              <h3 className="text-lg font-bold">Confirm Status Change</h3>
+            </div>
+
+            {/* Content */}
+            <div className="px-6 py-4">
+              <p className="text-gray-700 mb-4">
+                Are you sure you want to change the status of invoice <span className="font-bold">{confirmDialog.invoiceNumber}</span>?
+              </p>
+              <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between mb-3">
+                  <span className="text-gray-600">Current Status:</span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[confirmDialog.currentStatus as any] || 'bg-gray-100 text-gray-800'}`}>
+                    {confirmDialog.currentStatus?.toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex items-center justify-center mb-0">
+                  <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </div>
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-gray-600">New Status:</span>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[confirmDialog.newStatus as any] || 'bg-gray-100 text-gray-800'}`}>
+                    {confirmDialog.newStatus?.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+              <p className="text-sm text-gray-600">This action will update the invoice status in the system.</p>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 px-6 py-4 bg-gray-50 border-t border-gray-200 rounded-b-lg">
+              <button
+                onClick={() => setConfirmDialog({ isOpen: false })}
+                disabled={updatingInvoiceId !== null}
+                className="flex-1 px-4 py-2 text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmStatusChange}
+                disabled={updatingInvoiceId !== null}
+                className="flex-1 px-4 py-2 text-white bg-blue-600 rounded-lg hover:bg-blue-700 font-semibold transition disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {updatingInvoiceId ? "Updating..." : "Confirm"}
+              </button>
             </div>
           </div>
         </div>

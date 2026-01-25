@@ -293,7 +293,11 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       color: #047857;
       font-weight: 500;
       margin-bottom: 12px;
-      line-height: 1.5;
+      line-height: 1.6;
+    }
+    .payment-note strong {
+      color: #047857;
+      font-weight: 700;
     }
     .totals-box { 
       background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
@@ -312,13 +316,13 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       border-bottom: 1px solid rgba(255,255,255,0.6);
     }
     .totals-row.total-row { 
-      font-size: 16px;
-      font-weight: 800;
+      font-size: 18px;
+      font-weight: 900;
       color: #10b981;
-      border-top: 2px solid #10b981;
+      border-top: 3px solid #10b981;
       border-bottom: none;
-      padding-top: 8px;
-      margin-top: 4px;
+      padding-top: 12px;
+      margin-top: 12px;
       padding-bottom: 0;
     }
     .totals-row span:first-child { 
@@ -563,7 +567,7 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
             <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAACE4AAAhOAFmwQcnAAABpElEQVR4nO3YwUrDMBCG4ZA7iJ5EsV7Fi4gHQRBFPYiCB0Hx4tGTZ09e9OpBeAzBiyBqb56k15O0pGmTZJrZzPwwH8wBGfj2m2Q3SSccx3H+JXmelzUajRwAiKIoRZZlMZ1OR4vFYrJcLhfr9foyiiKMbMux7RskSRK0Wi0Wy+VyQ6GUyj7PY1mWlCRJNJ1OJ4vFYkWhVKrVajGbzcZCoRBIkmShkIlEIikSHo+n1mq1OBxUyhT9fp/pdBqPx+NRqVSSJEnkcrkMc9sKhUIg/X6faTabdF1HUZSEvt/PyeXyxnWBfD4fyuOYzWbmdR0gn89HvV6PXq+HLMuKxqWnpmJbFi6Xi2azycjj8RBFUb/f1wVyPp85HA7Z5/OhKAq6rj/v0Ov18jAY/VvdbleXiJZlKZZlKZZlxRRK6RP/EB0iO4RGsCOQHUIjWBAzsgNoBGoH5BSoHUAjUDsgKyBTdwBoB9AOyAoIs3cAaAfQDsgKIHsBaAfQDsgKwJIaAvwNvz+gHZAVEGbvANAOoB2QFRBm7wDQDqAdkBUAaAdkBQDaAVkBQDuAdiAL+AVm/w7RpmOC5gAAAABJRU5ErkJggg==" alt="EMPI Logo" class="logo-img">
             <div class="company-name">EMPI</div>
           </div>
-          <div class="status-badge">PAID</div>
+          ${invoice.type === 'automatic' ? '<div class="status-badge">PAID</div>' : ''}
         </div>
         
         <div class="header-info">
@@ -593,17 +597,19 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
           <strong>${invoice.customerName}</strong>
           <p>${invoice.customerEmail}</p>
           <p>${invoice.customerPhone}</p>
+          ${invoice.customerAddress ? `<p style="font-size: 11px; color: #666; margin-top: 4px;">${invoice.customerAddress}${invoice.customerCity ? ', ' + invoice.customerCity : ''}${invoice.customerState ? ', ' + invoice.customerState : ''}${invoice.customerPostalCode ? ' ' + invoice.customerPostalCode : ''}</p>` : ''}
         </div>
         <div class="info-box">
-          <h4>📦 Items</h4>
-          <strong>${invoice.items.length} ${invoice.items.length === 1 ? 'Item' : 'Items'}</strong>
-          <p>Status: Paid</p>
-          <p>Date: ${dateStr}</p>
+          <h4>📦 Order</h4>
+          <strong>Order #${invoice.orderNumber}</strong>
+          <p>${invoice.items.length} ${invoice.items.length === 1 ? 'Item' : 'Items'}</p>
+          <p>Status: ${invoice.type === 'automatic' ? 'Paid ✓' : (invoice.status || 'Draft').charAt(0).toUpperCase() + (invoice.status || 'Draft').slice(1)}</p>
+          <p style="font-size: 11px; color: #666; margin-top: 4px;">${dateStr}</p>
         </div>
         <div class="info-box">
-          <h4>💰 Total</h4>
-          <strong>${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</strong>
-          <p>Payment Received</p>
+          <h4>💰 Total Amount</h4>
+          <strong style="font-size: 18px;">${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</strong>
+          <p style="font-size: 11px; color: ${invoice.type === 'automatic' ? '#047857' : '#6b7280'};\">${invoice.type === 'automatic' ? '✓ Paid & Verified' : invoice.status === 'sent' ? '📤 Sent' : '📋 Draft'}</p>
         </div>
       </div>
       
@@ -628,10 +634,10 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
               ${invoice.items.map((item) => `
                 <tr>
                   <td><span class="item-name">${item.name}</span></td>
-                  <td><span class="item-mode" style="font-weight: 600; ${item.mode === 'rent' ? 'color: #a855f7;' : 'color: #059669;'}">${item.mode === 'rent' ? '🔄 Rental' : '🛍️ Buy'}</span></td>
+                  <td><span class="item-mode" style="font-weight: 600; ${(item.mode || 'buy') === 'rent' ? 'color: #a855f7;' : 'color: #059669;'}">${(item.mode || 'buy') === 'rent' ? '🔄 Rental' : '🛍️ Buy'}</span></td>
                   <td><span class="item-qty">${item.quantity}</span></td>
-                  <td><span class="item-price">${invoice.currencySymbol}${item.price.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
-                  <td><span class="item-total">${invoice.currencySymbol}${(item.quantity * item.price).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
+                  <td><span class="item-price">${invoice.currencySymbol}${((item.price || 0)).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
+                  <td><span class="item-total">${invoice.currencySymbol}${((item.quantity || 1) * (item.price || 0)).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
                 </tr>
               `).join('')}
             </tbody>
@@ -642,23 +648,51 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
       <!-- SUMMARY -->
       <div class="summary-section">
         <div class="totals-box">
+          <!-- SUBTOTAL -->
           <div class="totals-row">
             <span>Subtotal</span>
             <span>${invoice.currencySymbol}${invoice.subtotal.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
           </div>
-          ${invoice.bulkDiscountPercentage && invoice.bulkDiscountPercentage > 0 ? `<div class="totals-row" style="background-color: #f0fdf4; border-radius: 6px; padding: 8px; margin: 4px 0;"><span style="color: #15803d; font-weight: 600;">🎉 Bulk Discount (${invoice.bulkDiscountPercentage}%)</span><span style="color: #15803d; font-weight: 600;">-${invoice.currencySymbol}${invoice.bulkDiscountAmount?.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
-          ${invoice.cautionFee && invoice.cautionFee > 0 ? `<div class="totals-row"><span>🔄 Caution Fee (Rentals)</span><span>${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
-          ${invoice.subtotalWithCaution && invoice.cautionFee && invoice.cautionFee > 0 ? `<div class="totals-row"><span style="font-weight: 700;">Subtotal + Caution</span><span style="font-weight: 700;">${invoice.currencySymbol}${invoice.subtotalWithCaution.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
-          <!-- Shipping removed from professional invoice per admin request -->
-          ${invoice.taxAmount > 0 ? `<div class="totals-row"><span>VAT</span><span>${invoice.currencySymbol}${invoice.taxAmount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></div>` : ''}
+          
+          <!-- BULK DISCOUNT (if applicable) -->
+          ${invoice.bulkDiscountPercentage && invoice.bulkDiscountPercentage > 0 ? `
+          <div class="totals-row" style="background-color: #f0fdf4; border-radius: 6px; padding: 8px; margin: 4px 0; border: 1px solid #dcfce7;">
+            <span style="color: #15803d; font-weight: 600;">🎉 Bulk Discount Applied (${invoice.bulkDiscountPercentage}%)</span>
+            <span style="color: #15803d; font-weight: 600;">-${invoice.currencySymbol}${(invoice.bulkDiscountAmount || 0).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
+          </div>
+          <div class="totals-row">
+            <span style="color: #666;">Subtotal After Discount</span>
+            <span style="color: #666; font-weight: 600;">${invoice.currencySymbol}${(invoice.subtotalAfterDiscount || invoice.subtotal).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
+          </div>` : ''}
+          
+          <!-- CAUTION FEE (if applicable) -->
+          ${invoice.cautionFee && invoice.cautionFee > 0 ? `
+          <div class="totals-row" style="background-color: #fef3c7; border-radius: 6px; padding: 8px; margin: 4px 0; border: 1px solid #fde68a;">
+            <span style="color: #92400e; font-weight: 600;">🔒 Caution Fee (Rental - 50%, Refundable)</span>
+            <span style="color: #92400e; font-weight: 600;">${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
+          </div>
+          <div class="totals-row">
+            <span style="color: #666;">Subtotal + Caution</span>
+            <span style="color: #666; font-weight: 600;">${invoice.currencySymbol}${(invoice.subtotalWithCaution || (invoice.subtotalAfterDiscount || invoice.subtotal) + invoice.cautionFee).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
+          </div>` : ''}
+          
+          <!-- VAT/TAX -->
+          ${invoice.taxAmount > 0 ? `
+          <div class="totals-row">
+            <span>VAT (7.5%)</span>
+            <span>${invoice.currencySymbol}${invoice.taxAmount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
+          </div>` : ''}
+          
+          <!-- FINAL TOTAL -->
           <div class="totals-row total-row">
-            <span>Total</span>
+            <span>💳 Total Amount Due</span>
             <span>${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</span>
           </div>
         </div>
         
         <div class="payment-note">
-          ✓ Your payment has been received and processed. Thank you for your purchase!
+          ${invoice.type === 'automatic' ? `✓ Your payment has been received and processed. Thank you for your purchase!` : `📋 Invoice generated and ready. Awaiting payment.`}
+          ${invoice.cautionFee && invoice.cautionFee > 0 ? `<br><br>📌 <strong>Caution Fee Note:</strong> The caution fee of ${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 2 })} is a refundable deposit for rental items. It will be refunded upon successful return in good condition.` : ''}
         </div>
       </div>
     </div>

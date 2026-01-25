@@ -43,12 +43,13 @@ export async function createInvoiceFromOrder(order: IOrder): Promise<any> {
     const subtotalAfterDiscount = pricing.subtotalAfterDiscount ?? goodsSubtotal;
 
     // Map order items to invoice items (include rentalDays if present)
+    // CRITICAL: Ensure price field is set correctly and mode is preserved
     const invoiceItems = (order.items || []).map((item: any) => ({
       productId: item.productId,
       name: item.name,
       quantity: item.quantity,
-      price: item.price,
-      mode: item.mode,
+      price: item.price || item.unitPrice || 0,  // Handle both price and unitPrice field names
+      mode: item.mode || 'buy',  // Preserve rental vs buy mode
       rentalDays: item.rentalDays || 0,
     }));
 

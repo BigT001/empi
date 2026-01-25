@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getAdminInvoices, deleteAdminInvoice, clearAdminInvoices, StoredInvoice } from "@/lib/invoiceStorage";
+import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { Trash2, Eye, Download, Printer } from "lucide-react";
 
 export function AutomaticInvoiceGenerator() {
@@ -37,101 +38,19 @@ export function AutomaticInvoiceGenerator() {
   };
 
   const handlePrintInvoice = (invoice: StoredInvoice) => {
-    const printWindow = window.open("", "", "width=900,height=700");
+    // Use the professional invoice HTML template for printing
+    const professionalHtml = generateProfessionalInvoiceHTML(invoice);
+    const printWindow = window.open("", "", "width=1200,height=800");
     if (!printWindow) return;
-    printWindow.document.write(`
-      <html>
-        <head>
-          <title>Invoice ${invoice.invoiceNumber}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .invoice { max-width: 900px; margin: 0 auto; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #22c55e; padding-bottom: 15px; }
-            .header h1 { color: #22c55e; margin: 0; }
-            .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
-            .info-section { }
-            .info-section h3 { margin: 0 0 10px 0; font-size: 12px; color: #666; font-weight: bold; }
-            .info-section p { margin: 5px 0; }
-            .items { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-            .items th { background: #f3f4f6; padding: 10px; text-align: left; font-weight: bold; }
-            .items td { padding: 10px; border-bottom: 1px solid #e5e7eb; }
-            .totals { text-align: right; margin-bottom: 20px; }
-            .totals p { margin: 5px 0; }
-            .total-amount { font-size: 18px; font-weight: bold; color: #22c55e; }
-          </style>
-        </head>
-        <body>
-          <div class="invoice">
-            <div class="header">
-              <h1>EMPI - Invoice</h1>
-              <p>Invoice #${invoice.invoiceNumber}</p>
-            </div>
-
-            <div class="info-grid">
-              <div class="info-section">
-                <h3>INVOICE TO:</h3>
-                <p>${invoice.customerName}</p>
-                <p>${invoice.customerEmail}</p>
-                <p>${invoice.customerPhone}</p>
-              </div>
-              <div class="info-section">
-                <h3>INVOICE DETAILS:</h3>
-                <p><strong>Invoice Date:</strong> ${new Date(invoice.invoiceDate).toLocaleDateString()}</p>
-                <p><strong>Order Number:</strong> ${invoice.orderNumber}</p>
-                <p><strong>Status:</strong> PAID</p>
-              </div>
-            </div>
-
-            <table class="items">
-              <thead>
-                <tr>
-                  <th>Product</th>
-                  <th style="text-align: center;">Qty</th>
-                  <th style="text-align: right;">Price</th>
-                  <th style="text-align: right;">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${invoice.items.map(item => `
-                  <tr>
-                    <td>${item.name}</td>
-                    <td style="text-align: center;">${item.quantity}</td>
-                    <td style="text-align: right;">${invoice.currencySymbol}${item.price.toFixed(2)}</td>
-                    <td style="text-align: right;">${invoice.currencySymbol}${(item.quantity * item.price).toFixed(2)}</td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-
-            <div class="totals">
-              <p><strong>Subtotal:</strong> ${invoice.currencySymbol}${(invoice.subtotal || invoice.totalAmount).toFixed(2)}</p>
-              <p><strong>Tax (7.5%):</strong> ${invoice.currencySymbol}${(invoice.taxAmount || 0).toFixed(2)}</p>
-              <p class="total-amount"><strong>Total:</strong> ${invoice.currencySymbol}${invoice.totalAmount.toFixed(2)}</p>
-            </div>
-
-            <p style="text-align: center; color: #666; font-size: 12px; margin-top: 30px;">
-              Thank you for your business! For inquiries, contact: support@empi.com
-            </p>
-          </div>
-        </body>
-      </html>
-    `);
+    printWindow.document.write(professionalHtml);
     printWindow.document.close();
-    setTimeout(() => printWindow.print(), 250);
+    setTimeout(() => printWindow.print(), 500);
   };
 
   const handleDownloadInvoice = (invoice: StoredInvoice) => {
-    const html = `
-      <html>
-        <head>
-          <title>Invoice ${invoice.invoiceNumber}</title>
-        </head>
-        <body>
-          Invoice: ${invoice.invoiceNumber}
-        </body>
-      </html>
-    `;
-    const blob = new Blob([html], { type: "text/html" });
+    // Generate the professional invoice HTML
+    const professionalHtml = generateProfessionalInvoiceHTML(invoice);
+    const blob = new Blob([professionalHtml], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;

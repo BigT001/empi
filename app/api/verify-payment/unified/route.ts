@@ -57,6 +57,28 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Verify Payment] ✅ Payment verified for ${order.orderNumber}`);
 
+    // CRITICAL FIX: Map items from UnifiedOrder to Invoice format
+    // UnifiedOrder uses 'unitPrice' but Invoice schema expects 'price'
+    // Also preserve the 'mode' field for rental vs buy tracking
+    const invoiceItems = (order.items || []).map((item: any) => {
+      const mappedItem = {
+        productId: item.productId || undefined,
+        name: item.name || '',
+        quantity: item.quantity || 1,
+        price: item.unitPrice || item.price || 0,  // ← Map unitPrice to price
+        mode: item.mode || 'buy',  // ← Ensure mode is preserved (buy or rent)
+        rentalDays: item.rentalDays || 0,
+      };
+      
+      console.log(`[Verify Payment] 📝 Mapping item: "${mappedItem.name}"`, {
+        mode: mappedItem.mode,
+        quantity: mappedItem.quantity,
+        price: mappedItem.price,
+      });
+      
+      return mappedItem;
+    });
+
     // Create invoice with complete pricing (including discount)
     const invoiceNumber = `INV-${Date.now()}`;
     const invoice = await Invoice.create({
@@ -71,17 +93,20 @@ export async function GET(request: NextRequest) {
       customerCity: order.city,
       customerState: order.state,
       customerPostalCode: order.zipCode,
-      items: order.items,
+      items: invoiceItems,  // ← Use properly mapped items
       subtotal: order.subtotal,
+      subtotalAfterDiscount: order.subtotalAfterDiscount || order.subtotal,
+      cautionFee: order.cautionFee || 0,
+      subtotalWithCaution: (order.subtotalAfterDiscount || order.subtotal) + (order.cautionFee || 0),
       // 🎁 Include discount information
       bulkDiscountPercentage: order.discountPercentage || 0,
       bulkDiscountAmount: order.discountAmount || 0,
-      vat: order.vat,
-      taxAmount: order.vat,
-      total: order.total,
+      shippingCost: order.shippingCost || 0,
+      taxAmount: order.vat || 0,
       totalAmount: order.total,
       currency: 'NGN',
       currencySymbol: '₦',
+      taxRate: 7.5,
       type: 'automatic',
       status: 'sent',
       invoiceDate: new Date(),
@@ -89,7 +114,14 @@ export async function GET(request: NextRequest) {
       createdAt: new Date(),
     });
 
-    console.log(`[Verify Payment] 📋 Invoice created: ${invoiceNumber}`);
+    console.log(`[Verify Payment] 📋 Invoice created: ${invoiceNumber}`, {
+      itemCount: invoiceItems.length,
+      items: invoiceItems.map(i => `${i.name} (${i.mode}) - Qty: ${i.quantity}, Price: ${i.price}`),
+      subtotal: order.subtotal,
+      cautionFee: order.cautionFee || 0,
+      taxAmount: order.vat || 0,
+      totalAmount: order.total,
+    });
 
     // Determine appropriate status based on order type
     // CUSTOM ORDERS: Stay pending until admin explicitly approves
@@ -116,7 +148,7 @@ export async function GET(request: NextRequest) {
     try {
       console.log(`[Verify Payment] 📧 Sending invoice email to customer: ${order.email}`);
       
-      // Generate a simple invoice HTML for email
+      // Generate a simple invoice HTML for email (using the mapped items with correct mode info)
       const invoiceHtml = `
         <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 600px;">
           <h2>Invoice ${invoiceNumber}</h2>
@@ -127,12 +159,14 @@ export async function GET(request: NextRequest) {
           <table style="width: 100%; border-collapse: collapse;">
             <tr>
               <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Item</th>
+              <th style="border: 1px solid #ddd; padding: 8px; text-align: center;">Type</th>
               <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Qty</th>
               <th style="border: 1px solid #ddd; padding: 8px; text-align: right;">Price</th>
             </tr>
-            ${order.items?.map((item: any) => `
+            ${invoiceItems?.map((item: any) => `
               <tr>
                 <td style="border: 1px solid #ddd; padding: 8px;">${item.name}</td>
+                <td style="border: 1px solid #ddd; padding: 8px; text-align: center; font-weight: bold; color: ${item.mode === 'rent' ? '#a855f7' : '#059669'};">${item.mode === 'rent' ? 'RENTAL' : 'BUY'}</td>
                 <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${item.quantity}</td>
                 <td style="border: 1px solid #ddd; padding: 8px; text-align: right;">₦${(item.price * item.quantity).toLocaleString()}</td>
               </tr>
@@ -142,6 +176,7 @@ export async function GET(request: NextRequest) {
           <div style="text-align: right; font-size: 14px;">
             <p><strong>Subtotal:</strong> ₦${order.subtotal?.toLocaleString() || 0}</p>
             ${order.discountPercentage ? `<p><strong>Discount (${order.discountPercentage}%):</strong> -₦${(order.discountAmount || 0).toLocaleString()}</p>` : ''}
+            ${order.cautionFee ? `<p><strong>Caution Fee (Refundable):</strong> ₦${(order.cautionFee || 0).toLocaleString()}</p>` : ''}
             <p><strong>Tax (7.5%):</strong> ₦${(order.vat || 0).toLocaleString()}</p>
             <p style="font-size: 16px;"><strong>Total: ₦${order.total?.toLocaleString() || 0}</strong></p>
           </div>
