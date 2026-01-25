@@ -224,13 +224,13 @@ export function EnhancedDashboard() {
         
         const ordersData = ordersRes.ok ? await ordersRes.json() : { orders: [] };
         const offlineOrdersData = offlineOrdersRes.ok ? await offlineOrdersRes.json() : { data: [] };
-        const productsData = productsRes.ok ? await productsRes.json() : { products: [] };
+        const productsData = productsRes.ok ? await productsRes.json() : { data: [] };
         const usersData = usersRes.ok ? await usersRes.json() : { users: [] };
 
         const onlineOrders = ordersData.orders?.filter((o: any) => !o.isOffline) || [];
         const offlineOrders = offlineOrdersData.data || [];
         const allOrders = [...onlineOrders, ...offlineOrders];
-        const products = productsData.products || [];
+        const products = productsData.data || [];
         const users = usersData.users || [];
 
         const onlineCount = onlineOrders.length;
@@ -301,9 +301,24 @@ export function EnhancedDashboard() {
           dailyMetrics: calculateDailyMetrics(allOrders),
           topProducts: [],
           customerMetrics: {
-            newCustomersThisMonth: 0,
-            returningCustomers: 0,
-            customerRetentionRate: 0,
+            newCustomersThisMonth: users.filter((u: any) => {
+              if (!u.createdAt) return false;
+              const userDate = new Date(u.createdAt);
+              const now = new Date();
+              return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
+            }).length,
+            returningCustomers: totalCustomerEmails.size > 0 ? totalCustomerEmails.size - users.filter((u: any) => {
+              if (!u.createdAt) return false;
+              const userDate = new Date(u.createdAt);
+              const now = new Date();
+              return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
+            }).length : 0,
+            customerRetentionRate: totalCustomerEmails.size > 0 ? ((totalCustomerEmails.size - users.filter((u: any) => {
+              if (!u.createdAt) return false;
+              const userDate = new Date(u.createdAt);
+              const now = new Date();
+              return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
+            }).length) / totalCustomerEmails.size) * 100 : 0,
           },
         };
 
