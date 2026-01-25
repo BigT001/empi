@@ -84,6 +84,86 @@ interface StatCard {
   color: string;
 }
 
+// Function to calculate daily metrics from orders
+function calculateDailyMetrics(orders: any[]): DailyMetrics[] {
+  const dailyMetricsMap = new Map<string, DailyMetrics>();
+
+  orders.forEach((order: any) => {
+    // Get order date
+    const orderDate = order.createdAt || order.created_at || new Date();
+    const dateObj = new Date(orderDate);
+    const dateStr = dateObj.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+
+    // Initialize daily metric if not exists
+    if (!dailyMetricsMap.has(dateStr)) {
+      dailyMetricsMap.set(dateStr, {
+        date: dateStr,
+        salesRevenue: 0,
+        rentalRevenue: 0,
+        totalRevenue: 0,
+        ordersCount: 0,
+        rentalOrdersCount: 0,
+        salesOrdersCount: 0,
+      });
+    }
+
+    const dailyMetric = dailyMetricsMap.get(dateStr)!;
+    const items = order.items || [];
+    
+    // Calculate revenue by item mode
+    let orderSalesRevenue = 0;
+    let orderRentalRevenue = 0;
+    let hasRental = false;
+    let hasSales = false;
+
+    items.forEach((item: any) => {
+      const itemPrice = item.price || 0;
+      const itemQuantity = item.quantity || 1;
+      const itemRevenue = itemPrice * itemQuantity;
+
+      if (item.mode === 'rent' || item.mode === 'rental') {
+        orderRentalRevenue += itemRevenue;
+        hasRental = true;
+      } else if (item.mode === 'buy' || item.mode === 'sale' || item.mode === 'sales') {
+        orderSalesRevenue += itemRevenue;
+        hasSales = true;
+      } else {
+        // If no mode specified, check if order has rentalDays to determine type
+        if (item.rentalDays) {
+          orderRentalRevenue += itemRevenue;
+          hasRental = true;
+        } else {
+          orderSalesRevenue += itemRevenue;
+          hasSales = true;
+        }
+      }
+    });
+
+    // If no items or empty items, use order.total
+    if (items.length === 0 && order.total) {
+      orderSalesRevenue = order.total;
+      hasSales = true;
+    }
+
+    dailyMetric.salesRevenue += orderSalesRevenue;
+    dailyMetric.rentalRevenue += orderRentalRevenue;
+    dailyMetric.totalRevenue += orderSalesRevenue + orderRentalRevenue;
+    dailyMetric.ordersCount += 1;
+
+    if (hasRental) {
+      dailyMetric.rentalOrdersCount += 1;
+    }
+    if (hasSales) {
+      dailyMetric.salesOrdersCount += 1;
+    }
+  });
+
+  // Convert map to sorted array (by date, newest first)
+  return Array.from(dailyMetricsMap.values()).sort(
+    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+}
+
 export function EnhancedDashboard() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -218,7 +298,7 @@ export function EnhancedDashboard() {
             online: onlineCount,
             offline: offlineCount,
           },
-          dailyMetrics: [],
+          dailyMetrics: calculateDailyMetrics(allOrders),
           topProducts: [],
           customerMetrics: {
             newCustomersThisMonth: 0,
@@ -569,55 +649,6 @@ export function EnhancedDashboard() {
               </div>
             );
           })}
-        </div>
-      </div>
-
-      {/* Caution Fee Metrics - Top Visibility */}
-      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-8">
-        <h3 className="text-lg font-semibold text-gray-900 mb-2">Rental Caution Fees (Liability)</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          Deposits from renters - refundable when costumes return in good condition
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          <div className="bg-purple-50 border border-purple-200 p-4 rounded-lg">
-            <p className="text-xs font-medium text-purple-900 mb-1">Collected</p>
-            <p className="text-lg font-bold text-purple-900">
-              ₦{analytics.cautionFeeMetrics.totalCollected.toLocaleString()}
-            </p>
-            <p className="text-xs text-purple-600 mt-2">Deposits held</p>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-            <p className="text-xs font-medium text-blue-900 mb-1">Refunded</p>
-            <p className="text-lg font-bold text-blue-900">
-              ₦{analytics.cautionFeeMetrics.totalRefunded.toLocaleString()}
-            </p>
-            <p className="text-xs text-blue-600 mt-2">Full refunds</p>
-          </div>
-
-          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-            <p className="text-xs font-medium text-yellow-900 mb-1">Partial</p>
-            <p className="text-lg font-bold text-yellow-900">
-              ₦{analytics.cautionFeeMetrics.totalPartiallyRefunded.toLocaleString()}
-            </p>
-            <p className="text-xs text-yellow-600 mt-2">Deductions</p>
-          </div>
-
-          <div className="bg-red-50 border border-red-200 p-4 rounded-lg">
-            <p className="text-xs font-medium text-red-900 mb-1">Forfeited</p>
-            <p className="text-lg font-bold text-red-900">
-              ₦{analytics.cautionFeeMetrics.totalForfeited.toLocaleString()}
-            </p>
-            <p className="text-xs text-red-600 mt-2">Lost items</p>
-          </div>
-
-          <div className="bg-green-50 border border-green-200 p-4 rounded-lg">
-            <p className="text-xs font-medium text-green-900 mb-1">Refund Rate</p>
-            <p className="text-lg font-bold text-green-900">
-              {analytics.cautionFeeMetrics.refundRate.toFixed(1)}%
-            </p>
-            <p className="text-xs text-green-600 mt-2">~{analytics.cautionFeeMetrics.averageRefundDays}d</p>
-          </div>
         </div>
       </div>
 
