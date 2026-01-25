@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, Package, Truck, Calendar, AlertCircle } from 'lucide-react';
 import { getTotalOnlineSales, getTotalOnlineRentals, getTotalOfflineSales, getTotalOfflineRentals, getTotalDailyExpenses } from '@/lib/utils/financeCalculations';
 import { getTotalOnlineVAT, getTotalOfflineVAT, getTotalInputVAT } from '@/lib/utils/vatCalculations.client';
@@ -33,6 +33,10 @@ interface FinanceMetrics {
   totalOnlineTransactions: number;
   totalOfflineTransactions: number;
 
+  // Customers
+  totalOnlineCustomers: number;
+  totalOfflineCustomers: number;
+
   // Dates
   generatedAt: string;
 }
@@ -47,13 +51,17 @@ function formatCurrency(value: number): string {
 }
 
 function calculateMetrics(data: FinanceMetrics) {
-  const totalRevenue = data.onlineSalesRevenue + data.onlineRentalRevenue + data.offlineSalesRevenue + data.offlineRentalRevenue;
+  const onlineRevenue = data.onlineSalesRevenue + data.onlineRentalRevenue;
+  const offlineRevenue = data.offlineSalesRevenue + data.offlineRentalRevenue;
+  const totalRevenue = onlineRevenue + offlineRevenue;
   const totalExpenses = data.totalDailyExpenses;
   const grossProfit = totalRevenue - totalExpenses;
   const netProfit = grossProfit - data.vatPayable;
   const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100).toFixed(1) : 0;
 
   return {
+    onlineRevenue,
+    offlineRevenue,
     totalRevenue,
     totalExpenses,
     grossProfit,
@@ -65,14 +73,8 @@ function calculateMetrics(data: FinanceMetrics) {
 export function FinanceProjectOverview({ data, loading }: FinanceOverviewProps) {
   const [metrics, setMetrics] = useState<FinanceMetrics | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (data) {
-      setMetrics(data);
-    } else {
-      fetchMetrics();
-    }
-  }, [data]);
+  const [isInitialLoading, setIsInitialLoading] = useState(!data && loading !== false);
+  const initialLoadRef = useRef(true);
 
   const fetchMetrics = async () => {
     try {
@@ -91,14 +93,35 @@ export function FinanceProjectOverview({ data, loading }: FinanceOverviewProps) 
       const outputVAT = onlineVAT + offlineVAT;
       const vatPayable = outputVAT - inputVAT;
 
-      // Fetch transaction counts
-      const ordersRes = await fetch("/api/orders/unified");
-      const offlineOrdersRes = await fetch("/api/admin/offline-orders");
+      // Fetch transaction counts and customer data with cache-busting
+      const ordersRes = await fetch("/api/orders/unified?t=" + Date.now(), {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        }
+      });
+      const offlineOrdersRes = await fetch("/api/admin/offline-orders?t=" + Date.now(), {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
+          'Expires': '0',
+        }
+      });
       const ordersData = ordersRes.ok ? await ordersRes.json() : { orders: [] };
       const offlineOrdersData = offlineOrdersRes.ok ? await offlineOrdersRes.json() : { data: [] };
 
-      const onlineCount = ordersData.orders?.filter((o: any) => !o.isOffline).length || 0;
-      const offlineCount = offlineOrdersData.data?.length || 0;
+      const onlineOrders = ordersData.orders?.filter((o: any) => !o.isOffline) || [];
+      const offlineOrders = offlineOrdersData.data || [];
+
+      const onlineCount = onlineOrders.length;
+      const offlineCount = offlineOrders.length;
+
+      // Count unique customers
+      const onlineCustomerEmails = new Set(onlineOrders.map((o: any) => o.email).filter(Boolean));
+      const offlineCustomerEmails = new Set(offlineOrders.map((o: any) => o.email).filter(Boolean));
 
       const calculated: FinanceMetrics = {
         onlineSalesRevenue: onlineSales,
@@ -116,16 +139,39 @@ export function FinanceProjectOverview({ data, loading }: FinanceOverviewProps) 
         expenseCount: 0,
         totalOnlineTransactions: onlineCount,
         totalOfflineTransactions: offlineCount,
+        totalOnlineCustomers: onlineCustomerEmails.size,
+        totalOfflineCustomers: offlineCustomerEmails.size,
         generatedAt: new Date().toLocaleString(),
       };
 
+      // Always update state immediately - React handles re-render optimization
       setMetrics(calculated);
+      setError(null);
+      // Only hide loading on initial load
+      if (initialLoadRef.current) {
+        setIsInitialLoading(false);
+        initialLoadRef.current = false;
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load financial data');
     }
   };
 
-  if (loading) {
+  useEffect(() => {
+    if (data) {
+      setMetrics(data);
+      setIsInitialLoading(false);
+      initialLoadRef.current = false;
+    } else {
+      fetchMetrics();
+      
+      // Auto-refresh every 3 seconds when not provided external data
+      const interval = setInterval(fetchMetrics, 3000);
+      return () => clearInterval(interval);
+    }
+  }, [data]);
+
+  if (isInitialLoading) {
     return (
       <div className="space-y-4">
         <div className="h-32 bg-gradient-to-r from-gray-100 to-gray-50 rounded-lg animate-pulse" />
@@ -228,7 +274,7 @@ export function FinanceProjectOverview({ data, loading }: FinanceOverviewProps) 
       </div>
 
       {/* Key Metrics Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Daily Expenses */}
         <div className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-lg transition-shadow">
           <div className="flex items-center justify-between mb-3">
@@ -267,62 +313,179 @@ export function FinanceProjectOverview({ data, loading }: FinanceOverviewProps) 
       </div>
 
       {/* Detailed Breakdown Sections */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Online vs Offline */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 lg:items-start">
+        {/* Online vs Offline Comprehensive Metrics */}
         <div className="bg-white border border-gray-200 rounded-lg p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center gap-2">
             <Truck className="h-5 w-5 text-blue-600" />
-            Online vs Offline Transactions
+            Online vs Offline Metrics
           </h3>
-          <div className="space-y-4">
+          
+          <div className="space-y-6">
+            {/* Revenue Comparison */}
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-700">Online Transactions</span>
-                <span className="text-sm font-bold text-blue-600">{metrics.totalOnlineTransactions}</span>
+              <p className="text-sm font-semibold text-gray-700 mb-3">Revenue Comparison</p>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-medium text-blue-700">Online Revenue</span>
+                    <span className="text-xs font-bold text-blue-600">{formatCurrency(calc.onlineRevenue)}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{
+                        width: `${calc.totalRevenue > 0 ? (calc.onlineRevenue / calc.totalRevenue) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(calc.totalRevenue > 0 ? (calc.onlineRevenue / calc.totalRevenue) * 100 : 0).toFixed(1)}% of total
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-medium text-emerald-700">Offline Revenue</span>
+                    <span className="text-xs font-bold text-emerald-600">{formatCurrency(calc.offlineRevenue)}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-emerald-600 h-2 rounded-full"
+                      style={{
+                        width: `${calc.totalRevenue > 0 ? (calc.offlineRevenue / calc.totalRevenue) * 100 : 0}%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(calc.totalRevenue > 0 ? (calc.offlineRevenue / calc.totalRevenue) * 100 : 0).toFixed(1)}% of total
+                  </p>
+                </div>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{
-                    width: `${
-                      (metrics.totalOnlineTransactions / (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions)) *
-                      100
-                    }%`,
-                  }}
-                />
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {(
-                  (metrics.totalOnlineTransactions / (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions)) *
-                  100
-                ).toFixed(1)}
-                % of total
-              </p>
             </div>
 
+            <hr className="my-2" />
+
+            {/* Transaction Volume */}
             <div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-sm font-medium text-gray-700">Offline Transactions</span>
-                <span className="text-sm font-bold text-emerald-600">{metrics.totalOfflineTransactions}</span>
+              <p className="text-sm font-semibold text-gray-700 mb-3">Transaction Volume</p>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-medium text-blue-700">Online Transactions</span>
+                    <span className="text-xs font-bold text-blue-600">{metrics.totalOnlineTransactions}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{
+                        width: `${
+                          (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions) > 0
+                            ? (metrics.totalOnlineTransactions / (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions)) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(
+                      (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions) > 0
+                        ? (metrics.totalOnlineTransactions / (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions)) * 100
+                        : 0
+                    ).toFixed(1)}
+                    % of total
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-medium text-emerald-700">Offline Transactions</span>
+                    <span className="text-xs font-bold text-emerald-600">{metrics.totalOfflineTransactions}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-emerald-600 h-2 rounded-full"
+                      style={{
+                        width: `${
+                          (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions) > 0
+                            ? (metrics.totalOfflineTransactions / (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions)) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(
+                      (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions) > 0
+                        ? (metrics.totalOfflineTransactions / (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions)) * 100
+                        : 0
+                    ).toFixed(1)}
+                    % of total
+                  </p>
+                </div>
               </div>
-              <div className="w-full bg-gray-200 rounded-full h-2">
-                <div
-                  className="bg-emerald-600 h-2 rounded-full"
-                  style={{
-                    width: `${
-                      (metrics.totalOfflineTransactions / (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions)) *
-                      100
-                    }%`,
-                  }}
-                />
+            </div>
+
+            <hr className="my-2" />
+
+            {/* Customer Metrics */}
+            <div>
+              <p className="text-sm font-semibold text-gray-700 mb-3">Customer Base</p>
+              <div className="space-y-3">
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-medium text-blue-700">Online Customers</span>
+                    <span className="text-xs font-bold text-blue-600">{metrics.totalOnlineCustomers || 0}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{
+                        width: `${
+                          (metrics.totalOnlineCustomers || 0) + (metrics.totalOfflineCustomers || 0) > 0
+                            ? ((metrics.totalOnlineCustomers || 0) / ((metrics.totalOnlineCustomers || 0) + (metrics.totalOfflineCustomers || 0))) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(
+                      (metrics.totalOnlineCustomers || 0) + (metrics.totalOfflineCustomers || 0) > 0
+                        ? ((metrics.totalOnlineCustomers || 0) / ((metrics.totalOnlineCustomers || 0) + (metrics.totalOfflineCustomers || 0))) * 100
+                        : 0
+                    ).toFixed(1)}
+                    % of total
+                  </p>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-medium text-emerald-700">Offline Customers</span>
+                    <span className="text-xs font-bold text-emerald-600">{metrics.totalOfflineCustomers || 0}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div
+                      className="bg-emerald-600 h-2 rounded-full"
+                      style={{
+                        width: `${
+                          (metrics.totalOnlineCustomers || 0) + (metrics.totalOfflineCustomers || 0) > 0
+                            ? ((metrics.totalOfflineCustomers || 0) / ((metrics.totalOnlineCustomers || 0) + (metrics.totalOfflineCustomers || 0))) * 100
+                            : 0
+                        }%`,
+                      }}
+                    />
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1">
+                    {(
+                      (metrics.totalOnlineCustomers || 0) + (metrics.totalOfflineCustomers || 0) > 0
+                        ? ((metrics.totalOfflineCustomers || 0) / ((metrics.totalOnlineCustomers || 0) + (metrics.totalOfflineCustomers || 0))) * 100
+                        : 0
+                    ).toFixed(1)}
+                    % of total
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1">
-                {(
-                  (metrics.totalOfflineTransactions / (metrics.totalOnlineTransactions + metrics.totalOfflineTransactions)) *
-                  100
-                ).toFixed(1)}
-                % of total
-              </p>
             </div>
           </div>
         </div>

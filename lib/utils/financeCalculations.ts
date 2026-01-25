@@ -24,20 +24,39 @@ function getTransactionType(order: any): "sales" | "rentals" | "mixed" {
  */
 export async function getTotalOnlineSales(): Promise<number> {
   try {
-    const response = await fetch("/api/orders/unified");
+    const response = await fetch("/api/orders/unified?t=" + Date.now(), {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
     if (!response.ok) throw new Error("Failed to fetch transactions");
 
     const data = await response.json();
     const orders = data.orders || [];
 
-    // Filter transactions where items contain only 'buy' mode (sales)
+    // Recalculate from items to ensure accuracy
     const totalOnlineSales = orders
       .filter((order: any) => {
         if (order.isOffline) return false;
         const type = getTransactionType(order);
-        return type === "sales";
+        return type === "sales" || type === "mixed";
       })
-      .reduce((sum: number, order: any) => sum + (order.total || order.amount || 0), 0);
+      .reduce((sum: number, order: any) => {
+        // Calculate from items if available, otherwise use total/amount
+        if (order.items && Array.isArray(order.items)) {
+          const itemsTotal = order.items
+            .filter((item: any) => item.mode === "buy")
+            .reduce((itemSum: number, item: any) => {
+              const itemTotal = (item.price || 0) * (item.quantity || 1);
+              return itemSum + itemTotal;
+            }, 0);
+          return sum + (itemsTotal > 0 ? itemsTotal : (order.total || order.amount || 0));
+        }
+        return sum + (order.total || order.amount || 0);
+      }, 0);
 
     return totalOnlineSales;
   } catch (error) {
@@ -52,20 +71,39 @@ export async function getTotalOnlineSales(): Promise<number> {
  */
 export async function getTotalOnlineRentals(): Promise<number> {
   try {
-    const response = await fetch("/api/orders/unified");
+    const response = await fetch("/api/orders/unified?t=" + Date.now(), {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
     if (!response.ok) throw new Error("Failed to fetch transactions");
 
     const data = await response.json();
     const orders = data.orders || [];
 
-    // Filter transactions where items contain only 'rent' mode (rentals)
+    // Recalculate from items to ensure accuracy
     const totalOnlineRentals = orders
       .filter((order: any) => {
         if (order.isOffline) return false;
         const type = getTransactionType(order);
-        return type === "rentals";
+        return type === "rentals" || type === "mixed";
       })
-      .reduce((sum: number, order: any) => sum + (order.total || order.amount || 0), 0);
+      .reduce((sum: number, order: any) => {
+        // Calculate from items if available, otherwise use total/amount
+        if (order.items && Array.isArray(order.items)) {
+          const itemsTotal = order.items
+            .filter((item: any) => item.mode === "rent")
+            .reduce((itemSum: number, item: any) => {
+              const itemTotal = (item.price || 0) * (item.quantity || 1);
+              return itemSum + itemTotal;
+            }, 0);
+          return sum + (itemsTotal > 0 ? itemsTotal : (order.total || order.amount || 0));
+        }
+        return sum + (order.total || order.amount || 0);
+      }, 0);
 
     return totalOnlineRentals;
   } catch (error) {
@@ -80,19 +118,38 @@ export async function getTotalOnlineRentals(): Promise<number> {
  */
 export async function getTotalOfflineSales(): Promise<number> {
   try {
-    const response = await fetch("/api/admin/offline-orders");
+    const response = await fetch("/api/admin/offline-orders?t=" + Date.now(), {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
     if (!response.ok) throw new Error("Failed to fetch offline orders");
 
     const data = await response.json();
     const offlineOrders = data.data || [];
 
-    // Filter transactions where items contain only 'buy' mode (sales)
+    // Recalculate from items to ensure accuracy
     const totalOfflineSales = offlineOrders
       .filter((order: any) => {
         const type = getTransactionType(order);
-        return type === "sales";
+        return type === "sales" || type === "mixed";
       })
-      .reduce((sum: number, order: any) => sum + (order.total || 0), 0);
+      .reduce((sum: number, order: any) => {
+        // Calculate from items if available, otherwise use total
+        if (order.items && Array.isArray(order.items)) {
+          const itemsTotal = order.items
+            .filter((item: any) => item.mode === "buy")
+            .reduce((itemSum: number, item: any) => {
+              const itemTotal = (item.price || 0) * (item.quantity || 1);
+              return itemSum + itemTotal;
+            }, 0);
+          return sum + (itemsTotal > 0 ? itemsTotal : (order.total || 0));
+        }
+        return sum + (order.total || 0);
+      }, 0);
 
     return totalOfflineSales;
   } catch (error) {
@@ -107,19 +164,38 @@ export async function getTotalOfflineSales(): Promise<number> {
  */
 export async function getTotalOfflineRentals(): Promise<number> {
   try {
-    const response = await fetch("/api/admin/offline-orders");
+    const response = await fetch("/api/admin/offline-orders?t=" + Date.now(), {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
     if (!response.ok) throw new Error("Failed to fetch offline orders");
 
     const data = await response.json();
     const offlineOrders = data.data || [];
 
-    // Filter transactions where items contain only 'rent' mode (rentals)
+    // Recalculate from items to ensure accuracy
     const totalOfflineRentals = offlineOrders
       .filter((order: any) => {
         const type = getTransactionType(order);
-        return type === "rentals";
+        return type === "rentals" || type === "mixed";
       })
-      .reduce((sum: number, order: any) => sum + (order.total || 0), 0);
+      .reduce((sum: number, order: any) => {
+        // Calculate from items if available, otherwise use total
+        if (order.items && Array.isArray(order.items)) {
+          const itemsTotal = order.items
+            .filter((item: any) => item.mode === "rent")
+            .reduce((itemSum: number, item: any) => {
+              const itemTotal = (item.price || 0) * (item.quantity || 1);
+              return itemSum + itemTotal;
+            }, 0);
+          return sum + (itemsTotal > 0 ? itemsTotal : (order.total || 0));
+        }
+        return sum + (order.total || 0);
+      }, 0);
 
     return totalOfflineRentals;
   } catch (error) {
@@ -135,7 +211,14 @@ export async function getTotalOfflineRentals(): Promise<number> {
  */
 export async function getTotalDailyExpenses(): Promise<number> {
   try {
-    const response = await fetch("/api/admin/offline-expenses");
+    const response = await fetch("/api/admin/offline-expenses?t=" + Date.now(), {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
     if (!response.ok) throw new Error("Failed to fetch expenses");
 
     const data = await response.json();

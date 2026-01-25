@@ -30,7 +30,7 @@ interface Transaction {
   type?: "income" | "expense";
   description?: string;
   transactionType?: "sales" | "rentals";
-  items?: Array<{ mode: 'buy' | 'rent'; price: number; quantity: number; name: string }>;
+  items?: Array<{ mode: 'buy' | 'rent'; price: number; quantity: number; name: string; cautionFee?: number }>;
 }
 
 interface OfflineSale {
@@ -46,7 +46,7 @@ interface OfflineSale {
   status: string;
   paymentMethod: string;
   createdAt: string;
-  items?: Array<{ mode: 'buy' | 'rent'; price: number; quantity: number; name: string }>;
+  items?: Array<{ mode: 'buy' | 'rent'; price: number; quantity: number; name: string; cautionFee?: number }>;
   transactionType?: "sales" | "rentals";
 }
 
@@ -81,18 +81,42 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
       setLoading(true);
       setError(null);
 
-      const response = await fetch("/api/orders/unified");
-      if (!response.ok) throw new Error("Failed to fetch transactions");
+      // Fetch orders and products in parallel
+      const [ordersResponse, productsResponse] = await Promise.all([
+        fetch("/api/orders/unified"),
+        fetch("/api/products")
+      ]);
+      
+      if (!ordersResponse.ok) throw new Error("Failed to fetch transactions");
 
-      const data = await response.json();
+      const data = await ordersResponse.json();
       const orders = data.orders || [];
+      
+      // Fetch products to get caution fees
+      let productsMap = new Map();
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json();
+        const products = productsData.products || [];
+        products.forEach((product: any) => {
+          productsMap.set(product._id, product);
+        });
+      }
 
       const allTransactions: Transaction[] = orders.map((order: any) => {
+        // Enrich items with caution fees from products
+        const enrichedItems = (order.items || []).map((item: any) => {
+          const product = productsMap.get(item.productId);
+          return {
+            ...item,
+            cautionFee: (item.mode === 'rent' && product?.cautionFee) ? product.cautionFee : 0
+          };
+        });
+
         // Determine transaction type based on items
         let transactionType: "sales" | "rentals" = "sales";
-        if (order.items && order.items.length > 0) {
-          const hasSales = order.items.some((item: any) => item.mode === "buy");
-          const hasRentals = order.items.some((item: any) => item.mode === "rent");
+        if (enrichedItems.length > 0) {
+          const hasSales = enrichedItems.some((item: any) => item.mode === "buy");
+          const hasRentals = enrichedItems.some((item: any) => item.mode === "rent");
           
           // If only rentals, mark as rentals
           if (hasRentals && !hasSales) {
@@ -120,9 +144,9 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
           status: order.status,
           paymentMethod: order.paymentMethod,
           type: "income",
-          description: order.items?.[0]?.name || "Order",
+          description: enrichedItems[0]?.name || "Order",
           transactionType,
-          items: order.items || [],
+          items: enrichedItems,
         };
       });
 
@@ -193,20 +217,45 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
   const fetchOfflineSales = async () => {
     try {
       console.log("🔄 Fetching offline sales...");
-      const response = await fetch("/api/admin/offline-orders");
-      if (!response.ok) throw new Error("Failed to fetch offline sales");
+      
+      // Fetch offline sales and products in parallel
+      const [offlineResponse, productsResponse] = await Promise.all([
+        fetch("/api/admin/offline-orders"),
+        fetch("/api/products")
+      ]);
+      
+      if (!offlineResponse.ok) throw new Error("Failed to fetch offline sales");
 
-      const data = await response.json();
+      const data = await offlineResponse.json();
       const sales = data.data || [];
+      
+      // Fetch products to get caution fees
+      let productsMap = new Map();
+      if (productsResponse.ok) {
+        const productsData = await productsResponse.json();
+        const products = productsData.products || [];
+        products.forEach((product: any) => {
+          productsMap.set(product._id, product);
+        });
+      }
       
       console.log(`📊 Found ${sales.length} offline sales`, sales);
 
       const formattedSales: OfflineSale[] = sales.map((order: any) => {
+        // Enrich items with caution fees from products
+        const enrichedItems = (order.items || []).map((item: any) => {
+          const product = productsMap.get(item.productId);
+          return {
+            ...item,
+            cautionFee: (item.mode === 'rent' && product?.cautionFee) ? product.cautionFee : 0
+          };
+        });
+
         // Determine transaction type based on items
         let transactionType: "sales" | "rentals" = "sales";
-        if (order.items && order.items.length > 0) {
-          const hasSales = order.items.some((item: any) => item.mode === "buy");
-          const hasRentals = order.items.some((item: any) => item.mode === "rent");
+        if (enrichedItems.length > 0) {
+          const hasSales = enrichedItems.some((item: any) => item.mode === "buy");
+          const hasRentals = enrichedItems.some((item: any) => item.mode === "rent");
           
           // If only rentals, mark as rentals
           if (hasRentals && !hasSales) {
@@ -235,7 +284,7 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
           status: order.status,
           paymentMethod: order.paymentMethod,
           createdAt: order.createdAt,
-          items: order.items || [],
+          items: enrichedItems,
           transactionType,
         };
       });
@@ -393,6 +442,34 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  // Calculate caution fee from transaction items
+  const getCautionFee = (transaction: Transaction): number => {
+    // Only rentals have caution fees
+    if (transaction.transactionType !== 'rentals') return 0;
+    
+    if (!transaction.items || transaction.items.length === 0) return 0;
+    
+    // Sum caution fees from rental items
+    return transaction.items.reduce((sum, item) => {
+      // Caution fee is typically stored in item data or calculate from item
+      // For now, fetch from item's cautionFee field if available
+      return sum + (item.cautionFee || 0);
+    }, 0);
+  };
+
+  // Calculate caution fee for offline sales
+  const getOfflineCautionFee = (sale: OfflineSale): number => {
+    // Only rentals have caution fees
+    if (sale.transactionType !== 'rentals') return 0;
+    
+    if (!sale.items || sale.items.length === 0) return 0;
+    
+    // Sum caution fees from rental items
+    return sale.items.reduce((sum, item) => {
+      return sum + (item.cautionFee || 0);
+    }, 0);
   };
 
   const totalIncome = filteredTransactions.reduce((sum, t) => sum + t.amount, 0);

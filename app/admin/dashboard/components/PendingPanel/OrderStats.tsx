@@ -10,6 +10,7 @@ interface OrderStatsProps {
   rentalDays?: number;
   cautionFee?: number;
   isApproved?: boolean;
+  logisticsMode?: boolean; // Show only caution fee for logistics page
   // Discount fields from unified order (takes precedence over calculation)
   subtotal?: number;
   discountPercentage?: number;
@@ -26,12 +27,36 @@ export function OrderStats({
   rentalDays = 1, 
   cautionFee = 0, 
   isApproved = false,
+  logisticsMode = false,
   subtotal: passedSubtotal,
   discountPercentage: passedDiscountPercentage,
   discountAmount: passedDiscountAmount,
   subtotalAfterDiscount: passedSubtotalAfterDiscount,
   vat: passedVat
 }: OrderStatsProps) {
+  // LOGISTICS MODE: Only show caution fee
+  if (logisticsMode) {
+    return (
+      <div className="space-y-3 pt-3 border-t border-lime-200">
+        {/* Caution Fee - Only item shown in logistics mode */}
+        {cautionFee && cautionFee > 0 && (
+          <div className="bg-amber-50 rounded-lg p-3 text-center border border-amber-300">
+            <p className="text-xs text-amber-600 font-medium">🔒 Caution Fee (50%)</p>
+            <p className="text-lg font-bold text-amber-700">₦{Number(cautionFee).toLocaleString('en-NG')}</p>
+          </div>
+        )}
+        
+        {/* Show message if no caution fee */}
+        {!cautionFee || cautionFee === 0 && (
+          <div className="bg-gray-50 rounded-lg p-3 text-center border border-gray-300">
+            <p className="text-xs text-gray-600 font-medium">No caution fee for this order</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // NORMAL MODE: Show all pricing details
   // Ensure total is a valid number - THIS IS THE SOURCE OF TRUTH FROM CHECKOUT
   const safeTotal = typeof total === 'number' && !isNaN(total) ? total : 0;
   

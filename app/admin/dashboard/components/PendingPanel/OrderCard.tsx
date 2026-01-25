@@ -58,10 +58,13 @@ interface OrderCardProps {
   vat?: number;
   // Logistics page props
   hidePricingDetails?: boolean;
+  hidePrice?: boolean; // Hide product prices for logistics view
+  logisticsMode?: boolean; // Show only caution fee for logistics page
+  deliveryDetails?: { address?: string; city?: string; state?: string; location?: string };
   hideReadyButton?: boolean;
   hideDeleteButton?: boolean;
   hidePaymentStatus?: boolean;
-  onShipped?: () => void;
+  onShipped?: () => Promise<void>;
   disableShippedButton?: boolean;
   onDeleteConfirm?: (orderId: string) => Promise<void>;
 }
@@ -97,6 +100,9 @@ export function OrderCard({
   subtotalAfterDiscount,
   vat,
   hidePricingDetails = false,
+  hidePrice = false,
+  logisticsMode = false,
+  deliveryDetails = {},
   hideReadyButton = false,
   hideDeleteButton = false,
   hidePaymentStatus = false,
@@ -123,7 +129,7 @@ export function OrderCard({
       <div className="p-5 space-y-4 flex-1 flex flex-col">
         {/* Show items for regular orders */}
         {!isCustom && items?.length ? (
-          <ProductItemsList items={items} />
+          <ProductItemsList items={items} hidePrice={hidePrice} />
         ) : null}
 
         {/* Show custom order details */}
@@ -200,6 +206,7 @@ export function OrderCard({
             discountAmount={discountAmount}
             subtotalAfterDiscount={subtotalAfterDiscount}
             vat={vat}
+            logisticsMode={logisticsMode}
           />
         )}
 
@@ -227,6 +234,10 @@ export function OrderCard({
           formatCurrency={formatCurrency}
           isApproved={isApproved}
           hidePaymentStatus={hidePaymentStatus}
+          logisticsMode={logisticsMode}
+          phone={phone}
+          email={email}
+          deliveryDetails={deliveryDetails}
         />
 
         <ActionButtons
@@ -240,6 +251,7 @@ export function OrderCard({
           hideReadyButton={hideReadyButton}
           hideDeleteButton={hideDeleteButton}
           hidePaymentStatus={hidePaymentStatus}
+          logisticsMode={logisticsMode}
           onShipped={onShipped}
           disableShippedButton={disableShippedButton}
           onDeleteConfirm={onDeleteConfirm}

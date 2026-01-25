@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import dynamic from "next/dynamic";
 import {
   TrendingUp,
@@ -17,6 +17,8 @@ import {
 import { PermissionGuard } from "@/app/components/PermissionGuard";
 import { FinanceProjectOverview } from "./components/FinanceProjectOverview";
 import { useResponsive } from "@/app/hooks/useResponsive";
+import { getTotalOnlineSales, getTotalOnlineRentals, getTotalOfflineSales, getTotalOfflineRentals, getTotalDailyExpenses } from '@/lib/utils/financeCalculations';
+import { getTotalOnlineVAT, getTotalOfflineVAT, getTotalInputVAT } from '@/lib/utils/vatCalculations.client';
 
 // Lazy load these desktop-heavy components
 const VATTab = dynamic(() => import("../vat-tab"), { ssr: false });
@@ -99,35 +101,125 @@ function FinancePageContent() {
   const [showOfflineOrderForm, setShowOfflineOrderForm] = useState(false);
   const [showOfflineExpenseForm, setShowOfflineExpenseForm] = useState(false);
   const [expensesRefreshKey, setExpensesRefreshKey] = useState(0);
+  const [showHeader, setShowHeader] = useState(true);
+  const [lastScrollY, setLastScrollY] = useState(0);
+  const initialLoadRef = useRef(true);
 
-  // Fetch finance metrics
+  // Fetch finance metrics from transaction history and offline data
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        setLoading(true);
-        const response = await fetch("/api/admin/finance", {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-          }
-        });
+        // Only show loading on initial load, not on background refreshes
+        if (initialLoadRef.current) {
+          setLoading(true);
+        }
         
-        if (!response.ok) throw new Error("Failed to fetch metrics");
-        const financeData = await response.json();
-        setMetrics(financeData.metrics);
+        // Use same utility functions as dashboard - fetch from transaction history and offline data
+        const [onlineSales, onlineRentals, offlineSales, offlineRentals, expenses, onlineVAT, offlineVAT, inputVAT] = await Promise.all([
+          getTotalOnlineSales(),
+          getTotalOnlineRentals(),
+          getTotalOfflineSales(),
+          getTotalOfflineRentals(),
+          getTotalDailyExpenses(),
+          getTotalOnlineVAT(),
+          getTotalOfflineVAT(),
+          getTotalInputVAT()
+        ]);
+
+        const outputVAT = onlineVAT + offlineVAT;
+        const vatPayable = Math.max(outputVAT - inputVAT, 0);
+
+        const financeMetrics: FinanceMetrics = {
+          totalRevenue: onlineSales + onlineRentals + offlineSales + offlineRentals,
+          totalIncome: 0,
+          totalExpenses: expenses,
+          pendingAmount: 0,
+          completedAmount: 0,
+          totalSalesAmount: onlineSales + offlineSales,
+          totalRentalsAmount: onlineRentals + offlineRentals,
+          completedOutgoing: 0,
+          annualTurnover: 0,
+          businessSize: 'medium',
+          taxBreakdown: {
+            vat: {
+              rate: 0.075,
+              totalSalesExVAT: (onlineSales + offlineSales) / 1.075,
+              outputVAT: outputVAT,
+              inputVAT: inputVAT,
+              vatPayable: vatPayable,
+            },
+            corporateIncomeTax: 0,
+            educationTax: 0,
+            totalAnnualTax: vatPayable,
+          },
+          monthlyTax: {
+            estimatedMonthlyVAT: vatPayable / 12,
+            estimatedMonthlyCIT: 0,
+            estimatedMonthlyEducationTax: 0,
+            estimatedMonthlyTotal: vatPayable / 12,
+          },
+          weeklyProjection: [],
+          transactionBreakdown: {
+            sales: onlineSales + offlineSales,
+            rentals: onlineRentals + offlineRentals,
+            customOrders: 0,
+            returns: 0,
+            refunds: 0,
+          },
+          profitMargin: 0,
+          averageOrderValue: 0,
+          conversionMetrics: {
+            totalTransactions: 0,
+            completedTransactions: 0,
+            pendingTransactions: 0,
+            cancelledTransactions: 0,
+            conversionRate: 0,
+          },
+        };
+
+        setMetrics(financeMetrics);
+        setError(null);
       } catch (err) {
         console.error("Error fetching finance metrics:", err);
         setError(err instanceof Error ? err.message : "An error occurred");
       } finally {
-        setLoading(false);
+        // Only hide loading on initial load
+        if (initialLoadRef.current) {
+          setLoading(false);
+          initialLoadRef.current = false;
+        }
       }
     };
 
     if (mounted) {
       fetchMetrics();
+      
+      // Auto-refresh every 3 seconds for real-time updates
+      const interval = setInterval(fetchMetrics, 3000);
+      return () => clearInterval(interval);
     }
   }, [mounted]);
+
+  // Handle scroll to hide/show header
+  useEffect(() => {
+    let scrollTimeout: NodeJS.Timeout;
+    
+    const handleScroll = () => {
+      const currentScrollY = window.scrollY;
+      
+      // Hide header when scrolling down past 100px, show when scrolling up
+      if (currentScrollY > lastScrollY && currentScrollY > 100) {
+        setShowHeader(false);
+      } else if (currentScrollY < lastScrollY) {
+        setShowHeader(true);
+      }
+      
+      setLastScrollY(currentScrollY);
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [lastScrollY]);
 
   if (loading) {
     return (
@@ -170,20 +262,8 @@ function FinancePageContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-      {/* Header - Responsive */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Finance Dashboard</h1>
-            <p className="text-xs sm:text-sm text-gray-600 mt-1">
-              Track your revenue, expenses, and tax calculations
-            </p>
-          </div>
-        </div>
-      </header>
-
       {/* Tab Navigation - Scrollable on Mobile */}
-      <div className="bg-white border-b border-gray-200 sticky top-16 z-30 overflow-x-auto">
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-30 overflow-x-auto">
         <div className="px-4 sm:px-6">
           <div className="flex gap-1 sm:gap-8 min-w-min sm:min-w-0">
             <button

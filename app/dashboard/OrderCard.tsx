@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Image from 'next/image';
-import { MessageCircle, Clock, Check, MapPin, Package, Calendar, DollarSign, ArrowRight, Trash2 } from 'lucide-react';
+import { MessageCircle, Clock, Check, MapPin, Package, Calendar, DollarSign, ArrowRight } from 'lucide-react';
 import { CountdownTimer } from '../components/CountdownTimer';
 import { getDiscountPercentage } from '@/lib/discountCalculator';
 
@@ -79,45 +79,6 @@ export function OrderCard({
   onChat,
   onViewImages,
 }: OrderCardProps) {
-  const [isDeleting, setIsDeleting] = React.useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
-
-  const handleDelete = async () => {
-    if (!showDeleteConfirm) {
-      setShowDeleteConfirm(true);
-      return;
-    }
-
-    try {
-      setIsDeleting(true);
-      console.log('[OrderCard] 🗑️ Attempting to delete order:', order._id);
-      
-      const response = await fetch(`/api/orders/unified/${order._id}`, {
-        method: 'DELETE',
-      });
-
-      console.log('[OrderCard] Delete response status:', response.status);
-
-      if (!response.ok) {
-        const data = await response.json();
-        console.error('[OrderCard] Delete error response:', { status: response.status, data });
-        throw new Error(data.message || data.error || `Failed to delete order (${response.status})`);
-      }
-
-      const deleteResult = await response.json();
-      console.log('[OrderCard] ✅ Order deleted:', deleteResult);
-      
-      // Redirect to dashboard on successful deletion
-      setTimeout(() => {
-        window.location.href = '/dashboard';
-      }, 500);
-    } catch (error) {
-      console.error('[OrderCard] Error deleting order:', error);
-      alert(error instanceof Error ? error.message : 'Failed to delete order');
-      setShowDeleteConfirm(false);
-      setIsDeleting(false);
-    }
-  };
 
   const calculateTotal = (order: CustomOrder) => {
     const basePrice = order.quotedPrice || 0;
@@ -421,52 +382,7 @@ export function OrderCard({
             <span>View Design ({order.designUrls?.length || 1})</span>
           </button>
         ) : null}
-
-        {/* Delete Button */}
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            handleDelete();
-          }}
-          className="bg-red-600 hover:bg-red-700 text-white font-semibold py-2.5 px-4 rounded-lg transition-all duration-200 text-sm flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
-          title="Delete this order"
-        >
-          <Trash2 className="w-4 h-4" />
-          Delete
-        </button>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Order?</h3>
-            <p className="text-gray-700 text-sm mb-6">
-              Are you sure you want to delete order #{order.orderNumber}? This action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setShowDeleteConfirm(false);
-                }}
-                className="flex-1 px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-900 font-semibold rounded-lg transition"
-                disabled={isDeleting}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDelete}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg transition flex items-center justify-center gap-2"
-                disabled={isDeleting}
-              >
-                <Trash2 className="h-4 w-4" />
-                {isDeleting ? 'Deleting...' : 'Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

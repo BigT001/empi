@@ -146,7 +146,14 @@ export async function getTotalDailyExpenses(): Promise<number> {
  */
 export async function getTotalOnlineVAT(): Promise<number> {
   try {
-    const response = await fetch("/api/orders/unified");
+    const response = await fetch("/api/orders/unified?t=" + Date.now(), {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
     if (!response.ok) {
       throw new Error("Failed to fetch transactions");
     }
@@ -171,7 +178,14 @@ export async function getTotalOnlineVAT(): Promise<number> {
  */
 export async function getTotalOfflineVAT(): Promise<number> {
   try {
-    const response = await fetch("/api/admin/offline-orders");
+    const response = await fetch("/api/admin/offline-orders?t=" + Date.now(), {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
     if (!response.ok) {
       throw new Error("Failed to fetch offline orders");
     }
@@ -197,7 +211,14 @@ export async function getTotalOfflineVAT(): Promise<number> {
  */
 export async function getTotalInputVAT(): Promise<number> {
   try {
-    const response = await fetch("/api/admin/offline-expenses");
+    const response = await fetch("/api/admin/offline-expenses?t=" + Date.now(), {
+      cache: 'no-store',
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
     if (!response.ok) {
       throw new Error("Failed to fetch expenses");
     }

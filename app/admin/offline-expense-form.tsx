@@ -31,12 +31,25 @@ export default function OfflineExpenseForm({ onClose, onSuccess }: OfflineExpens
     }));
   };
 
-  // Auto-calculate VAT (7.5%) if applicable
+  // Auto-calculate VAT (7.5%) if applicable - use text input to prevent rounding
   const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const amount = e.target.value;
-    const vatAmount = formData.isVATApplicable 
-      ? (amount ? (parseFloat(amount) * 0.075).toFixed(2) : "")
-      : "0";
+    // Only allow numbers and decimals
+    if (amount && !/^\d+(\.\d{0,2})?$/.test(amount) && amount !== "") {
+      return;
+    }
+
+    let vatAmount = "0";
+    
+    if (formData.isVATApplicable && amount) {
+      const amountNum = parseFloat(amount);
+      if (!isNaN(amountNum)) {
+        const vat = amountNum * 0.075;
+        // Round to 2 decimals using proper math
+        vatAmount = (Math.round(vat * 100) / 100).toFixed(2);
+      }
+    }
+    
     setFormData((prev) => ({
       ...prev,
       amount,
@@ -44,12 +57,19 @@ export default function OfflineExpenseForm({ onClose, onSuccess }: OfflineExpens
     }));
   };
 
-  // Handle VAT applicability toggle
+  // Handle VAT applicability toggle - preserve exact rounding
   const handleVATToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const isApplicable = e.target.checked;
-    const vatAmount = isApplicable
-      ? (formData.amount ? (parseFloat(formData.amount) * 0.075).toFixed(2) : "")
-      : "0";
+    let vatAmount = "0";
+    
+    if (isApplicable && formData.amount) {
+      const amountNum = parseFloat(formData.amount);
+      if (!isNaN(amountNum)) {
+        const vat = amountNum * 0.075;
+        vatAmount = (Math.round(vat * 100) / 100).toString();
+      }
+    }
+    
     setFormData((prev) => ({
       ...prev,
       isVATApplicable: isApplicable,
@@ -263,13 +283,12 @@ export default function OfflineExpenseForm({ onClose, onSuccess }: OfflineExpens
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-600">₦</span>
                   <input
-                    type="number"
+                    type="text"
                     name="amount"
                     value={formData.amount}
                     onChange={handleAmountChange}
                     placeholder="0.00"
-                    step="0.01"
-                    min="0"
+                    inputMode="decimal"
                     className="w-full pl-8 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:border-purple-600"
                     required
                     disabled={loading}

@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ArrowLeft, AlertCircle, X, Package, CheckCircle } from 'lucide-react';
+import { ArrowLeft, AlertCircle, Package, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { PermissionGuard } from '@/app/components/PermissionGuard';
 import { useResponsive } from '@/app/hooks/useResponsive';
-import { LogisticsOrderCard } from './LogisticsOrderCard';
+import { OrderCard } from '@/app/admin/dashboard/components/PendingPanel/OrderCard';
 
 function LogisticsPageContent() {
   const router = useRouter();
@@ -18,7 +18,6 @@ function LogisticsPageContent() {
   const [loading, setLoading] = useState(true);
   const [shippingConfirmModal, setShippingConfirmModal] = useState<string | null>(null);
   const [isShipping, setIsShipping] = useState(false);
-  const [orderError, setOrderError] = useState<string | null>(null);
 
   // Fetch buyer details from admin/buyers endpoint (most reliable)
   const fetchBuyerDetailsFromAdmin = async () => {
@@ -124,15 +123,17 @@ function LogisticsPageContent() {
         // Fetch custom order details to get deliveryDetails field
         const customOrderDetails = await fetchCustomOrderDetails(order._id);
         
+        // Simply pass through all data from the order as-is
+        // The caution fee, pricing, and all details are already calculated and stored
         const enrichedOrder = {
           ...order,
-          userDetails: buyerDetails || {
+          userDetails: {
             email: order.email,
-            fullName: order.fullName || 'Unknown',
-            phone: order.phone || 'N/A',
-            address: order.address || 'Not provided',
-            city: order.city || 'Not provided',
-            state: order.state || 'Not provided',
+            fullName: buyerDetails?.fullName || order.fullName || 'Unknown',
+            phone: buyerDetails?.phone || order.phone || 'N/A',
+            address: buyerDetails?.address || order.address || 'Not provided',
+            city: buyerDetails?.city || order.city || 'Not provided',
+            state: buyerDetails?.state || order.state || 'Not provided',
           },
           // Include delivery details from custom order
           deliveryDetails: customOrderDetails?.deliveryDetails || order.deliveryDetails || {},
@@ -147,6 +148,7 @@ function LogisticsPageContent() {
           userCity: enrichedOrder.userDetails.city,
           userState: enrichedOrder.userDetails.state,
           designUrls: enrichedOrder.designUrls?.length || 0,
+          cautionFee: enrichedOrder.cautionFee,
         });
 
         return enrichedOrder;
@@ -231,7 +233,7 @@ function LogisticsPageContent() {
         console.log(`[Logistics] ✅ Database status updated successfully for ${orderId}`);
       } catch (statusError) {
         console.error(`[Logistics] ❌ CRITICAL: Failed to update order status to delivered:`, statusError);
-        setOrderError('Failed to update order status. Please try again.');
+        alert('Failed to update order status. Please try again.');
         setShippingConfirmModal(null);
         setIsShipping(false);
         return;
@@ -509,15 +511,57 @@ function LogisticsPageContent() {
         {/* Active Orders Tab */}
         {activeTab === 'active' && enrichedOrders.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {enrichedOrders.map((order) => (
-              <LogisticsOrderCard
-                key={order._id}
-                order={order}
-                onMarkShipped={() => setShippingConfirmModal(order._id)}
-                onDelete={() => deleteOrder(order._id)}
-                formatCurrency={formatCurrency}
-              />
-            ))}
+            {enrichedOrders.map((order) => {
+              const displayName = order.userDetails?.fullName || `${order.firstName} ${order.lastName}`.trim() || order.fullName || 'Unknown';
+              const [firstName, ...lastNameParts] = displayName.split(' ');
+              const lastName = lastNameParts.join(' ');
+              
+              return (
+                <OrderCard
+                  key={order._id}
+                  orderId={order._id}
+                  firstName={firstName || ''}
+                  lastName={lastName || ''}
+                  email={order.userDetails?.email || order.email || ''}
+                  phone={order.userDetails?.phone || order.phone || ''}
+                  items={order.items || []}
+                  total={order.total || 0}
+                  orderNumber={order.orderNumber || ''}
+                  isPaid={order.status === 'paid' || order.paymentVerified === true}
+                  isApproving={false}
+                  cautionFee={order.cautionFee}
+                  rentalSchedule={order.rentalSchedule}
+                  rentalDays={order.rentalSchedule?.rentalDays}
+                  rentalPolicyAgreed={order.rentalPolicyAgreed}
+                  onApprove={() => {}}
+                  onChat={() => {}}
+                  onDelete={() => deleteOrder(order._id)}
+                  formatCurrency={formatCurrency}
+                  isApproved={true}
+                  // Pricing fields
+                  subtotal={order.subtotal}
+                  discountPercentage={order.discountPercentage}
+                  discountAmount={order.discountAmount}
+                  subtotalAfterDiscount={order.subtotalAfterDiscount}
+                  vat={order.vat}
+                  // Logistics-specific configs
+                  hidePricingDetails={false}
+                  hidePrice={true}
+                  logisticsMode={true}
+                  deliveryDetails={{
+                    address: order.userDetails?.address || 'Not provided',
+                    city: order.userDetails?.city || 'Not provided',
+                    state: order.userDetails?.state || 'Not provided',
+                    location: order.userDetails?.location || 'Not provided',
+                  }}
+                  hideReadyButton={true}
+                  hideDeleteButton={true}
+                  hidePaymentStatus={true}
+                  onShipped={async () => setShippingConfirmModal(order._id)}
+                  disableShippedButton={isShipping}
+                />
+              );
+            })}
           </div>
         )}
 
@@ -531,16 +575,56 @@ function LogisticsPageContent() {
         {/* Shipped Orders Tab */}
         {activeTab === 'shipped' && enrichedShippedOrders.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {enrichedShippedOrders.map((order) => (
-              <LogisticsOrderCard
-                key={order._id}
-                order={order}
-                onMarkShipped={() => {}}
-                onDelete={() => deleteOrder(order._id)}
-                formatCurrency={formatCurrency}
-                isShipped={true}
-              />
-            ))}
+            {enrichedShippedOrders.map((order) => {
+              const displayName = order.userDetails?.fullName || `${order.firstName} ${order.lastName}`.trim() || order.fullName || 'Unknown';
+              const [firstName, ...lastNameParts] = displayName.split(' ');
+              const lastName = lastNameParts.join(' ');
+              
+              return (
+                <OrderCard
+                  key={order._id}
+                  orderId={order._id}
+                  firstName={firstName || ''}
+                  lastName={lastName || ''}
+                  email={order.userDetails?.email || order.email || ''}
+                  phone={order.userDetails?.phone || order.phone || ''}
+                  items={order.items || []}
+                  total={order.total || 0}
+                  orderNumber={order.orderNumber || ''}
+                  isPaid={order.status === 'paid' || order.paymentVerified === true}
+                  isApproving={false}
+                  cautionFee={order.cautionFee}
+                  rentalSchedule={order.rentalSchedule}
+                  rentalDays={order.rentalSchedule?.rentalDays}
+                  rentalPolicyAgreed={order.rentalPolicyAgreed}
+                  onApprove={() => {}}
+                  onChat={() => {}}
+                  onDelete={() => deleteOrder(order._id)}
+                  formatCurrency={formatCurrency}
+                  isApproved={true}
+                  // Pricing fields
+                  subtotal={order.subtotal}
+                  discountPercentage={order.discountPercentage}
+                  discountAmount={order.discountAmount}
+                  subtotalAfterDiscount={order.subtotalAfterDiscount}
+                  vat={order.vat}
+                  // Logistics-specific configs
+                  hidePricingDetails={false}
+                  hidePrice={true}
+                  logisticsMode={true}
+                  deliveryDetails={{
+                    address: order.userDetails?.address || 'Not provided',
+                    city: order.userDetails?.city || 'Not provided',
+                    state: order.userDetails?.state || 'Not provided',
+                    location: order.userDetails?.location || 'Not provided',
+                  }}
+                  hideReadyButton={true}
+                  hideDeleteButton={true}
+                  hidePaymentStatus={true}
+                  disableShippedButton={true}
+                />
+              );
+            })}
           </div>
         )}
 

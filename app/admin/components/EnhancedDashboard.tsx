@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   SalesRentalsChart,
   RevenueTrendChart,
   CumulativeRevenueChart,
   OrdersCountChart,
 } from './DashboardCharts';
+import { getTotalOnlineSales, getTotalOnlineRentals, getTotalOfflineSales, getTotalOfflineRentals, getTotalDailyExpenses } from '@/lib/utils/financeCalculations';
+import { getTotalOnlineVAT, getTotalOfflineVAT, getTotalInputVAT } from '@/lib/utils/vatCalculations.client';
 
 interface DailyMetrics {
   date: string;
@@ -86,29 +88,164 @@ export function EnhancedDashboard() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const initialLoadRef = useRef(true);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
       try {
-        const response = await fetch('/api/admin/analytics');
-        if (!response.ok) {
-          throw new Error('Failed to fetch analytics');
+        // Fetch all financial data using the same utilities as Finance Dashboard
+        const [onlineSales, onlineRentals, offlineSales, offlineRentals, expenses, onlineVAT, offlineVAT, inputVAT] = await Promise.all([
+          getTotalOnlineSales(),
+          getTotalOnlineRentals(),
+          getTotalOfflineSales(),
+          getTotalOfflineRentals(),
+          getTotalDailyExpenses(),
+          getTotalOnlineVAT(),
+          getTotalOfflineVAT(),
+          getTotalInputVAT()
+        ]);
+
+        const outputVAT = onlineVAT + offlineVAT;
+        const vatPayable = Math.max(outputVAT - inputVAT, 0);
+
+        // Fetch transaction counts and customer data with cache-busting
+        const ordersRes = await fetch("/api/orders/unified?t=" + Date.now(), {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        });
+        const offlineOrdersRes = await fetch("/api/admin/offline-orders?t=" + Date.now(), {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        });
+        const productsRes = await fetch("/api/products?t=" + Date.now(), {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        });
+        const usersRes = await fetch("/api/admin/users?t=" + Date.now(), {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0',
+          }
+        });
+        
+        const ordersData = ordersRes.ok ? await ordersRes.json() : { orders: [] };
+        const offlineOrdersData = offlineOrdersRes.ok ? await offlineOrdersRes.json() : { data: [] };
+        const productsData = productsRes.ok ? await productsRes.json() : { products: [] };
+        const usersData = usersRes.ok ? await usersRes.json() : { users: [] };
+
+        const onlineOrders = ordersData.orders?.filter((o: any) => !o.isOffline) || [];
+        const offlineOrders = offlineOrdersData.data || [];
+        const allOrders = [...onlineOrders, ...offlineOrders];
+        const products = productsData.products || [];
+        const users = usersData.users || [];
+
+        const onlineCount = onlineOrders.length;
+        const offlineCount = offlineOrders.length;
+        const completedOrders = allOrders.filter((o: any) => o.status === 'completed' || o.status === 'delivered').length;
+        const pendingOrders = allOrders.filter((o: any) => o.status === 'pending' || o.status === 'processing').length;
+
+        // Count unique customers
+        const onlineCustomerEmails = new Set(onlineOrders.map((o: any) => o.email).filter(Boolean));
+        const offlineCustomerEmails = new Set(offlineOrders.map((o: any) => o.email).filter(Boolean));
+        const totalCustomerEmails = new Set([...onlineCustomerEmails, ...offlineCustomerEmails]);
+
+        const totalRevenue = onlineSales + onlineRentals + offlineSales + offlineRentals;
+        const grossProfit = totalRevenue - expenses;
+        const netProfit = grossProfit - vatPayable;
+        const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
+        const averageOrderValue = allOrders.length > 0 ? totalRevenue / allOrders.length : 0;
+        const completionRate = allOrders.length > 0 ? (completedOrders / allOrders.length) * 100 : 0;
+
+        const calculatedAnalytics: Analytics = {
+          summary: {
+            totalRevenue,
+            totalSalesRevenue: onlineSales + offlineSales,
+            totalRentalRevenue: onlineRentals + offlineRentals,
+            totalOrders: allOrders.length,
+            completedOrders,
+            pendingOrders,
+            totalProducts: products.length,
+            totalCustomers: totalCustomerEmails.size,
+            registeredCustomers: users.filter((u: any) => !u.isGuest).length,
+            guestCustomers: users.filter((u: any) => u.isGuest).length,
+            averageOrderValue,
+            completionRate,
+          },
+          cautionFeeMetrics: {
+            totalCollected: 0,
+            totalRefunded: 0,
+            totalPartiallyRefunded: 0,
+            totalForfeited: 0,
+            pendingReturn: 0,
+            refundRate: 0,
+            averageRefundDays: 0,
+          },
+          expenseMetrics: {
+            count: 0,
+            totalAmount: expenses,
+            totalVAT: 0,
+          },
+          vatMetrics: {
+            totalVAT: outputVAT,
+            inputVAT,
+            outputVAT,
+            vatPayable,
+            vatExempt: 0,
+          },
+          revenueBreakdown: {
+            onlineSalesRevenue: onlineSales,
+            onlineRentalRevenue: onlineRentals,
+          },
+          offlineRevenueBreakdown: {
+            salesRevenue: offlineSales,
+            rentalRevenue: offlineRentals,
+          },
+          orderTypeBreakdown: {
+            online: onlineCount,
+            offline: offlineCount,
+          },
+          dailyMetrics: [],
+          topProducts: [],
+          customerMetrics: {
+            newCustomersThisMonth: 0,
+            returningCustomers: 0,
+            customerRetentionRate: 0,
+          },
+        };
+
+        // Always update state immediately - React handles re-render optimization
+        if (initialLoadRef.current) {
+          setLoading(false);
+          initialLoadRef.current = false;
         }
-        const data = await response.json();
-        setAnalytics(data);
+        setAnalytics(calculatedAnalytics);
         setError(null);
       } catch (err) {
         console.error('Error fetching analytics:', err);
         setError(err instanceof Error ? err.message : 'An error occurred');
-      } finally {
         setLoading(false);
       }
     };
 
+    // Initial fetch
     fetchAnalytics();
 
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchAnalytics, 30000);
+    // Refresh every 3 seconds for real-time updates
+    const interval = setInterval(fetchAnalytics, 3000);
     return () => clearInterval(interval);
   }, []);
 
@@ -202,7 +339,7 @@ export function EnhancedDashboard() {
     );
   }
 
-  // Calculate derived metrics - add fallbacks for undefined values
+  // Calculate derived metrics - use cleaned Finance Dashboard calculations
   const totalRevenue = summary?.totalRevenue ?? 0;
   const totalExpenses = expenseMetrics?.totalAmount ?? 0;
   const vatPayable = vatMetrics?.vatPayable ?? 0;
@@ -223,7 +360,7 @@ export function EnhancedDashboard() {
   const averageOrderValue = summary?.averageOrderValue ?? 0;
   const completionRate = summary?.completionRate ?? 0;
 
-  // Online/Offline breakdown
+  // Online/Offline breakdown - use actual values from Finance calculations
   const onlineSalesRevenue = revenueBreakdown?.onlineSalesRevenue ?? 0;
   const onlineRentalRevenue = revenueBreakdown?.onlineRentalRevenue ?? 0;
   const offlineSalesRevenue = offlineRevenueBreakdown?.salesRevenue ?? 0;
@@ -231,13 +368,33 @@ export function EnhancedDashboard() {
   const onlineTransactions = orderTypeBreakdown?.online ?? 0;
   const offlineTransactions = orderTypeBreakdown?.offline ?? 0;
 
-  // PRIMARY FINANCIAL METRICS (Large cards in 4-column grid)
+  // PRIMARY FINANCIAL METRICS - REDESIGNED (Only 4 most important cards)
   const primaryCards: StatCard[] = [
     {
       label: 'Total Revenue',
       value: `₦${(totalRevenue ?? 0).toLocaleString()}`,
       color: 'bg-blue-50 border-blue-200',
     },
+    {
+      label: 'Net Profit',
+      value: `₦${(netProfit ?? 0).toLocaleString()}`,
+      subtext: `${(profitMargin ?? 0).toFixed(1)}% margin`,
+      color: 'bg-emerald-50 border-emerald-200',
+    },
+    {
+      label: 'Total Expenses',
+      value: `₦${(totalExpenses ?? 0).toLocaleString()}`,
+      color: 'bg-orange-50 border-orange-200',
+    },
+    {
+      label: 'VAT Payable',
+      value: `₦${(vatPayable ?? 0).toLocaleString()}`,
+      color: 'bg-purple-50 border-purple-200',
+    },
+  ];
+
+  // REVENUE BREAKDOWN - Secondary importance
+  const revenueCards: StatCard[] = [
     {
       label: 'Online Sales',
       value: `₦${(onlineSalesRevenue ?? 0).toLocaleString()}`,
@@ -247,7 +404,6 @@ export function EnhancedDashboard() {
     {
       label: 'Online Rentals',
       value: `₦${(onlineRentalRevenue ?? 0).toLocaleString()}`,
-      subtext: `${onlineTransactions > 0 ? Math.round((onlineRentalRevenue ?? 0) / onlineTransactions) : 0} avg`,
       color: 'bg-teal-50 border-teal-200',
     },
     {
@@ -259,30 +415,11 @@ export function EnhancedDashboard() {
     {
       label: 'Offline Rentals',
       value: `₦${(offlineRentalRevenue ?? 0).toLocaleString()}`,
-      subtext: `Manual entries`,
-      color: 'bg-orange-50 border-orange-200',
-    },
-    {
-      label: 'Daily Expenses',
-      value: `₦${(totalExpenses ?? 0).toLocaleString()}`,
-      subtext: `${expenseMetrics?.count ?? 0} recorded`,
-      color: 'bg-red-50 border-red-200',
-    },
-    {
-      label: 'VAT Payable',
-      value: `₦${(vatPayable ?? 0).toLocaleString()}`,
-      subtext: `Output: ₦${(vatMetrics?.outputVAT ?? 0).toLocaleString()}`,
-      color: 'bg-purple-50 border-purple-200',
-    },
-    {
-      label: 'Net Profit',
-      value: `₦${(netProfit ?? 0).toLocaleString()}`,
-      subtext: `${(profitMargin ?? 0).toFixed(1)}% margin`,
-      color: 'bg-emerald-50 border-emerald-200',
+      color: 'bg-amber-50 border-amber-200',
     },
   ];
 
-  // SECONDARY METRICS (Compact cards in 6-column grid for supporting data)
+  // SECONDARY METRICS (Compact cards for supporting data)
   const secondaryCards: StatCard[] = [
     {
       label: 'Total Orders',
@@ -301,16 +438,6 @@ export function EnhancedDashboard() {
       value: totalCustomers,
       subtext: `${registeredCustomers} registered`,
       color: 'bg-cyan-50 border-cyan-200',
-    },
-    {
-      label: 'Avg Order Value',
-      value: `₦${(averageOrderValue ?? 0).toLocaleString()}`,
-      color: 'bg-rose-50 border-rose-200',
-    },
-    {
-      label: 'Completion Rate',
-      value: `${(completionRate ?? 0).toFixed(1)}%`,
-      color: 'bg-violet-50 border-violet-200',
     },
     {
       label: 'New Customers',
@@ -361,10 +488,10 @@ export function EnhancedDashboard() {
         <p className="text-gray-600">Real-time business metrics and performance data</p>
       </div>
 
-      {/* PRIMARY FINANCIAL METRICS Grid */}
+      {/* PRIMARY FINANCIAL METRICS - Large prominent cards */}
       <div className="mb-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Financial Metrics</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Key Financial Metrics</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
           {primaryCards.map((card, index) => {
             const bgClass = card.color.split(' ')[0];
             const borderClass = card.color.split(' ')[1];
@@ -374,10 +501,38 @@ export function EnhancedDashboard() {
             return (
               <div
                 key={index}
-                className={`${bgClass} ${borderColor} border rounded-lg p-6 shadow-sm hover:shadow-md transition`}
+                className={`${bgClass} ${borderColor} border-2 rounded-xl p-6 shadow-sm hover:shadow-lg transition duration-200`}
+              >
+                <p className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">{card.label}</p>
+                <p className={`text-3xl font-bold ${textColor} mb-1`}>
+                  {card.value}
+                </p>
+                {card.subtext && (
+                  <p className="text-xs text-gray-500 mt-2">{card.subtext}</p>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* REVENUE BREAKDOWN - Secondary section */}
+      <div className="mb-8">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Revenue Breakdown</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {revenueCards.map((card, index) => {
+            const bgClass = card.color.split(' ')[0];
+            const borderClass = card.color.split(' ')[1];
+            const textColor = statColorMap[bgClass] || 'text-gray-900';
+            const borderColor = borderColorMap[borderClass] || 'border-gray-200';
+
+            return (
+              <div
+                key={index}
+                className={`${bgClass} ${borderColor} border rounded-lg p-5 shadow-sm hover:shadow-md transition`}
               >
                 <p className="text-sm font-medium text-gray-600 mb-2">{card.label}</p>
-                <p className={`text-2xl md:text-3xl font-bold ${textColor}`}>
+                <p className={`text-2xl font-bold ${textColor}`}>
                   {card.value}
                 </p>
                 {card.subtext && (
@@ -391,8 +546,8 @@ export function EnhancedDashboard() {
 
       {/* SECONDARY METRICS Grid - Compact & Minimal */}
       <div className="mb-8">
-        <h2 className="text-lg font-bold text-gray-900 mb-4">Business Metrics</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        <h2 className="text-xl font-bold text-gray-900 mb-4">Business Metrics</h2>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
           {secondaryCards.map((card, index) => {
             const bgClass = card.color.split(' ')[0];
             const borderClass = card.color.split(' ')[1];

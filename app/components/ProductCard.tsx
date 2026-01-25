@@ -1,12 +1,14 @@
 "use client";
 
 import Image from "next/image";
-import { ShoppingCart, Info, Check } from "lucide-react";
+import { ShoppingCart, Info } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { CURRENCY_RATES } from "./constants";
 import { useCart } from "./CartContext";
 import { useMode } from "@/app/context/ModeContext";
+import { Toast } from "./Toast";
+import { Portal } from "./Portal";
 
 interface Product {
   id?: string;
@@ -30,8 +32,10 @@ interface ProductCardProps {
 }
 
 export function ProductCard({ product, formattedPrice: initialFormattedPrice, currency = "NGN" }: ProductCardProps) {
-  const { addItem } = useCart();
+  const { addItem, canAddItem, getCartMode } = useCart();
   const [showNotification, setShowNotification] = useState(false);
+  const [showError, setShowError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   
   // Get safe product ID (handle both id and _id from MongoDB)
   const productId = product.id || (product as any)._id || '';
@@ -48,6 +52,15 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
   const [mainImageIndex, setMainImageIndex] = useState(0);
 
   const handleAddToCart = () => {
+    // Validate cart mode compatibility
+    const validation = canAddItem(cardMode);
+    if (!validation.canAdd) {
+      setErrorMessage(validation.message);
+      setShowError(true);
+      setTimeout(() => setShowError(false), 4000);
+      return;
+    }
+
     const price = cardMode === "rent" ? product.rentPrice : product.sellPrice;
     
     // For rental items, default to 1 day when adding from card
@@ -245,33 +258,30 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
 
       </article>
 
-      {/* Add to Cart Notification - Portal-style notification outside article */}
+      {/* Add to Cart Success Toast - Using Portal to escape stacking context */}
       {showNotification && (
-        <div style={{ 
-          position: 'fixed', 
-          inset: 0, 
-          pointerEvents: 'none',
-          zIndex: 99999
-        }}>
-          <div style={{ 
-            position: 'fixed', 
-            bottom: '24px', 
-            left: '16px',
-            right: '16px',
-            pointerEvents: 'auto'
-          }}
-          className="md:left-auto md:right-6 md:w-80">
-            <div className="bg-lime-600 text-white rounded-lg shadow-2xl p-4 flex items-center gap-3 animate-in slide-in-from-bottom duration-300">
-              <div className="shrink-0">
-                <Check className="h-5 w-5" />
-              </div>
-              <div className="grow">
-                <p className="font-semibold text-sm">Added to cart successfully!</p>
-                <p className="text-xs opacity-90">{product.name}</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        <Portal>
+          <Toast
+            message="Added to Cart!"
+            subtitle={product.name}
+            type="success"
+            duration={3000}
+            onClose={() => setShowNotification(false)}
+          />
+        </Portal>
+      )}
+
+      {/* Cart Mode Conflict Error Toast - Using Portal to escape stacking context */}
+      {showError && (
+        <Portal>
+          <Toast
+            message="Cannot Mix Order Types"
+            subtitle={errorMessage}
+            type="error"
+            duration={4000}
+            onClose={() => setShowError(false)}
+          />
+        </Portal>
       )}
     </>
   );

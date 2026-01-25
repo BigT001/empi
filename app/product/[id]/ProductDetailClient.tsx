@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, Check, AlertCircle, X } from "lucide-react";
+import { ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, AlertCircle, X } from "lucide-react";
 import { CURRENCY_RATES } from "@/app/components/constants";
 import { useCart } from "@/app/components/CartContext";
 import { useMode } from "@/app/context/ModeContext";
 import { PresaleNotice } from "@/app/components/PresaleNotice";
+import { Toast } from "@/app/components/Toast";
+import { Portal } from "@/app/components/Portal";
 
 interface Product {
   id: string;
@@ -44,7 +46,7 @@ interface Props {
 export default function ProductDetailClient({ product, allProducts, currency = "NGN" }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { addItem, items } = useCart();
+  const { addItem, items, canAddItem } = useCart();
   
   // Get safe product ID first
   const productId = product.id || product._id || '';
@@ -65,6 +67,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [addedToCart, setAddedToCart] = useState(false);
   const [showRentalPolicy, setShowRentalPolicy] = useState(false);
+  const [cartConflict, setCartConflict] = useState<{ hasConflict: boolean; message: string }>({ hasConflict: false, message: "" });
 
   const formatPrice = (price: number) => {
     const converted = price * CURRENCY_RATES[currency].rate;
@@ -78,6 +81,14 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const displayPrice = mode === "rent" ? formatPrice(product.rentPrice) : formatPrice(product.sellPrice);
 
   const handleAddToCart = () => {
+    // Validate cart mode compatibility
+    const validation = canAddItem(mode);
+    if (!validation.canAdd) {
+      setCartConflict({ hasConflict: true, message: validation.message });
+      setTimeout(() => setCartConflict({ hasConflict: false, message: "" }), 4000);
+      return;
+    }
+
     const price = mode === "rent" ? product.rentPrice : product.sellPrice;
     const productImage = product.imageUrl || (product.imageUrls && product.imageUrls[0]) || '';
     const cartItem: any = {
@@ -93,7 +104,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
     addItem(cartItem);
     
     setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
+    setTimeout(() => setAddedToCart(false), 3000);
   };
 
   const nextImage = () => {
@@ -367,21 +378,9 @@ export default function ProductDetailClient({ product, allProducts, currency = "
               {(mode === 'buy' && product.availableForBuy !== false) || (mode === 'rent' && product.availableForRent !== false) ? (
                 <button 
                   onClick={handleAddToCart} 
-                  className={`w-full py-4 px-6 rounded-xl font-black text-lg transition duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl transform hover:scale-105 active:scale-95 ${
-                    addedToCart
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white'
-                      : 'bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white'
-                  }`}
+                  className="w-full py-4 px-6 rounded-xl font-black text-lg transition duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl transform hover:scale-105 active:scale-95 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white"
                 >
-                  {addedToCart ? (
-                    <>
-                      <Check className="h-6 w-6 animate-bounce" /> Added to Cart!
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="h-6 w-6" /> Add to Cart
-                    </>
-                  )}
+                  <ShoppingCart className="h-6 w-6" /> Add to Cart
                 </button>
               ) : (
                 <div className="w-full py-4 px-6 rounded-xl bg-gray-200 text-gray-600 font-black text-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-60">
@@ -598,6 +597,32 @@ export default function ProductDetailClient({ product, allProducts, currency = "
             </div>
           </div>
         </div>
+      )}
+
+      {/* Add to Cart Success Toast - Using Portal to escape stacking context */}
+      {addedToCart && (
+        <Portal>
+          <Toast
+            message="Added to Cart!"
+            subtitle={product.name}
+            type="success"
+            duration={3000}
+            onClose={() => setAddedToCart(false)}
+          />
+        </Portal>
+      )}
+
+      {/* Cart Mode Conflict Error Toast - Using Portal to escape stacking context */}
+      {cartConflict.hasConflict && (
+        <Portal>
+          <Toast
+            message="Cannot Mix Order Types"
+            subtitle={cartConflict.message}
+            type="error"
+            duration={4000}
+            onClose={() => setCartConflict({ hasConflict: false, message: "" })}
+          />
+        </Portal>
       )}
     </div>
   );

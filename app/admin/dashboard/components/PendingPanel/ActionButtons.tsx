@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Phone, Trash2, Truck } from "lucide-react";
+import { Check, Phone, MessageCircle, Truck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -29,7 +29,8 @@ interface ActionButtonsProps {
   hideReadyButton?: boolean;
   hideDeleteButton?: boolean;
   hidePaymentStatus?: boolean;
-  onShipped?: () => void;
+  logisticsMode?: boolean;
+  onShipped?: () => Promise<void>;
   disableShippedButton?: boolean;
   onDeleteConfirm?: (orderId: string) => Promise<void>;
 }
@@ -46,14 +47,13 @@ export function ActionButtons({
   hideReadyButton = false,
   hideDeleteButton = false,
   hidePaymentStatus = false,
+  logisticsMode = false,
   onShipped,
   disableShippedButton = false,
   onDeleteConfirm,
 }: ActionButtonsProps) {
   const router = useRouter();
   const [sentToLogistics, setSentToLogistics] = useState<boolean>(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
   const [showReadyForDeliveryModal, setShowReadyForDeliveryModal] = useState(false);
 
   const handleReadyClick = async () => {
@@ -95,26 +95,11 @@ export function ActionButtons({
     console.log('[ActionButtons] Modal closed');
   };
 
-  const handleDeleteClick = async () => {
-    try {
-      setIsDeleting(true);
-      if (onDeleteConfirm) {
-        await onDeleteConfirm(orderId);
-      } else {
-        onDelete(orderId);
-      }
-      setShowDeleteModal(false);
-    } catch (error) {
-      console.error('[ActionButtons] Error deleting order:', error);
-    } finally {
-      setIsDeleting(false);
-    }
-  };
   // Show different buttons for approved orders
   if (isApproved) {
     return (
       <div className="flex gap-2 pt-4 border-t border-green-200 mt-auto">
-        {!hideReadyButton && (
+        {!hideReadyButton && !logisticsMode && (
           <button
             onClick={() => {
               console.log('[ActionButtons] 🔴 READY BUTTON CLICKED!');
@@ -154,62 +139,19 @@ export function ActionButtons({
           <Phone className="h-4 w-4" />
           Call
         </button>
-        {!hideDeleteButton && (
-          <>
-            <button
-              onClick={() => setShowDeleteModal(true)}
-              className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
-              title="Delete order"
-            >
-              <Trash2 className="h-4 w-4" />
-            </button>
-            {showDeleteModal && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-                  <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Delete</h3>
-                  <p className="text-gray-600 mb-6">
-                    Are you sure you want to delete this order? This will remove it from both the admin dashboard and logistics page. This action cannot be undone.
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowDeleteModal(false)}
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleDeleteClick}
-                      disabled={isDeleting}
-                      className="flex-1 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold rounded-lg hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-400"
-                    >
-                      {isDeleting ? 'Deleting...' : 'Delete'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-        {hideDeleteButton && (
+        
+        {/* Mark Delivered Button for Logistics Mode */}
+        {logisticsMode && onShipped && (
           <button
-            onClick={() => {
-              if (onShipped) {
-                onShipped();
-              } else {
-                alert('Order marked as shipped!');
-              }
-            }}
+            onClick={onShipped}
             disabled={disableShippedButton}
-            className={`bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 ${
-              disableShippedButton ? 'opacity-50 cursor-not-allowed' : ''
-            }`}
-            title="Mark as shipped"
+            className="flex-1 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
           >
-            <Check className="h-4 w-4" />
-            Shipped
+            <Truck className="h-4 w-4" />
+            Mark Delivered?
           </button>
         )}
-
+        
         {/* Ready for Delivery Confirmation Modal - INSIDE isApproved block */}
         {showReadyForDeliveryModal && (
           <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
@@ -289,41 +231,6 @@ export function ActionButtons({
         <Phone className="h-4 w-4" />
         Call
       </button>
-      <>
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2"
-          title="Delete order"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
-        {showDeleteModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-sm mx-4 shadow-xl">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Confirm Delete</h3>
-              <p className="text-gray-600 mb-6">
-                Are you sure you want to delete this order? This will remove it from both the admin dashboard and logistics page. This action cannot be undone.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowDeleteModal(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-semibold hover:bg-gray-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleDeleteClick}
-                  disabled={isDeleting}
-                  className="flex-1 px-4 py-2 bg-gradient-to-r from-red-600 to-red-700 text-white font-semibold rounded-lg hover:from-red-700 hover:to-red-800 disabled:from-gray-400 disabled:to-gray-400"
-                >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </>
-
     </div>
   );
 }

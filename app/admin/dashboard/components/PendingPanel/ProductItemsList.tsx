@@ -13,9 +13,10 @@ interface OrderItem {
 
 interface ProductItemsListProps {
   items: OrderItem[];
+  hidePrice?: boolean; // Hide prices for logistics view
 }
 
-export function ProductItemsList({ items }: ProductItemsListProps) {
+export function ProductItemsList({ items, hidePrice = false }: ProductItemsListProps) {
   if (!items || items.length === 0) return null;
 
   return (
@@ -75,7 +76,9 @@ export function ProductItemsList({ items }: ProductItemsListProps) {
                 </div>
                 <div className="flex gap-2 items-center justify-between">
                   <span className="text-xs text-gray-600">Qty: {item.quantity}</span>
-                  <p className="text-sm font-bold text-red-600">₦{safePrice.toLocaleString('en-NG')}</p>
+                  {!hidePrice && (
+                    <p className="text-sm font-bold text-red-600">₦{safePrice.toLocaleString('en-NG')}</p>
+                  )}
                 </div>
               </div>
             </div>

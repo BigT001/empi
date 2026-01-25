@@ -58,6 +58,14 @@ interface CartContextType {
     message: string;
     type: "rental_schedule" | "delivery_info" | "buyer_info" | "success";
   };
+  // Cart mode validation - check if we can add an item
+  canAddItem: (itemMode: "buy" | "rent") => { 
+    canAdd: boolean; 
+    message: string;
+    conflictingMode?: "buy" | "rent";
+  };
+  // Get current cart mode (buy or rent or null if empty)
+  getCartMode: () => "buy" | "rent" | null;
 }
 
 const CartContext = createContext<CartContextType | undefined>(undefined);
@@ -411,8 +419,52 @@ export function CartProvider({ children }: { children: ReactNode }) {
     };
   };
 
+  /**
+   * Get the current mode of the cart (buy, rent, or null if empty)
+   * @returns "buy" | "rent" | null
+   */
+  const getCartMode = (): "buy" | "rent" | null => {
+    if (items.length === 0) return null;
+    
+    // All items should have the same mode, so just check the first one
+    return items[0].mode;
+  };
+
+  /**
+   * Validate if a new item can be added to the cart
+   * Prevents mixing rental and purchase items in the same cart
+   * @param itemMode - Mode of the item being added ("buy" or "rent")
+   * @returns { canAdd: boolean, message: string, conflictingMode?: "buy" | "rent" }
+   */
+  const canAddItem = (itemMode: "buy" | "rent"): { 
+    canAdd: boolean; 
+    message: string;
+    conflictingMode?: "buy" | "rent";
+  } => {
+    // If cart is empty, we can always add
+    if (items.length === 0) {
+      return { canAdd: true, message: "" };
+    }
+
+    const currentCartMode = getCartMode();
+
+    // If the new item mode doesn't match the current cart mode, prevent it
+    if (currentCartMode && currentCartMode !== itemMode) {
+      return {
+        canAdd: false,
+        message: 
+          currentCartMode === "rent"
+            ? "🎪 Your cart contains rental items. You can only add rental items to this order. Please clear your cart to purchase items instead."
+            : "🛒 Your cart contains purchase items. You can only add purchase items to this order. Please clear your cart to rent items instead.",
+        conflictingMode: currentCartMode,
+      };
+    }
+
+    return { canAdd: true, message: "" };
+  };
+
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, cautionFee, deliveryState, setDeliveryState, deliveryDistance, setDeliveryDistance, deliveryQuote, setDeliveryQuote, rentalSchedule, setRentalSchedule, validateRentalSchedule, validateDeliveryInfo, validateCheckoutRequirements }}>
+    <CartContext.Provider value={{ items, addItem, removeItem, updateQuantity, clearCart, total, cautionFee, deliveryState, setDeliveryState, deliveryDistance, setDeliveryDistance, deliveryQuote, setDeliveryQuote, rentalSchedule, setRentalSchedule, validateRentalSchedule, validateDeliveryInfo, validateCheckoutRequirements, canAddItem, getCartMode }}>
       {children}
     </CartContext.Provider>
   );
