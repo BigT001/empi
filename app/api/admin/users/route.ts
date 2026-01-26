@@ -117,7 +117,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// Get all admins
+// Get all admins or sub-admins based on query parameter
 export async function GET(request: NextRequest) {
   try {
     await connectDB();
@@ -125,29 +125,70 @@ export async function GET(request: NextRequest) {
     // Get admin_session cookie
     const sessionToken = request.cookies.get('admin_session')?.value;
 
+    console.log('\n=== 🔍 GET /api/admin/users ===');
     if (!sessionToken) {
+      console.log('❌ No session token in cookie');
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
       );
     }
 
-    // Verify requesting admin is super_admin
-    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
+    console.log('✅ Session token found:', sessionToken.substring(0, 20) + '...');
 
-    if (!requestingAdmin || requestingAdmin.role !== 'super_admin') {
+    // Find admin with this session token - first try legacy field, then sessions array
+    let requestingAdmin = await Admin.findOne({ sessionToken });
+    
+    if (!requestingAdmin) {
+      // Try finding in sessions array
+      requestingAdmin = await Admin.findOne({
+        'sessions.token': sessionToken
+      });
+    }
+
+    if (!requestingAdmin) {
+      console.log('❌ Admin not found with token');
+      const totalAdmins = await Admin.countDocuments();
+      const superAdmins = await Admin.countDocuments({ role: 'super_admin' });
+      console.log(`Total admins: ${totalAdmins}, Super admins: ${superAdmins}`);
+      
+      return NextResponse.json(
+        { error: 'Not authenticated or session expired' },
+        { status: 401 }
+      );
+    }
+
+    console.log('✅ Found admin:', requestingAdmin.email, '| Role:', requestingAdmin.role);
+
+    if (requestingAdmin.role !== 'super_admin') {
+      console.log('❌ User is not super_admin, role:', requestingAdmin.role);
       return NextResponse.json(
         { error: 'Only super admins can view all admins' },
         { status: 403 }
       );
     }
 
-    // Get all admins (exclude passwords)
-    const admins = await Admin.find({}, '-password').lean();
+    console.log('✅✅✅ Authentication PASSED! User IS super_admin');
+
+    // Check if requesting only sub-admins (exclude super_admin)
+    const { searchParams } = new URL(request.url);
+    const subAdminsOnly = searchParams.get('subAdminsOnly') === 'true';
+
+    let query = {};
+    if (subAdminsOnly) {
+      query = { role: { $ne: 'super_admin' } };
+      console.log('📋 Fetching: sub-admins only (role !== super_admin)');
+    } else {
+      console.log('📋 Fetching: all admins');
+    }
+
+    // Get admins (exclude passwords)
+    const admins = await Admin.find(query, '-password').lean();
+    console.log(`✅ Returning ${admins.length} admins`);
 
     return NextResponse.json(admins);
   } catch (error: any) {
-    console.error('Get admins error:', error);
+    console.error('❌ Get admins error:', error);
     return NextResponse.json(
       { error: error.message || 'Failed to fetch admins' },
       { status: 500 }

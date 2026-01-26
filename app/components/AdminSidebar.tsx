@@ -52,7 +52,7 @@ const sidebarItems: SidebarItem[] = [
     icon: <Clock className="h-5 w-5" />,
     tab: 'pending',
     permission: 'view_orders',
-    roles: ['super_admin', 'admin', 'logistics_admin'], // Finance cannot access
+    roles: ['super_admin', 'admin', 'logistics_admin', 'finance_admin'], // Finance and Logistics teams can access
   },
   {
     name: "Products",
@@ -81,28 +81,21 @@ const sidebarItems: SidebarItem[] = [
     href: "/admin/invoices",
     icon: <FileText className="h-5 w-5" />,
     permission: 'view_invoices',
-    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
-  },
-  {
-    name: "Reviews",
-    href: "/admin/reviews",
-    icon: <MessageCircle className="h-5 w-5" />,
-    permission: 'view_products',
-    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
+    roles: ['super_admin', 'admin', 'finance_admin'], // Finance team can access
   },
   {
     name: "Logistics",
     href: "/admin/logistics",
     icon: <Truck className="h-5 w-5" />,
     permission: 'view_logistics',
-    roles: ['super_admin', 'admin', 'logistics_admin'], // Finance cannot access
+    roles: ['super_admin', 'admin', 'logistics_admin', 'finance_admin'], // Finance team can also view orders
   },
   {
     name: "Settings",
     href: "/admin/settings",
     icon: <Settings className="h-5 w-5" />,
     permission: 'view_settings',
-    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
+    roles: ['super_admin'], // ONLY super_admin can access
   },
 ];
 
@@ -112,16 +105,24 @@ export function AdminSidebar() {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const { logout, admin } = useAdmin();
   const [stats, setStats] = useState({ pendingInvoices: 0, pendingOrders: 0, totalOrders: 0, totalProducts: 0, registeredCustomers: 0 });
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   const isActive = (href: string, tab?: string) => {
-    // If the item points to the dashboard, resolve active state from pathname
-    if (href === "/admin/dashboard") {
-      if (!(pathname === "/admin" || pathname.startsWith("/admin/dashboard"))) return false;
-      // Default to 'dashboard' tab - removed localStorage
-      return tab === 'dashboard' && (pathname === '/admin' || pathname === '/admin/dashboard');
+    // Determine if we're on dashboard
+    const isOnDashboard = pathname === "/admin" || pathname === "/admin/dashboard";
+    
+    // If this menu item is for dashboard with a specific tab
+    if (href === "/admin/dashboard" && tab) {
+      // Only active if on dashboard AND this specific tab is the active tab
+      if (!isOnDashboard) return false;
+      return activeTab === tab;
     }
-
-    return pathname.startsWith(href);
+    
+    // For non-dashboard routes, only match exact pathname or nested paths
+    if (pathname === href) return true;
+    if (pathname.startsWith(href + "/")) return true;
+    
+    return false;
   };
 
   // Check if item should be visible based on permissions and role
@@ -160,6 +161,16 @@ export function AdminSidebar() {
 
   useEffect(() => {
     let mounted = true;
+    
+    // Listen for tab change events from dashboard
+    const handleTabChange = (event: Event) => {
+      if (mounted && event instanceof CustomEvent) {
+        setActiveTab(event.detail?.tab || 'dashboard');
+      }
+    };
+    
+    window.addEventListener('adminTabChange', handleTabChange);
+    
     (async () => {
       try {
         const res = await fetch('/api/admin/dashboard', { cache: 'no-store' });
@@ -178,7 +189,11 @@ export function AdminSidebar() {
         // ignore fail silently
       }
     })();
-    return () => { mounted = false; };
+    
+    return () => { 
+      mounted = false;
+      window.removeEventListener('adminTabChange', handleTabChange);
+    };
   }, []);
 
   return (
@@ -220,6 +235,8 @@ export function AdminSidebar() {
                     try {
                       if (typeof window !== 'undefined') {
                         if (item.tab) {
+                          // Update sidebar's own activeTab state immediately for instant UI feedback
+                          setActiveTab(item.tab);
                           // Notify same-window listeners that the tab changed
                           window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: item.tab } }));
                         }

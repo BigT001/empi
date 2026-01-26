@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Fragment, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, Trash2, RotateCcw, Eye, EyeOff, Mail, Phone, Calendar, ShoppingBag, AlertCircle } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, RotateCcw, Eye, EyeOff, Mail, Phone, Calendar, ShoppingBag, AlertCircle } from "lucide-react";
 import ConfirmModal from "@/app/components/ConfirmModal";
 
 interface BuyerData {
@@ -411,13 +411,6 @@ export function UsersPanel() {
                                   title="Reset password"
                                 >
                                   <RotateCcw className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => openConfirm('delete', buyer._id, buyer.fullName)}
-                                  className="p-1.5 hover:bg-red-100 rounded-lg transition text-red-600 font-semibold"
-                                  title="Delete user"
-                                >
-                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               </div>
                             </td>

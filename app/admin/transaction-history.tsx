@@ -13,7 +13,6 @@ import {
   TrendingDown,
   Plus,
   X,
-  Trash2,
 } from "lucide-react";
 
 interface Transaction {
@@ -865,7 +864,6 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
                       <th className="text-right px-6 py-4 font-semibold text-gray-900 text-sm">Amount</th>
                       <th className="text-right px-6 py-4 font-semibold text-gray-900 text-sm">Output VAT</th>
                       <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Status</th>
-                      <th className="text-center px-6 py-4 font-semibold text-gray-900 text-sm">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -922,20 +920,7 @@ export default function TransactionHistory({ metrics, offlineTab = false }: Tran
                             {sale.status.charAt(0).toUpperCase() + sale.status.slice(1)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <button
-                            onClick={() => deleteOfflineSale(sale._id, sale.orderNumber)}
-                            disabled={deleting === sale._id}
-                            className="p-2 hover:bg-red-100 rounded-lg transition text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
-                            title="Delete this offline order"
-                          >
-                            {deleting === sale._id ? (
-                              <Loader className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Trash2 className="h-4 w-4" />
-                            )}
-                          </button>
-                        </td>
+
                       </tr>
                     ))}
                   </tbody>

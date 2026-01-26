@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, ChevronUp, MessageSquare, AlertCircle, CheckCircle, Clock, Zap, Factory, AlertCircle as AlertIcon, Calendar, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, MessageSquare, AlertCircle, CheckCircle, Clock, Zap, Factory, AlertCircle as AlertIcon, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface Order {
@@ -426,24 +426,11 @@ export function OtherStatusOrderCard({
                   <CheckCircle className="h-4 w-4" />
                   Approve
                 </button>
-              ) : (
-                <button
-                  onClick={onDeleteClick}
-                  className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete
-                </button>
-              )}
+              ) : null}
             </div>
             {order.paymentVerified && (
-              <button
-                onClick={onDeleteClick}
-                className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </button>
+              <>
+              </>
             )}
           </div>
         </div>
@@ -519,13 +506,6 @@ export function OtherStatusOrderCard({
               className="flex items-center justify-center gap-2 px-3 py-2 bg-gray-500 hover:bg-gray-600 text-white font-bold text-sm rounded-lg transition"
             >
               Cancel Order
-            </button>
-            <button
-              onClick={onDeleteClick}
-              className="flex items-center justify-center gap-2 px-3 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-lg transition"
-            >
-              <Trash2 className="h-4 w-4" />
-              Delete
             </button>
           </div>
         </div>

@@ -21,9 +21,22 @@ export async function PUT(
     }
 
     // Verify requesting admin is super_admin
-    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
+    // Check both old and new session structures
+    const requestingAdmin = await Admin.findOne({
+      $or: [
+        { 'sessions.token': sessionToken },
+        { sessionToken }
+      ]
+    });
 
-    if (!requestingAdmin || requestingAdmin.role !== 'super_admin') {
+    if (!requestingAdmin) {
+      return NextResponse.json(
+        { error: 'Only super admins can update admins' },
+        { status: 403 }
+      );
+    }
+
+    if (requestingAdmin.role !== 'super_admin') {
       return NextResponse.json(
         { error: 'Only super admins can update admins' },
         { status: 403 }
@@ -101,9 +114,22 @@ export async function DELETE(
     }
 
     // Verify requesting admin is super_admin
-    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
+    // Check both old and new session structures
+    const requestingAdmin = await Admin.findOne({
+      $or: [
+        { 'sessions.token': sessionToken },
+        { sessionToken }
+      ]
+    });
 
-    if (!requestingAdmin || requestingAdmin.role !== 'super_admin') {
+    if (!requestingAdmin) {
+      return NextResponse.json(
+        { error: 'Only super admins can delete admins' },
+        { status: 403 }
+      );
+    }
+
+    if (requestingAdmin.role !== 'super_admin') {
       return NextResponse.json(
         { error: 'Only super admins can delete admins' },
         { status: 403 }

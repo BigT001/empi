@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
 
     console.log(`[Verify Payment] 📋 Invoice created: ${invoiceNumber}`, {
       itemCount: invoiceItems.length,
-      items: invoiceItems.map(i => `${i.name} (${i.mode}) - Qty: ${i.quantity}, Price: ${i.price}`),
+      items: invoiceItems.map((i: any) => `${i.name} (${i.mode}) - Qty: ${i.quantity}, Price: ${i.price}`),
       subtotal: order.subtotal,
       cautionFee: order.cautionFee || 0,
       taxAmount: order.vat || 0,

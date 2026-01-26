@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import {
   Edit2,
-  Trash2,
   Plus,
   Search,
   ChevronLeft,
@@ -335,13 +334,7 @@ export default function OfflineOrdersTable({ onOrderAdded }: OfflineOrdersTableP
                           >
                             <Edit2 className="h-4 w-4" />
                           </button>
-                          <button
-                            onClick={() => setDeleteConfirm(order._id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition"
-                            title="Delete Order"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+
                         </div>
                       </td>
                     </tr>

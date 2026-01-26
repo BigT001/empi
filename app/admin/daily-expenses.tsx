@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { TrendingDown, Filter, Search, Trash2, Loader, Plus } from "lucide-react";
+import { TrendingDown, Filter, Search, Loader, Plus } from "lucide-react";
 
 interface DailyExpenseProps {
   onAddExpenseClick?: () => void;
@@ -280,9 +280,6 @@ export default function DailyExpenses({ onAddExpenseClick }: DailyExpenseProps) 
                   <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
                     Date
                   </th>
-                  <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
-                    Action
-                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -328,20 +325,6 @@ export default function DailyExpenses({ onAddExpenseClick }: DailyExpenseProps) 
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600 text-center">
                       {new Date(expense.date).toLocaleDateString("en-NG")}
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleDelete(expense._id)}
-                        disabled={deletingId === expense._id}
-                        className="inline-flex items-center gap-2 px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-lg transition disabled:opacity-50"
-                        title="Delete expense"
-                      >
-                        {deletingId === expense._id ? (
-                          <Loader className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4" />
-                        )}
-                      </button>
                     </td>
                   </tr>
                 ))}

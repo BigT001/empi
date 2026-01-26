@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trash2, Eye, Download, Printer, Filter } from "lucide-react";
+import { Eye, Download, Printer, Filter } from "lucide-react";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 
 interface Invoice {
@@ -330,13 +330,7 @@ export function SavedInvoices() {
                   >
                     <Download className="h-4 w-4" />
                   </button>
-                  <button
-                    onClick={() => handleDeleteInvoice(invoice._id, invoice.invoiceNumber)}
-                    className="flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded text-xs transition"
-                    title="Delete"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
+
                 </div>
               </div>
             </div>
@@ -389,7 +383,7 @@ export function SavedInvoices() {
               <div className="bg-gray-50 rounded-lg p-4 mb-4">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-gray-600">Current Status:</span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[confirmDialog.currentStatus as any] || 'bg-gray-100 text-gray-800'}`}>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[confirmDialog.currentStatus as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}`}>
                     {confirmDialog.currentStatus?.toUpperCase()}
                   </span>
                 </div>
@@ -400,7 +394,7 @@ export function SavedInvoices() {
                 </div>
                 <div className="flex items-center justify-between mt-3">
                   <span className="text-gray-600">New Status:</span>
-                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[confirmDialog.newStatus as any] || 'bg-gray-100 text-gray-800'}`}>
+                  <span className={`px-3 py-1 rounded-full text-sm font-semibold ${statusColors[confirmDialog.newStatus as keyof typeof statusColors] || 'bg-gray-100 text-gray-800'}`}>
                     {confirmDialog.newStatus?.toUpperCase()}
                   </span>
                 </div>
