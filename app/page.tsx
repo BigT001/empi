@@ -13,6 +13,7 @@ import { useHomeMode } from "./context/HomeModeContext";
 import { useCurrency } from "./context/CurrencyContext";
 import CustomCostumesPage from "./custom-costumes/page";
 import { useTheme } from "./context/ThemeContext";
+import { ComingSoon } from "./components/ComingSoon";
 
 export default function Home() {
   const { currency, setCurrency } = useCurrency();
@@ -99,48 +100,56 @@ export default function Home() {
 
       {/* Main Content - Add padding for both mobile and desktop headers */}
       <div className="pt-20 md:pt-24">
-        {/* Main Content */}
-        <div id="product-grid">
-          <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} searchQuery={searchQuery} />
-        </div>
-
-        {/* SEO Text Section */}
-        <section className={`py-12 px-4 transition-colors duration-1000 ${theme === 'dark' ? 'bg-black/40' : 'bg-gray-50'
-          }`}>
-          <div className="max-w-4xl mx-auto">
-            <h2 className={`text-3xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Why Choose EMPI Costumes?</h2>
-            <div className="grid md:grid-cols-2 gap-8">
-              <div>
-                <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-lime-400' : 'text-gray-800'}`}>Lagos&apos;s Top Costume Maker</h3>
-                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'} mb-4`}>
-                  EMPI is the most trusted costume maker in Lagos, Nigeria. With years of experience in creating
-                  and renting quality costumes, we serve thousands of satisfied customers across Lagos.
-                </p>
-              </div>
-              <div>
-                <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-lime-400' : 'text-gray-800'}`}>Wide Selection</h3>
-                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'} mb-4`}>
-                  From adult party costumes to kids themed costumes, we have everything you need for any occasion.
-                  Our collection includes traditional, modern, and themed costumes for all ages.
-                </p>
-              </div>
-              <div>
-                <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-lime-400' : 'text-gray-800'}`}>Affordable Rental & Sales</h3>
-                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'} mb-4`}>
-                  Looking to rent or buy? EMPI offers flexible options. Whether you need a costume for one night
-                  or want to purchase quality pieces, we have competitive prices in Lagos.
-                </p>
-              </div>
-              <div>
-                <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-lime-400' : 'text-gray-800'}`}>Fast & Reliable Service</h3>
-                <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'} mb-4`}>
-                  We understand your time matters. Our fast delivery service ensures you get your costumes on time.
-                  Serving all areas of Lagos with professional service and care.
-                </p>
-              </div>
-            </div>
+        {category === 'kids' ? (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-1000">
+            <ComingSoon category="Kids" />
           </div>
-        </section>
+        ) : (
+          <>
+            {/* Main Content */}
+            <div id="product-grid">
+              <ProductGrid currency={currency} category={category} mode={mode} onModeChange={setMode} searchQuery={searchQuery} />
+            </div>
+
+            {/* SEO Text Section */}
+            <section className={`py-12 px-4 transition-colors duration-1000 ${theme === 'dark' ? 'bg-black/40' : 'bg-gray-50'
+              }`}>
+              <div className="max-w-4xl mx-auto">
+                <h2 className={`text-3xl font-bold mb-6 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Why Choose EMPI Costumes?</h2>
+                <div className="grid md:grid-cols-2 gap-8">
+                  <div>
+                    <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-lime-400' : 'text-gray-800'}`}>Lagos&apos;s Top Costume Maker</h3>
+                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'} mb-4`}>
+                      EMPI is the most trusted costume maker in Lagos, Nigeria. With years of experience in creating
+                      and renting quality costumes, we serve thousands of satisfied customers across Lagos.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-lime-400' : 'text-gray-800'}`}>Wide Selection</h3>
+                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'} mb-4`}>
+                      From adult party costumes to kids themed costumes, we have everything you need for any occasion.
+                      Our collection includes traditional, modern, and themed costumes for all ages.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-lime-400' : 'text-gray-800'}`}>Affordable Rental & Sales</h3>
+                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'} mb-4`}>
+                      Looking to rent or buy? EMPI offers flexible options. Whether you need a costume for one night
+                      or want to purchase quality pieces, we have competitive prices in Lagos.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className={`text-xl font-semibold mb-3 ${theme === 'dark' ? 'text-lime-400' : 'text-gray-800'}`}>Fast & Reliable Service</h3>
+                    <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-700'} mb-4`}>
+                      We understand your time matters. Our fast delivery service ensures you get your costumes on time.
+                      Serving all areas of Lagos with professional service and care.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
       </div>
 
       {/* Footer */}

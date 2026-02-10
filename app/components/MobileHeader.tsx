@@ -124,11 +124,11 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
   return (
     <>
       <div
-        className={`md:hidden fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ease-in-out ${headerVisible || showMobileMenu ? 'translate-y-0' : '-translate-y-full'
-          } ${scrolled ? 'bg-white/95 dark:bg-black/80 backdrop-blur-md shadow-lg border-b border-gray-100 dark:border-white/5' : 'bg-white dark:bg-[#0a0a0a]'}`}
+        className={`md:hidden fixed top-0 left-0 right-0 z-[110] transition-all duration-300 ease-in-out border-b border-gray-100 dark:border-white/5 shadow-sm ${headerVisible || showMobileMenu ? 'translate-y-0' : '-translate-y-full'
+          } ${scrolled ? 'bg-white/95 dark:bg-black/80 backdrop-blur-md' : 'bg-white dark:bg-[#0a0a0a]'}`}
       >
         <div className="flex items-center justify-between px-4 py-3 gap-3">
-          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 group">
+          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 group relative z-10">
             <div className="relative">
               <Image
                 src="/logo/EMPI-2k24-LOGO-1.PNG"
@@ -148,7 +148,7 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
             <span>Search costumes...</span>
           </button>
 
-          <div className="flex items-center gap-1">
+          <div className="flex-shrink-0 flex items-center gap-1 relative z-10">
             <button
               onClick={toggleTheme}
               className="p-2 text-gray-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-90"
@@ -177,111 +177,111 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
 
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="p-2 text-gray-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-95 z-[110]"
+              className="p-2 text-gray-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-95 relative z-[120]"
               aria-label="Toggle Menu"
             >
               {showMobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Full Screen Mobile Menu Overlay */}
-        <div
-          className={`fixed inset-0 z-[105] bg-white dark:bg-[#0a0a0a] transition-all duration-500 ease-in-out ${showMobileMenu ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
-            }`}
-        >
-          {/* Animated Background Orbs */}
-          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-            <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-lime-500/10 dark:bg-lime-500/5 rounded-full blur-[100px]" />
-            <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-green-500/10 dark:bg-green-500/5 rounded-full blur-[100px]" />
+      {/* Full Screen Mobile Menu Overlay - Now Outside the transforming bar */}
+      <div
+        className={`md:hidden fixed inset-0 z-[105] bg-white dark:bg-[#0a0a0a] transition-all duration-500 ease-in-out ${showMobileMenu ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+      >
+        {/* Animated Background Orbs */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-lime-500/10 dark:bg-lime-500/5 rounded-full blur-[100px]" />
+          <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-green-500/10 dark:bg-green-500/5 rounded-full blur-[100px]" />
+        </div>
+
+        <div className="relative h-full flex flex-col pt-24 px-6 pb-10 space-y-8 overflow-y-auto">
+          {/* Navigation Section */}
+          <div>
+            <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-4 pl-1">
+              Costume Collections
+            </p>
+            <nav className="grid grid-cols-1 gap-4">
+              {[
+                { id: 'adults', label: 'Adults', icon: '👤' },
+                { id: 'kids', label: 'Kids', icon: '🧒' },
+                { id: 'custom', label: 'Bespoke', icon: '✨' },
+                { id: 'about', label: 'My Story', href: '/about', icon: '📜' }
+              ].map((item, idx) => (
+                <button
+                  key={item.id}
+                  onClick={() => item.href ? (router.push(item.href), setShowMobileMenu(false)) : handleCategoryChange(item.id)}
+                  className={`flex items-center justify-between px-6 py-5 rounded-2xl text-lg font-black transition-all transform active:scale-[0.98] ${showMobileMenu ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0'}`}
+                  style={{ transitionDelay: `${idx * 100}ms` }}
+                >
+                  <div className="flex items-center gap-4">
+                    <span className="text-2xl">{item.icon}</span>
+                    <span className={(item.href ? pathname === item.href : category === item.id)
+                      ? 'text-lime-600 dark:text-lime-400'
+                      : 'text-gray-900 dark:text-gray-100'
+                    }>
+                      {item.label}
+                    </span>
+                  </div>
+                  {(item.href ? pathname === item.href : category === item.id) && (
+                    <div className="w-2 h-2 rounded-full bg-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.6)]" />
+                  )}
+                </button>
+              ))}
+            </nav>
           </div>
 
-          <div className="relative h-full flex flex-col pt-20 px-6 pb-10 space-y-8 overflow-y-auto">
-            {/* Navigation Section */}
-            <div>
-              <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-4 pl-1">
-                Costume Collections
-              </p>
-              <nav className="grid grid-cols-1 gap-4">
-                {[
-                  { id: 'adults', label: 'Adults', icon: '👤' },
-                  { id: 'kids', label: 'Kids', icon: '🧒' },
-                  { id: 'custom', label: 'Bespoke', icon: '✨' },
-                  { id: 'about', label: 'My Story', href: '/about', icon: '📜' }
-                ].map((item, idx) => (
-                  <button
-                    key={item.id}
-                    onClick={() => item.href ? (router.push(item.href), setShowMobileMenu(false)) : handleCategoryChange(item.id)}
-                    className={`flex items-center justify-between px-6 py-5 rounded-2xl text-lg font-black transition-all transform active:scale-[0.98] animate-in slide-in-from-left duration-500 fill-mode-both`}
-                    style={{ animationDelay: `${idx * 100}ms` }}
-                  >
-                    <div className="flex items-center gap-4">
-                      <span className="text-2xl">{item.icon}</span>
-                      <span className={(item.href ? pathname === item.href : category === item.id)
-                        ? 'text-lime-600 dark:text-lime-400'
-                        : 'text-gray-900 dark:text-gray-100'
-                      }>
-                        {item.label}
-                      </span>
-                    </div>
-                    {(item.href ? pathname === item.href : category === item.id) && (
-                      <div className="w-2 h-2 rounded-full bg-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.6)]" />
-                    )}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            {/* Experience Section */}
-            <div className="flex-1 space-y-4 pt-6 border-t border-gray-100 dark:border-white/5">
-              <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-4 pl-1">
-                Your Experience
-              </p>
-              {buyer ? (
-                <div className="space-y-4 animate-in slide-in-from-bottom duration-700">
-                  <Link
-                    href="/dashboard"
-                    onClick={() => setShowMobileMenu(false)}
-                    className="flex items-center gap-4 p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-900 dark:text-white"
-                  >
-                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-lime-500 to-green-600 flex items-center justify-center text-white shadow-lg shadow-lime-500/20">
-                      <User className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-0.5">Welcome back</p>
-                      <p className="text-base font-black">{buyer.fullName}</p>
-                    </div>
-                  </Link>
-                  <button
-                    onClick={async () => {
-                      setShowMobileMenu(false);
-                      await logout();
-                      router.push('/');
-                    }}
-                    className="w-full flex items-center gap-4 p-5 rounded-2xl text-red-600 dark:text-red-400 font-black text-sm bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/10"
-                  >
-                    <LogOut className="h-5 w-5" />
-                    <span>Logout from Account</span>
-                  </button>
-                </div>
-              ) : (
+          {/* Experience Section */}
+          <div className={`flex-1 space-y-4 pt-6 border-t border-gray-100 dark:border-white/5 transition-all duration-700 delay-500 ${showMobileMenu ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+            <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-4 pl-1">
+              Your Experience
+            </p>
+            {buyer ? (
+              <div className="space-y-4">
                 <Link
-                  href="/auth"
+                  href="/dashboard"
                   onClick={() => setShowMobileMenu(false)}
-                  className="flex items-center justify-center gap-3 w-full p-6 rounded-2xl bg-slate-900 dark:bg-lime-600 text-white font-black text-base shadow-[0_20px_40px_rgba(0,0,0,0.1)] dark:shadow-lime-500/20 active:scale-95 transition-all animate-in slide-in-from-bottom duration-700"
+                  className="flex items-center gap-4 p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-900 dark:text-white"
                 >
-                  <User className="h-5 w-5" />
-                  <span>Join EMPI Community</span>
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-lime-500 to-green-600 flex items-center justify-center text-white shadow-lg shadow-lime-500/20">
+                    <User className="h-6 w-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-0.5">Welcome back</p>
+                    <p className="text-base font-black">{buyer.fullName}</p>
+                  </div>
                 </Link>
-              )}
-            </div>
+                <button
+                  onClick={async () => {
+                    setShowMobileMenu(false);
+                    await logout();
+                    router.push('/');
+                  }}
+                  className="w-full flex items-center gap-4 p-5 rounded-2xl text-red-600 dark:text-red-400 font-black text-sm bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/10"
+                >
+                  <LogOut className="h-5 w-5" />
+                  <span>Logout from Account</span>
+                </button>
+              </div>
+            ) : (
+              <Link
+                href="/auth"
+                onClick={() => setShowMobileMenu(false)}
+                className="flex items-center justify-center gap-3 w-full p-6 rounded-2xl bg-slate-900 dark:bg-lime-600 text-white font-black text-base shadow-[0_20px_40px_rgba(0,0,0,0.1)] dark:shadow-lime-500/20 active:scale-95 transition-all"
+              >
+                <User className="h-5 w-5" />
+                <span>Join EMPI Community</span>
+              </Link>
+            )}
+          </div>
 
-            {/* Footer Sign-off */}
-            <div className="text-center pt-8">
-              <p className="text-[10px] font-black tracking-[0.3em] uppercase text-gray-300 dark:text-gray-700">
-                EMPI &copy; 2024
-              </p>
-            </div>
+          {/* Footer Sign-off */}
+          <div className="text-center pt-8">
+            <p className="text-[10px] font-black tracking-[0.3em] uppercase text-gray-300 dark:text-gray-700">
+              EMPI &copy; 2024
+            </p>
           </div>
         </div>
       </div>
