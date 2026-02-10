@@ -10,7 +10,7 @@ import { useBuyer } from "../context/BuyerContext";
 import { ShoppingBag, AlertCircle, CreditCard } from "lucide-react";
 import { getDiscountPercentage, VAT_RATE } from "@/lib/discountCalculator";
 import { validateCheckoutItemsModes } from "@/lib/utils/orderDiagnostics";
-import { PresaleNotice } from "../components/PresaleNotice";
+
 
 const SHIPPING_OPTIONS = {
   empi: { id: "empi", name: "EMPI Delivery", cost: 2500, estimatedDays: "2-5 business days" },
@@ -62,7 +62,7 @@ export default function CheckoutPage() {
       try {
         const quote = JSON.parse(savedQuote);
         console.log('[Checkout] Loaded custom quote from sessionStorage:', quote);
-        
+
         // Ensure all required quote fields have proper values
         const completeQuote = {
           orderId: quote.orderId,
@@ -74,7 +74,7 @@ export default function CheckoutPage() {
           discountPercentage: quote.discountPercentage || 0,
           discountAmount: quote.discountAmount || 0,
         };
-        
+
         console.log('[Checkout] Processed quote with values:', completeQuote);
         setCustomQuote(completeQuote);
 
@@ -95,14 +95,14 @@ export default function CheckoutPage() {
                   address: customOrder.address || '',
                   state: customOrder.state || '',
                 });
-                
+
                 // 🎁 ALSO LOAD DISCOUNT FROM DATABASE if it was persisted
                 if (customOrder.discountPercentage !== undefined || customOrder.discountAmount !== undefined) {
                   console.log('[Checkout] 🎁 Loaded discount from database:', {
                     discountPercentage: customOrder.discountPercentage,
                     discountAmount: customOrder.discountAmount,
                   });
-                  
+
                   // Update the quote with database discount values
                   setCustomQuote((prev: any) => ({
                     ...prev,
@@ -110,7 +110,7 @@ export default function CheckoutPage() {
                     discountAmount: customOrder.discountAmount || 0,
                   }));
                 }
-                
+
                 console.log('[Checkout] ✅ Loaded guest customer from unified order:', {
                   fullName: fullName,
                   email: customOrder.email,
@@ -130,13 +130,13 @@ export default function CheckoutPage() {
   const handlePaymentSuccess = async (response: any) => {
     console.log("✅ Payment success handler called");
     console.log("Reference:", response?.reference);
-    
+
     // CRITICAL: Prevent duplicate order creation
     if (paymentProcessed) {
       console.log("⚠️ Payment already processed, ignoring duplicate call");
       return;
     }
-    
+
     setPaymentProcessed(true);
 
     try {
@@ -150,7 +150,7 @@ export default function CheckoutPage() {
       }
 
       let orderData;
-      
+
       // Consolidated order data - treat all orders the same way
       // Shipping removed from checkout totals and order payloads
       const shippingCost = 0;
@@ -194,7 +194,7 @@ export default function CheckoutPage() {
           params.append('name', customerInfo.fullName);
           const verifyRes = await fetch(`/api/verify-payment?${params.toString()}`);
           const verifyData = await verifyRes.json();
-          
+
           if (verifyData.success) {
             console.log("✅ Invoice generated for custom order:", verifyData.invoiceNumber || 'N/A');
           } else {
@@ -208,7 +208,7 @@ export default function CheckoutPage() {
         console.log("🎉 Payment successful for custom order!");
         setPaymentSuccessful(true);
         setSuccessReference(response.reference);
-        
+
         // Clear custom quote from sessionStorage
         sessionStorage.removeItem('customOrderQuote');
         return;
@@ -216,27 +216,27 @@ export default function CheckoutPage() {
         console.log("[Checkout] Full items array from cart:", JSON.stringify(items, null, 2));
         const buyItems = items.filter((item: any) => item.mode === 'buy');
         const rentalItems = items.filter((item: any) => item.mode === 'rent');
-        
+
         // Buy subtotal (before discount)
         const buySubtotal = buyItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-        
+
         // Rental subtotal (with rental days)
         const rentalSubtotal = rentalItems.reduce((sum: number, item: any) => {
           const days = rentalSchedule?.rentalDays || item.rentalDays || 1;
           return sum + (item.price * item.quantity * days);
         }, 0);
-        
+
         // Apply discount ONLY to buy items
         const buyQuantity = buyItems.reduce((sum: number, item: any) => sum + item.quantity, 0);
         const discountPercent = getDiscountPercentage(buyQuantity);
         const discountAmt = buySubtotal * (discountPercent / 100);
         const buySubtotalAfterDiscount = buySubtotal - discountAmt;
-        
+
         // Total goods = buy after discount + rental (no discount)
         const goodsSubtotal = buySubtotalAfterDiscount + rentalSubtotal;
         const taxAmount = Number((goodsSubtotal * VAT_RATE).toFixed(2));
         const totalAmount = goodsSubtotal + (cautionFee || 0) + shippingCost + taxAmount;
-        
+
         // Log the subtotal breakdown for debugging
         console.log('[Checkout] 💰 PRICING BREAKDOWN:', {
           buySubtotal,
@@ -262,7 +262,7 @@ export default function CheckoutPage() {
             rentalDays: it.rentalDays || rentalSchedule?.rentalDays || 1,
           };
           // CRITICAL LOGGING: Verify mode is set before sending to API
-          console.log(`[Checkout] 📦 Item "${it.name}":`, { 
+          console.log(`[Checkout] 📦 Item "${it.name}":`, {
             mode: mappedItem.mode,
             hasMode: !!mappedItem.mode,
             originalMode: it.mode,
@@ -339,14 +339,14 @@ export default function CheckoutPage() {
 
       console.log("💾 Saving order to unified endpoint...");
       console.log("Order data:", JSON.stringify(orderData, null, 2));
-      
+
       // Add idempotency key to prevent duplicate order creation
       const idempotencyKey = response?.reference || `checkout-${Date.now()}`;
-      
+
       // Use unified endpoint for creating regular orders
       const res = await fetch("/api/orders/unified", {
         method: "POST",
-        headers: { 
+        headers: {
           "Content-Type": "application/json",
           "X-Idempotency-Key": idempotencyKey,
         },
@@ -358,7 +358,7 @@ export default function CheckoutPage() {
         console.log("✅ Order saved to unified system");
         console.log("Invoice generated:", orderRes.invoice?.invoiceNumber || "N/A");
         console.log("Order ID:", orderRes.orderId);
-        
+
         if (!orderRes.orderId) {
           console.error("❌ ERROR: Order response missing orderId!");
           console.error("Full response:", orderRes);
@@ -366,14 +366,14 @@ export default function CheckoutPage() {
           setIsProcessing(false);
           return;
         }
-        
+
         // Show success message
         console.log("🎉 Payment successful!");
         setPaymentSuccessful(true);
         setSuccessReference(response.reference);
-        
+
         clearCart();
-        
+
         // Clear custom quote from sessionStorage
         sessionStorage.removeItem('customOrderQuote');
       } else {
@@ -390,10 +390,10 @@ export default function CheckoutPage() {
         console.error("❌ Order save failed with status:", res.status);
         console.error("Error details:", errorData);
         console.error("Full error object:", { status: res.status, statusText: res.statusText, body: errorData });
-        
+
         // Log the orderData being sent for debugging
         console.error("Order data that was sent:", JSON.stringify(orderData, null, 2));
-        
+
         setOrderError(errorData?.error || errorData?.details || "Failed to save order. Please contact support.");
       }
     } catch (error) {
@@ -416,14 +416,14 @@ export default function CheckoutPage() {
           clearInterval(pollInterval);
           return;
         }
-        
+
         const params = new URLSearchParams();
         params.append('reference', ref);
         if (customerEmail) params.append('email', customerEmail);
         if (customerName) params.append('name', customerName);
         const verifyRes = await fetch(`/api/verify-payment?${params.toString()}`);
         const verifyData = await verifyRes.json();
-        
+
         if (verifyData.success && verifyData.status === 'success') {
           console.log("✅ Payment verified!");
           clearInterval(pollInterval);
@@ -433,7 +433,7 @@ export default function CheckoutPage() {
       } catch (err) {
         console.log("Polling...");
       }
-      
+
       if (pollCount >= maxPolls) {
         clearInterval(pollInterval);
         setIsProcessing(false);
@@ -449,14 +449,14 @@ export default function CheckoutPage() {
         console.log("⚠️ Payment already processed, skipping verification");
         return;
       }
-      
+
       const params = new URLSearchParams();
       params.append('reference', ref);
       if (customerEmail) params.append('email', customerEmail);
       if (customerName) params.append('name', customerName);
       const res = await fetch(`/api/verify-payment?${params.toString()}`);
       const data = await res.json();
-      
+
       if (data.success && data.status === 'success') {
         console.log("✅ Payment confirmed!");
         handlePaymentSuccess({ reference: ref, ...data });
@@ -550,21 +550,21 @@ export default function CheckoutPage() {
 
   // ===== CALCULATE TOTALS =====
   let shippingCost, taxEstimate, totalAmount, displayItems, displayTotal, displaySubtotal, discountAmount = 0, discountPercentage = 0, displaySubtotalAfterDiscount = 0;
-  
+
   if (customQuote) {
     // Custom order totals - ensure all values are numbers
     const quotedPrice = typeof customQuote.quotedPrice === 'number' ? customQuote.quotedPrice : parseFloat(customQuote.quotedPrice) || 0;
     const quotedVAT = typeof customQuote.quotedVAT === 'number' ? customQuote.quotedVAT : parseFloat(customQuote.quotedVAT) || 0;
     const quotedTotal = typeof customQuote.quotedTotal === 'number' ? customQuote.quotedTotal : parseFloat(customQuote.quotedTotal) || 0;
-    
+
     // 🎁 Extract discount information from custom quote
     discountPercentage = customQuote.discountPercentage || 0;
     discountAmount = customQuote.discountAmount || 0;
-    
+
     shippingCost = 0;
     taxEstimate = quotedVAT;
     totalAmount = quotedTotal || (quotedPrice + quotedVAT);
-    
+
     // Build display items from quote items if available
     if (customQuote.items && Array.isArray(customQuote.items) && customQuote.items.length > 0) {
       displayItems = customQuote.items.map((item: any) => ({
@@ -581,10 +581,10 @@ export default function CheckoutPage() {
         total: quotedPrice * (customQuote.quantity || 1)
       }];
     }
-    
+
     displaySubtotal = quotedPrice;
     displayTotal = totalAmount;
-    
+
     console.log('[Checkout] Calculated custom quote totals:', {
       quotedPrice,
       quotedVAT,
@@ -598,39 +598,39 @@ export default function CheckoutPage() {
   } else {
     // Cart totals - with discount calculation ONLY on buy items
     shippingCost = 0;
-    
+
     // Separate buy and rental items
     const buyItems = items.filter(item => item.mode === 'buy');
     const rentalItems = items.filter(item => item.mode === 'rent');
-    
+
     // Calculate buy subtotal
     const buySubtotal = buyItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    
+
     // Calculate rental total (with rental days)
     const rentalSubtotal = rentalItems.reduce((sum, item) => {
       const days = rentalSchedule?.rentalDays || item.rentalDays || 1;
       return sum + (item.price * item.quantity * days);
     }, 0);
-    
+
     // Apply discount ONLY to buy items, NOT rentals
     const buyQuantity = buyItems.reduce((sum, item) => sum + item.quantity, 0);
     discountPercentage = getDiscountPercentage(buyQuantity);
     discountAmount = buySubtotal * (discountPercentage / 100);
     const buySubtotalAfterDiscount = buySubtotal - discountAmount;
-    
+
     // Total goods/services = buy after discount + rental (no discount)
     const goodsSubtotal = buySubtotalAfterDiscount + rentalSubtotal;
-    
+
     // Tax calculated on goods only (not caution fee)
     taxEstimate = goodsSubtotal * VAT_RATE;
-    
+
     // Include caution fee in displayed subtotal and in final total
     displaySubtotal = buySubtotal + rentalSubtotal + (cautionFee || 0);
     displaySubtotalAfterDiscount = goodsSubtotal + (cautionFee || 0);
     totalAmount = displaySubtotalAfterDiscount + shippingCost + taxEstimate;
     displayItems = items;
     displayTotal = totalAmount;
-    
+
     console.log('[Checkout] Calculated cart totals with discount on buy only:', {
       buySubtotal,
       buyQuantity,
@@ -671,7 +671,7 @@ export default function CheckoutPage() {
                     const itemMode = item.mode ? (isRental ? 'RENTAL' : 'BUY') : '';
                     const modeColor = isRental ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700';
                     const modeEmoji = isRental ? '🔄' : '🛍️';
-                    
+
                     return (
                       <div key={idx} className="flex justify-between items-center gap-2">
                         <div className="flex-1">
@@ -735,13 +735,12 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Presale Notice */}
-              <PresaleNotice variant="alert" />
+
 
               {/* Customer Info */}
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                 <p className="text-xs font-semibold text-blue-900 mb-3 uppercase">Billing Information</p>
-                
+
                 {buyer ? (
                   <div className="text-sm text-blue-800 space-y-1">
                     <p><span className="font-semibold">Name:</span> {buyer.fullName}</p>
@@ -754,21 +753,21 @@ export default function CheckoutPage() {
                       type="text"
                       placeholder="Full Name"
                       value={guestCustomer.fullName}
-                      onChange={(e) => setGuestCustomer({...guestCustomer, fullName: e.target.value})}
+                      onChange={(e) => setGuestCustomer({ ...guestCustomer, fullName: e.target.value })}
                       className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
                     />
                     <input
                       type="email"
                       placeholder="Email Address"
                       value={guestCustomer.email}
-                      onChange={(e) => setGuestCustomer({...guestCustomer, email: e.target.value})}
+                      onChange={(e) => setGuestCustomer({ ...guestCustomer, email: e.target.value })}
                       className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
                     />
                     <input
                       type="tel"
                       placeholder="Phone Number"
                       value={guestCustomer.phone}
-                      onChange={(e) => setGuestCustomer({...guestCustomer, phone: e.target.value})}
+                      onChange={(e) => setGuestCustomer({ ...guestCustomer, phone: e.target.value })}
                       className="w-full px-3 py-2 border border-blue-300 rounded-lg text-sm focus:outline-none focus:border-blue-500"
                     />
                   </div>
@@ -795,16 +794,16 @@ export default function CheckoutPage() {
                 <button
                   onClick={async () => {
                     console.log("Pay button clicked");
-                    
+
                     // Use buyer info if logged in, otherwise use guest customer info
                     const customerInfo = buyer || guestCustomer;
-                    
+
                     if (!customerInfo?.fullName || !customerInfo?.email || !customerInfo?.phone) {
                       setOrderError("Please provide your full name, email, and phone number");
                       console.log("Incomplete customer info:", { fullName: customerInfo?.fullName, email: customerInfo?.email, phone: customerInfo?.phone });
                       return;
                     }
-                    
+
                     // Validate email format
                     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
                     if (!emailRegex.test(customerInfo.email)) {
@@ -812,12 +811,12 @@ export default function CheckoutPage() {
                       console.log("Invalid email format:", customerInfo.email);
                       return;
                     }
-                    
+
                     if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
                       setOrderError("Payment service is not configured");
                       return;
                     }
-                    
+
                     setIsProcessing(true);
                     setOrderError(null);
 

@@ -9,7 +9,7 @@ import { ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, AlertCircle, X } fr
 import { CURRENCY_RATES } from "@/app/components/constants";
 import { useCart } from "@/app/components/CartContext";
 import { useMode } from "@/app/context/ModeContext";
-import { PresaleNotice } from "@/app/components/PresaleNotice";
+
 import { Toast } from "@/app/components/Toast";
 import { Portal } from "@/app/components/Portal";
 
@@ -47,13 +47,13 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const router = useRouter();
   const searchParams = useSearchParams();
   const { addItem, items, canAddItem } = useCart();
-  
+
   // Get safe product ID first
   const productId = product.id || product._id || '';
-  
+
   // Now use the productId with useMode
   const { mode, setMode, isHydrated } = useMode(productId);
-  
+
   // Load mode from URL params only on initial mount
   useEffect(() => {
     const urlMode = searchParams.get('mode') as 'buy' | 'rent';
@@ -102,7 +102,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
     console.log('[ProductDetail] Adding to cart:', { name: product.name, hasImage: !!productImage, image: productImage ? productImage.substring(0, 50) : 'NO' });
     addItem(cartItem);
-    
+
     setAddedToCart(true);
     setTimeout(() => setAddedToCart(false), 3000);
   };
@@ -131,7 +131,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
             <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition" /> Back to Products
           </Link>
           <button onClick={() => router.push('/cart')} className="flex items-center gap-2 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white px-4 py-2.5 rounded-xl font-semibold transition shadow-lg hover:shadow-xl relative">
-            <ShoppingCart className="h-5 w-5" /> 
+            <ShoppingCart className="h-5 w-5" />
             <span className="hidden sm:inline">Cart</span>
             {items.length > 0 && (
               <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
@@ -149,11 +149,11 @@ export default function ProductDetailClient({ product, allProducts, currency = "
           <div className="flex flex-col gap-4">
             {/* Main Image */}
             <div className="relative bg-gradient-to-br from-white to-gray-50 rounded-2xl overflow-hidden aspect-[4/5] shadow-xl border border-gray-200 hover:shadow-2xl transition duration-300">
-              <Image 
-                src={mainImage} 
-                alt={product.name} 
-                fill 
-                className="object-contain p-4" 
+              <Image
+                src={mainImage}
+                alt={product.name}
+                fill
+                className="object-contain p-4"
                 priority
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 quality={90}
@@ -163,19 +163,19 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                   ✨ {product.badge}
                 </div>
               )}
-              
+
               {/* Image Navigation */}
               {product.imageUrls && product.imageUrls.length > 1 && (
                 <>
-                  <button 
-                    onClick={prevImage} 
+                  <button
+                    onClick={prevImage}
                     className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white p-3 rounded-full z-10 shadow-xl transition hover:scale-110 active:scale-95"
                     title="Previous image"
                   >
                     <ChevronLeft className="h-6 w-6 text-gray-800" />
                   </button>
-                  <button 
-                    onClick={nextImage} 
+                  <button
+                    onClick={nextImage}
                     className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white p-3 rounded-full z-10 shadow-xl transition hover:scale-110 active:scale-95"
                     title="Next image"
                   >
@@ -189,14 +189,13 @@ export default function ProductDetailClient({ product, allProducts, currency = "
             {product.imageUrls && product.imageUrls.length > 1 && (
               <div className="grid grid-cols-5 gap-2">
                 {product.imageUrls.map((img: string, idx: number) => (
-                  <button 
-                    key={idx} 
-                    onClick={() => setCurrentImageIndex(idx)} 
-                    className={`relative aspect-square rounded-xl overflow-hidden border-2 transition cursor-pointer transform hover:scale-105 ${
-                      idx === currentImageIndex 
-                        ? 'border-lime-600 ring-2 ring-lime-300 shadow-lg' 
+                  <button
+                    key={idx}
+                    onClick={() => setCurrentImageIndex(idx)}
+                    className={`relative aspect-square rounded-xl overflow-hidden border-2 transition cursor-pointer transform hover:scale-105 ${idx === currentImageIndex
+                        ? 'border-lime-600 ring-2 ring-lime-300 shadow-lg'
                         : 'border-gray-300 hover:border-gray-400 shadow-md'
-                    }`}
+                      }`}
                   >
                     <Image
                       src={img}
@@ -229,11 +228,10 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 {product.availableForBuy !== false && (
                   <button
                     onClick={() => setMode("buy")}
-                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${
-                      mode === "buy"
+                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${mode === "buy"
                         ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl scale-105"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
+                      }`}
                   >
                     💳 Buy
                   </button>
@@ -241,11 +239,10 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 {product.availableForRent !== false && product.rentPrice > 0 && (
                   <button
                     onClick={() => setMode("rent")}
-                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${
-                      mode === "rent"
+                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${mode === "rent"
                         ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg hover:shadow-xl scale-105"
                         : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
+                      }`}
                   >
                     � Rent
                   </button>
@@ -278,10 +275,10 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                     💡 <span>Or rent for <span className="font-bold text-gray-900">{formatPrice(product.rentPrice)}/day</span></span>
                   </p>
                 )}
-                
+
                 {/* Rental Policy Button - Only show when in Rent mode */}
                 {mode === 'rent' && product.rentPrice > 0 && (
-                  <button 
+                  <button
                     onClick={() => setShowRentalPolicy(true)}
                     className="mt-4 w-full px-5 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-black rounded-lg transition transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
                   >
@@ -347,8 +344,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
               )}
             </div>
 
-            {/* Presale Notice */}
-            <PresaleNotice variant="compact" />
+
 
             {/* Action Buttons Section */}
             <div className="space-y-4">
@@ -358,15 +354,15 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                   <span>📦</span> Qty:
                 </label>
                 <div className="flex items-center border-2 border-gray-300 rounded-lg bg-gray-50">
-                  <button 
-                    onClick={() => setQuantity(Math.max(1, quantity - 1))} 
+                  <button
+                    onClick={() => setQuantity(Math.max(1, quantity - 1))}
                     className="px-4 py-2 text-gray-700 hover:bg-gray-100 transition font-bold"
                   >
                     −
                   </button>
                   <span className="px-6 py-2 font-black text-gray-900">{quantity}</span>
-                  <button 
-                    onClick={() => setQuantity(quantity + 1)} 
+                  <button
+                    onClick={() => setQuantity(quantity + 1)}
                     className="px-4 py-2 text-gray-700 hover:bg-gray-100 transition font-bold"
                   >
                     +
@@ -376,8 +372,8 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
               {/* Add to Cart Button */}
               {(mode === 'buy' && product.availableForBuy !== false) || (mode === 'rent' && product.availableForRent !== false) ? (
-                <button 
-                  onClick={handleAddToCart} 
+                <button
+                  onClick={handleAddToCart}
                   className="w-full py-4 px-6 rounded-xl font-black text-lg transition duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl transform hover:scale-105 active:scale-95 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white"
                 >
                   <ShoppingCart className="h-6 w-6" /> Add to Cart
@@ -410,10 +406,10 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                     <Link key={pId} href={`/product/${pId}`}>
                       <div className="group bg-white rounded-xl overflow-hidden hover:shadow-2xl transition cursor-pointer border-2 border-gray-200 h-full flex flex-col transform hover:scale-105">
                         <div className="relative w-full aspect-[4/5] overflow-hidden bg-gradient-to-br from-gray-50 to-white">
-                          <Image 
-                            src={p.imageUrl} 
-                            alt={p.name} 
-                            fill 
+                          <Image
+                            src={p.imageUrl}
+                            alt={p.name}
+                            fill
                             className="object-cover group-hover:scale-110 transition duration-300"
                           />
                         </div>
@@ -447,7 +443,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
               <h2 className="text-2xl font-black flex items-center gap-2">
                 <span>📋</span> Rental Policy
               </h2>
-              <button 
+              <button
                 onClick={() => setShowRentalPolicy(false)}
                 className="p-2 hover:bg-white/20 rounded-lg transition"
               >
@@ -582,13 +578,13 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
             {/* Modal Footer */}
             <div className="sticky bottom-0 bg-gradient-to-r from-gray-100 to-gray-50 border-t-2 border-gray-300 p-6 flex gap-3">
-              <button 
+              <button
                 onClick={() => setShowRentalPolicy(false)}
                 className="flex-1 px-4 py-3 rounded-lg font-bold bg-gray-300 text-gray-900 hover:bg-gray-400 transition"
               >
                 Close
               </button>
-              <button 
+              <button
                 onClick={() => setShowRentalPolicy(false)}
                 className="flex-1 px-4 py-3 rounded-lg font-bold bg-gradient-to-r from-lime-600 to-green-600 text-white hover:from-lime-700 hover:to-green-700 transition"
               >

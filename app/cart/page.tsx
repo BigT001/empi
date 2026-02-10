@@ -1,3 +1,4 @@
+// Rebuild trigger: 2026-02-10
 "use client";
 
 import { useCart } from "../components/CartContext";
@@ -12,7 +13,6 @@ import { DeliverySelector } from "../components/DeliverySelector";
 import { RentalPolicyModal } from "../components/RentalPolicyModal";
 import { DeliveryModal } from "../components/DeliveryModal";
 import { RentalScheduleModal } from "../components/RentalScheduleModal";
-import { PresaleNotice } from "../components/PresaleNotice";
 import { ShoppingBag, Trash2, Plus, Minus, Info, ArrowLeft, AlertCircle, Truck, MapPin, Zap, Package, Edit2 } from "lucide-react";
 import { AuthForm } from "../components/AuthForm";
 import { CartItemDelivery, DeliveryQuote } from "@/app/lib/deliveryCalculator";
@@ -33,7 +33,7 @@ export default function CartPage() {
   const [currency, setCurrency] = useState("NGN");
   const [shippingOption, setShippingOption] = useState<"empi" | "self">("empi");
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
-  
+
   // Billing Information State
   const [billingInfo, setBillingInfo] = useState({
     fullName: "",
@@ -86,7 +86,7 @@ export default function CartPage() {
   const costBreakdown = useMemo(() => {
     let buyTotal = 0;
     let rentalTotal = 0;
-    
+
     items.forEach(item => {
       if (item.mode === "buy") {
         buyTotal += item.price * item.quantity;
@@ -97,19 +97,19 @@ export default function CartPage() {
         rentalTotal += rentalCost;
       }
     });
-    
+
     // Use caution fee from cart context (50% per-costume, not per-day)
     const cautionFee = contextCautionFee;
-    
+
     // Subtotal is buy items + rental items (not including caution fee)
     const subtotalBeforeCaution = buyTotal + rentalTotal;
-    
+
     // Total with caution fee added
     const subtotalWithCaution = subtotalBeforeCaution + cautionFee;
-    
-    return { 
-      buyTotal, 
-      rentalTotal, 
+
+    return {
+      buyTotal,
+      rentalTotal,
       cautionFee,
       subtotalBeforeCaution,
       subtotalWithCaution
@@ -138,10 +138,10 @@ export default function CartPage() {
 
   const discountAmount = buySubtotal * (discountPercentage / 100);
   const buySubtotalAfterDiscount = buySubtotal - discountAmount;
-  
+
   // Subtotal for VAT calculation = goods/services only (buy + rental, NO caution fee)
   const subtotalForVAT = buySubtotalAfterDiscount + costBreakdown.rentalTotal;
-  
+
   // Subtotal with caution fee for final total
   const subtotalWithDiscount = subtotalForVAT + costBreakdown.cautionFee;
 
@@ -377,7 +377,7 @@ export default function CartPage() {
                       <span className="text-sm font-semibold text-gray-700">Delivery Fee:</span>
                       <span className="font-bold text-lime-600">₦{(deliveryQuote.fee || 0).toLocaleString('en-NG')}</span>
                     </div>
-                    <button 
+                    <button
                       onClick={() => setShowDeliveryModal(true)}
                       className="w-full mt-3 px-4 py-2 border border-lime-600 text-lime-600 rounded-lg font-medium hover:bg-lime-50 transition"
                     >
@@ -403,7 +403,7 @@ export default function CartPage() {
                           <span className="text-green-700 font-bold">{formatPrice(costBreakdown.buyTotal)}</span>
                         </div>
                       </div>
-                      
+
                       {/* Bulk Discount (if applicable) - Under Buy Items */}
                       {discountPercentage > 0 && (
                         <div className="bg-green-100 rounded-lg p-2 border border-green-300 ml-3 space-y-2">
@@ -412,7 +412,7 @@ export default function CartPage() {
                             <p className="font-bold text-green-700 text-sm">-₦{discountAmount.toLocaleString()}</p>
                           </div>
                           <p className="text-xs text-green-600">{totalBuyQuantity} buy items</p>
-                          
+
                           {/* Subtotal after discount */}
                           <div className="border-t border-green-300 pt-2 flex justify-between items-center">
                             <p className="text-xs font-semibold text-green-800">After Discount</p>
@@ -422,7 +422,7 @@ export default function CartPage() {
                       )}
                     </div>
                   )}
-                  
+
                   {/* Rental Items Total */}
                   {costBreakdown.rentalTotal > 0 && (
                     <div className="bg-blue-50 rounded-lg p-4 border border-blue-200 space-y-3">
@@ -432,7 +432,7 @@ export default function CartPage() {
                         </span>
                         <span className="text-blue-700 font-bold text-lg">{formatPrice(costBreakdown.rentalTotal)}</span>
                       </div>
-                      
+
                       {/* Schedule Info/Button Section */}
                       {rentalSchedule ? (
                         <div className="bg-white rounded-lg p-3 border-2 border-green-400 space-y-2">
@@ -479,7 +479,7 @@ export default function CartPage() {
                       )}
                     </div>
                   )}
-                  
+
                   {/* Caution Fee */}
                   {costBreakdown.cautionFee > 0 && (
                     <div className="bg-amber-50 rounded-lg p-3 border border-amber-200">
@@ -492,16 +492,16 @@ export default function CartPage() {
                       <p className="text-xs text-amber-600 mt-1">Applied on rental items total</p>
                     </div>
                   )}
-                  
+
                   {/* Subtotal with Caution */}
                   <div className="flex justify-between pt-2 font-semibold text-gray-900 text-lg border-t border-gray-300">
                     <span>Subtotal</span>
                     <span>{formatPrice(subtotalWithDiscount)}</span>
                   </div>
-                  
+
                   {/* Shipping */}
                   {/* Delivery row intentionally hidden; delivery handled separately */}
-                  
+
                   {/* VAT */}
                   <div className="flex justify-between text-sm"><span className="text-gray-600">VAT (7.5%)</span><span>{formatPrice(parseFloat(taxEstimate))}</span></div>
                 </div>
@@ -509,13 +509,12 @@ export default function CartPage() {
                   <span className="font-semibold">Total</span><span className="font-bold text-lime-600">{formatPrice(totalAmount)}</span>
                 </div>
 
-                {/* Presale Notice */}
-                <PresaleNotice variant="inline" />
+
 
                 <button onClick={() => { buyer ? router.push("/checkout") : setShowAuthModal(true); }} className="block w-full bg-lime-600 hover:bg-lime-700 text-white font-bold py-3 px-4 rounded-lg text-center transition mb-3 disabled:opacity-50 disabled:cursor-not-allowed" disabled={items.some(i => i.mode === 'rent') && !rentalSchedule ? true : false}>
                   Proceed to Checkout
                 </button>
-                
+
                 {/* Helper message when button is disabled */}
                 {(items.some(i => i.mode === 'rent') && !rentalSchedule) && (
                   <div className="bg-purple-50 border-l-4 border-purple-600 p-3 mb-3 rounded">
@@ -524,7 +523,7 @@ export default function CartPage() {
                     </p>
                   </div>
                 )}
-                
+
                 <Link href="/" className="block w-full border-2 border-gray-300 hover:border-gray-400 text-gray-700 hover:bg-gray-50 font-semibold py-3 px-4 rounded-lg text-center transition">
                   Continue Shopping
                 </Link>
@@ -536,7 +535,7 @@ export default function CartPage() {
       {showAuthModal && <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowAuthModal(false)}>
         <AuthForm redirectToCheckout={true} onCancel={() => setShowAuthModal(false)} />
       </div>}
-      
+
       {/* Delivery Modal - Desktop and Mobile */}
       <DeliveryModal
         isOpen={showDeliveryModal}
@@ -558,18 +557,18 @@ export default function CartPage() {
               },
             });
           }
-          
+
           // Set delivery quote
           handleDeliveryChange(deliveryData.quote);
-          
+
           // Close modal
           setShowDeliveryModal(false);
         }}
         items={deliveryItems}
       />
-      
+
       <RentalPolicyModal isOpen={showRentalPolicy} onClose={() => setShowRentalPolicy(false)} />
-      
+
       <RentalScheduleModal
         isOpen={showRentalScheduleModal}
         onClose={() => setShowRentalScheduleModal(false)}
@@ -577,7 +576,7 @@ export default function CartPage() {
         rentalDays={Math.ceil((items.filter(i => i.mode === "rent").reduce((max, i) => Math.max(max, i.rentalDays || 1), 1)))}
         productName="All Rental Items"
       />
-      
+
       <Footer />
     </div>
   );

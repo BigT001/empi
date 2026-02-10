@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Footer } from "@/app/components/Footer";
-import { PresaleNotice } from "@/app/components/PresaleNotice";
+
 import {
   CheckCircle,
   Package,
@@ -251,11 +251,10 @@ function OrderConfirmationContent() {
                   order.items.map((item, index) => (
                     <div
                       key={index}
-                      className={`flex gap-4 p-4 rounded-lg border transition ${
-                        item.mode === 'rent'
+                      className={`flex gap-4 p-4 rounded-lg border transition ${item.mode === 'rent'
                           ? 'bg-purple-50 border-purple-200 hover:shadow-md hover:border-purple-300'
                           : 'bg-gray-50 border-gray-200 hover:shadow-md hover:border-gray-300'
-                      }`}
+                        }`}
                     >
                       {/* Product Image - Always show, with fallback */}
                       <div className="flex-shrink-0 w-20 h-20 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
@@ -431,24 +430,24 @@ function OrderConfirmationContent() {
               </h3>
 
               <div className="space-y-3 mb-6 pb-6 border-b border-gray-200">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Subtotal</span>
-                    <span className="font-semibold text-gray-900">
-                      {formatPrice(order.pricing?.subtotal ?? order.subtotal ?? 0)}
-                    </span>
-                  </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Subtotal</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatPrice(order.pricing?.subtotal ?? order.subtotal ?? 0)}
+                  </span>
+                </div>
                 {((order.pricing?.cautionFee ?? order.cautionFee) ?? 0) > 0 && (
                   <div className="flex justify-between text-sm text-amber-700">
                     <span>🔒 Caution Fee (50% of rentals)</span>
                     <span className="font-semibold">{formatPrice(order.pricing?.cautionFee ?? order.cautionFee ?? 0)}</span>
                   </div>
                 )}
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Tax (7.5%)</span>
-                    <span className="font-semibold text-gray-900">
-                      {formatPrice(order.pricing?.tax ?? order.vat ?? 0)}
-                    </span>
-                  </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Tax (7.5%)</span>
+                  <span className="font-semibold text-gray-900">
+                    {formatPrice(order.pricing?.tax ?? order.vat ?? 0)}
+                  </span>
+                </div>
                 {/* Delivery amount removed from order summary */}
               </div>
 
@@ -469,8 +468,7 @@ function OrderConfirmationContent() {
                 <p className="text-lg font-bold text-green-600">Completed</p>
               </div>
 
-              {/* Presale Notice */}
-              <PresaleNotice variant="inline" />
+
 
               {/* Action Buttons */}
               <div className="space-y-3">

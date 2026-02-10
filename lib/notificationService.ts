@@ -325,7 +325,7 @@ async function sendMobilePushNotification(payload: {
     // TODO: Integrate with Firebase Cloud Messaging
     // 1. Get user/admin's FCM device token from database
     // 2. Send via FCM API
-    
+
     console.log(`   📱 Mobile push would be sent: Order #${orderNumber}`);
 
     return true;
@@ -373,8 +373,8 @@ function generatePaymentReceivedEmail(name: string, orderNumber: string, amount:
         
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
           <strong>EMPI Costumes</strong><br>
-          Email: ${process.env.STORE_EMAIL || 'admin@empicostumes.com'}<br>
-          Phone: ${process.env.STORE_PHONE || '+234 123 456 7890'}
+          Email: ${process.env.STORE_EMAIL || 'empicostumes@gmail.com'}<br>
+          Phone: ${process.env.STORE_PHONE || '+234 808 577 9180'}
         </p>
       </div>
     </div>
@@ -418,7 +418,7 @@ function generateOrderReadyEmail(name: string, orderNumber: string, dashboardLin
         </div>
         
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-          Questions? Contact us at ${process.env.STORE_EMAIL || 'admin@empicostumes.com'}
+          Questions? Contact us at ${process.env.STORE_EMAIL || 'empicostumes@gmail.com'}
         </p>
       </div>
     </div>
@@ -449,7 +449,7 @@ function generateOrderShippedEmail(name: string, orderNumber: string, trackingNu
         
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
           <strong>Need Help?</strong><br>
-          Email: ${process.env.STORE_EMAIL || 'admin@empicostumes.com'}<br>
+          Email: ${process.env.STORE_EMAIL || 'empicostumes@gmail.com'}<br>
           Phone: ${process.env.STORE_PHONE || '+234 808 577 9180'}<br><br>
           Reply to this email or contact us anytime if you have any questions about your order.
         </p>
@@ -486,7 +486,7 @@ function generateOrderApprovedEmail(name: string, orderNumber: string, dashboard
         </div>
         
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-          Questions? Contact us at ${process.env.STORE_EMAIL || 'admin@empicostumes.com'}
+          Questions? Contact us at ${process.env.STORE_EMAIL || 'empicostumes@gmail.com'}
         </p>
       </div>
     </div>
@@ -526,7 +526,7 @@ function generatePaymentFailedEmail(name: string, orderNumber: string, dashboard
         </div>
         
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-          Need help? Contact our support team at ${process.env.STORE_EMAIL || 'admin@empicostumes.com'}
+          Need help? Contact our support team at ${process.env.STORE_EMAIL || 'empicostumes@gmail.com'}
         </p>
       </div>
     </div>
@@ -568,8 +568,8 @@ function generateOrderPlacedEmail(name: string, orderNumber: string, amount: num
         
         <p style="color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
           <strong>EMPI Costumes</strong><br>
-          Email: ${process.env.STORE_EMAIL || 'admin@empicostumes.com'}<br>
-          Phone: ${process.env.STORE_PHONE || '+234 123 456 7890'}
+          Email: ${process.env.STORE_EMAIL || 'empicostumes@gmail.com'}<br>
+          Phone: ${process.env.STORE_PHONE || '+234 808 577 9180'}
         </p>
       </div>
     </div>
@@ -582,7 +582,7 @@ function generateOrderPlacedEmail(name: string, orderNumber: string, amount: num
  */
 function generateAdminNewOrderEmail(orderNumber: string, amount: number, details: any, dashboardLink: string): string {
   const { buyerName, buyerEmail, orderType } = details || {};
-  
+
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); padding: 30px; border-radius: 10px 10px 0 0;">

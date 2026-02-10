@@ -3,15 +3,14 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Search, Menu, X, User, ShoppingCart, Settings, LogOut, LogIn, ChevronDown } from "lucide-react";
+import { Search, Menu, X, User, ShoppingCart, LogOut, Sun, Moon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCart } from "./CartContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useBuyer } from "../context/BuyerContext";
 import { useAdmin } from "../context/AdminContext";
-import { CURRENCY_RATES } from "./constants";
 import { NotificationBell } from "./NotificationBell";
-import { PresaleNotice } from "./PresaleNotice";
+import { useTheme } from "../context/ThemeContext";
 
 interface MobileHeaderProps {
   category?: string;
@@ -24,40 +23,43 @@ interface MobileHeaderProps {
 
 export function MobileHeader({ category = "adults", onCategoryChange, currency: propCurrency, onCurrencyChange }: MobileHeaderProps) {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [showCurrencyModal, setShowCurrencyModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [headerVisible, setHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+
   const pathname = usePathname();
   const router = useRouter();
   const { items } = useCart();
   const { currency, setCurrency } = useCurrency();
-  const { buyer, logout, isLoggedIn } = useBuyer();
+  const { buyer, logout } = useBuyer();
   const { admin } = useAdmin();
+  const { theme, toggleTheme } = useTheme();
 
-  // Use provided currency or context currency
   const currentCurrency = propCurrency || currency;
-  const handleCurrencyChange = (newCurrency: string) => {
-    setCurrency(newCurrency);
-    if (onCurrencyChange) {
-      onCurrencyChange(newCurrency);
+
+  useEffect(() => {
+    if (showMobileMenu) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
     }
-  };
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [showMobileMenu]);
 
   const handleCategoryChange = (newCategory: string) => {
     if (onCategoryChange) {
       onCategoryChange(newCategory);
     }
-    
-    // If on home page, update URL and scroll to products section
+
     if (pathname === "/") {
-      // Update URL without reloading
       const params = new URLSearchParams();
       params.append('category', newCategory);
       window.history.replaceState({}, '', `/?${params.toString()}`);
-      
-      // Wait for state to update before scrolling
+
       setTimeout(() => {
         const productSection = document.getElementById("product-grid");
         if (productSection) {
@@ -65,94 +67,44 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
         }
       }, 300);
     } else {
-      // Navigate based on category if not on home
       if (newCategory === "custom") {
         router.push("/?category=custom");
       } else if (newCategory === "adults" || newCategory === "kids") {
         router.push("/?category=" + newCategory);
       }
     }
-    
-    // Close mobile menu after selection
+
     setShowMobileMenu(false);
   };
 
-  // Handle logo click - return to home page
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     if (onCategoryChange) {
-      onCategoryChange("adults"); // Reset to default category
+      onCategoryChange("adults");
     }
-    router.push("/"); // Navigate to home
-    window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll to top
+    router.push("/");
+    window.scrollTo({ top: 0, behavior: "smooth" });
     setShowMobileMenu(false);
   };
 
-  // Handle scroll to hide/show header
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
-      // Show header when scrolling up or at top
+
+      setScrolled(currentScrollY > 20);
+
       if (currentScrollY < lastScrollY || currentScrollY < 50) {
         setHeaderVisible(true);
       } else if (currentScrollY > lastScrollY && currentScrollY > 50) {
-        // Hide header when scrolling down
         setHeaderVisible(false);
       }
-      
+
       setLastScrollY(currentScrollY);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, [lastScrollY]);
-
-  // Close menu, currency modal when user scrolls
-  useEffect(() => {
-    if (showMobileMenu || showCurrencyModal || showSearchModal) {
-      const handleScrollClose = () => {
-        setShowMobileMenu(false);
-        setShowCurrencyModal(false);
-        setShowSearchModal(false);
-      };
-
-      window.addEventListener("scroll", handleScrollClose);
-      return () => window.removeEventListener("scroll", handleScrollClose);
-    }
-  }, [showMobileMenu, showCurrencyModal, showSearchModal]);
-
-  // Handle click outside for menus
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      
-      // Don't close if clicking on menu toggle button
-      if (target.closest('[data-menu-toggle]')) {
-        return;
-      }
-      
-      // Close menu if click is outside the menu itself
-      if (showMobileMenu && !target.closest('[data-mobile-menu]')) {
-        setShowMobileMenu(false);
-      }
-      
-      // Don't close if clicking on modal trigger buttons
-      if (target.closest('[data-modal-trigger]')) {
-        return;
-      }
-      
-      // Close currency modal if click is outside the modal itself
-      if (showCurrencyModal && !target.closest('[data-modal]')) {
-        setShowCurrencyModal(false);
-      }
-    };
-
-    if (showMobileMenu || showCurrencyModal) {
-      document.addEventListener('click', handleClickOutside, true);
-      return () => document.removeEventListener('click', handleClickOutside, true);
-    }
-  }, [showMobileMenu, showCurrencyModal]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,253 +123,198 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
 
   return (
     <>
-      {/* Presale Banner - Above Header - Hide on scroll */}
-      <div className={`fixed top-0 left-0 right-0 z-50 h-14 transition-transform duration-300 ease-in-out ${
-        headerVisible ? 'translate-y-0' : '-translate-y-full'
-      }`}>
-        <PresaleNotice variant="banner" />
-      </div>
-
-      {/* Mobile Top Navigation Header - Positioned below banner */}
-      <div 
-        className={`md:hidden fixed left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out ${
-          headerVisible ? 'translate-y-0' : '-translate-y-full'
-        }`}
-        style={{ top: '56px', boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)' }}
+      <div
+        className={`md:hidden fixed top-0 left-0 right-0 z-[100] transition-all duration-300 ease-in-out ${headerVisible || showMobileMenu ? 'translate-y-0' : '-translate-y-full'
+          } ${scrolled ? 'bg-white/95 dark:bg-black/80 backdrop-blur-md shadow-lg border-b border-gray-100 dark:border-white/5' : 'bg-white dark:bg-[#0a0a0a]'}`}
       >
-        {/* Header Top Row - Logo and Menu Toggle */}
         <div className="flex items-center justify-between px-4 py-3 gap-3">
-          {/* Logo */}
-          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 hover:opacity-80 transition">
-            <Image
-              src="/logo/EMPI-2k24-LOGO-1.PNG"
-              alt="EMPI Logo"
-              width={50}
-              height={50}
-              className="h-10 w-auto"
-            />
+          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 group">
+            <div className="relative">
+              <Image
+                src="/logo/EMPI-2k24-LOGO-1.PNG"
+                alt="EMPI Logo"
+                width={50}
+                height={50}
+                className="h-10 w-auto rounded-lg shadow-sm transition-transform group-hover:scale-105"
+              />
+            </div>
           </Link>
 
-          {/* Center - Search Icon */}
           <button
-            onClick={() => setShowSearchModal(!showSearchModal)}
-            className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-gray-50 border border-gray-200 hover:border-lime-600 text-gray-600 hover:text-lime-600 transition"
-            data-modal-trigger
+            onClick={() => setShowSearchModal(true)}
+            className="flex-1 flex items-center gap-2 px-4 py-2 rounded-full bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-400 text-sm focus:outline-none"
           >
             <Search className="h-4 w-4" />
-            <span className="text-xs text-gray-500">Search...</span>
+            <span>Search costumes...</span>
           </button>
 
-          {/* Right Actions - Cart, Notifications, Menu Toggle */}
-          <div className="flex items-center gap-2">
-            {/* Notification Bell */}
-            <div>
-              <NotificationBell />
-            </div>
-
-            {/* Cart Button */}
-            <Link 
-              href="/cart" 
-              className="relative flex items-center justify-center w-10 h-10 rounded-lg bg-lime-600 hover:bg-lime-700 text-white transition"
-              title="Cart"
+          <div className="flex items-center gap-1">
+            <button
+              onClick={toggleTheme}
+              className="p-2 text-gray-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-90"
+              aria-label="Toggle Theme"
             >
-              <ShoppingCart className="h-4 w-4" />
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5 animate-in rotate-90 duration-500" />
+              ) : (
+                <Moon className="h-5 w-5 animate-in -rotate-90 duration-500" />
+              )}
+            </button>
+
+            <NotificationBell />
+
+            <Link
+              href="/cart"
+              className="relative p-2 text-gray-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-90"
+            >
+              <ShoppingCart className="h-5 w-5" />
               {items.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                <span className="absolute top-1 right-1 bg-lime-500 text-white text-[10px] font-black rounded-full h-4 w-4 flex items-center justify-center ring-2 ring-white dark:ring-black animate-in zoom-in">
                   {items.length}
                 </span>
               )}
             </Link>
 
-            {/* Menu Toggle Button */}
             <button
-              type="button"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setShowMobileMenu(!showMobileMenu);
-              }}
-              className="flex items-center justify-center w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition cursor-pointer z-50"
-              data-menu-toggle
-              title="Menu"
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="p-2 text-gray-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-95 z-[110]"
+              aria-label="Toggle Menu"
             >
-              {showMobileMenu ? (
-                <X className="h-5 w-5" />
-              ) : (
-                <Menu className="h-5 w-5" />
-              )}
+              {showMobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Menu - Slide Down */}
-        {showMobileMenu && (
-          <div className="border-t border-gray-200 bg-white" data-mobile-menu>
-            <div className="px-4 py-4 space-y-4">
-              {/* Category Navigation - Clean Text Links */}
-              <nav className="space-y-3">
-                <button
-                  onClick={() => handleCategoryChange("adults")}
-                  className={`block w-full text-left px-0 py-2 font-medium transition-all duration-300 ${
-                    category === "adults"
-                      ? "text-lime-600 border-b-2 border-lime-600"
-                      : "text-gray-700 hover:text-lime-600 border-b-2 border-transparent hover:border-gray-300"
-                  }`}
-                >
-                  Adults
-                </button>
-
-                <button
-                  onClick={() => handleCategoryChange("kids")}
-                  className={`block w-full text-left px-0 py-2 font-medium transition-all duration-300 ${
-                    category === "kids"
-                      ? "text-lime-600 border-b-2 border-lime-600"
-                      : "text-gray-700 hover:text-lime-600 border-b-2 border-transparent hover:border-gray-300"
-                  }`}
-                >
-                  Kids
-                </button>
-
-                <button
-                  onClick={() => handleCategoryChange("custom")}
-                  className={`block w-full text-left px-0 py-2 font-medium transition-all duration-300 ${
-                    category === "custom"
-                      ? "text-lime-600 border-b-2 border-lime-600"
-                      : "text-gray-700 hover:text-lime-600 border-b-2 border-transparent hover:border-gray-300"
-                  }`}
-                >
-                  Custom
-                </button>
-
-                <Link 
-                  href="/about" 
-                  className={`block px-0 py-2 font-medium transition-all duration-300 ${
-                    pathname === "/about"
-                      ? "text-lime-600 border-b-2 border-lime-600"
-                      : "text-gray-700 hover:text-lime-600 border-b-2 border-transparent hover:border-gray-300"
-                  }`}
-                  onClick={() => setShowMobileMenu(false)}
-                >
-                  About Us
-                </Link>
-              </nav>
-
-              {/* Divider */}
-              <div className="border-t border-gray-200"></div>
-
-              {/* Profile/Auth Section */}
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-gray-500 uppercase">Account</p>
-                {buyer ? (
-                  <>
-                    <Link
-                      href="/dashboard"
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-lime-50 border border-lime-200 text-gray-700 hover:border-lime-600 hover:bg-lime-100 font-semibold text-sm transition"
-                      onClick={() => setShowMobileMenu(false)}
-                    >
-                      <User className="h-4 w-4 text-lime-600" />
-                      <span>{buyer.fullName}</span>
-                    </Link>
-                    <button
-                      onClick={async () => {
-                        setShowMobileMenu(false);
-                        await logout();
-                        router.push('/');
-                      }}
-                      className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-red-700 hover:border-red-600 hover:bg-red-100 font-semibold text-sm transition"
-                    >
-                      <LogOut className="h-4 w-4" />
-                      <span>Logout</span>
-                    </button>
-                  </>
-                ) : (
-                  <Link 
-                    href="/auth" 
-                    className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm transition"
-                    onClick={() => setShowMobileMenu(false)}
-                  >
-                    <User className="h-4 w-4" />
-                    <span>Login</span>
-                  </Link>
-                )}
-              </div>
-            </div>
+        {/* Full Screen Mobile Menu Overlay */}
+        <div
+          className={`fixed inset-0 z-[105] bg-white dark:bg-[#0a0a0a] transition-all duration-500 ease-in-out ${showMobileMenu ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+            }`}
+        >
+          {/* Animated Background Orbs */}
+          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+            <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] bg-lime-500/10 dark:bg-lime-500/5 rounded-full blur-[100px]" />
+            <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-green-500/10 dark:bg-green-500/5 rounded-full blur-[100px]" />
           </div>
-        )}
-      </div>
 
-      {/* Search Modal */}
-      {showSearchModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-start justify-center pt-20" onClick={() => setShowSearchModal(false)}>
-          <div className="bg-white rounded-lg w-11/12 max-w-md shadow-xl" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-800">Search Products</h3>
-              <button
-                onClick={() => setShowSearchModal(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-              >
-                ×
-              </button>
+          <div className="relative h-full flex flex-col pt-20 px-6 pb-10 space-y-8 overflow-y-auto">
+            {/* Navigation Section */}
+            <div>
+              <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-4 pl-1">
+                Costume Collections
+              </p>
+              <nav className="grid grid-cols-1 gap-4">
+                {[
+                  { id: 'adults', label: 'Adults', icon: '👤' },
+                  { id: 'kids', label: 'Kids', icon: '🧒' },
+                  { id: 'custom', label: 'Bespoke', icon: '✨' },
+                  { id: 'about', label: 'My Story', href: '/about', icon: '📜' }
+                ].map((item, idx) => (
+                  <button
+                    key={item.id}
+                    onClick={() => item.href ? (router.push(item.href), setShowMobileMenu(false)) : handleCategoryChange(item.id)}
+                    className={`flex items-center justify-between px-6 py-5 rounded-2xl text-lg font-black transition-all transform active:scale-[0.98] animate-in slide-in-from-left duration-500 fill-mode-both`}
+                    style={{ animationDelay: `${idx * 100}ms` }}
+                  >
+                    <div className="flex items-center gap-4">
+                      <span className="text-2xl">{item.icon}</span>
+                      <span className={(item.href ? pathname === item.href : category === item.id)
+                        ? 'text-lime-600 dark:text-lime-400'
+                        : 'text-gray-900 dark:text-gray-100'
+                      }>
+                        {item.label}
+                      </span>
+                    </div>
+                    {(item.href ? pathname === item.href : category === item.id) && (
+                      <div className="w-2 h-2 rounded-full bg-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.6)]" />
+                    )}
+                  </button>
+                ))}
+              </nav>
             </div>
 
-            {/* Search Input */}
-            <form onSubmit={handleSearch} className="p-4">
-              <div className="flex gap-2">
-                <input
-                  aria-label="Search products"
-                  placeholder="Search costumes..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="flex-1 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition"
-                  autoFocus
-                />
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-lg bg-lime-600 hover:bg-lime-700 text-white font-semibold transition"
+            {/* Experience Section */}
+            <div className="flex-1 space-y-4 pt-6 border-t border-gray-100 dark:border-white/5">
+              <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-4 pl-1">
+                Your Experience
+              </p>
+              {buyer ? (
+                <div className="space-y-4 animate-in slide-in-from-bottom duration-700">
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setShowMobileMenu(false)}
+                    className="flex items-center gap-4 p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-900 dark:text-white"
+                  >
+                    <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-lime-500 to-green-600 flex items-center justify-center text-white shadow-lg shadow-lime-500/20">
+                      <User className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-0.5">Welcome back</p>
+                      <p className="text-base font-black">{buyer.fullName}</p>
+                    </div>
+                  </Link>
+                  <button
+                    onClick={async () => {
+                      setShowMobileMenu(false);
+                      await logout();
+                      router.push('/');
+                    }}
+                    className="w-full flex items-center gap-4 p-5 rounded-2xl text-red-600 dark:text-red-400 font-black text-sm bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/10"
+                  >
+                    <LogOut className="h-5 w-5" />
+                    <span>Logout from Account</span>
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  href="/auth"
+                  onClick={() => setShowMobileMenu(false)}
+                  className="flex items-center justify-center gap-3 w-full p-6 rounded-2xl bg-slate-900 dark:bg-lime-600 text-white font-black text-base shadow-[0_20px_40px_rgba(0,0,0,0.1)] dark:shadow-lime-500/20 active:scale-95 transition-all animate-in slide-in-from-bottom duration-700"
                 >
-                  <Search className="h-4 w-4" />
-                </button>
-              </div>
-            </form>
+                  <User className="h-5 w-5" />
+                  <span>Join EMPI Community</span>
+                </Link>
+              )}
+            </div>
+
+            {/* Footer Sign-off */}
+            <div className="text-center pt-8">
+              <p className="text-[10px] font-black tracking-[0.3em] uppercase text-gray-300 dark:text-gray-700">
+                EMPI &copy; 2024
+              </p>
+            </div>
           </div>
         </div>
-      )}
+      </div>
 
-      {/* Currency Modal */}
-      {showCurrencyModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center justify-center" onClick={() => setShowCurrencyModal(false)}>
-          <div className="bg-white rounded-t-xl md:rounded-lg w-full md:w-96 max-h-96 flex flex-col shadow-lg md:shadow-xl" onClick={(e) => e.stopPropagation()}>
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-800">Select Currency</h3>
-              <button
-                onClick={() => setShowCurrencyModal(false)}
-                className="text-gray-500 hover:text-gray-700 text-2xl leading-none"
-              >
-                ×
+      {showSearchModal && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm z-[100] flex items-start justify-center p-4 pt-20" onClick={() => setShowSearchModal(false)}>
+          <div className="bg-white dark:bg-[#111] rounded-3xl w-full max-w-md shadow-2xl overflow-hidden animate-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-gray-100 dark:border-white/5 flex items-center justify-between">
+              <h3 className="font-black text-gray-900 dark:text-white">What are you looking for?</h3>
+              <button onClick={() => setShowSearchModal(false)} className="p-2 hover:bg-gray-100 dark:hover:bg-white/5 rounded-full transition">
+                <X className="h-5 w-5 dark:text-white" />
               </button>
             </div>
 
-            {/* Currency Options */}
-            <div className="flex-1 overflow-y-auto">
-              {Object.entries(CURRENCY_RATES).map(([code, data]) => (
-                <button
-                  key={code}
-                  onClick={() => {
-                    handleCurrencyChange(code);
-                    setShowCurrencyModal(false);
-                  }}
-                  className={`w-full px-4 py-3 text-left font-medium transition-colors text-sm ${
-                    currentCurrency === code
-                      ? "bg-lime-100 text-lime-700 font-semibold"
-                      : "text-gray-700 hover:bg-gray-50"
-                  }`}
-                >
-                  {data.symbol} {code} - {data.name}
-                </button>
-              ))}
-            </div>
+            <form onSubmit={handleSearch} className="p-6">
+              <div className="relative group">
+                <input
+                  aria-label="Search"
+                  placeholder="Enter costume name, theme..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full bg-gray-50 dark:bg-white/5 border-2 border-transparent focus:border-lime-500 focus:bg-white dark:focus:bg-black/40 rounded-2xl px-5 py-4 pl-12 outline-none transition-all font-medium dark:text-white"
+                  autoFocus
+                />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 group-focus-within:text-lime-500 transition-colors" />
+              </div>
+              <button
+                type="submit"
+                className="mt-4 w-full bg-lime-500 hover:bg-lime-400 text-white font-black py-4 rounded-2xl shadow-lg shadow-lime-200 dark:shadow-none transition-all active:scale-95"
+              >
+                Search EMPI
+              </button>
+            </form>
           </div>
         </div>
       )}

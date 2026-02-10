@@ -107,7 +107,7 @@ export function UserCustomOrderCard({
         total: totalFromAdmin || 0,
       };
     }
-    
+
     // Fallback: recalculate from quote items if no admin pricing
     if (currentQuoteItems.length > 0) {
       const subtotalCalc = currentQuoteItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
@@ -166,18 +166,18 @@ export function UserCustomOrderCard({
   // This ensures we have the latest data from parent
   useEffect(() => {
     console.log('[UserCustomOrderCard] 🔄 Prop Sync - quotedPrice:', quotedPrice, 'quoteItems count:', quoteItems?.length || 0);
-    
+
     // Always sync these from props when they arrive
     if (quotedPrice && quotedPrice > 0) {
       console.log('[UserCustomOrderCard] 💰 Syncing quotedPrice prop to state:', quotedPrice);
       setCurrentQuote(quotedPrice);
     }
-    
+
     if (quoteItems && quoteItems.length > 0) {
       console.log('[UserCustomOrderCard] 📋 Syncing quoteItems prop to state:', quoteItems);
       setCurrentQuoteItems(quoteItems);
     }
-    
+
     if (designUrls && designUrls.length > 0) {
       console.log('[UserCustomOrderCard] 🖼️ Syncing designUrls prop to state:', designUrls.length, 'URLs');
       setCurrentDesignUrls(designUrls);
@@ -210,7 +210,7 @@ export function UserCustomOrderCard({
 
     const pollForQuote = async () => {
       if (!mounted) return;
-      
+
       try {
         console.log('[UserCustomOrderCard] ⏱️ Polling for quote update...');
         const response = await fetch(`/api/orders/unified/${orderId}`, {
@@ -219,7 +219,7 @@ export function UserCustomOrderCard({
             'Cache-Control': 'no-cache, no-store, must-revalidate',
           },
         });
-        
+
         if (!response.ok) {
           const errorText = await response.text();
           console.error('[UserCustomOrderCard] ❌ Poll request failed:', {
@@ -232,7 +232,7 @@ export function UserCustomOrderCard({
 
         const data = await response.json();
         if (!mounted) return;
-        
+
         console.log('[UserCustomOrderCard] 📥 Poll response received');
         console.log('  ├─ Raw response keys:', Object.keys(data).slice(0, 15));
         console.log('  ├─ Response structure:', {
@@ -241,12 +241,12 @@ export function UserCustomOrderCard({
           hasQuotedPrice: !!data.quotedPrice,
           hasQuoteItems: !!data.quoteItems,
         });
-        
+
         const order = data.customOrder || data.order || data;
         const newQuote = order?.quotedPrice;
         const newQuoteItems = order?.quoteItems || [];
         const newDesignUrls = order?.designUrls || (order?.designUrl ? [order.designUrl] : []);
-        
+
         console.log('[UserCustomOrderCard] 📊 Extracted Quote Data from API:');
         console.log('  ├─ quotedPrice:', newQuote, typeof newQuote);
         console.log('  ├─ quoteItemsCount:', newQuoteItems.length);
@@ -256,11 +256,11 @@ export function UserCustomOrderCard({
         console.log('  ├─ quoteItemsCount:', newQuoteItems.length);
         console.log('  ├─ quoteItems:', newQuoteItems);
         console.log('  └─ Quote Changed?:', newQuote && newQuote !== currentQuote);
-        
+
         // Update design URLs if they've changed
         if (newDesignUrls.length > 0) {
-          const urlsChanged = newDesignUrls.length !== currentDesignUrls.length || 
-                             !newDesignUrls.every((url: any, idx: number) => url === currentDesignUrls[idx]);
+          const urlsChanged = newDesignUrls.length !== currentDesignUrls.length ||
+            !newDesignUrls.every((url: any, idx: number) => url === currentDesignUrls[idx]);
           if (urlsChanged) {
             console.log('[UserCustomOrderCard] 🖼️ Updated design URLs:', newDesignUrls);
             setCurrentDesignUrls(newDesignUrls);
@@ -270,17 +270,17 @@ export function UserCustomOrderCard({
         // Update quote items if available
         if (newQuoteItems.length > 0) {
           const itemsChanged = newQuoteItems.length !== currentQuoteItems.length ||
-                              !newQuoteItems.every((item: any, idx: number) => 
-                                item.itemName === currentQuoteItems[idx]?.itemName &&
-                                item.quantity === currentQuoteItems[idx]?.quantity &&
-                                item.unitPrice === currentQuoteItems[idx]?.unitPrice
-                              );
+            !newQuoteItems.every((item: any, idx: number) =>
+              item.itemName === currentQuoteItems[idx]?.itemName &&
+              item.quantity === currentQuoteItems[idx]?.quantity &&
+              item.unitPrice === currentQuoteItems[idx]?.unitPrice
+            );
           if (itemsChanged) {
             console.log('[UserCustomOrderCard] ✅ Updated quote items');
             setCurrentQuoteItems(newQuoteItems);
           }
         }
-        
+
         // Check for payment status updates
         const newPaymentProofUrl = order?.paymentProofUrl;
         const newPaymentVerified = order?.paymentVerified;
@@ -294,7 +294,7 @@ export function UserCustomOrderCard({
             paymentVerified: newPaymentVerified,
           });
         }
-        
+
         // Update quote if changed
         if (newQuote && newQuote > 0) {
           console.log('[UserCustomOrderCard] 💰 Quote received from API:', newQuote);
@@ -309,7 +309,7 @@ export function UserCustomOrderCard({
         } else {
           console.log('[UserCustomOrderCard] ⏳ No quote from API yet:', { newQuote, hasValue: !!newQuote });
         }
-        
+
         setLastChecked(new Date());
       } catch (error) {
         console.error('[UserCustomOrderCard] ❌ Error polling for quote:', error);
@@ -318,7 +318,7 @@ export function UserCustomOrderCard({
 
     // Initial poll immediately
     pollForQuote();
-    
+
     // Then set up interval for continuous polling
     interval = setInterval(pollForQuote, pollingIntervalMs);
 
@@ -388,7 +388,7 @@ export function UserCustomOrderCard({
   });
 
   return (
-    <div className={`${colors.bg} rounded-2xl border-2 ${hasQuote ? 'border-emerald-300 shadow-lg' : 'border-yellow-300 shadow-md'} overflow-hidden transition-all duration-300`}>
+    <div className={`${colors.bg} dark:bg-[#111] rounded-2xl border-2 ${hasQuote ? 'border-emerald-300 dark:border-emerald-500/50 shadow-lg' : 'border-yellow-300 dark:border-yellow-500/50 shadow-md'} overflow-hidden transition-all duration-300`}>
       {/* Header */}
       <div className={`${hasQuote ? 'bg-gradient-to-r from-emerald-500 to-teal-500' : 'bg-gradient-to-r from-yellow-500 to-amber-500'} px-6 py-4`}>
         <div className="flex items-start justify-between gap-4">
@@ -402,7 +402,7 @@ export function UserCustomOrderCard({
             className="flex-shrink-0 p-2 hover:bg-white hover:bg-opacity-20 rounded-lg transition-all transform"
             aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >
-            <ChevronDown 
+            <ChevronDown
               className={`h-6 w-6 text-white transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}
             />
           </button>
@@ -413,27 +413,27 @@ export function UserCustomOrderCard({
       <div className={`p-6 space-y-5 transition-all duration-300 ${!isExpanded ? 'max-h-96' : ''}`}>
         {/* Status Info - Only show when pending and waiting/received quote */}
         {status === 'pending' && (
-          <div className="bg-white rounded-lg p-4 border-2 border-gray-200">
+          <div className="bg-white dark:bg-black/20 rounded-lg p-4 border-2 border-gray-200 dark:border-white/10">
             <div className="flex items-center gap-3 mb-3">
               {hasQuote ? (
                 <>
                   <CheckCircle className="h-6 w-6 text-emerald-600 flex-shrink-0" />
                   <div>
-                    <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Quote Received!</p>
-                    <p className="text-sm text-gray-900 font-semibold">Admin has sent your quotation</p>
+                    <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Quote Received!</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 font-semibold">Admin has sent your quotation</p>
                   </div>
                 </>
               ) : (
                 <>
                   <Clock className="h-6 w-6 text-yellow-600 animate-spin flex-shrink-0" />
                   <div>
-                    <p className="text-xs font-bold text-gray-600 uppercase tracking-wide">Waiting for Quote</p>
-                    <p className="text-sm text-gray-900 font-semibold">Admin is preparing your quote...</p>
+                    <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-wide">Waiting for Quote</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 font-semibold">Admin is preparing your quote...</p>
                   </div>
                 </>
               )}
             </div>
-            
+
             {lastChecked && !hasQuote && (
               <p className="text-xs text-gray-500 ml-9">Last checked: {lastChecked.toLocaleTimeString()}</p>
             )}
@@ -444,21 +444,21 @@ export function UserCustomOrderCard({
         {isExpanded && (
           <>
             {/* Order Details */}
-            <div className="grid grid-cols-2 gap-4 bg-white rounded-lg p-4 border-2 border-gray-200 animate-fadeIn">
+            <div className="grid grid-cols-2 gap-4 bg-white dark:bg-black/20 rounded-lg p-4 border-2 border-gray-200 dark:border-white/10 animate-fadeIn">
               <div>
-                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Quantity</p>
-                <p className="text-lg font-bold text-gray-900">{quantity}</p>
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Quantity</p>
+                <p className="text-lg font-bold text-gray-900 dark:text-white">{quantity}</p>
               </div>
               <div>
-                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Status</p>
-                <p className={`text-sm font-bold ${colors.text}`}>{status.charAt(0).toUpperCase() + status.slice(1)}</p>
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-1">Status</p>
+                <p className={`text-sm font-bold ${colors.text} dark:text-lime-400`}>{status.charAt(0).toUpperCase() + status.slice(1)}</p>
               </div>
             </div>
 
             {/* Description */}
-            <div className="bg-white rounded-lg p-4 border-2 border-gray-200 animate-fadeIn">
-              <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Your Request</p>
-              <p className="text-sm text-gray-900 leading-relaxed">{description}</p>
+            <div className="bg-white dark:bg-black/20 rounded-lg p-4 border-2 border-gray-200 dark:border-white/10 animate-fadeIn">
+              <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wide mb-2">Your Request</p>
+              <p className="text-sm text-gray-900 dark:text-gray-200 leading-relaxed">{description}</p>
             </div>
 
             {/* Design Images */}
@@ -469,7 +469,7 @@ export function UserCustomOrderCard({
                   {currentDesignUrls.map((url, idx) => (
                     <div
                       key={idx}
-                      className="relative aspect-square bg-gray-100 rounded-lg border-2 border-gray-300 overflow-hidden hover:border-lime-400 transition-colors"
+                      className="relative aspect-square bg-gray-100 dark:bg-black/40 rounded-lg border-2 border-gray-300 dark:border-white/10 overflow-hidden hover:border-lime-400 transition-colors"
                     >
                       <img
                         src={url}
@@ -490,16 +490,16 @@ export function UserCustomOrderCard({
 
         {/* Quote Section */}
         {hasQuote ? (
-          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 rounded-xl border-2 border-emerald-300 p-5 space-y-4">
+          <div className="bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-900/10 dark:to-teal-900/10 rounded-xl border-2 border-emerald-300 dark:border-emerald-500/50 p-5 space-y-4">
             {/* Line Items */}
             {currentQuoteItems.length > 0 && (
-              <div className="bg-white rounded-lg p-4 border-2 border-emerald-200 space-y-2">
-                <p className="text-xs font-semibold text-gray-600 uppercase mb-3">Quote Items</p>
+              <div className="bg-white dark:bg-black/20 rounded-lg p-4 border-2 border-emerald-200 dark:border-white/10 space-y-2">
+                <p className="text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase mb-3">Quote Items</p>
                 {currentQuoteItems.map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-2 bg-emerald-50 rounded border border-emerald-100">
+                  <div key={idx} className="flex items-center justify-between p-2 bg-emerald-50 dark:bg-emerald-900/10 rounded border border-emerald-100 dark:border-emerald-900/20">
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-bold text-gray-900">{item.itemName}</p>
-                      <p className="text-xs text-gray-600">Qty: {item.quantity} × ₦{item.unitPrice.toLocaleString()} = ₦{(item.quantity * item.unitPrice).toLocaleString()}</p>
+                      <p className="text-sm font-bold text-gray-900 dark:text-white">{item.itemName}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">Qty: {item.quantity} × ₦{item.unitPrice.toLocaleString()} = ₦{(item.quantity * item.unitPrice).toLocaleString()}</p>
                     </div>
                   </div>
                 ))}
@@ -507,13 +507,13 @@ export function UserCustomOrderCard({
             )}
 
             {/* Pricing Breakdown */}
-            <div className="bg-white rounded-lg p-4 border-2 border-emerald-200 space-y-2">
+            <div className="bg-white dark:bg-black/20 rounded-lg p-4 border-2 border-emerald-200 dark:border-white/10 space-y-2">
               {/* Subtotal (before discount) */}
               <div className="flex justify-between text-sm">
-                <span className="font-semibold text-gray-700">Subtotal:</span>
-                <span className="font-bold text-gray-900">₦{(totals.subtotal || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-400">Subtotal:</span>
+                <span className="font-bold text-gray-900 dark:text-white">₦{(totals.subtotal || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
               </div>
-              
+
               {/* 🎁 Discount - Show if present */}
               {totals.discountPercentage && totals.discountPercentage > 0 ? (
                 <div className="flex justify-between text-sm bg-green-50 px-3 py-2 rounded border border-green-200">
@@ -521,7 +521,7 @@ export function UserCustomOrderCard({
                   <span className="font-bold text-green-600">-₦{(totals.discount || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                 </div>
               ) : null}
-              
+
               {/* Subtotal After Discount (if discount applied) */}
               {totals.subtotalAfterDiscount && totals.subtotalAfterDiscount > 0 && totals.subtotalAfterDiscount !== totals.subtotal ? (
                 <div className="flex justify-between text-sm font-semibold text-gray-800 bg-white px-3 py-1.5 rounded border border-gray-200">
@@ -529,14 +529,14 @@ export function UserCustomOrderCard({
                   <span>₦{(totals.subtotalAfterDiscount).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                 </div>
               ) : null}
-              
-              <div className="flex justify-between text-sm border-t border-emerald-200 pt-2">
-                <span className="font-semibold text-gray-700">VAT (7.5%):</span>
-                <span className="font-bold text-emerald-600">₦{(totals.vat || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+
+              <div className="flex justify-between text-sm border-t border-emerald-200 dark:border-white/10 pt-2">
+                <span className="font-semibold text-gray-700 dark:text-gray-400">VAT (7.5%):</span>
+                <span className="font-bold text-emerald-600 dark:text-lime-400">₦{(totals.vat || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
               </div>
-              <div className="flex justify-between text-lg border-t-2 border-emerald-300 pt-2">
-                <span className="font-bold text-gray-900">Total:</span>
-                <span className="font-black text-emerald-600">₦{(totals.total || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
+              <div className="flex justify-between text-lg border-t-2 border-emerald-300 dark:border-white/20 pt-2">
+                <span className="font-bold text-gray-900 dark:text-white">Total:</span>
+                <span className="font-black text-emerald-600 dark:text-lime-400">₦{(totals.total || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
               </div>
             </div>
 
@@ -577,12 +577,12 @@ export function UserCustomOrderCard({
             )}
           </div>
         ) : (
-          <div className="bg-gradient-to-r from-yellow-50 to-amber-50 rounded-xl border-2 border-yellow-300 p-5 space-y-4">
+          <div className="bg-gradient-to-r from-yellow-50 to-amber-50 dark:from-yellow-900/10 dark:to-amber-900/10 rounded-xl border-2 border-yellow-300 dark:border-yellow-500/50 p-5 space-y-4">
             <div className="flex items-start gap-3">
               <AlertCircle className="h-6 w-6 text-yellow-600 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-bold text-gray-900 mb-1">Quote Not Yet Sent</p>
-                <p className="text-sm text-gray-700 leading-relaxed">
+                <p className="text-sm font-bold text-gray-900 dark:text-white mb-1">Quote Not Yet Sent</p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
                   The admin is reviewing your request and will send you a quotation soon.
                 </p>
               </div>
@@ -592,10 +592,10 @@ export function UserCustomOrderCard({
 
         {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-              <h3 className="text-lg font-bold text-gray-900 mb-2">Delete Order?</h3>
-              <p className="text-gray-700 text-sm mb-6">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-[#111] rounded-2xl shadow-2xl max-w-md w-full p-6 border border-gray-200 dark:border-white/10">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Delete Order?</h3>
+              <p className="text-gray-700 dark:text-gray-400 text-sm mb-6">
                 Are you sure you want to delete this custom order? This action cannot be undone.
               </p>
               <div className="flex gap-3">

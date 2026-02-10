@@ -14,6 +14,7 @@ import { ShoppingBag } from "lucide-react";
 import { OrdersTab } from "./OrdersTab";
 import { InvoicesTab } from "./InvoicesTab";
 import { ProfileTab } from "./ProfileTab";
+import { useTheme } from "../context/ThemeContext";
 
 interface CustomOrder {
   _id: string;
@@ -96,6 +97,7 @@ interface RegularOrder {
 export default function BuyerDashboardPage() {
   const { buyer, isHydrated, logout, updateProfile } = useBuyer();
   const { currency, setCurrency } = useCurrency();
+  const { theme } = useTheme();
   const [category, setCategory] = useState("adults");
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [customOrders, setCustomOrders] = useState<CustomOrder[]>([]);
@@ -133,12 +135,12 @@ export default function BuyerDashboardPage() {
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
       const htmlElement = document.documentElement;
       const bodyElement = document.body;
-      
+
       const originalHtmlOverflow = htmlElement.style.overflow;
       const originalBodyOverflow = bodyElement.style.overflow;
       const originalHtmlPaddingRight = htmlElement.style.paddingRight;
       const originalBodyPaddingRight = bodyElement.style.paddingRight;
-      
+
       htmlElement.style.overflow = 'hidden';
       bodyElement.style.overflow = 'hidden';
       if (scrollbarWidth > 0) {
@@ -180,16 +182,16 @@ export default function BuyerDashboardPage() {
       if (!buyer?.id && !buyer?.email) {
         return;
       }
-      
+
       const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
       console.log('[Dashboard] 🔄 Fetching unified custom orders with:', queryParam);
       // Fetch from unified endpoint with orderType filter
       const response = await fetch(`/api/orders/unified?${queryParam}&orderType=custom`);
       const data = await response.json();
-      
+
       if (data.orders && Array.isArray(data.orders)) {
         console.log('[Dashboard] ✅ Fetched', data.orders.length, 'custom orders');
-        
+
         // Log details of each custom order
         data.orders.forEach((order: any) => {
           console.log(`[Dashboard] Custom Order: ${order.orderNumber}`, {
@@ -213,7 +215,7 @@ export default function BuyerDashboardPage() {
             status: order.status,
           });
         });
-        
+
         setCustomOrders(data.orders);
         fetchMessageCounts(data.orders);
       }
@@ -228,16 +230,16 @@ export default function BuyerDashboardPage() {
       if (!buyer?.id && !buyer?.email) {
         return;
       }
-      
+
       const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
       console.log('[Dashboard] 🔄 Fetching unified regular orders with:', queryParam);
       // Fetch from unified endpoint with orderType filter
       const response = await fetch(`/api/orders/unified?${queryParam}&orderType=regular`);
       const data = await response.json();
-      
+
       if (data.orders && Array.isArray(data.orders)) {
         console.log('[Dashboard] ✅ Fetched', data.orders.length, 'regular orders');
-        
+
         // Log details of each regular order with pricing
         data.orders.forEach((order: any) => {
           console.log(`[Dashboard] Regular Order: ${order.orderNumber}`, {
@@ -252,7 +254,7 @@ export default function BuyerDashboardPage() {
             status: order.status,
           });
         });
-        
+
         setRegularOrders(data.orders);
       }
     } catch (error) {
@@ -265,19 +267,19 @@ export default function BuyerDashboardPage() {
     if (!buyer?.id && !buyer?.email) {
       return;
     }
-    
+
     if (!isHydrated) {
       return;
     }
-    
+
     const fetchAndProcess = async () => {
       try {
         const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
-        
+
         // Fetch custom orders from unified endpoint
         const customResponse = await fetch(`/api/orders/unified?${queryParam}&orderType=custom`);
         const customData = await customResponse.json();
-        
+
         if (customData.orders && Array.isArray(customData.orders)) {
           setCustomOrders(customData.orders);
           fetchMessageCounts(customData.orders);
@@ -286,17 +288,17 @@ export default function BuyerDashboardPage() {
         // Fetch regular orders from unified endpoint
         const regularResponse = await fetch(`/api/orders/unified?${queryParam}&orderType=regular`);
         const regularData = await regularResponse.json();
-        
+
         if (regularData.orders && Array.isArray(regularData.orders)) {
           setRegularOrders(regularData.orders);
         }
 
         const params = new URLSearchParams(window.location.search);
         const orderNumber = params.get("order");
-        
+
         if (orderNumber) {
           setActiveTab("orders");
-          
+
           // Check in custom orders first
           const matchingCustomOrder = customData.orders?.find((o: CustomOrder) => o.orderNumber === orderNumber);
           if (matchingCustomOrder) {
@@ -307,7 +309,7 @@ export default function BuyerDashboardPage() {
               }
             }, 300);
           }
-          
+
           // Then check in regular orders
           const matchingRegularOrder = regularData.orders?.find((o: RegularOrder) => o.orderNumber === orderNumber);
           if (matchingRegularOrder) {
@@ -323,7 +325,7 @@ export default function BuyerDashboardPage() {
         console.error('[Dashboard] Error fetching orders:', error);
       }
     };
-    
+
     fetchAndProcess();
   }, [buyer?.email, isHydrated]);
 
@@ -333,7 +335,7 @@ export default function BuyerDashboardPage() {
       console.log('[Dashboard] Skipping polling - no buyer email');
       return;
     }
-    
+
     console.log('[Dashboard] 🔔 Starting polling for updates (every 3 seconds)');
 
     const handleVisibilityChange = async () => {
@@ -342,19 +344,19 @@ export default function BuyerDashboardPage() {
         // Use unified fetch pattern to prevent duplicates
         try {
           const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
-          
+
           const [customResponse, regularResponse] = await Promise.all([
             fetch(`/api/orders/unified?${queryParam}&orderType=custom`),
             fetch(`/api/orders/unified?${queryParam}&orderType=regular`)
           ]);
-          
+
           const customData = await customResponse.json();
           const regularData = await regularResponse.json();
-          
+
           if (customData.orders && Array.isArray(customData.orders)) {
             setCustomOrders(customData.orders);
           }
-          
+
           if (regularData.orders && Array.isArray(regularData.orders)) {
             setRegularOrders(regularData.orders);
           }
@@ -371,21 +373,21 @@ export default function BuyerDashboardPage() {
       if (!document.hidden) {
         try {
           const queryParam = buyer?.id ? `buyerId=${buyer.id}` : `email=${buyer?.email}`;
-          
+
           const [customResponse, regularResponse] = await Promise.all([
             fetch(`/api/orders/unified?${queryParam}&orderType=custom`),
             fetch(`/api/orders/unified?${queryParam}&orderType=regular`)
           ]);
-          
+
           const customData = await customResponse.json();
           const regularData = await regularResponse.json();
-          
+
           if (customData.orders && Array.isArray(customData.orders)) {
             // Deduplicate by _id to prevent showing same order twice
             const uniqueCustom = Array.from(new Map(customData.orders.map((o: CustomOrder) => [o._id, o])).values()) as CustomOrder[];
             setCustomOrders(uniqueCustom);
           }
-          
+
           if (regularData.orders && Array.isArray(regularData.orders)) {
             // Deduplicate by _id to prevent showing same order twice
             const uniqueRegular = Array.from(new Map(regularData.orders.map((o: RegularOrder) => [o._id, o])).values()) as RegularOrder[];
@@ -412,9 +414,9 @@ export default function BuyerDashboardPage() {
         console.log('[Dashboard] ========== FETCHING INVOICES ==========');
         console.log('[Dashboard] buyer.email:', buyer.email);
         console.log('[Dashboard] buyer.id:', buyer.id || 'NOT SET (guest)');
-        
+
         let fetchUrl = '';
-        
+
         // Determine how to fetch invoices
         if (buyer.id) {
           // Logged-in user: fetch by buyerId
@@ -425,7 +427,7 @@ export default function BuyerDashboardPage() {
           fetchUrl = `/api/invoices?email=${encodeURIComponent(buyer.email)}`;
           console.log('[Dashboard] Using guest fetch:', fetchUrl);
         }
-        
+
         if (!fetchUrl) {
           console.log('[Dashboard] ❌ No way to identify buyer');
           setInvoices([]);
@@ -434,7 +436,7 @@ export default function BuyerDashboardPage() {
 
         console.log('[Dashboard] 📡 Calling API:', fetchUrl);
         const response = await fetch(fetchUrl);
-        
+
         if (!response.ok) {
           console.error('[Dashboard] ❌ API returned error:', response.status);
           setInvoices([]);
@@ -444,7 +446,7 @@ export default function BuyerDashboardPage() {
         const data = await response.json();
         console.log('[Dashboard] ✅ Got response from API');
         console.log('[Dashboard] 📊 Number of invoices:', Array.isArray(data) ? data.length : 0);
-        
+
         if (Array.isArray(data) && data.length > 0) {
           console.log('[Dashboard] First invoice details:');
           console.log('[Dashboard]   - invoiceNumber:', data[0].invoiceNumber);
@@ -452,7 +454,7 @@ export default function BuyerDashboardPage() {
           console.log('[Dashboard]   - customerEmail:', data[0].customerEmail);
           console.log('[Dashboard]   - totalAmount:', data[0].totalAmount);
         }
-        
+
         // Convert API invoices to StoredInvoice format
         const convertedInvoices: StoredInvoice[] = (data || []).map((inv: any) => ({
           id: inv._id,
@@ -481,7 +483,7 @@ export default function BuyerDashboardPage() {
           createdAt: inv.createdAt,
           updatedAt: inv.updatedAt,
         }));
-        
+
         console.log('[Dashboard] ✅✅✅ INVOICES SET:', convertedInvoices.length);
         setInvoices(convertedInvoices);
       } catch (error) {
@@ -530,7 +532,8 @@ export default function BuyerDashboardPage() {
   if (!buyer) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900 flex flex-col">
+    <div className={`min-h-screen flex flex-col transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900'
+      }`}>
       <InvoiceModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
       {/* ChatModal removed, to be replaced */}
 
@@ -545,7 +548,7 @@ export default function BuyerDashboardPage() {
         {/* Welcome Header */}
         <div className="mb-8 sm:mb-12 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="flex-1">
-            <h1 className="text-lg sm:text-3xl font-black text-gray-900">
+            <h1 className="text-lg sm:text-3xl font-black text-gray-900 dark:text-white">
               {isFirstVisit ? "Welcome" : "Welcome back"}, {buyer.fullName}! 👋
             </h1>
           </div>
@@ -572,11 +575,10 @@ export default function BuyerDashboardPage() {
                 setActiveTab(tab.id as "orders" | "profile");
                 // Removed localStorage - tab state is session-only
               }}
-              className={`relative px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${
-                activeTab === tab.id
+              className={`relative px-4 py-2.5 rounded-xl font-semibold transition-all border-2 flex items-center gap-2 whitespace-nowrap text-sm sm:text-base ${activeTab === tab.id
                   ? `${tab.color} border-current shadow-md`
                   : `${tab.color} border-transparent hover:text-gray-700`
-              }`}
+                }`}
             >
               {tab.count !== null && (
                 <span className={`${tab.badgeColor} px-2 py-1 rounded-full text-xs font-bold`}>
@@ -626,11 +628,11 @@ export default function BuyerDashboardPage() {
       {imageModalOpen && customOrders && (() => {
         const order = customOrders.find(o => o._id === imageModalOpen.orderId);
         if (!order) return null;
-        
-        const images = (order.designUrls && order.designUrls.length > 0) 
-          ? order.designUrls 
+
+        const images = (order.designUrls && order.designUrls.length > 0)
+          ? order.designUrls
           : order.designUrl ? [order.designUrl] : [];
-        
+
         const currentImage = images[imageModalOpen.index];
 
         return (
@@ -697,11 +699,10 @@ export default function BuyerDashboardPage() {
                       <button
                         key={index}
                         onClick={() => setImageModalOpen({ orderId: imageModalOpen.orderId, index })}
-                        className={`flex-shrink-0 rounded-lg overflow-hidden border-3 transition transform hover:scale-110 ${
-                          imageModalOpen.index === index
+                        className={`flex-shrink-0 rounded-lg overflow-hidden border-3 transition transform hover:scale-110 ${imageModalOpen.index === index
                             ? "border-lime-400 ring-2 ring-lime-400"
                             : "border-gray-300 hover:border-gray-400"
-                        }`}
+                          }`}
                       >
                         <img
                           src={url}

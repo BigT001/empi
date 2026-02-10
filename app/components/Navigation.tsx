@@ -1,54 +1,49 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Search, User, Heart, Menu, ShoppingCart, ChevronDown, Settings, LogOut, LogIn } from "lucide-react";
-import { CURRENCY_RATES } from "./constants";
+import { Search, User, ShoppingCart, Settings, LogOut, Sun, Moon } from "lucide-react";
 import { useCart } from "./CartContext";
 import { useBuyer } from "../context/BuyerContext";
 import { useAdmin } from "../context/AdminContext";
 import { NotificationBell } from "./NotificationBell";
+import { useTheme } from "../context/ThemeContext";
 
 interface NavigationProps {
-  category: string;
-  onCategoryChange: (category: string) => void;
-  currency: string;
-  onCurrencyChange: (currency: string) => void;
+  category?: string;
+  onCategoryChange?: (category: string) => void;
+  currency?: string;
+  onCurrencyChange?: (currency: string) => void;
   mode?: "buy" | "rent";
   onModeChange?: (mode: "buy" | "rent") => void;
 }
 
-export function Navigation({ category, onCategoryChange, currency, onCurrencyChange, mode, onModeChange }: NavigationProps) {
+export function Navigation({
+  category = "adults",
+  onCategoryChange = () => { },
+  currency = "NGN",
+  onCurrencyChange = () => { }
+}: NavigationProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [showCurrencyDropdown, setShowCurrencyDropdown] = useState(false);
-  const [showFilterDropdown, setShowFilterDropdown] = useState(false);
-  const [currencyButtonRef, setCurrencyButtonRef] = useState<HTMLButtonElement | null>(null);
-  const [filterButtonRef, setFilterButtonRef] = useState<HTMLButtonElement | null>(null);
-  const [currencyModalPos, setCurrencyModalPos] = useState({ top: 0, left: 0 });
-  const [filterModalPos, setFilterModalPos] = useState({ top: 0, left: 0 });
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [headerVisible, setHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
+  const [scrolled, setScrolled] = useState(false);
+
   const { items } = useCart();
   const { buyer, logout } = useBuyer();
   const { admin } = useAdmin();
+  const { theme, toggleTheme } = useTheme();
 
-  // Handle category navigation - scroll to products section
   const handleCategoryChange = (newCategory: string) => {
     onCategoryChange(newCategory);
-    
-    // If on home page, update URL and scroll to products section
     if (pathname === "/") {
-      // Update URL without reloading
       const params = new URLSearchParams();
       params.append('category', newCategory);
       window.history.replaceState({}, '', `/?${params.toString()}`);
-      
-      // Wait for state to update before scrolling
       setTimeout(() => {
         const productSection = document.getElementById("product-grid");
         if (productSection) {
@@ -56,86 +51,27 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         }
       }, 300);
     } else {
-      // Navigate to home page with category parameter if not on home
-      if (newCategory === "custom") {
-        router.push("/?category=custom");
-      } else if (newCategory === "adults" || newCategory === "kids") {
-        router.push("/?category=" + newCategory);
-      }
+      router.push("/?category=" + (newCategory === "custom" ? "custom" : newCategory));
     }
-    
-    // Close mobile menu after selection
-    setShowMobileMenu(false);
   };
 
-  // Handle logo click - return to home page
   const handleLogoClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
-    onCategoryChange("adults"); // Reset to default category
-    router.push("/"); // Navigate to home
-    window.scrollTo({ top: 0, behavior: "smooth" }); // Scroll to top
+    onCategoryChange("adults");
+    router.push("/");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  // Log admin state changes for debugging
-  useEffect(() => {
-    if (admin) {
-      console.log('[Navigation] Admin logged in:', admin.email);
-    } else {
-      console.log('[Navigation] Admin logged out - admin state is null');
-    }
-  }, [admin]);
-
-  // Update currency modal position
-  useEffect(() => {
-    if (showCurrencyDropdown) {
-      if (currencyButtonRef) {
-        const rect = currencyButtonRef.getBoundingClientRect();
-        setCurrencyModalPos({
-          top: rect.bottom + 12,
-          left: window.innerWidth / 2,
-        });
-      } else {
-        // Fallback for mobile when ref might not be captured
-        setCurrencyModalPos({
-          top: 100,
-          left: window.innerWidth / 2,
-        });
-      }
-    }
-  }, [showCurrencyDropdown, currencyButtonRef]);
-
-  // Update filter modal position
-  useEffect(() => {
-    if (showFilterDropdown) {
-      if (filterButtonRef) {
-        const rect = filterButtonRef.getBoundingClientRect();
-        setFilterModalPos({
-          top: rect.bottom + 12,
-          left: window.innerWidth / 2,
-        });
-      } else {
-        // Fallback for mobile when ref might not be captured
-        setFilterModalPos({
-          top: 100,
-          left: window.innerWidth / 2,
-        });
-      }
-    }
-  }, [showFilterDropdown, filterButtonRef]);
-
-  // Handle scroll to hide/show header
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
-      // Show header when scrolling up or at top
+      setScrolled(currentScrollY > 20);
+
       if (currentScrollY < lastScrollY || currentScrollY < 50) {
         setHeaderVisible(true);
       } else if (currentScrollY > lastScrollY && currentScrollY > 50) {
-        // Hide header when scrolling down
         setHeaderVisible(false);
       }
-      
       setLastScrollY(currentScrollY);
     };
 
@@ -143,190 +79,141 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
     return () => window.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
 
-  // Handle click outside for modals and menu
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      
-      // Close modals if click is outside
-      if (!target.closest('[data-modal]') && !target.closest('[data-modal-trigger]')) {
-        setShowCurrencyDropdown(false);
-        setShowFilterDropdown(false);
-      }
-      
-      // Close mobile menu if click is outside
-      if (!target.closest('[data-mobile-menu]') && !target.closest('[data-menu-toggle]')) {
-        setShowMobileMenu(false);
-      }
-    };
-
-    document.addEventListener('click', handleClickOutside);
-    return () => document.removeEventListener('click', handleClickOutside);
-  }, []);
-
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       const params = new URLSearchParams();
       params.append('q', searchQuery);
-      if (category && category !== 'all') {
-        params.append('category', category);
-      }
+      if (category && category !== 'all') params.append('category', category);
       params.append('currency', currency);
       router.push(`/?${params.toString()}`);
       setSearchQuery("");
-      setShowMobileMenu(false);
     }
   };
 
   return (
-    <>
-      {/* Main Header Container with Hide-on-Scroll - Positioned below banner */}
-      <div 
-        className="md:fixed left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out"
-        style={{ 
-          top: '56px',
-          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-          transform: headerVisible ? 'translateY(0)' : 'translateY(-100%)'
-        }}
-      >
-        {/* Desktop Navigation */}
-        <div className="hidden md:flex items-center justify-between gap-8 flex-1 px-6 py-4">
+    <div
+      className={`hidden md:block fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-full'
+        } ${scrolled ? 'py-2' : 'py-4'}`}
+    >
+      <div className="mx-auto max-w-7xl px-4">
+        <div className={`flex items-center justify-between gap-8 px-8 py-4 rounded-2xl transition-all duration-500 ${scrolled
+          ? 'bg-white/80 dark:bg-black/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/20 dark:border-white/5'
+          : 'bg-white dark:bg-[#111] border border-gray-100 dark:border-white/5 shadow-sm'
+          }`}>
           {/* Logo */}
-          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 hover:opacity-80 transition">
-            <Image
-              src="/logo/EMPI-2k24-LOGO-1.PNG"
-              alt="EMPI Logo"
-              width={60}
-              height={60}
-              className="h-12 w-auto"
-            />
+          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 group">
+            <div className="flex items-center gap-3">
+              <Image
+                src="/logo/EMPI-2k24-LOGO-1.PNG"
+                alt="EMPI Logo"
+                width={50}
+                height={50}
+                className="h-10 w-auto rounded-xl shadow-md transition-transform group-hover:scale-110 duration-500"
+              />
+              <div className="flex flex-col">
+                <span className="text-xl font-black text-slate-900 dark:text-white leading-none tracking-tighter">EMPI</span>
+                <span className="text-[8px] uppercase font-black text-lime-500 tracking-widest mt-1">Costume Maker</span>
+              </div>
+            </div>
           </Link>
 
           {/* Navigation */}
-          <nav className="gap-12 text-sm font-medium flex items-center">
-            {/* Category Links - Clean Text Style */}
-            <div className="flex items-center gap-8">
-              <button
-                onClick={() => handleCategoryChange("adults")}
-                className={`relative px-1 py-2 transition-colors duration-300 ${
-                  category === "adults"
-                    ? "text-lime-600 font-semibold"
-                    : "text-gray-700 hover:text-lime-600"
-                }`}
-              >
-                Adults
-                {category === "adults" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-lime-600 rounded-full"></div>
-                )}
-              </button>
-
-              <button
-                onClick={() => handleCategoryChange("kids")}
-                className={`relative px-1 py-2 transition-colors duration-300 ${
-                  category === "kids"
-                    ? "text-lime-600 font-semibold"
-                    : "text-gray-700 hover:text-lime-600"
-                }`}
-              >
-                Kids
-                {category === "kids" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-lime-600 rounded-full"></div>
-                )}
-              </button>
-
-              <button
-                onClick={() => handleCategoryChange("custom")}
-                className={`relative px-1 py-2 transition-colors duration-300 ${
-                  category === "custom"
-                    ? "text-lime-600 font-semibold"
-                    : "text-gray-700 hover:text-lime-600"
-                }`}
-              >
-                Custom
-                {category === "custom" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-lime-600 rounded-full"></div>
-                )}
-              </button>
-
-              <Link 
-                href="/about" 
-                className={`relative px-1 py-2 transition-colors duration-300 ${
-                  pathname === "/about"
-                    ? "text-lime-600 font-semibold"
-                    : "text-gray-700 hover:text-lime-600"
-                }`}
-              >
-                About Us
-                {pathname === "/about" && (
-                  <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-lime-600 rounded-full"></div>
-                )}
-              </Link>
-            </div>
+          <nav className="flex items-center gap-1 bg-gray-50/50 dark:bg-white/5 p-1 rounded-xl border border-gray-100 dark:border-white/5">
+            {[
+              { id: 'adults', label: 'Adults' },
+              { id: 'kids', label: 'Kids' },
+              { id: 'custom', label: 'Bespoke' },
+              { id: 'about', label: 'My Story', href: '/about' }
+            ].map((item) => {
+              const isActive = item.href ? pathname === item.href : category === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => item.href ? router.push(item.href) : handleCategoryChange(item.id)}
+                  className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${isActive
+                    ? 'bg-white dark:bg-lime-500 text-lime-600 dark:text-white shadow-sm'
+                    : 'text-gray-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                    }`}
+                >
+                  {item.label}
+                </button>
+              );
+            })}
           </nav>
 
-          {/* Search */}
-          <div className="flex-1 items-center max-w-xs lg:flex hidden">
-            <form onSubmit={handleSearch} className="relative w-full">
+          {/* Search Box */}
+          <div className="flex-1 max-w-xs">
+            <form onSubmit={handleSearch} className="relative group">
               <input
-                aria-label="Search products"
                 placeholder="Search costumes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2 pl-10 text-sm focus:outline-none focus:ring-2 focus:ring-lime-500 focus:bg-white transition"
+                className="w-full bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/5 focus:border-lime-500 dark:focus:border-lime-500 focus:bg-white dark:focus:bg-black/40 rounded-xl px-5 py-2.5 pl-11 text-sm outline-none transition-all placeholder:text-gray-400 dark:text-white font-medium"
               />
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-lime-500 transition-colors" />
             </form>
           </div>
 
-          {/* Desktop Actions */}
-          <div className="flex items-center gap-4">
-        {admin ? (
-          <Link href="/admin" className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg border border-orange-300 bg-orange-50 text-orange-600 hover:border-orange-600 hover:bg-orange-100 font-semibold transition">
-            <Settings className="h-4 w-4" />
-            <span className="text-sm">Admin</span>
-          </Link>
-        ) : null}
+          {/* Actions */}
+          <div className="flex items-center gap-2">
+            {admin && (
+              <Link href="/admin" className="p-2.5 text-orange-500 hover:bg-orange-50 rounded-xl transition-all group relative" title="Admin">
+                <Settings className="h-5 w-5 group-hover:rotate-45 transition-transform" />
+                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Dashboard</span>
+              </Link>
+            )}
 
-        {/* Profile Button - Direct link to dashboard */}
-        {buyer && (
-          <Link
-            href="/dashboard"
-            className="hidden md:flex items-center gap-2 px-4 py-2 rounded-lg bg-lime-50 border border-lime-200 text-gray-700 hover:border-lime-600 hover:bg-lime-100 font-semibold transition"
-          >
-            <User className="h-4 w-4 text-lime-600" />
-            <span className="text-sm">{buyer.fullName}</span>
-          </Link>
-        )}
+            <NotificationBell />
 
-        {!buyer && (
-          <Link href="/auth" className="hidden md:flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition">
-            <User className="h-4 w-4" />
-            <span className="text-sm">Login</span>
-          </Link>
-        )}
+            {/* Theme Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-500 dark:text-gray-400 hover:text-lime-600 dark:hover:text-lime-400 transition-all group"
+              title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            >
+              {theme === "dark" ? (
+                <Sun className="h-5 w-5 animate-pulse" />
+              ) : (
+                <Moon className="h-5 w-5" />
+              )}
+            </button>
 
-        {/* Notification Bell for Desktop */}
-        <div className="hidden md:block">
-          <NotificationBell />
-        </div>
+            <div className="h-6 w-[1px] bg-gray-200 dark:bg-white/10 mx-1"></div>
 
-        <Link href="/cart" className="hidden md:flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white px-4 py-2 rounded-lg font-medium transition relative">
-          <ShoppingCart className="h-4 w-4" />
-          <span className="text-sm">Cart</span>
-          {items.length > 0 && (
-            <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
-              {items.length}
-            </span>
-          )}
-        </Link>
+            {buyer ? (
+              <div className="flex items-center gap-3">
+                <Link
+                  href="/dashboard"
+                  className="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-lime-500 transition-all group"
+                >
+                  <div className="w-8 h-8 rounded-full bg-lime-100 dark:bg-lime-900/30 flex items-center justify-center text-lime-600 dark:text-lime-400 group-hover:bg-lime-500 group-hover:text-white transition-colors">
+                    <User className="h-4 w-4" />
+                  </div>
+                  <span className="text-sm font-bold text-slate-700 dark:text-gray-300">{buyer.fullName.split(' ')[0]}</span>
+                </Link>
+                <button onClick={logout} className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all" title="Logout">
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+            ) : (
+              <Link href="/auth" className="flex items-center gap-2 bg-slate-900 dark:bg-lime-600 hover:bg-slate-800 dark:hover:bg-lime-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all hover:shadow-lg active:scale-95">
+                <User className="h-4 w-4" />
+                <span>Join EMPI</span>
+              </Link>
+            )}
+
+            <Link href="/cart" className="relative ml-2 p-2.5 bg-lime-500 hover:bg-lime-400 text-white rounded-xl shadow-lg dark:shadow-none shadow-lime-100 transition-all hover:scale-105 active:scale-95">
+              <ShoppingCart className="h-5 w-5" />
+              {items.length > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-slate-900 dark:bg-black text-white text-[10px] font-black rounded-full h-5 w-5 flex items-center justify-center ring-2 ring-white dark:ring-[#111]">
+                  {items.length}
+                </span>
+              )}
+            </Link>
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
-
-  // This code was orphaned, needs to be inside the return
 }
-
-// The mobile menu JSX should have been inside the component return

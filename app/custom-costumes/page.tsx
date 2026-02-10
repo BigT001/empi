@@ -3,9 +3,11 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { Navigation } from "../components/Navigation";
+import { MobileHeader } from "../components/MobileHeader";
 import { Footer } from "../components/Footer";
-import { Upload, AlertCircle, CheckCircle, Loader, X } from "lucide-react";
+import { Upload, AlertCircle, CheckCircle, Loader, X, ArrowRight, Sun, Moon } from "lucide-react";
 import { useBuyer } from "../context/BuyerContext";
+import { useTheme } from "../context/ThemeContext";
 
 interface CustomCostumesPageProps {
   category?: string;
@@ -16,15 +18,16 @@ interface CustomCostumesPageProps {
 
 export default function CustomCostumesPage({
   category = "custom",
-  onCategoryChange = () => {},
+  onCategoryChange = () => { },
   currency = "NGN",
-  onCurrencyChange = () => {},
+  onCurrencyChange = () => { },
 }: CustomCostumesPageProps) {
   const { buyer } = useBuyer();
   const [localCurrency, setLocalCurrency] = useState(currency);
   const [localCategory, setLocalCategory] = useState(category);
+  const { theme, toggleTheme } = useTheme();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [successOrderNumber, setSuccessOrderNumber] = useState("");
@@ -133,22 +136,22 @@ export default function CustomCostumesPage({
 
   const handleCreateAccount = async () => {
     setSignupError("");
-    
+
     if (!signupPassword || !confirmPassword) {
       setSignupError("Please enter and confirm your password");
       return;
     }
-    
+
     if (signupPassword.length < 8) {
       setSignupError("Password must be at least 8 characters long");
       return;
     }
-    
+
     if (signupPassword !== confirmPassword) {
       setSignupError("Passwords do not match");
       return;
     }
-    
+
     setIsCreatingAccount(true);
     try {
       const response = await fetch("/api/auth/signup-from-custom-order", {
@@ -166,15 +169,15 @@ export default function CustomCostumesPage({
           customOrderNumber: successOrderNumber,
         }),
       });
-      
+
       if (!response.ok) {
         const error = await response.json();
         throw new Error(error.message || "Failed to create account");
       }
-      
+
       const data = await response.json();
       console.log("[CustomCostumes] ✅ Account created successfully!");
-      
+
       // Close modal and redirect to dashboard
       setShowSuccessModal(false);
       window.location.href = `/dashboard?order=${successOrderNumber}&signup=success`;
@@ -267,7 +270,7 @@ export default function CustomCostumesPage({
       }
 
       const data = await response.json();
-      
+
       console.log("[CustomCostumes] ✅ Order submitted successfully to unified system!");
       console.log("[CustomCostumes] Response:", data);
       console.log("[CustomCostumes] Order Number:", data.orderNumber);
@@ -305,14 +308,14 @@ export default function CustomCostumesPage({
           // Don't throw - order was successful, this is just a bonus feature
         }
       }
-      
+
       setSubmitStatus("success");
       setSuccessOrderNumber(data.orderNumber || "");
       setShowSuccessModal(true);
       setSignupPassword("");
       setConfirmPassword("");
       setSignupError("");
-      
+
       // Don't reset form yet - need it for the modal to display user info
     } catch (err: any) {
       console.error("[CustomCostumes] ❌ Error submitting order:", err);
@@ -325,757 +328,566 @@ export default function CustomCostumesPage({
   };
 
   return (
-    <div className="min-h-screen bg-white text-gray-900 flex flex-col">
-      {/* Navigation with Logo */}
-      <Navigation 
+    <div className="flex flex-col min-h-screen bg-[#0a0a0a]">
+      <Navigation
+        category={localCategory}
+        onCategoryChange={onCategoryChange}
+        currency={localCurrency}
+        onCurrencyChange={onCurrencyChange}
+      />
+      <MobileHeader
         category={localCategory}
         onCategoryChange={onCategoryChange}
         currency={localCurrency}
         onCurrencyChange={onCurrencyChange}
       />
 
+      {/* Theme Toggle Button - REMOVED - Using global toggle in Navigation */}
+
       {/* Main Content */}
-      <main className="flex-1 max-w-4xl mx-auto px-0 md:px-6 py-12 md:py-16 mt-4 md:mt-20">
-        <div className="space-y-12">
-          {/* Hero Section - Desktop Only */}
-          <section className="hidden md:block text-center space-y-4 px-4 md:px-0 md:py-8">
-            <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-lime-50 border border-purple-200 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300">
-              <div className="relative px-5 md:px-10 py-8 md:py-12">
-                {/* Background decorative elements */}
-                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200 opacity-10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-pink-200 opacity-10 rounded-full -ml-16 -mb-16 blur-3xl"></div>
-                
-                {/* Content */}
-                <div className="relative z-10">
-                  <div className="inline-flex items-center gap-1.5 mb-3 px-3 py-1.5 bg-white/60 backdrop-blur-sm rounded-full border border-purple-300/40">
-                    <span className="text-base">✨</span>
-                    <span className="text-xs font-bold text-purple-700 uppercase tracking-wide">Custom Orders</span>
+      <main className={`flex-1 w-full flex flex-col items-center overflow-x-hidden transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-slate-50'
+        }`}>
+        {/* Cinematic Page Header */}
+        <section className={`relative w-full min-h-[70vh] flex items-center justify-center overflow-hidden transition-colors duration-1000 px-6 pt-32 pb-20 ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-slate-900'
+          }`}>
+          {/* Animated Background */}
+          <div className="absolute inset-0 z-0">
+            <div className={`absolute inset-0 z-10 transition-opacity duration-1000 ${theme === 'dark'
+              ? 'bg-gradient-to-b from-black/20 via-black/90 to-[#0a0a0a]'
+              : 'bg-gradient-to-b from-white/20 via-white/80 to-slate-50'
+              }`} />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-lime-500/10 via-transparent to-transparent z-10 animate-pulse" />
+            <div className="absolute top-[10%] left-[20%] w-64 h-64 bg-lime-500/10 rounded-full blur-[100px] animate-float opacity-50" />
+            <div className={`absolute bottom-[20%] right-[10%] w-96 h-96 rounded-full blur-[120px] animate-float opacity-30 ${theme === 'dark' ? 'bg-purple-500/5' : 'bg-lime-500/5'
+              }`} style={{ animationDelay: '-3s' }} />
+
+            {/* Grid Pattern */}
+            <div className={`absolute inset-0 opacity-[0.03] transition-opacity duration-1000`}
+              style={{ backgroundImage: `radial-gradient(circle, ${theme === 'dark' ? '#84cc16' : '#16a34a'} 1px, transparent 1px)`, backgroundSize: '40px 40px' }} />
+          </div>
+
+          <div className="relative z-20 max-w-4xl text-center space-y-8 px-4">
+            <div className={`inline-flex items-center gap-3 px-6 py-2 rounded-full border transition-all duration-700 text-[10px] md:text-sm font-black uppercase tracking-[0.4em] mb-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 ${theme === 'dark' ? 'bg-lime-500/10 border-lime-400/20 text-lime-400' : 'bg-lime-500/5 border-lime-500/10 text-lime-600'
+              }`}>
+              <span className="w-2 h-2 rounded-full bg-lime-500 animate-ping" />
+              Bespoke Artisan Tailoring
+            </div>
+
+            <h1 className="text-5xl md:text-9xl font-black leading-tight tracking-tighter animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
+              Your Vision <br />
+              <span className={`text-transparent bg-clip-text bg-gradient-to-r transition-all duration-1000 ${theme === 'dark'
+                ? 'from-lime-300 via-lime-500 to-lime-600 drop-shadow-[0_0_20px_rgba(132,204,22,0.4)]'
+                : 'from-lime-600 via-lime-700 to-green-800'
+                }`}>Perfectly Crafted</span>
+            </h1>
+
+            <p className={`text-base md:text-xl max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-400 transition-colors duration-1000 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-600'
+              }`}>
+              From sketch to reality. EMPI's master crafters create one-of-a-kind costumes tailored specifically to your imagination.
+            </p>
+
+            <button
+              onClick={() => document.getElementById('custom-form')?.scrollIntoView({ behavior: 'smooth' })}
+              className="group relative mt-12 px-12 py-5 bg-lime-600 hover:bg-lime-500 text-white font-black rounded-full transition-all duration-500 shadow-[0_0_30px_rgba(132,204,22,0.3)] hover:shadow-[0_0_60px_rgba(132,204,22,0.6)] animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-600"
+            >
+              <span className="relative z-10 uppercase tracking-widest text-sm">Start Your Design Unit</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+            </button>
+          </div>
+        </section>
+
+        <div className="max-w-6xl w-full mx-auto px-4 md:px-6 -mt-10 md:-mt-16 z-30 pb-32 space-y-32">
+          {/* Status Message */}
+          {submitStatus === "success" && (
+            <div className="bg-lime-900/10 backdrop-blur-2xl border border-lime-500/20 rounded-[2.5rem] p-8 md:p-12 flex flex-col md:flex-row gap-8 items-center text-center md:text-left shadow-2xl animate-in fade-in zoom-in duration-700">
+              <div className="w-20 h-20 rounded-full bg-lime-500/20 flex items-center justify-center border border-lime-500/40 shadow-[0_0_30px_rgba(132,204,22,0.2)]">
+                <CheckCircle className="h-10 w-10 text-lime-400" />
+              </div>
+              <div>
+                <h3 className="text-3xl font-black text-white mb-2">Application Transmitted</h3>
+                <p className="text-lime-300/50 text-lg">Our master crafters are reviewing your design. Expect a concierge response within 24 hours.</p>
+              </div>
+            </div>
+          )}
+
+          {/* Process Section */}
+          <section className={`relative glass-morphism rounded-[3rem] p-8 md:p-24 overflow-hidden border transition-all duration-1000 shadow-2xl group hover:border-lime-500/30 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'
+            }`}>
+            <div className="mb-24 text-center">
+              <h2 className={`text-4xl md:text-6xl font-black uppercase tracking-[0.2em] mb-8 transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
+                }`}>The Costume Process</h2>
+              <div className="h-1.5 w-40 bg-gradient-to-r from-transparent via-lime-500 to-transparent mx-auto rounded-full shadow-[0_0_30px_rgba(132,204,22,0.4)] animate-pulse" />
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 relative">
+              {/* Connector Line (Desktop) */}
+              <div className={`hidden md:block absolute top-[2.5rem] left-[12%] right-[12%] h-[1px] transition-opacity duration-1000 ${theme === 'dark' ? 'bg-gradient-to-r from-lime-500/0 via-lime-500/30 to-lime-500/0' : 'bg-gradient-to-r from-lime-500/0 via-lime-500/50 to-lime-500/0'
+                }`} />
+
+              {[
+                { step: "01", icon: "📸", title: "Visual Brief", desc: "Submit your sketches, moodboards, or descriptions." },
+                { step: "02", icon: "💬", title: "Concierge Quote", desc: "Consultation and pricing response within 24 hours." },
+                { step: "03", icon: "✨", title: "Artisan Build", desc: "Master tailors begin the hand-crafted production." },
+                { step: "04", icon: "🎁", title: "The Unveiling", desc: "Your bespoke costume is delivered world-wide." }
+              ].map((item, idx) => (
+                <div key={idx} className="group/step relative flex flex-col items-center text-center px-2 md:px-4">
+                  <div className={`relative w-24 h-24 md:w-32 md:h-32 mb-8 flex items-center justify-center rounded-[2.5rem] border transition-all duration-700 shadow-2xl group-hover/step:scale-110 ${theme === 'dark'
+                    ? 'bg-white/[0.03] border-white/10 group-hover/step:bg-lime-500/10 group-hover/step:border-lime-500/40'
+                    : 'bg-black/[0.03] border-black/10 group-hover/step:bg-lime-500/5 group-hover/step:border-lime-500/20'
+                    }`}>
+                    <span className="text-4xl md:text-5xl grayscale group-hover/step:grayscale-0 transition-all duration-1000 scale-100 group-hover/step:scale-110">{item.icon}</span>
+                    <span className={`absolute -top-3 -right-3 text-[10px] md:text-xs font-black tracking-widest px-4 py-2 rounded-2xl shadow-xl transition-all duration-1000 ${theme === 'dark' ? 'text-lime-400 bg-black border border-lime-400/40' : 'text-white bg-lime-600 border border-lime-400'
+                      }`}>{item.step}</span>
                   </div>
-                  
-                  <h1 className="text-2xl md:text-3xl lg:text-4xl font-black text-gray-900 mb-4 leading-tight">
-                    Design Your <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Perfect Costume</span>
-                  </h1>
-                  
-                  <p className="text-base md:text-lg text-gray-600 max-w-3xl mx-auto leading-relaxed">
-                    EMPI creates custom costumes on demand. Upload your design, describe your vision, and we will bring it to life exactly as you imagine it.
-                  </p>
+                  <h3 className={`font-black mb-4 transition-colors duration-700 uppercase tracking-[0.2em] text-[10px] md:text-sm ${theme === 'dark' ? 'text-white group-hover/step:text-lime-400' : 'text-slate-900 group-hover/step:text-lime-600'
+                    }`}>{item.title}</h3>
+                  <p className={`text-[10px] md:text-xs leading-relaxed max-w-[200px] transition-colors duration-1000 ${theme === 'dark' ? 'text-gray-500 group-hover/step:text-gray-400' : 'text-slate-500 group-hover/step:text-slate-600'
+                    }`}>{item.desc}</p>
                 </div>
-              </div>
+              ))}
             </div>
           </section>
 
-          {/* How It Works */}
-          <section className="px-4 md:px-0 py-8">
-            <div className="mb-10">
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">How It Works</h2>
-              <p className="text-gray-600">Simple steps to get your perfect costume</p>
-            </div>
-            
-            {/* Mobile - Icons and titles only in horizontal line */}
-            <div className="md:hidden flex justify-between items-start gap-3">
-              {/* Step 1 */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="mb-2 text-3xl">📸</div>
-                <h3 className="font-semibold text-gray-900 text-center text-sm">Submit Design</h3>
-              </div>
+          {/* Form Section */}
+          <section id="custom-form" className="relative group">
+            <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-lime-500/5 via-transparent to-transparent blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 -z-10" />
 
-              {/* Step 2 */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="mb-2 text-3xl">💬</div>
-                <h3 className="font-semibold text-gray-900 text-center text-sm">Get Quote</h3>
-              </div>
-
-              {/* Step 3 */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="mb-2 text-3xl">✨</div>
-                <h3 className="font-semibold text-gray-900 text-center text-sm">We Create</h3>
-              </div>
-
-              {/* Step 4 */}
-              <div className="flex flex-col items-center flex-1">
-                <div className="mb-2 text-3xl">🎁</div>
-                <h3 className="font-semibold text-gray-900 text-center text-sm">Delivered</h3>
-              </div>
-            </div>
-
-            {/* Desktop - Full details */}
-            <div className="hidden md:grid md:grid-cols-4 gap-6">
-              {/* Step 1 */}
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-4 text-4xl">📸</div>
-                <h3 className="font-semibold text-gray-900 mb-2">Submit Design</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">Upload images or describe your costume idea in detail</p>
-              </div>
-
-              {/* Step 2 */}
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-4 text-4xl">💬</div>
-                <h3 className="font-semibold text-gray-900 mb-2">Get Quote</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">We review and send you pricing & timeline</p>
-              </div>
-
-              {/* Step 3 */}
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-4 text-4xl">✨</div>
-                <h3 className="font-semibold text-gray-900 mb-2">We Create</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">Our makers craft your custom costume</p>
-              </div>
-
-              {/* Step 4 */}
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-4 text-4xl">🎁</div>
-                <h3 className="font-semibold text-gray-900 mb-2">Delivered</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">Receive your costume on your chosen date</p>
-              </div>
-            </div>
-          </section>
-
-          {/* Order Form */}
-          <section className="bg-gray-50 rounded-none md:rounded-lg p-4 md:p-8 md:border border-gray-200">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Submit Your Custom Order</h2>
-
-            {submitStatus === "success" && (
-              <div className="mb-6 bg-green-50 border border-green-200 rounded-lg p-4 flex gap-3">
-                <CheckCircle className="h-5 w-5 text-green-600 flex-shrink-0 mt-0.5" />
+            <div className={`glass-morphism rounded-[3.5rem] border transition-all duration-1000 shadow-[0_0_100px_rgba(0,0,0,0.4)] ${theme === 'dark' ? 'border-white/10 overflow-hidden' : 'border-black/5 overflow-hidden'
+              }`}>
+              {/* Form Header */}
+              <div className={`border-b transition-colors duration-1000 px-8 md:px-16 py-14 flex flex-col md:flex-row justify-between items-center gap-8 ${theme === 'dark' ? 'bg-white/[0.02] border-white/10' : 'bg-black/[0.02] border-black/5'
+                }`}>
                 <div>
-                  <h3 className="font-semibold text-green-900">Order Submitted Successfully!</h3>
-                  <p className="text-sm text-green-700 mt-1">We'll review your custom costume request and send you a quote within 24 hours.</p>
+                  <h2 className={`text-4xl font-black uppercase tracking-tighter transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
+                    }`}>Artisan Request Form</h2>
+                  <p className="text-lime-500 text-[11px] font-black uppercase tracking-[0.4em] mt-3">EMPI Bespoke Design Laboratory</p>
                 </div>
-              </div>
-            )}
 
-            {submitStatus === "error" && (
-              <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 flex gap-3">
-                <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold text-red-900">Error Submitting Order</h3>
-                  <p className="text-sm text-red-700 mt-1">{errorMessage}</p>
-                </div>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-0 md:space-y-8">
-              {/* Mobile Step Indicator */}
-              <div className="md:hidden mb-6">
-                <div className="flex justify-between items-center gap-2 mb-4">
-                  {(['info', 'design', 'description', 'review'] as const).map((step, idx) => (
+                <div className="flex items-center gap-4">
+                  {['info', 'design', 'review'].map((step, idx) => (
                     <div key={step} className="flex items-center">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                          currentStep === step
-                            ? 'bg-gradient-to-r from-lime-600 to-green-600 text-white ring-2 ring-offset-2 ring-green-300'
-                            : idx < ['info', 'design', 'description', 'review'].indexOf(currentStep)
-                            ? 'bg-green-600 text-white'
-                            : 'bg-gray-200 text-gray-600'
-                        }`}
-                      >
-                        {idx + 1}
-                      </div>
-                      {idx < 3 && <div className="w-1 h-1 bg-gray-300 mx-1" />}
+                      <div className={`w-3 h-3 rounded-full transition-all duration-1000 ${currentStep === step ? 'bg-lime-400 ring-8 ring-lime-400/10 scale-125' :
+                        idx < ['info', 'design', 'review'].indexOf(currentStep) ? 'bg-lime-900 shadow-inner' :
+                          (theme === 'dark' ? 'bg-white/10' : 'bg-black/10')
+                        }`} />
+                      {idx < 2 && <div className={`w-12 h-[1px] mx-2 ${theme === 'dark' ? 'bg-white/10' : 'bg-black/10'}`} />}
                     </div>
                   ))}
                 </div>
-                <div className="flex justify-between text-xs font-medium text-gray-600">
-                  <span>Info</span>
-                  <span>Design</span>
-                  <span>Details</span>
-                  <span>Review</span>
-                </div>
               </div>
 
-              {/* Step 1: Contact Information */}
-              {(currentStep === 'info' || window.innerWidth >= 768) && (
-                <div className="bg-gradient-to-br from-blue-50 via-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-blue-200 shadow-sm overflow-hidden">
-                  <div className="flex items-start justify-between mb-6">
-                    <h3 className="text-lg md:text-xl font-bold text-gray-900 flex items-center gap-2">
-                      <span className="text-2xl">👤</span>
-                      <span className="hidden md:inline">Contact Information</span>
-                      <span className="md:hidden">Your Information</span>
-                    </h3>
-                    {buyer?.id && (
-                      <div className="flex items-center gap-1.5 px-2.5 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
-                        <span>✓</span>
-                        <span>Auto-filled</span>
-                      </div>
-                    )}
+              <div className="p-8 md:p-16">
+                {submitStatus === "error" && (
+                  <div className="mb-12 bg-red-950/20 backdrop-blur-xl border border-red-500/30 rounded-3xl p-6 flex gap-6 items-center animate-in slide-in-from-top-4 duration-500">
+                    <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/40 flex-shrink-0">
+                      <AlertCircle className="h-6 w-6 text-red-400" />
+                    </div>
+                    <p className="text-red-200 text-sm font-bold uppercase tracking-widest">{errorMessage}</p>
                   </div>
+                )}
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
-                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
-                    }`}>
-                      <label htmlFor="fullName" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
-                        Full Name <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="fullName"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
-                        placeholder="Your name"
-                      />
-                    </div>
-                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
-                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
-                    }`}>
-                      <label htmlFor="email" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
-                        Email <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
-                        placeholder="your@email.com"
-                      />
-                    </div>
-                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
-                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
-                    }`}>
-                      <label htmlFor="phone" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
-                        Phone <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
-                        placeholder="+234 123 456 7890"
-                      />
-                    </div>
-                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
-                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
-                    }`}>
-                      <label htmlFor="city" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
-                        City <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        id="city"
-                        name="city"
-                        value={formData.city}
-                        onChange={handleInputChange}
-                        required
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
-                        placeholder="Lagos, Abuja..."
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 mt-4 md:mt-6">
-                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
-                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
-                    }`}>
-                      <label htmlFor="address" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
-                        Address
-                      </label>
-                      <input
-                        type="text"
-                        id="address"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
-                        placeholder="Street address"
-                      />
-                    </div>
-                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
-                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
-                    }`}>
-                      <label htmlFor="state" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
-                        State
-                      </label>
-                      <input
-                        type="text"
-                        id="state"
-                        name="state"
-                        value={formData.state}
-                        onChange={handleInputChange}
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
-                        placeholder="State"
-                      />
-                    </div>
-                    <div className={`bg-white rounded-xl p-3 md:p-4 border transition ${
-                      buyer?.id ? 'border-green-200 bg-green-50' : 'border-blue-100 md:border-0 md:bg-transparent'
-                    }`}>
-                      <label htmlFor="postalCode" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
-                        Postal Code
-                      </label>
-                      <input
-                        type="text"
-                        id="postalCode"
-                        name="postalCode"
-                        value={formData.postalCode}
-                        onChange={handleInputChange}
-                        className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm md:text-base font-medium bg-white"
-                        placeholder="Postal code"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Step 2: Design Upload */}
-              {(currentStep === 'design' || window.innerWidth >= 768) && (
-                <div className="bg-gradient-to-br from-purple-50 via-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-purple-200 shadow-sm overflow-hidden">
-                  <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-                    <span className="text-2xl">🖼️</span>
-                    Design Pictures
-                  </h3>
-                  <p className="text-xs md:text-sm text-gray-600 mb-6">Upload up to 5 reference images, sketches, or designs</p>
-
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-purple-400 rounded-xl p-6 md:p-8 text-center cursor-pointer hover:bg-purple-50 transition duration-200 bg-white md:bg-transparent"
-                  >
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    <Upload className="h-10 md:h-12 w-10 md:w-12 text-purple-600 mx-auto mb-2" />
-                    <p className="font-semibold text-gray-900 mb-1 text-sm md:text-base">Click or tap to upload</p>
-                    <p className="text-xs md:text-sm text-gray-600">JPG, PNG, WebP • Max 5MB each</p>
-                  </div>
-
-                  {previewUrls.length > 0 && (
-                    <div className="mt-6 space-y-4">
-                      <p className="text-sm font-semibold text-gray-700">
-                        📸 Uploaded: <span className="text-purple-600">{previewUrls.length}/5</span>
-                      </p>
-                      
-                      {/* Carousel */}
-                      <div className="relative bg-gray-900 rounded-xl overflow-hidden border border-gray-700 shadow-lg">
-                        <div className="aspect-video w-full flex items-center justify-center bg-gray-900">
-                          <img
-                            src={previewUrls[currentImageIndex]}
-                            alt={`Design ${currentImageIndex + 1}`}
-                            className="h-full w-full object-contain"
+                <form onSubmit={handleSubmit} className="space-y-16">
+                  {currentStep === 'info' && (
+                    <div className="space-y-12 animate-in fade-in slide-in-from-right-4 duration-700">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        {/* Identity Group */}
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Full Legal Name</label>
+                          <input
+                            name="fullName"
+                            value={formData.fullName}
+                            onChange={handleInputChange}
+                            required
+                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                              ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
+                              : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
+                              }`}
+                            placeholder="ALEXANDER PIERCE"
                           />
                         </div>
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Email Connection</label>
+                          <input
+                            name="email"
+                            type="email"
+                            value={formData.email}
+                            onChange={handleInputChange}
+                            required
+                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                              ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
+                              : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
+                              }`}
+                            placeholder="ALEX@BOUTIQUE.COM"
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Priority Phone</label>
+                          <input
+                            name="phone"
+                            type="tel"
+                            value={formData.phone}
+                            onChange={handleInputChange}
+                            required
+                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                              ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
+                              : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
+                              }`}
+                            placeholder="+234 ..."
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Metropolitan City</label>
+                          <input
+                            name="city"
+                            value={formData.city}
+                            onChange={handleInputChange}
+                            required
+                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                              ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
+                              : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
+                              }`}
+                            placeholder="LAGOS"
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Regional State</label>
+                          <input
+                            name="state"
+                            value={formData.state}
+                            onChange={handleInputChange}
+                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                              ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
+                              : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
+                              }`}
+                            placeholder="LAGOS STATE"
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Postal Code</label>
+                          <input
+                            name="postalCode"
+                            value={formData.postalCode}
+                            onChange={handleInputChange}
+                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                              ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
+                              : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
+                              }`}
+                            placeholder="100001"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Full Delivery Address</label>
+                        <input
+                          name="address"
+                          value={formData.address}
+                          onChange={handleInputChange}
+                          className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                            ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
+                            : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
+                            }`}
+                          placeholder="No. 12 ... STREET, LAGOS"
+                        />
+                      </div>
 
-                        {previewUrls.length > 1 && (
-                          <>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCurrentImageIndex(
-                                  currentImageIndex === 0 ? previewUrls.length - 1 : currentImageIndex - 1
-                                )
-                              }
-                              className="absolute left-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition"
-                            >
-                              ←
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                setCurrentImageIndex(
-                                  currentImageIndex === previewUrls.length - 1 ? 0 : currentImageIndex + 1
-                                )
-                              }
-                              className="absolute right-3 top-1/2 -translate-y-1/2 bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition"
-                            >
-                              →
-                            </button>
-                          </>
-                        )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (formData.fullName && formData.email && formData.phone && formData.city) {
+                            setCurrentStep('design');
+                            window.scrollTo({ top: document.getElementById('custom-form')?.offsetTop ? document.getElementById('custom-form')!.offsetTop - 100 : 0, behavior: 'smooth' });
+                          } else {
+                            setErrorMessage("Please complete all required identity fields.");
+                            setSubmitStatus("error");
+                          }
+                        }}
+                        className={`group relative w-full font-black py-8 rounded-[2.5rem] transition-all duration-700 flex items-center justify-center gap-6 border ${theme === 'dark'
+                          ? 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                          : 'bg-black/5 hover:bg-black/10 text-slate-900 border-black/10'
+                          }`}
+                      >
+                        <span className="uppercase tracking-[0.3em] text-xs">Proceed to Design Blueprint</span>
+                        <ArrowRight className="h-6 w-6 group-hover:translate-x-3 transition-transform duration-500" />
+                      </button>
+                    </div>
+                  )}
 
-                        <div className="absolute bottom-3 left-0 right-0 text-center text-xs text-white">
-                          {currentImageIndex + 1} of {previewUrls.length}
+                  {currentStep === 'design' && (
+                    <div className="space-y-16 animate-in fade-in slide-in-from-right-8 duration-1000">
+                      <div className="space-y-4">
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Creative Vision & Technical Blueprint</label>
+                        <textarea
+                          name="description"
+                          value={formData.description}
+                          onChange={handleInputChange}
+                          rows={6}
+                          required
+                          className={`w-full rounded-[2.5rem] px-10 py-8 focus:outline-none focus:border-lime-500/50 transition-all duration-700 resize-none text-sm leading-relaxed ${theme === 'dark'
+                            ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05] placeholder:text-gray-800'
+                            : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05] placeholder:text-gray-400'
+                            }`}
+                          placeholder="Detail the materials, color palette, inspiration, and technical requirements of your design unit..."
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Target Completion Date</label>
+                          <input
+                            type="date"
+                            name="deliveryDate"
+                            value={formData.deliveryDate}
+                            onChange={handleInputChange}
+                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 [color-scheme:dark] font-bold ${theme === 'dark'
+                              ? 'bg-white/[0.03] border border-white/10 text-white'
+                              : 'bg-black/[0.03] border border-black/10 text-slate-900'
+                              }`}
+                          />
+                        </div>
+                        <div className="space-y-4">
+                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Unit Quantity</label>
+                          <input
+                            type="number"
+                            name="quantity"
+                            min="1"
+                            value={formData.quantity}
+                            onChange={handleInputChange}
+                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 font-black ${theme === 'dark'
+                              ? 'bg-white/[0.03] border border-white/10 text-white'
+                              : 'bg-black/[0.03] border border-black/10 text-slate-900'
+                              }`}
+                          />
                         </div>
                       </div>
 
-                      <div className="flex gap-2 flex-wrap">
-                        {previewUrls.map((url, idx) => (
-                          <div key={idx} className="relative">
-                            <img
-                              src={url}
-                              alt={`Thumbnail ${idx + 1}`}
-                              className={`w-16 h-16 rounded-lg object-cover cursor-pointer border-2 transition ${
-                                currentImageIndex === idx ? 'border-purple-600' : 'border-gray-300'
-                              }`}
-                              onClick={() => setCurrentImageIndex(idx)}
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                const newFiles = selectedFiles.filter((_, i) => i !== idx);
-                                const newUrls = previewUrls.filter((_, i) => i !== idx);
-                                setSelectedFiles(newFiles);
-                                setPreviewUrls(newUrls);
-                                setCurrentImageIndex(Math.min(currentImageIndex, newUrls.length - 1));
-                              }}
-                              className="absolute top-0 right-0 bg-red-600 hover:bg-red-700 text-white rounded-full p-1 w-5 h-5 flex items-center justify-center text-xs"
-                            >
-                              ✕
-                            </button>
+                      {/* Asset Upload */}
+                      <div className="space-y-8">
+                        <div
+                          onClick={() => fileInputRef.current?.click()}
+                          className={`group border-2 border-dashed rounded-[2.5rem] p-16 text-center cursor-pointer hover:border-lime-500/40 transition-all duration-700 shadow-2xl ${theme === 'dark'
+                            ? 'border-white/10 bg-white/[0.01] hover:bg-lime-500/5'
+                            : 'border-black/10 bg-black/[0.01] hover:bg-lime-500/5'
+                            }`}
+                        >
+                          <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
+                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-700 ${theme === 'dark' ? 'bg-white/5 group-hover:bg-lime-500/20' : 'bg-black/5 group-hover:bg-lime-500/10'
+                            }`}>
+                            <Upload className="h-6 w-6 text-lime-400" />
                           </div>
-                        ))}
+                          <p className={`font-black text-xs uppercase tracking-[0.3em] transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
+                            }`}>Transmit Visual Assets</p>
+                          <p className="text-gray-500 text-[10px] uppercase tracking-widest mt-2 font-medium">JPG, PNG, WEBP • MAX 5MB / UNIT</p>
+                        </div>
+
+                        {previewUrls.length > 0 && (
+                          <div className="flex gap-4 flex-wrap animate-in fade-in duration-700">
+                            {previewUrls.map((url, idx) => (
+                              <div key={idx} className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-lime-500/20 group hover:border-lime-400 group shadow-xl transition-all duration-500 hover:scale-105">
+                                <img src={url} alt="Reference" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
+                                  className="absolute top-1 right-1 w-7 h-7 bg-red-500 hover:bg-red-400 text-white rounded-xl flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-all duration-500 shadow-xl"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex flex-col md:flex-row gap-6">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep('info')}
+                          className={`flex-1 font-black py-8 rounded-[2.5rem] transition-all duration-700 uppercase tracking-widest text-xs border ${theme === 'dark'
+                            ? 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                            : 'bg-black/5 hover:bg-black/10 text-slate-900 border-black/10'
+                            }`}
+                        >
+                          Identity Details
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (formData.description && selectedFiles.length > 0) {
+                              setCurrentStep('review');
+                              window.scrollTo({ top: document.getElementById('custom-form')?.offsetTop ? document.getElementById('custom-form')!.offsetTop - 100 : 0, behavior: 'smooth' });
+                            } else {
+                              setErrorMessage("Please provide a description and at least one visual asset.");
+                              setSubmitStatus("error");
+                            }
+                          }}
+                          className={`flex-[2] group relative font-black py-8 rounded-[2.5rem] transition-all duration-700 flex items-center justify-center gap-6 border ${theme === 'dark'
+                            ? 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                            : 'bg-black/5 hover:bg-black/10 text-slate-900 border-black/10'
+                            }`}
+                        >
+                          <span className="uppercase tracking-[0.3em] text-xs">Review & Transmit</span>
+                          <ArrowRight className="h-6 w-6 group-hover:translate-x-3 transition-transform duration-500" />
+                        </button>
                       </div>
                     </div>
                   )}
-                </div>
-              )}
 
-              {/* Step 3: Order Details & Description */}
-              {(currentStep === 'description' || window.innerWidth >= 768) && (
-                <>
-                  <div className="bg-gradient-to-br from-green-50 via-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-green-200 shadow-sm overflow-hidden">
-                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                      <span className="text-2xl">📋</span>
-                      Order Details
-                    </h3>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                      <div className="bg-white rounded-xl p-3 md:p-4 border border-green-100 md:border-0 md:bg-transparent">
-                        <label htmlFor="deliveryDate" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
-                          When Do You Need It?
-                        </label>
-                        <input
-                          type="date"
-                          id="deliveryDate"
-                          name="deliveryDate"
-                          value={formData.deliveryDate}
-                          onChange={handleInputChange}
-                          className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition text-sm md:text-base"
-                        />
+                  {currentStep === 'review' && (
+                    <div className="space-y-16 animate-in fade-in slide-in-from-right-8 duration-1000">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
+                        <div className="space-y-8">
+                          <h3 className="text-lime-500 text-[10px] font-black uppercase tracking-[0.4em] border-b border-lime-500/20 pb-6">Artisan Identity</h3>
+                          <div className="space-y-6">
+                            <p className={`text-2xl font-black transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formData.fullName}</p>
+                            <div className="space-y-2">
+                              <p className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">{formData.email}</p>
+                              <p className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">{formData.phone}</p>
+                              <p className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">{formData.city}, {formData.state}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="space-y-8">
+                          <h3 className="text-lime-500 text-[10px] font-black uppercase tracking-[0.4em] border-b border-lime-500/20 pb-6">Project Logistics</h3>
+                          <div className="space-y-6">
+                            <div className="flex justify-between items-center bg-black/5 p-4 rounded-2xl">
+                              <span className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">Units Requested</span>
+                              <span className={`text-lg font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formData.quantity}</span>
+                            </div>
+                            <div className="flex justify-between items-center bg-black/5 p-4 rounded-2xl">
+                              <span className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">Target Date</span>
+                              <span className={`text-lg font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formData.deliveryDate || 'NOT SPECIFIED'}</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
 
-                      <div className="bg-white rounded-xl p-3 md:p-4 border border-green-100 md:border-0 md:bg-transparent">
-                        <label htmlFor="quantity" className="block text-xs md:text-sm font-semibold text-gray-700 mb-2">
-                          Quantity <span className="text-red-600">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          id="quantity"
-                          name="quantity"
-                          value={formData.quantity}
-                          onChange={handleInputChange}
-                          min="1"
-                          max="100"
-                          className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 transition text-sm md:text-base"
-                        />
+                      <div className="space-y-8">
+                        <h3 className="text-lime-500 text-[10px] font-black uppercase tracking-[0.4em] border-b border-lime-500/20 pb-6">Creative Blueprint</h3>
+                        <p className={`text-lg leading-relaxed font-medium italic p-8 rounded-3xl ${theme === 'dark' ? 'bg-white/5 text-gray-300' : 'bg-black/5 text-slate-700'
+                          }`}>"{formData.description}"</p>
+                      </div>
+
+                      <div className="flex flex-col md:flex-row gap-6 pt-8">
+                        <button
+                          type="button"
+                          onClick={() => setCurrentStep('design')}
+                          className={`flex-1 font-black py-8 rounded-[2.5rem] transition-all duration-700 uppercase tracking-widest text-xs border ${theme === 'dark'
+                            ? 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                            : 'bg-black/5 hover:bg-black/10 text-slate-900 border-black/10'
+                            }`}
+                        >
+                          Modify Blueprint
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isLoading}
+                          className="flex-[2] group relative bg-lime-600 hover:bg-lime-500 disabled:bg-gray-800 text-white font-black py-8 rounded-[2.5rem] transition-all duration-1000 flex items-center justify-center gap-6 shadow-[0_30px_60px_rgba(0,0,0,0.5)] hover:shadow-[0_40px_80px_rgba(132,204,22,0.3)]"
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
+                          {isLoading ? (
+                            <>
+                              <Loader className="h-6 w-6 animate-spin" />
+                              <span className="uppercase tracking-[0.3em] text-xs">Transmitting...</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className="text-xl">✨</span>
+                              <span className="uppercase tracking-[0.3em] text-xs">Execute Design Request</span>
+                              <ArrowRight className="h-6 w-6 group-hover:translate-x-3 transition-transform duration-500" />
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
-
-                    {formData.quantity >= 3 && (
-                      <div className="mt-4 p-3 md:p-4 bg-gradient-to-r from-lime-50 to-green-50 border border-lime-300 rounded-xl">
-                        <p className="text-sm font-semibold text-lime-700 flex items-center gap-2">
-                          <span>🎉</span>
-                          {formData.quantity >= 10 ? '10% Bulk Discount!' : formData.quantity >= 6 ? '7% Bulk Discount!' : '5% Bulk Discount!'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="bg-gradient-to-br from-orange-50 via-slate-50 to-white rounded-none md:rounded-2xl p-4 md:p-8 md:border border-orange-200 shadow-sm overflow-hidden">
-                    <h3 className="text-lg md:text-xl font-bold text-gray-900 mb-2 flex items-center gap-2">
-                      <span className="text-2xl">✍️</span>
-                      Costume Description
-                    </h3>
-                    <p className="text-xs md:text-sm text-gray-600 mb-4">Tell us everything about your vision</p>
-
-                    <textarea
-                      id="description"
-                      name="description"
-                      value={formData.description}
-                      onChange={handleInputChange}
-                      rows={5}
-                      className="w-full px-3 md:px-4 py-2 md:py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500 transition resize-none text-sm md:text-base bg-white"
-                      placeholder="Colors, materials, style, special features, reference inspirations..."
-                    />
-                    <p className="text-xs text-gray-500 mt-2">Min 10 characters required</p>
-                  </div>
-                </>
-              )}
-
-              {/* Mobile Step 4: Review & Submit */}
-              {(currentStep === 'review' || window.innerWidth >= 768) && window.innerWidth < 768 && (
-                <div className="bg-gradient-to-br from-cyan-50 to-white rounded-2xl p-6 border border-cyan-200 shadow-sm">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
-                    <span className="text-2xl">✅</span>
-                    Review & Submit
-                  </h3>
-                  <div className="space-y-3 text-sm mb-6">
-                    <div className="flex justify-between items-start">
-                      <span className="text-gray-600">Name:</span>
-                      <span className="font-semibold text-gray-900 text-right max-w-xs">{formData.fullName || '—'}</span>
-                    </div>
-                    <div className="flex justify-between items-start">
-                      <span className="text-gray-600">Email:</span>
-                      <span className="font-semibold text-gray-900 text-right max-w-xs truncate">{formData.email || '—'}</span>
-                    </div>
-                    <div className="flex justify-between items-start">
-                      <span className="text-gray-600">Quantity:</span>
-                      <span className="font-semibold text-gray-900">{formData.quantity}</span>
-                    </div>
-                    {previewUrls.length > 0 && (
-                      <div className="flex justify-between items-start">
-                        <span className="text-gray-600">Images:</span>
-                        <span className="font-semibold text-gray-900">{previewUrls.length}/5</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Form Actions */}
-              <div className="md:hidden space-y-3 pt-4 sticky bottom-0 bg-white border-t border-gray-200 p-4 -mx-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    const steps: typeof currentStep[] = ['info', 'design', 'description', 'review'];
-                    const idx = steps.indexOf(currentStep);
-                    if (idx > 0) setCurrentStep(steps[idx - 1]);
-                  }}
-                  disabled={currentStep === 'info'}
-                  className="w-full bg-gray-200 hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 text-gray-700 font-semibold py-3 rounded-lg transition text-sm"
-                >
-                  ← Back
-                </button>
-
-                {currentStep !== 'review' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const steps: Array<"info" | "design" | "description" | "review"> = ['info', 'design', 'description', 'review'];
-                      const idx = steps.indexOf(currentStep);
-                      if (idx < steps.length - 1) setCurrentStep(steps[idx + 1]);
-                    }}
-                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-semibold py-3 rounded-lg transition text-sm"
-                  >
-                    Next →
-                  </button>
-                )}
-
-                {currentStep === 'review' && (
-                  <button
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2 shadow-lg"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader className="h-5 w-5 animate-spin" />
-                        Submitting...
-                      </>
-                    ) : (
-                      <>
-                        <span>✨</span>
-                        Get My Quote
-                      </>
-                    )}
-                  </button>
-                )}
-              </div>
-
-              {/* Desktop: Submit Button */}
-              <div className="hidden md:block space-y-4 pt-4">
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2 shadow-lg hover:shadow-xl"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader className="h-5 w-5 animate-spin" />
-                      Submitting Your Order...
-                    </>
-                  ) : (
-                    <>
-                      <span>✨</span>
-                      Get Your Custom Quote
-                    </>
                   )}
-                </button>
 
-                <p className="text-xs text-gray-600 text-center leading-relaxed">
-                  Our team will carefully review your request and contact you within <strong>24 hours</strong> with a professional quote, timeline, and any questions.
-                </p>
+                  <p className="text-center text-[9px] text-gray-700 uppercase tracking-[0.4em] font-black leading-loose">
+                    BY SUBMITTING YOU INITIATE A FORMAL BESPOKE CONSULTATION <br />
+                    DATA ENCRYPTED VIA EMPI SECURE CHANNELS
+                  </p>
+                </form>
               </div>
-            </form>
+            </div>
           </section>
-          {/* FAQ */}
-          <section className="px-4 md:px-0 space-y-6">
-            <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Frequently Asked Questions</h2>
-              <p className="text-gray-600">Get answers to common questions</p>
-            </div>
-            <div className="space-y-3">
-              <details className="bg-gray-50 rounded-none md:rounded-lg p-4 md:border border-gray-200 group">
-                <summary className="font-semibold text-gray-900 cursor-pointer">How long does it take to create a custom costume?</summary>
-                <p className="text-gray-700 mt-2 text-sm">Turnaround time depends on the complexity of your design. Simple costumes typically take 3-7 days, while intricate designs may take 2-4 weeks. We'll confirm the timeline when we send your quote.</p>
-              </details>
 
-              <details className="bg-gray-50 rounded-none md:rounded-lg p-4 md:border border-gray-200">
-                <summary className="font-semibold text-gray-900 cursor-pointer">Can I request revisions?</summary>
-                <p className="text-gray-700 mt-2 text-sm">Yes! We offer up to 2 revisions during the creation process to ensure you're happy with your custom costume before final delivery.</p>
-              </details>
+          {/* Cinematic Accents (Floating Particles) */}
+          <div className="fixed inset-0 pointer-events-none z-40">
+            <div className="absolute top-1/4 left-10 w-2 h-2 bg-lime-500/20 rounded-full animate-float blur-sm" />
+            <div className="absolute top-3/4 right-20 w-3 h-3 bg-lime-500/10 rounded-full animate-float blur-md" style={{ animationDelay: '-2s' }} />
+            <div className="absolute top-1/2 left-1/2 w-4 h-4 bg-lime-500/5 rounded-full animate-float blur-lg" style={{ animationDelay: '-5s' }} />
+          </div>
 
-              <details className="bg-gray-50 rounded-none md:rounded-lg p-4 md:border border-gray-200">
-                <summary className="font-semibold text-gray-900 cursor-pointer">Do you offer rush orders?</summary>
-                <p className="text-gray-700 mt-2 text-sm">Yes, we can accommodate rush orders for an additional fee. Let us know your deadline in your order request, and we'll do our best to help!</p>
-              </details>
-
-              <details className="bg-gray-50 rounded-none md:rounded-lg p-4 md:border border-gray-200">
-                <summary className="font-semibold text-gray-900 cursor-pointer">What about delivery?</summary>
-                <p className="text-gray-700 mt-2 text-sm">We offer fast delivery to all areas of Lagos and nationwide shipping. Choose your preferred delivery method during checkout after receiving your quote.</p>
-              </details>
-            </div>
+          {/* Concierge Details */}
+          <section className={`grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-12 pb-24 border-t pt-24 px-8 transition-colors duration-1000 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'
+            }`}>
+            {[
+              { t: "Elite Craftsmanship", d: "Every bespoke unit is constructed by EMPI master tailors with rigorous quality protocols and attention to every stitch." },
+              { t: "Direct Consultation", d: "Upon transmission of your blueprint, our design team will provide a comprehensive feasibility study and cost analysis." },
+              { t: "Global Logistics", d: "Insured, tracked, and secure delivery to your doorstep. We leverage premium courier partners for global transit." }
+            ].map((item, i) => (
+              <div key={i} className="space-y-6 group/item">
+                <div className="h-[1px] w-12 bg-lime-500 shadow-[0_0_15px_rgba(132,204,22,1)] group-hover/item:w-20 transition-all duration-700" />
+                <h3 className={`text-[11px] font-black uppercase tracking-[0.4em] transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
+                  }`}>{item.t}</h3>
+                <p className={`text-[11px] leading-relaxed font-bold uppercase tracking-widest transition-colors duration-1000 ${theme === 'dark' ? 'text-gray-600' : 'text-slate-500'
+                  }`}>{item.d}</p>
+              </div>
+            ))}
           </section>
         </div>
       </main>
 
-      {/* Footer */}
       <Footer />
 
       {/* Success Modal */}
       {showSuccessModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex items-center justify-center w-16 h-16 bg-green-100 rounded-full mx-auto mb-6">
-              <CheckCircle className="h-8 w-8 text-green-600" />
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[100] flex items-center justify-center p-6 animate-in fade-in duration-700">
+          <div className={`relative border rounded-[4rem] shadow-[0_0_150px_rgba(0,0,0,0.8)] max-w-xl w-full p-16 text-center animate-in zoom-in-95 duration-700 transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#111] border-white/10' : 'bg-white border-black/5'
+            }`}>
+            <div className="w-28 h-28 bg-lime-500/20 rounded-full flex items-center justify-center mx-auto mb-10 border border-lime-500/40 shadow-[0_0_50px_rgba(132,204,22,0.3)] animate-bounce">
+              <CheckCircle className="h-14 w-14 text-lime-400" />
             </div>
-            
-            <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Order Submitted! 🎉</h2>
+            <h2 className={`text-5xl font-black uppercase tracking-tighter mb-6 transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
+              }`}>Transmission Successful</h2>
+            <p className="text-gray-500 text-lg mb-14 font-medium leading-relaxed">Your bespoke artisan brief has been secured and assigned to our master design laboratory.</p>
 
             {buyer && buyer.email ? (
-              // User is signed in
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <Link href={`/dashboard?order=${successOrderNumber}`}>
-                  <button className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-3 rounded-lg transition">
-                    View Your Order
+                  <button className="w-full bg-lime-600 hover:bg-lime-500 text-white font-black py-5 rounded-[2rem] transition-all duration-500 uppercase tracking-widest text-xs shadow-2xl">
+                    View Project Dashboard
                   </button>
                 </Link>
                 <button
                   onClick={() => {
                     setShowSuccessModal(false);
-                    // Reset form after closing modal
-                    setFormData({
-                      fullName: "",
-                      email: "",
-                      phone: "",
-                      address: "",
-                      city: "",
-                      state: "",
-                      postalCode: "",
-                      description: "",
-                      deliveryDate: "",
-                      quantity: 1,
-                    });
+                    // Reset Logic
+                    setFormData({ fullName: "", email: "", phone: "", address: "", city: "", state: "", postalCode: "", description: "", deliveryDate: "", quantity: 1 });
                     setSelectedFiles([]);
                     setPreviewUrls([]);
-                    setCurrentImageIndex(0);
                     setCurrentStep("info");
-                    // Scroll to top
                     window.scrollTo(0, 0);
                   }}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 rounded-lg transition"
+                  className="w-full bg-white/5 hover:bg-white/10 text-white/60 font-black py-5 rounded-[2rem] transition-all duration-500 uppercase tracking-widest text-xs"
                 >
-                  Continue Shopping
+                  Continue Browsing
                 </button>
               </div>
             ) : (
-              // User is not signed in - Show password creation form
-              <div className="space-y-4">
-                <p className="text-sm text-gray-700 text-center font-semibold">
-                  Create an account to track your order and chat with our team
-                </p>
-                
-                {signupError && (
-                  <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                    <p className="text-sm text-red-700">{signupError}</p>
-                  </div>
-                )}
-                
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Full Name</label>
-                    <input
-                      type="text"
-                      value={formData.fullName}
-                      disabled
-                      className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Email</label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      disabled
-                      className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-600"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Order Number</label>
-                    <input
-                      type="text"
-                      value={successOrderNumber}
-                      disabled
-                      className="w-full px-3 py-2 bg-gray-100 border border-gray-300 rounded-lg text-sm text-gray-600 font-semibold text-lime-600"
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Create Password</label>
-                    <input
-                      type="password"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      placeholder="Min 8 characters"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-lime-500"
-                      disabled={isCreatingAccount}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-xs font-semibold text-gray-700 mb-1">Confirm Password</label>
-                    <input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Re-enter your password"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:border-lime-500"
-                      disabled={isCreatingAccount}
-                    />
+              <div className="space-y-6">
+                <div className="p-6 bg-lime-500/5 border border-lime-500/20 rounded-3xl">
+                  <p className="text-[10px] text-lime-400 font-bold uppercase tracking-[0.2em] mb-4">Secured Account Creation</p>
+                  <div className="space-y-4 text-left">
+                    <input type="password" placeholder="CREATE PROJECT PASSWORD" value={signupPassword} onChange={(e) => setSignupPassword(e.target.value)} className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-xs placeholder:text-gray-800" />
+                    <input type="password" placeholder="CONFIRM PASSWORD" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="w-full bg-black border border-white/10 rounded-xl px-4 py-3 text-white text-xs placeholder:text-gray-800" />
                   </div>
                 </div>
-                
                 <button
                   onClick={handleCreateAccount}
                   disabled={isCreatingAccount}
-                  className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white font-semibold py-3 rounded-lg transition flex items-center justify-center gap-2"
+                  className="w-full bg-lime-600 hover:bg-lime-500 text-white font-black py-5 rounded-[2rem] transition-all duration-500 uppercase tracking-widest text-xs shadow-2xl disabled:bg-gray-800"
                 >
-                  {isCreatingAccount ? (
-                    <>
-                      <Loader className="h-4 w-4 animate-spin" />
-                      Creating Account...
-                    </>
-                  ) : (
-                    "Create Account & Track Order"
-                  )}
+                  {isCreatingAccount ? "Securing Account..." : "Create Account & Track Order"}
                 </button>
-                
-                <p className="text-xs text-gray-600 text-center">
-                  You'll receive a confirmation email shortly
-                </p>
               </div>
             )}
           </div>
@@ -1084,64 +896,27 @@ export default function CustomCostumesPage({
 
       {/* Error Modal */}
       {showErrorModal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in-95 duration-300">
-            <div className="flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mx-auto mb-6">
-              <AlertCircle className="h-8 w-8 text-red-600" />
+        <div className="fixed inset-0 bg-black/95 backdrop-blur-2xl z-[100] flex items-center justify-center p-6 animate-in fade-in duration-700">
+          <div className={`border rounded-[4rem] shadow-[0_0_150px_rgba(0,0,0,0.8)] max-w-xl w-full p-16 text-center animate-in zoom-in-95 duration-700 transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#111] border-red-500/20' : 'bg-white border-red-500/20'
+            }`}>
+            <div className="w-24 h-24 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-10 border border-red-500/40">
+              <AlertCircle className="h-12 w-12 text-red-500" />
             </div>
-            
-            <h2 className="text-2xl font-bold text-gray-900 text-center mb-4">Oops! Something Went Wrong</h2>
-            
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-              <p className="text-sm text-red-700">{errorMessage}</p>
+            <h2 className={`text-4xl font-black uppercase tracking-tighter mb-6 transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
+              }`}>Transmission Error</h2>
+            <div className="bg-red-500/5 border border-red-500/20 rounded-3xl p-8 mb-12">
+              <p className="text-red-400 text-sm font-bold uppercase tracking-[0.2em]">{errorMessage}</p>
             </div>
-
-            <p className="text-sm text-gray-700 text-center mb-6">
-              Please check your details and try again. If the problem persists, contact us directly.
-            </p>
-
-            <div className="space-y-3">
-              <button
-                onClick={() => {
-                  setShowErrorModal(false);
-                  // Form data is preserved, user can try again
-                }}
-                className="w-full bg-lime-600 hover:bg-lime-700 text-white font-semibold py-3 rounded-lg transition"
-              >
-                Try Again
-              </button>
-              <button
-                onClick={() => {
-                  setShowErrorModal(false);
-                  // Reset form
-                  setFormData({
-                    fullName: "",
-                    email: "",
-                    phone: "",
-                    address: "",
-                    city: "",
-                    state: "",
-                    postalCode: "",
-                    description: "",
-                    deliveryDate: "",
-                    quantity: 1,
-                  });
-                  setSelectedFiles([]);
-                  setPreviewUrls([]);
-                  setErrorMessage("");
-                }}
-                className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 rounded-lg transition"
-              >
-                Clear Form
-              </button>
-            </div>
-
-            <p className="text-xs text-gray-600 text-center mt-4">
-              Need help? <a href="mailto:support@empicostumes.com" className="text-lime-600 hover:underline">Contact us</a>
-            </p>
+            <button
+              onClick={() => setShowErrorModal(false)}
+              className="w-full bg-red-600 hover:bg-red-500 text-white font-black py-6 rounded-[2.5rem] transition-all duration-500 uppercase tracking-[0.3em] text-xs shadow-2xl"
+            >
+              Rectify Visual Brief
+            </button>
           </div>
         </div>
       )}
     </div>
   );
 }
+

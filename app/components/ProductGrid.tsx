@@ -73,7 +73,7 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
   const formatPrice = (price: number) => {
     const converted = price * CURRENCY_RATES[currency].rate;
     const symbol = CURRENCY_RATES[currency].symbol;
-    
+
     if (currency === "INR" || currency === "NGN") {
       return `${symbol}${converted.toFixed(0)}`;
     }
@@ -85,9 +85,9 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
     ...p,
     id: p.id || (p as any)._id || Math.random().toString(36).substr(2, 9)
   }));
-  
+
   // Filter by category and costume type
-  let filteredProducts = category === "all" 
+  let filteredProducts = category === "all"
     ? displayProducts
     : displayProducts.filter((product) => product.category === category);
 
@@ -136,7 +136,7 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
       <div className={`animate-in slide-in-from-top-4 fade-in duration-500 ${category === "adults" ? "mb-0 md:mb-8" : "mb-8"}`}>
         <div className="flex items-start justify-between gap-4 md:justify-start">
           <div className="flex-1 text-center md:text-left">
-            <h1 className={`text-3xl md:text-4xl font-black text-gray-900 mb-3 ${category === "adults" ? "hidden md:block" : ""}`}>
+            <h1 className={`text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-3 ${category === "adults" ? "hidden md:block" : ""}`}>
               {category === "kids" ? "Kids' Collection" : category === "adults" ? "Adult Collection" : "All Costumes"}
             </h1>
             {searchQuery && (
@@ -144,12 +144,12 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
                 {filteredProducts.length} costume{filteredProducts.length !== 1 ? 's' : ''} found
               </p>
             )}
-            <p className={`text-gray-700 font-medium text-sm md:text-base ${category === "adults" ? "hidden md:block" : ""}`}>
+            <p className={`text-gray-700 dark:text-gray-400 font-medium text-sm md:text-base ${category === "adults" ? "hidden md:block" : ""}`}>
               {category === "kids"
                 ? "Magical and enchanting costumes designed for kids. From superheroes to fairy tales, every costume tells a story."
                 : category === "adults"
-                ? "Curated selection of premium costumes for every style."
-                : "Explore our complete range of beautifully crafted costumes for all ages and occasions."}
+                  ? "Curated selection of premium costumes for every style."
+                  : "Explore our complete range of beautifully crafted costumes for all ages and occasions."}
             </p>
           </div>
         </div>
@@ -157,7 +157,7 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
 
       {/* Costume Type Filter - Only show on Adults page */}
       {category === "adults" && (
-        <CostumeTypeFilter 
+        <CostumeTypeFilter
           category={category}
           onTypeChange={setSelectedCostumeType}
           availableTypes={availableCostumeTypes.length > 0 ? availableCostumeTypes : undefined}

@@ -59,7 +59,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
       if (result?.error) {
         throw new Error(result.error);
       }
-      
+
       if (result?.ok) {
         const response = await fetch("/api/auth/session");
         if (response.ok) {
@@ -164,7 +164,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           preferredCurrency: newBuyer.preferredCurrency || "NGN",
         };
         login(buyerProfile);
-        
+
         // Set the user's preferred currency
         if (newBuyer.preferredCurrency) {
           setCurrency(newBuyer.preferredCurrency);
@@ -183,7 +183,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
       } else {
         // 🔒 LOGIN FLOW - Secure approach
         const loginIdentifier = loginType === "email" ? formData.email : formData.phone;
-        
+
         if (!loginIdentifier?.trim()) {
           throw new Error(`Please enter your ${loginType}`);
         }
@@ -196,9 +196,9 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           [loginType]: loginType === "email" ? loginIdentifier.toLowerCase() : loginIdentifier,
           password: formData.password,
         };
-        
+
         console.log("📝 Login payload:", loginPayload);
-        
+
         const loginResponse = await fetch("/api/buyers", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -227,10 +227,10 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
         const meData = await meResponse.json();
         const buyerProfile = meData.buyer;
-        
+
         // 3️⃣ Store profile in React context (which stores minimal data to localStorage)
         login(buyerProfile);
-        
+
         // Load the user's preferred currency
         if (buyerProfile.preferredCurrency) {
           setCurrency(buyerProfile.preferredCurrency);
@@ -256,8 +256,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
   };
 
   return (
-    <div 
-      className="bg-white rounded-2xl shadow-2xl border border-gray-200/30 p-8 w-full max-w-md transition-all duration-300"
+    <div
+      className="bg-white dark:bg-[#111] rounded-2xl shadow-2xl border border-gray-200/30 dark:border-white/10 p-8 w-full max-w-md transition-all duration-300"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Tabs */}
@@ -268,11 +268,10 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
             setError("");
             setSuccess("");
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition duration-300 ${
-            mode === "login"
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition duration-300 ${mode === "login"
               ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-lg hover:shadow-xl"
-              : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
-          }`}
+              : "bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10"
+            }`}
         >
           <LogIn className="h-4 w-4" />
           Login
@@ -283,11 +282,10 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
             setError("");
             setSuccess("");
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition duration-300 ${
-            mode === "register"
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition duration-300 ${mode === "register"
               ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-lg hover:shadow-xl"
-              : "bg-gray-50 text-gray-700 hover:bg-gray-100 border border-gray-200"
-          }`}
+              : "bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10"
+            }`}
         >
           <UserPlus className="h-4 w-4" />
           Register
@@ -296,10 +294,10 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
       {/* Title & Description */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
           {mode === "login" ? "Welcome Back!" : "Join EMPI"}
         </h1>
-        <p className="text-gray-500 text-sm leading-snug">
+        <p className="text-gray-500 dark:text-gray-400 text-sm leading-snug">
           {mode === "login"
             ? "Sign in to your account to continue shopping"
             : "Create an account to get started"}
@@ -308,7 +306,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
       {/* Error Message */}
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex items-start gap-2 text-sm">
+        <div className="bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-900/20 text-red-700 dark:text-red-400 px-4 py-3 rounded-lg mb-4 flex items-start gap-2 text-sm">
           <span className="text-base mt-0.5 flex-shrink-0">⚠️</span>
           <span className="leading-snug">{error}</span>
         </div>
@@ -316,7 +314,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
       {/* Success Message */}
       {success && (
-        <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg mb-4 flex items-start gap-2 text-sm">
+        <div className="bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-900/20 text-green-700 dark:text-green-400 px-4 py-3 rounded-lg mb-4 flex items-start gap-2 text-sm">
           <span className="text-base mt-0.5 flex-shrink-0">✅</span>
           <span className="leading-snug">{success}</span>
         </div>
@@ -330,11 +328,10 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
             <button
               type="button"
               onClick={() => setLoginType("email")}
-              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${
-                loginType === "email"
-                  ? "bg-lime-100 text-lime-700 border border-lime-300 shadow-sm"
-                  : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
-              }`}
+              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${loginType === "email"
+                  ? "bg-lime-100 dark:bg-lime-900/20 text-lime-700 dark:text-lime-400 border border-lime-300 dark:border-lime-900/30 shadow-sm"
+                  : "bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10"
+                }`}
             >
               <Mail className="h-4 w-4" />
               Email
@@ -342,11 +339,10 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
             <button
               type="button"
               onClick={() => setLoginType("phone")}
-              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${
-                loginType === "phone"
-                  ? "bg-lime-100 text-lime-700 border border-lime-300 shadow-sm"
-                  : "bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
-              }`}
+              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${loginType === "phone"
+                  ? "bg-lime-100 dark:bg-lime-900/20 text-lime-700 dark:text-lime-400 border border-lime-300 dark:border-lime-900/30 shadow-sm"
+                  : "bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10"
+                }`}
             >
               <Phone className="h-4 w-4" />
               Phone
@@ -358,11 +354,11 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         {mode === "login" && (
           <>
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1 uppercase tracking-wide">
                 {loginType === "email" ? (
-                  <Mail className="h-3 w-3 text-lime-600" />
+                  <Mail className="h-3 w-3 text-lime-600 dark:text-lime-400" />
                 ) : (
-                  <Phone className="h-3 w-3 text-lime-600" />
+                  <Phone className="h-3 w-3 text-lime-600 dark:text-lime-400" />
                 )}
                 {loginType === "email" ? "Email" : "Phone"} *
               </label>
@@ -372,13 +368,13 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 value={loginType === "email" ? formData.email : formData.phone}
                 onChange={handleChange}
                 placeholder={loginType === "email" ? "you@example.com" : "+234 801 234 5678"}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
+                className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
-                <Lock className="h-3 w-3 text-lime-600" />
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                <Lock className="h-3 w-3 text-lime-600 dark:text-lime-400" />
                 Password *
               </label>
               <div className="relative">
@@ -388,12 +384,12 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs"
+                  className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs text-gray-900 dark:text-white"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                  className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
                 >
                   {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                 </button>
@@ -408,8 +404,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
             {/* First Name and Last Name in a Grid */}
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
-                  <User className="h-3 w-3 text-lime-600" />
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                  <User className="h-3 w-3 text-lime-600 dark:text-lime-400" />
                   First Name *
                 </label>
                 <input
@@ -418,12 +414,12 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder="John"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
+                  className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
-                  <User className="h-3 w-3 text-lime-600" />
+                <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                  <User className="h-3 w-3 text-lime-600 dark:text-lime-400" />
                   Last Name *
                 </label>
                 <input
@@ -432,14 +428,14 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.lastName}
                   onChange={handleChange}
                   placeholder="Doe"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
+                  className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
-                <Mail className="h-3 w-3 text-lime-600" />
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                <Mail className="h-3 w-3 text-lime-600 dark:text-lime-400" />
                 Email *
               </label>
               <input
@@ -448,13 +444,13 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="you@example.com"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
+                className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
-                <Phone className="h-3 w-3 text-lime-600" />
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                <Phone className="h-3 w-3 text-lime-600 dark:text-lime-400" />
                 Phone *
               </label>
               <input
@@ -463,13 +459,13 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+234 801 234 5678"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400"
+                className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-gray-700 mb-1 flex items-center gap-1 uppercase tracking-wide">
-                <Lock className="h-3 w-3 text-lime-600" />
+              <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 flex items-center gap-1 uppercase tracking-wide">
+                <Lock className="h-3 w-3 text-lime-600 dark:text-lime-400" />
                 Password (6+ chars) *
               </label>
               <div className="relative">
@@ -479,12 +475,12 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs"
+                  className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs text-gray-900 dark:text-white"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition"
+                  className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
                 >
                   {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                 </button>
@@ -513,7 +509,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
       </form>
 
       {/* Toggle Mode */}
-      <p className="text-center text-sm text-gray-600 mt-6">
+      <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
         {mode === "login" ? "No account? " : "Have an account? "}
         <button
           onClick={() => {
@@ -529,7 +525,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
               lastName: "",
             });
           }}
-          className="text-lime-600 hover:text-lime-700 font-semibold transition"
+          className="text-lime-600 dark:text-lime-400 hover:text-lime-700 dark:hover:text-lime-300 font-semibold transition"
         >
           {mode === "login" ? "Sign up" : "Sign in"}
         </button>

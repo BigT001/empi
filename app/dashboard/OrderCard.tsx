@@ -92,14 +92,14 @@ export function OrderCard({
     const basePrice = order.quotedPrice || 0;
     const quantity = order.quantity || 1;
     const subtotal = basePrice * quantity;
-    
+
     // For custom orders (which are buy mode), apply discount based on quantity
     const discountPercent = getDiscountPercentage(quantity);
     const discount = subtotal * (discountPercent / 100);
     const subtotalAfterDiscount = subtotal - discount;
     const vat = subtotalAfterDiscount * 0.075;
     const total = subtotalAfterDiscount + vat;
-    
+
     return { quantity, subtotal, discount, discountPercent, subtotalAfterDiscount, vat, total };
   };
 
@@ -123,14 +123,14 @@ export function OrderCard({
     <div
       key={order._id}
       id={`order-${order._id}`}
-      className="bg-white rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col border border-gray-100 hover:border-lime-300 group"
+      className="bg-white dark:bg-[#111] rounded-xl shadow-md hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col border border-gray-100 dark:border-white/10 hover:border-lime-300 dark:hover:border-lime-500/50 group"
     >
       {/* Header Section */}
-      <div className="relative bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 border-b border-lime-200 px-4 md:px-5 py-4 md:py-5">
+      <div className="relative bg-gradient-to-br from-lime-50 via-green-50 to-emerald-50 dark:from-lime-900/20 dark:via-green-900/20 dark:to-emerald-900/20 border-b border-lime-200 dark:border-white/10 px-4 md:px-5 py-4 md:py-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2 mb-2">
-              <h3 className="text-lg md:text-xl font-bold text-gray-900">Order #{order.orderNumber}</h3>
+              <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Order #{order.orderNumber}</h3>
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 whitespace-nowrap border ${statusColors.badge}`}>
                 {order.status === 'pending' && <Clock className="h-3.5 w-3.5" />}
                 {order.status === 'completed' && <Check className="h-3.5 w-3.5" />}
@@ -159,23 +159,23 @@ export function OrderCard({
                       {/* Product Image */}
                       <div className="relative aspect-square bg-gray-100 rounded border border-lime-300 overflow-hidden flex-shrink-0 w-16 h-16">
                         {item.image || item.imageUrl ? (
-                            <Image
-                              src={item.image || item.imageUrl}
-                              alt={item.name || 'Product image'}
-                              fill
-                              className="w-full h-full object-cover"
-                              onError={() => {}}
-                            />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-gray-200">
-                              <span className="text-xs text-gray-600">No Image</span>
-                            </div>
-                          )}
+                          <Image
+                            src={item.image || item.imageUrl}
+                            alt={item.name || 'Product image'}
+                            fill
+                            className="w-full h-full object-cover"
+                            onError={() => { }}
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gray-200">
+                            <span className="text-xs text-gray-600">No Image</span>
+                          </div>
+                        )}
                       </div>
                       {/* Product Details */}
                       <div className="flex-1 flex flex-col gap-2 min-w-0">
                         <div className="flex items-center gap-2">
-                          <h4 className="text-sm font-bold text-gray-900">{item.name || item.productName || 'Product'}</h4>
+                          <h4 className="text-sm font-bold text-gray-900 dark:text-white">{item.name || item.productName || 'Product'}</h4>
                           {/* Mode Badge - ONLY show if mode is explicitly set */}
                           {item.mode === 'rent' && (
                             <span className="text-xs px-2 py-0.5 rounded font-semibold bg-purple-100 text-purple-700 whitespace-nowrap">
@@ -195,16 +195,16 @@ export function OrderCard({
                         </div>
                         <div className="space-y-1">
                           <div className="flex justify-between text-xs">
-                            <span className="text-gray-600">Price:</span>
-                            <span className="font-semibold text-gray-900">₦{(itemPrice).toLocaleString('en-NG')}</span>
+                            <span className="text-gray-600 dark:text-gray-400">Price:</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">₦{(itemPrice).toLocaleString('en-NG')}</span>
                           </div>
                           <div className="flex justify-between text-xs">
-                            <span className="text-gray-600">Qty:</span>
-                            <span className="font-semibold text-gray-900">{itemQuantity}</span>
+                            <span className="text-gray-600 dark:text-gray-400">Qty:</span>
+                            <span className="font-semibold text-gray-900 dark:text-gray-100">{itemQuantity}</span>
                           </div>
-                          <div className="flex justify-between text-sm pt-1 border-t border-gray-200">
-                            <span className="font-semibold text-gray-700">Subtotal:</span>
-                            <span className="font-bold text-lime-700">₦{(itemTotal).toLocaleString('en-NG')}</span>
+                          <div className="flex justify-between text-sm pt-1 border-t border-gray-200 dark:border-white/5">
+                            <span className="font-semibold text-gray-700 dark:text-gray-300">Subtotal:</span>
+                            <span className="font-bold text-lime-700 dark:text-lime-400">₦{(itemTotal).toLocaleString('en-NG')}</span>
                           </div>
                         </div>
                       </div>
@@ -216,8 +216,8 @@ export function OrderCard({
           </div>
         ) : (
           <div>
-            <p className="text-xs text-gray-600 font-bold uppercase tracking-wide mb-1.5">Description</p>
-            <p className="text-sm text-gray-700 line-clamp-2 leading-relaxed">
+            <p className="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wide mb-1.5">Description</p>
+            <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2 leading-relaxed">
               {order.description}
             </p>
           </div>
@@ -239,7 +239,7 @@ export function OrderCard({
         {/* Design Images Gallery - Show all design images */}
         {order.designUrls && order.designUrls.length > 0 && (
           <div className="space-y-2">
-            <p className="text-xs text-gray-600 font-bold uppercase tracking-wide">Design Images</p>
+            <p className="text-xs text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wide">Design Images</p>
             <div className="overflow-x-auto pb-2 -mx-4 md:-mx-5 px-4 md:px-5">
               <div className="flex gap-3 min-w-min">
                 {order.designUrls.map((imageUrl, idx) => (
@@ -252,7 +252,7 @@ export function OrderCard({
                       alt={`Design ${idx + 1}`}
                       fill
                       className="w-full h-full object-cover"
-                      onError={() => {}}
+                      onError={() => { }}
                     />
                   </div>
                 ))}
@@ -264,9 +264,9 @@ export function OrderCard({
 
         {/* Admin Notes */}
         {order.notes && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5">
-            <p className="text-xs text-amber-700 font-bold uppercase tracking-wide mb-1">Note</p>
-            <p className="text-sm text-amber-900 line-clamp-2">{order.notes}</p>
+          <div className="bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-900/20 rounded-lg p-2.5">
+            <p className="text-xs text-amber-700 dark:text-amber-400 font-bold uppercase tracking-wide mb-1">Note</p>
+            <p className="text-sm text-amber-900 dark:text-amber-200 line-clamp-2">{order.notes}</p>
           </div>
         )}
       </div>
@@ -309,15 +309,15 @@ export function OrderCard({
       )}
 
       {/* Pricing Breakdown Section - Display what admin sent */}
-      <div className="border-t border-gray-200 px-4 md:px-5 py-3 md:py-4 space-y-2 bg-gradient-to-r from-lime-50 to-green-50">
+      <div className="border-t border-gray-200 dark:border-white/10 px-4 md:px-5 py-3 md:py-4 space-y-2 bg-gradient-to-r from-lime-50 to-green-50 dark:from-lime-900/10 dark:to-green-900/10">
         {/* Subtotal (Original, before discount) */}
         {(order.subtotal || order.pricing?.subtotal) && (
           <div className="flex items-center justify-between text-sm">
-            <span className="text-gray-700">Subtotal:</span>
-            <span className="font-semibold text-gray-900">₦{((order.subtotal || order.pricing?.subtotal || 0)).toLocaleString('en-NG')}</span>
+            <span className="text-gray-700 dark:text-gray-400">Subtotal:</span>
+            <span className="font-semibold text-gray-900 dark:text-white">₦{((order.subtotal || order.pricing?.subtotal || 0)).toLocaleString('en-NG')}</span>
           </div>
         )}
-        
+
         {/* 🎁 Discount - Highlight with emoji and green styling (from admin calculation) */}
         {(order.discountPercentage && order.discountPercentage > 0) || order.discountAmount ? (
           <div className="flex items-center justify-between text-sm bg-green-50 px-3 py-2 rounded border border-green-200">
@@ -328,17 +328,17 @@ export function OrderCard({
 
         {/* Subtotal After Discount (if discount applied) */}
         {order.subtotalAfterDiscount ? (
-          <div className="flex items-center justify-between text-sm font-semibold text-gray-800 bg-white px-3 py-1.5 rounded border border-gray-200">
+          <div className="flex items-center justify-between text-sm font-semibold text-gray-800 dark:text-gray-200 bg-white dark:bg-black/20 px-3 py-1.5 rounded border border-gray-200 dark:border-white/5">
             <span>Subtotal After Discount:</span>
             <span>₦{(order.subtotalAfterDiscount).toLocaleString('en-NG')}</span>
           </div>
         ) : null}
-        
+
         {/* VAT (7.5%) - Applied to subtotal after discount */}
         {(order.vat !== null && order.vat !== undefined) || (order.pricing?.tax !== null && order.pricing?.tax !== undefined) ? (
-          <div className="flex items-center justify-between text-sm border-t border-gray-300 pt-2">
-            <span className="text-gray-700 font-semibold">VAT (7.5%):</span>
-            <span className="font-bold text-amber-700">₦{((order.vat !== null && order.vat !== undefined ? order.vat : order.pricing?.tax) || 0).toLocaleString('en-NG')}</span>
+          <div className="flex items-center justify-between text-sm border-t border-gray-300 dark:border-white/10 pt-2">
+            <span className="text-gray-700 dark:text-gray-400 font-semibold">VAT (7.5%):</span>
+            <span className="font-bold text-amber-700 dark:text-amber-500">₦{((order.vat !== null && order.vat !== undefined ? order.vat : order.pricing?.tax) || 0).toLocaleString('en-NG')}</span>
           </div>
         ) : null}
 
@@ -352,15 +352,15 @@ export function OrderCard({
 
         {/* Total Amount */}
         {order.total || order.pricing?.total ? (
-          <div className="flex items-center justify-between text-base border-t-2 border-gray-300 pt-2">
-            <span className="font-bold text-gray-900">Total Amount:</span>
-            <span className="text-lg font-bold text-green-600">₦{((order.total || order.pricing?.total || 0)).toLocaleString('en-NG')}</span>
+          <div className="flex items-center justify-between text-base border-t-2 border-gray-300 dark:border-white/20 pt-2">
+            <span className="font-bold text-gray-900 dark:text-white">Total Amount:</span>
+            <span className="text-lg font-bold text-green-600 dark:text-lime-400">₦{((order.total || order.pricing?.total || 0)).toLocaleString('en-NG')}</span>
           </div>
         ) : null}
       </div>
 
       {/* Footer - Actions */}
-      <div className="border-t border-gray-100 px-4 md:px-5 py-3 md:py-4 bg-gradient-to-r from-gray-50/50 to-lime-50/50 flex items-center gap-3">
+      <div className="border-t border-gray-100 dark:border-white/10 px-4 md:px-5 py-3 md:py-4 bg-gradient-to-r from-gray-50/50 to-lime-50/50 dark:from-white/5 dark:to-lime-900/10 flex items-center gap-3">
         {/* View Images Button */}
         {(order.designUrls && order.designUrls.length > 0) || order.designUrl ? (
           <button

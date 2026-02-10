@@ -8,9 +8,8 @@ import { ModeProvider } from "./context/ModeContext";
 import { HomeModeProvider } from "./context/HomeModeContext";
 import { CurrencyProvider } from "./context/CurrencyContext";
 import { NotificationProvider } from "./context/NotificationContext";
+import { ThemeProvider } from "./context/ThemeContext";
 import { ScrollToTop } from "./components/ScrollToTop";
-import { MobileHeaderWrapper } from "./components/MobileHeaderWrapper";
-import { PresaleNotice } from "./components/PresaleNotice";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -81,23 +80,24 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <CartProvider>
-          <BuyerProvider>
-            <NotificationProvider>
-              <CurrencyProvider>
-                <HomeModeProvider>
-                  <ModeProvider>
-                    <AdminProvider>
-                      <MobileHeaderWrapper />
-                      <ScrollToTop />
-                      {children}
-                    </AdminProvider>
-                  </ModeProvider>
-                </HomeModeProvider>
-              </CurrencyProvider>
-            </NotificationProvider>
-          </BuyerProvider>
-        </CartProvider>
+        <ThemeProvider>
+          <CartProvider>
+            <BuyerProvider>
+              <NotificationProvider>
+                <CurrencyProvider>
+                  <HomeModeProvider>
+                    <ModeProvider>
+                      <AdminProvider>
+                        <ScrollToTop />
+                        {children}
+                      </AdminProvider>
+                    </ModeProvider>
+                  </HomeModeProvider>
+                </CurrencyProvider>
+              </NotificationProvider>
+            </BuyerProvider>
+          </CartProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

@@ -65,11 +65,10 @@ export async function sendOrderDeclinedEmail(
         
         <p style="color: #374151;">We regret to inform you that your custom costume order <strong>${orderNumber}</strong> has been declined.</p>
         
-        ${
-          reason
-            ? `<p style="background: #fee2e2; padding: 15px; border-left: 4px solid #ef4444; color: #991b1b; margin: 20px 0; border-radius: 4px;"><strong>Reason:</strong> ${reason}</p>`
-            : ""
-        }
+        ${reason
+      ? `<p style="background: #fee2e2; padding: 15px; border-left: 4px solid #ef4444; color: #991b1b; margin: 20px 0; border-radius: 4px;"><strong>Reason:</strong> ${reason}</p>`
+      : ""
+    }
         
         <div style="background: #f0fdf4; padding: 15px; border-left: 4px solid #10b981; margin: 20px 0; border-radius: 4px;">
           <p style="color: #166534; margin: 0;"><strong>What's Next?</strong></p>
@@ -79,8 +78,8 @@ export async function sendOrderDeclinedEmail(
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
           <p style="color: #6b7280; font-size: 14px; margin: 0;">
             <strong>EMPI Costumes</strong><br>
-            Email: ${process.env.STORE_EMAIL || "admin@empicostumes.com"}<br>
-            Phone: ${process.env.STORE_PHONE || "+234 123 456 7890"}
+            Email: ${process.env.STORE_EMAIL || "empicostumes@gmail.com"}<br>
+            Phone: ${process.env.STORE_PHONE || "+234 808 577 9180"}
           </p>
         </div>
         
@@ -129,8 +128,8 @@ export async function sendOrderDeletedEmail(
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
           <p style="color: #6b7280; font-size: 14px; margin: 0;">
             <strong>EMPI Costumes</strong><br>
-            Email: ${process.env.STORE_EMAIL || "admin@empicostumes.com"}<br>
-            Phone: ${process.env.STORE_PHONE || "+234 123 456 7890"}
+            Email: ${process.env.STORE_EMAIL || "empicostumes@gmail.com"}<br>
+            Phone: ${process.env.STORE_PHONE || "+234 808 577 9180"}
           </p>
         </div>
         
@@ -159,7 +158,7 @@ export async function sendInvoiceEmail(
   orderNumber?: string
 ): Promise<{ customerSent: boolean; adminSent: boolean }> {
   const subject = `Your Invoice ${invoiceNumber} | EMPI Costumes`;
-  
+
   const emailHtml = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 800px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0;">
@@ -187,8 +186,8 @@ export async function sendInvoiceEmail(
         <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
           <p style="color: #6b7280; font-size: 14px; margin: 0;">
             <strong>EMPI Costumes</strong><br>
-            Email: ${process.env.STORE_EMAIL || "admin@empicostumes.com"}<br>
-            Phone: ${process.env.STORE_PHONE || "+234 123 456 7890"}
+            Email: ${process.env.STORE_EMAIL || "empicostumes@gmail.com"}<br>
+            Phone: ${process.env.STORE_PHONE || "+234 808 577 9180"}
           </p>
         </div>
         
@@ -207,7 +206,7 @@ export async function sendInvoiceEmail(
   });
 
   // Send to admin
-  const adminEmail = process.env.STORE_EMAIL || "admin@empicostumes.com";
+  const adminEmail = process.env.STORE_EMAIL || "empicostumes@gmail.com";
   const adminSent = await sendEmail({
     to: adminEmail,
     subject: `[Admin] ${subject}`,
