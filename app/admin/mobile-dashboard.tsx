@@ -6,6 +6,9 @@ import {
   ArrowUpRight, ArrowDownRight, Activity, AlertCircle, UserPlus, UserCheck
 } from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
+import { UsersPanel } from "./dashboard/UsersPanel";
+import { PendingPanel } from "./dashboard/PendingPanel";
+import { ProductsPanel } from "./dashboard/ProductsPanel";
 
 interface DashboardStats {
   totalRevenue: number;
@@ -31,6 +34,27 @@ export default function MobileDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'pending' | 'products'>('dashboard');
+
+  // Listen for tab changes from mobile-layout sidebar
+  useEffect(() => {
+    const onAdminTabChange = (e: Event) => {
+      try {
+        const detail = (e as CustomEvent).detail;
+        if (detail && detail.tab) {
+          const t = detail.tab;
+          if (t === 'dashboard' || t === 'users' || t === 'pending' || t === 'products') {
+            setActiveTab(t);
+          }
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    window.addEventListener('adminTabChange', onAdminTabChange as EventListener);
+    return () => window.removeEventListener('adminTabChange', onAdminTabChange as EventListener);
+  }, []);
 
   useEffect(() => {
     loadDashboardData();
@@ -167,92 +191,121 @@ export default function MobileDashboard() {
   }
 
   return (
-    <div className="p-4 space-y-6 pb-24">
-      {/* Header with Refresh */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Last updated: {lastUpdated ? formatTime(lastUpdated) : "Loading..."}
-          </p>
-        </div>
-        <button
-          onClick={loadDashboardData}
-          disabled={isLoading}
-          className={`p-2.5 rounded-lg transition ${
-            isLoading 
-              ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
-              : "bg-lime-100 text-lime-600 hover:bg-lime-200"
-          }`}
-          title="Refresh data"
-        >
-          <Activity className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
-        </button>
+    <div className="min-h-screen bg-gray-50 pb-24 md:pb-0">
+      {/* Render different panels based on active tab */}
+      <div className="w-full">
+        {/* Dashboard Overview Tab */}
+        {activeTab === 'dashboard' && (
+          <div className="animate-fadeIn p-4 space-y-6">
+            {/* Header with Refresh */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h1 className="text-3xl font-black text-gray-900">Dashboard</h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  Last updated: {lastUpdated ? formatTime(lastUpdated) : "Loading..."}
+                </p>
+              </div>
+              <button
+                onClick={loadDashboardData}
+                disabled={isLoading}
+                className={`p-2.5 rounded-lg transition ${
+                  isLoading 
+                    ? "bg-gray-100 text-gray-400 cursor-not-allowed" 
+                    : "bg-lime-100 text-lime-600 hover:bg-lime-200"
+                }`}
+                title="Refresh data"
+              >
+                <Activity className={`h-5 w-5 ${isLoading ? "animate-spin" : ""}`} />
+              </button>
+            </div>
+
+            {/* Premium Welcome Banner */}
+            <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white relative overflow-hidden shadow-lg">
+              <div className="absolute top-0 right-0 w-48 h-48 bg-lime-600 opacity-10 rounded-full -mr-24 -mt-24"></div>
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-lime-600 opacity-5 rounded-full -ml-24 -mb-24"></div>
+              <div className="relative z-10">
+                <h2 className="text-2xl md:text-3xl font-black mb-2">Welcome Back! 👋</h2>
+                <p className="text-slate-300 text-base md:text-lg">Here's your store's real-time performance overview</p>
+              </div>
+            </div>
+
+            {/* Primary Metrics - 2x2 Grid */}
+            <div className="grid grid-cols-2 gap-4">
+              {/* Total Revenue */}
+              <MetricCard
+                icon={<DollarSign className="h-6 w-6" />}
+                label="REVENUE"
+                value={formatCurrency(stats?.totalRevenue || 0)}
+                subtext="All-time earnings"
+                trend={stats && stats.totalSalesOrders > stats.totalRentOrders ? "up" : "down"}
+                color="lime"
+              />
+
+              {/* Rentals - Order Count */}
+              <MetricCard
+                icon={<Clock className="h-6 w-6" />}
+                label="RENTALS"
+                value={formatNumber(stats?.totalRentOrders)}
+                subtext="Rental orders"
+                trend="up"
+                color="cyan"
+              />
+
+              {/* Sales - Order Count */}
+              <MetricCard
+                icon={<ShoppingBag className="h-6 w-6" />}
+                label="SALES"
+                value={formatNumber(stats?.totalSalesOrders)}
+                subtext="Sales orders"
+                trend="up"
+                color="green"
+              />
+
+              {/* Total Products */}
+              <MetricCard
+                icon={<Package className="h-6 w-6" />}
+                label="PRODUCTS"
+                value={formatNumber(stats?.totalProducts)}
+                subtext="Active in catalog"
+                trend="neutral"
+                color="purple"
+              />
+            </div>
+
+            {/* Empty State */}
+            {stats && stats.totalOrders === 0 && (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center">
+                <ShoppingBag className="h-16 w-16 text-slate-300 mx-auto mb-4" />
+                <p className="text-slate-600 font-black text-lg mb-2">No Orders Yet</p>
+                <p className="text-slate-500 text-sm">
+                  Orders will appear here when customers start purchasing
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="animate-fadeIn">
+            <UsersPanel />
+          </div>
+        )}
+
+        {/* Orders/Pending Tab */}
+        {activeTab === 'pending' && (
+          <div className="animate-fadeIn">
+            <PendingPanel />
+          </div>
+        )}
+
+        {/* Products Tab */}
+        {activeTab === 'products' && (
+          <div className="animate-fadeIn">
+            <ProductsPanel />
+          </div>
+        )}
       </div>
-
-      {/* Premium Welcome Banner */}
-      <div className="bg-gradient-to-r from-slate-900 via-slate-800 to-slate-900 rounded-2xl p-6 text-white relative overflow-hidden shadow-lg">
-        <div className="absolute top-0 right-0 w-48 h-48 bg-lime-600 opacity-10 rounded-full -mr-24 -mt-24"></div>
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-lime-600 opacity-5 rounded-full -ml-24 -mb-24"></div>
-        <div className="relative z-10">
-          <h2 className="text-2xl md:text-3xl font-black mb-2">Welcome Back! 👋</h2>
-          <p className="text-slate-300 text-base md:text-lg">Here's your store's real-time performance overview</p>
-        </div>
-      </div>
-
-      {/* Primary Metrics - 2x2 Grid */}
-      <div className="grid grid-cols-2 gap-4">
-        {/* Total Revenue */}
-        <MetricCard
-          icon={<DollarSign className="h-6 w-6" />}
-          label="REVENUE"
-          value={formatCurrency(stats.totalRevenue)}
-          subtext="All-time earnings"
-          trend={stats.totalSalesOrders > stats.totalRentOrders ? "up" : "down"}
-          color="lime"
-        />
-
-        {/* Rentals - Order Count */}
-        <MetricCard
-          icon={<Clock className="h-6 w-6" />}
-          label="RENTALS"
-          value={formatNumber(stats.totalRentOrders)}
-          subtext="Rental orders"
-          trend="up"
-          color="cyan"
-        />
-
-        {/* Sales - Order Count */}
-        <MetricCard
-          icon={<ShoppingBag className="h-6 w-6" />}
-          label="SALES"
-          value={formatNumber(stats.totalSalesOrders)}
-          subtext="Sales orders"
-          trend="up"
-          color="green"
-        />
-
-        {/* Total Products */}
-        <MetricCard
-          icon={<Package className="h-6 w-6" />}
-          label="PRODUCTS"
-          value={formatNumber(stats.totalProducts)}
-          subtext="Active in catalog"
-          trend="neutral"
-          color="purple"
-        />
-      </div>
-
-      {/* Empty State */}
-      {stats.totalOrders === 0 && (
-        <div className="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center">
-          <ShoppingBag className="h-16 w-16 text-slate-300 mx-auto mb-4" />
-          <p className="text-slate-600 font-black text-lg mb-2">No Orders Yet</p>
-          <p className="text-slate-500 text-sm">
-            Orders will appear here when customers start purchasing
-          </p>
-        </div>
-      )}
     </div>
   );
 }

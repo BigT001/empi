@@ -105,28 +105,38 @@ export default function MobileAdminLayout({
     return () => { mounted = false; };
   }, []);
 
-  const isActive = (href: string, tab?: string) => {
-    if (href === "/admin/dashboard") {
-      if (!(pathname === '/admin' || pathname.startsWith('/admin/dashboard'))) return false;
-      try {
-        if (typeof window !== 'undefined') {
-          const activeTab = localStorage.getItem('adminDashboardActiveTab') || 'dashboard';
-          return !!tab && activeTab === tab;
-        }
-      } catch (e) {
-        // ignore
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  // Listen for tab changes from within the dashboard
+  useEffect(() => {
+    const handleTabChange = (event: Event) => {
+      if (event instanceof CustomEvent) {
+        setActiveTab(event.detail?.tab || 'dashboard');
       }
-      return tab === 'dashboard' && (pathname === '/admin' || pathname === '/admin/dashboard');
+    };
+    
+    window.addEventListener('adminTabChange', handleTabChange);
+    return () => window.removeEventListener('adminTabChange', handleTabChange);
+  }, []);
+
+  const isActive = (href: string, tab?: string) => {
+    if (href === "/admin/dashboard" || href === "/admin") {
+      if (!(pathname === '/admin' || pathname === '/admin/dashboard')) return false;
+      // Active if this specific tab is currently active
+      if (tab) {
+        return activeTab === tab;
+      }
+      return activeTab === 'dashboard';
     }
-    return pathname.startsWith(href) && href !== "/admin/dashboard";
+    // For non-dashboard routes
+    return pathname === href || pathname.startsWith(href + '/');
   };
 
   const handleMenuItemClick = (item: SidebarItem) => {
     try {
       if (typeof window !== 'undefined') {
         if (item.tab) {
-          localStorage.setItem('adminDashboardActiveTab', item.tab);
-          // Dispatch custom event for same-page tab changes
+          // For dashboard tabs, dispatch event and store in localStorage for persistence
           window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: item.tab } }));
         }
       }
@@ -135,12 +145,15 @@ export default function MobileAdminLayout({
     }
     setIsMenuOpen(false);
     
-    // If already on the target page, don't navigate
-    if (pathname === item.href || pathname.startsWith(item.href)) {
+    // If already on the admin page or dashboard, and this is a dashboard tab, don't navigate
+    if (item.tab && (pathname === '/admin' || pathname === '/admin/dashboard')) {
       return;
     }
     
-    router.push(item.href);
+    // Otherwise, navigate to the target href
+    if (pathname !== item.href && !pathname.startsWith(item.href + '/')) {
+      router.push(item.href);
+    }
   };
 
   const handleLogout = async () => {
