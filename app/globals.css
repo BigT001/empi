@@ -161,20 +161,19 @@
     font-size: 16px;
   }
 
-  /* Prevent zoom on input focus for iOS */
-  input[type="text"],
-  input[type="email"],
-  input[type="password"],
-  input[type="search"],
-  input[type="tel"],
-  input[type="url"],
-  input[type="date"],
-  input[type="time"],
-  input[type="datetime-local"],
-  input[type="number"],
-  textarea {
+  /* Prevent zoom on input focus for iOS and ensure black text for inputs */
+  input,
+  textarea,
+  select {
     font-size: 16px;
+    color: black;
     @apply outline-none;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #6b7280;
+    /* text-gray-500 equivalent */
   }
 
   /* Disable zoom on user interaction */
