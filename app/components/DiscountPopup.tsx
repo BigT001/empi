@@ -8,21 +8,20 @@ interface DiscountPopupProps {
 }
 
 export function DiscountPopup({ intervalMinutes = 7 }: DiscountPopupProps) {
-  const [isOpen, setIsOpen] = useState(true);
-  const [hasSeenOnce, setHasSeenOnce] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
 
-  // ✅ Removed localStorage - show popup every session
-  // Popup appears on first visit only (isOpen state), then can be closed
   useEffect(() => {
-    if (hasSeenOnce) {
-      setIsOpen(false);
+    // Check if the user has already seen and closed the discount popup
+    const hasSeenDiscount = localStorage.getItem("empi_has_seen_discount");
+    if (!hasSeenDiscount) {
+      setIsOpen(true);
     }
-  }, [hasSeenOnce]);
+  }, []);
 
   const handleClose = () => {
     setIsOpen(false);
-    setHasSeenOnce(true);
-    // No localStorage - popup will show again on next session
+    // Mark as seen permanently in this browser
+    localStorage.setItem("empi_has_seen_discount", "true");
   };
 
   if (!isOpen) return null;

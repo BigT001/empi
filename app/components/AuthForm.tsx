@@ -257,50 +257,52 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
   return (
     <div
-      className="bg-white dark:bg-[#111] rounded-2xl shadow-2xl border border-gray-200/30 dark:border-white/10 p-8 w-full max-w-md transition-all duration-300"
+      className="bg-white/80 dark:bg-black/40 backdrop-blur-xl rounded-3xl border border-gray-100 dark:border-white/5 p-10 w-full max-w-md transition-all duration-300"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex bg-gray-50/50 dark:bg-white/5 p-1.5 rounded-2xl mb-10 border border-gray-100 dark:border-white/5">
         <button
+          type="button"
           onClick={() => {
             setMode("login");
             setError("");
             setSuccess("");
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition duration-300 ${mode === "login"
-              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-lg hover:shadow-xl"
-              : "bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10"
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-500 scale-100 active:scale-95 ${mode === "login"
+            ? "bg-white dark:bg-lime-500 text-lime-600 dark:text-white shadow-xl shadow-lime-500/10"
+            : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             }`}
         >
-          <LogIn className="h-4 w-4" />
+          <LogIn className="h-3.5 w-3.5" />
           Login
         </button>
         <button
+          type="button"
           onClick={() => {
             setMode("register");
             setError("");
             setSuccess("");
           }}
-          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-semibold text-sm transition duration-300 ${mode === "register"
-              ? "bg-gradient-to-r from-lime-600 to-lime-500 text-white shadow-lg hover:shadow-xl"
-              : "bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/10 border border-gray-200 dark:border-white/10"
+          className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl font-black text-[10px] uppercase tracking-widest transition-all duration-500 scale-100 active:scale-95 ${mode === "register"
+            ? "bg-white dark:bg-lime-500 text-lime-600 dark:text-white shadow-xl shadow-lime-500/10"
+            : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
             }`}
         >
-          <UserPlus className="h-4 w-4" />
+          <UserPlus className="h-3.5 w-3.5" />
           Register
         </button>
       </div>
 
       {/* Title & Description */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-          {mode === "login" ? "Welcome Back!" : "Join EMPI"}
+      <div className="mb-8">
+        <h1 className="text-3xl font-black text-gray-900 dark:text-white mb-2 font-playfair tracking-tight">
+          {mode === "login" ? "Welcome Back" : "Create Account"}
         </h1>
-        <p className="text-gray-500 dark:text-gray-400 text-sm leading-snug">
+        <p className="text-gray-500 dark:text-gray-400 text-xs font-bold uppercase tracking-widest leading-relaxed">
           {mode === "login"
-            ? "Sign in to your account to continue shopping"
-            : "Create an account to get started"}
+            ? "Sign in to access your EMPI dashboard"
+            : "Join the elite costume community"}
         </p>
       </div>
 
@@ -324,27 +326,27 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Login: Email/Phone Toggle */}
         {mode === "login" && (
-          <div className="flex gap-2 mb-4">
+          <div className="flex bg-gray-50/50 dark:bg-white/5 p-1 rounded-xl mb-6 border border-gray-100 dark:border-white/5">
             <button
               type="button"
               onClick={() => setLoginType("email")}
-              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${loginType === "email"
-                  ? "bg-lime-100 dark:bg-lime-900/20 text-lime-700 dark:text-lime-400 border border-lime-300 dark:border-lime-900/30 shadow-sm"
-                  : "bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10"
+              className={`flex-1 py-1.5 px-3 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${loginType === "email"
+                ? "bg-white dark:bg-zinc-800 text-lime-600 dark:text-white shadow-sm"
+                : "text-gray-400 dark:text-gray-500"
                 }`}
             >
-              <Mail className="h-4 w-4" />
+              <Mail className="h-3 w-3" />
               Email
             </button>
             <button
               type="button"
               onClick={() => setLoginType("phone")}
-              className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition flex items-center justify-center gap-2 ${loginType === "phone"
-                  ? "bg-lime-100 dark:bg-lime-900/20 text-lime-700 dark:text-lime-400 border border-lime-300 dark:border-lime-900/30 shadow-sm"
-                  : "bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10"
+              className={`flex-1 py-1.5 px-3 rounded-lg font-black text-[9px] uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 ${loginType === "phone"
+                ? "bg-white dark:bg-zinc-800 text-lime-600 dark:text-white shadow-sm"
+                : "text-gray-400 dark:text-gray-500"
                 }`}
             >
-              <Phone className="h-4 w-4" />
+              <Phone className="h-3 w-3" />
               Phone
             </button>
           </div>
@@ -368,7 +370,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 value={loginType === "email" ? formData.email : formData.phone}
                 onChange={handleChange}
                 placeholder={loginType === "email" ? "you@example.com" : "+234 801 234 5678"}
-                className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
               />
             </div>
 
@@ -384,14 +386,14 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs text-gray-900 dark:text-white outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
                 >
-                  {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </div>
@@ -414,7 +416,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.firstName}
                   onChange={handleChange}
                   placeholder="John"
-                  className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
                 />
               </div>
               <div>
@@ -428,7 +430,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.lastName}
                   onChange={handleChange}
                   placeholder="Doe"
-                  className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
                 />
               </div>
             </div>
@@ -444,7 +446,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="you@example.com"
-                className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
               />
             </div>
 
@@ -459,7 +461,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 value={formData.phone}
                 onChange={handleChange}
                 placeholder="+234 801 234 5678"
-                className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white"
+                className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
               />
             </div>
 
@@ -475,14 +477,14 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="••••••••"
-                  className="w-full px-3 py-2 bg-white dark:bg-black/20 border border-gray-300 dark:border-white/10 rounded-lg focus:ring-2 focus:ring-lime-500 focus:border-transparent transition text-xs text-gray-900 dark:text-white"
+                  className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs text-gray-900 dark:text-white outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-2.5 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition"
                 >
-                  {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                 </button>
               </div>
             </div>
@@ -493,8 +495,9 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         <button
           type="submit"
           disabled={loading || oauthLoading}
-          className="w-full bg-gradient-to-r from-lime-600 to-lime-500 hover:from-lime-700 hover:to-lime-600 disabled:from-gray-400 disabled:to-gray-400 text-white font-bold py-3 px-4 rounded-xl transition duration-300 shadow-lg hover:shadow-xl mt-6 text-base"
+          className="relative group w-full bg-lime-600 hover:bg-lime-500 disabled:bg-gray-800 text-white font-black py-4 px-6 rounded-2xl transition-all duration-500 shadow-xl shadow-lime-500/10 hover:shadow-lime-500/20 mt-8 text-xs uppercase tracking-[0.2em] active:scale-95 overflow-hidden"
         >
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
           {loading ? (
             <span className="flex items-center justify-center gap-2">
               <span className="animate-spin inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full"></span>
@@ -509,7 +512,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
       </form>
 
       {/* Toggle Mode */}
-      <p className="text-center text-sm text-gray-600 dark:text-gray-400 mt-6">
+      <p className="text-center text-[10px] font-black uppercase tracking-widest text-gray-500 dark:text-gray-500 mt-10">
         {mode === "login" ? "No account? " : "Have an account? "}
         <button
           onClick={() => {
@@ -525,7 +528,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
               lastName: "",
             });
           }}
-          className="text-lime-600 dark:text-lime-400 hover:text-lime-700 dark:hover:text-lime-300 font-semibold transition"
+          className="text-lime-600 dark:text-lime-400 hover:text-lime-700 dark:hover:text-lime-300 transition-colors ml-1"
         >
           {mode === "login" ? "Sign up" : "Sign in"}
         </button>

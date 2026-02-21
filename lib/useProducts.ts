@@ -47,9 +47,9 @@ export function useProducts(category?: string) {
     try {
       // Fetch fresh data from API (HTTP caching is handled by next.config)
       const params = new URLSearchParams();
-      if (category) params.append('category', category);
+      if (category && category !== 'all') params.append('category', category);
       params.append('page', pageNum.toString());
-      params.append('limit', '12');
+      params.append('limit', '100'); // Increased to show all products as requested
       const url = `/api/products?${params.toString()}`;
       console.log(`🌐 Fetching products from ${url}`);
 
@@ -60,7 +60,7 @@ export function useProducts(category?: string) {
       }
 
       const data = await response.json();
-      
+
       // Handle both old format (array) and new format (with pagination)
       const newProducts = Array.isArray(data) ? data : data.data;
       const paginationData = data.pagination;
@@ -72,7 +72,7 @@ export function useProducts(category?: string) {
       } else {
         setProducts(newProducts);
       }
-      
+
       if (paginationData) {
         setPagination(paginationData);
       }

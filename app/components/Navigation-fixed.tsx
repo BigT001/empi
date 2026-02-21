@@ -58,7 +58,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   useEffect(() => {
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
+
       if (currentScrollY < lastScrollY || currentScrollY < 50) {
         setHeaderVisible(true);
         setShowCurrencyDropdown(false);
@@ -66,7 +66,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         setHeaderVisible(false);
         setShowCurrencyDropdown(false);
       }
-      
+
       setLastScrollY(currentScrollY);
     };
 
@@ -89,66 +89,64 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
   };
 
   return (
-    <div 
-      className={`fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out ${
-        headerVisible ? 'translate-y-0' : '-translate-y-full'
-      }`}
+    <div
+      className={`fixed top-0 left-0 right-0 z-40 bg-white border-b border-gray-200 transition-transform duration-300 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-full'
+        }`}
     >
       {/* Desktop Navigation */}
       <div className="hidden md:flex items-center justify-between gap-6 px-6 py-4">
         {/* Logo */}
-        <Link href="/" className="flex-shrink-0">
-          <Image
-            src="/logo/EMPI-2k24-LOGO-1.PNG"
-            alt="EMPI Logo"
-            width={60}
-            height={60}
-            className="h-12 w-auto"
-          />
+        <Link href="/" className="flex-shrink-0 group">
+          <div className="relative">
+            <Image
+              src="/logo/EMPI-2k24-LOGO-1.PNG"
+              alt="EMPI Logo"
+              width={80}
+              height={80}
+              className="h-16 w-auto rounded-xl transition-transform group-hover:scale-110 duration-500 mix-blend-multiply dark:mix-blend-screen dark:invert"
+              priority
+            />
+          </div>
         </Link>
 
         {/* Navigation Links */}
         <nav className="flex items-center gap-4 text-sm font-medium">
           <button
             onClick={() => handleCategoryChange("adults")}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 border-2 ${
-              category === "adults"
-                ? "bg-lime-500 text-white border-lime-500 shadow-lg"
-                : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
-            }`}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 border-2 ${category === "adults"
+              ? "bg-lime-500 text-white border-lime-500 shadow-lg"
+              : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
+              }`}
           >
-            👔 Adults
+            🏠 Home
           </button>
 
           <button
             onClick={() => handleCategoryChange("kids")}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 border-2 ${
-              category === "kids"
-                ? "bg-lime-500 text-white border-lime-500 shadow-lg"
-                : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
-            }`}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 border-2 ${category === "kids"
+              ? "bg-lime-500 text-white border-lime-500 shadow-lg"
+              : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
+              }`}
           >
-            👶 Kids
+            🛍️ Shop
           </button>
 
           <button
             onClick={() => handleCategoryChange("custom")}
-            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 border-2 ${
-              category === "custom"
-                ? "bg-lime-500 text-white border-lime-500 shadow-lg"
-                : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
-            }`}
+            className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 border-2 ${category === "custom"
+              ? "bg-lime-500 text-white border-lime-500 shadow-lg"
+              : "bg-white text-gray-700 border-gray-300 hover:border-lime-400"
+              }`}
           >
             🎨 Custom
           </button>
 
-          <Link 
-            href="/about" 
-            className={`transition font-semibold px-4 py-2 ${
-              pathname === "/about"
-                ? "text-lime-600 border-b-2 border-lime-600"
-                : "text-gray-700 hover:text-lime-600"
-            }`}
+          <Link
+            href="/about"
+            className={`transition font-semibold px-4 py-2 ${pathname === "/about"
+              ? "text-lime-600 border-b-2 border-lime-600"
+              : "text-gray-700 hover:text-lime-600"
+              }`}
           >
             About Us
           </Link>
@@ -168,9 +166,8 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         {/* Right Section - Currency & Actions */}
         <div className="flex items-center gap-3">
           {/* Currency Switcher - HIDE ON SCROLL */}
-          <div className={`relative transition-all duration-300 ${
-            headerVisible ? 'opacity-100 visible' : 'opacity-0 invisible w-0'
-          }`}>
+          <div className={`relative transition-all duration-300 ${headerVisible ? 'opacity-100 visible' : 'opacity-0 invisible w-0'
+            }`}>
             <button
               onClick={() => setShowCurrencyDropdown(!showCurrencyDropdown)}
               className="flex items-center gap-1 px-3 py-2 rounded-lg border border-gray-200 hover:border-lime-600 text-gray-700 hover:text-lime-600 text-sm font-medium transition whitespace-nowrap"
@@ -179,7 +176,7 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
               <span>{currency}</span>
               <ChevronDown className="h-4 w-4" />
             </button>
-            
+
             {showCurrencyDropdown && (
               <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg border border-gray-200 shadow-lg z-50">
                 {Object.entries(CURRENCY_RATES).map(([code, data]) => (
@@ -189,9 +186,8 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
                       onCurrencyChange(code);
                       setShowCurrencyDropdown(false);
                     }}
-                    className={`w-full text-left px-4 py-2 text-sm hover:bg-lime-50 hover:text-lime-600 transition ${
-                      currency === code ? "bg-lime-100 text-lime-600 font-semibold" : "text-gray-700"
-                    }`}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-lime-50 hover:text-lime-600 transition ${currency === code ? "bg-lime-100 text-lime-600 font-semibold" : "text-gray-700"
+                      }`}
                   >
                     {data.symbol} {code}
                   </button>
@@ -268,25 +264,22 @@ export function Navigation({ category, onCategoryChange, currency, onCurrencyCha
         <div className="md:hidden bg-white border-t border-gray-200 p-4 space-y-3">
           <button
             onClick={() => handleCategoryChange("adults")}
-            className={`w-full px-4 py-2 rounded-lg font-semibold text-sm ${
-              category === "adults" ? "bg-lime-500 text-white" : "bg-gray-100 text-gray-700"
-            }`}
+            className={`w-full px-4 py-2 rounded-lg font-semibold text-sm ${category === "adults" ? "bg-lime-500 text-white" : "bg-gray-100 text-gray-700"
+              }`}
           >
-            👔 Adults
+            🏠 Home
           </button>
           <button
             onClick={() => handleCategoryChange("kids")}
-            className={`w-full px-4 py-2 rounded-lg font-semibold text-sm ${
-              category === "kids" ? "bg-lime-500 text-white" : "bg-gray-100 text-gray-700"
-            }`}
+            className={`w-full px-4 py-2 rounded-lg font-semibold text-sm ${category === "kids" ? "bg-lime-500 text-white" : "bg-gray-100 text-gray-700"
+              }`}
           >
-            👶 Kids
+            🛍️ Shop
           </button>
           <button
             onClick={() => handleCategoryChange("custom")}
-            className={`w-full px-4 py-2 rounded-lg font-semibold text-sm ${
-              category === "custom" ? "bg-lime-500 text-white" : "bg-gray-100 text-gray-700"
-            }`}
+            className={`w-full px-4 py-2 rounded-lg font-semibold text-sm ${category === "custom" ? "bg-lime-500 text-white" : "bg-gray-100 text-gray-700"
+              }`}
           >
             🎨 Custom
           </button>

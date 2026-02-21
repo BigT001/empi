@@ -12,6 +12,7 @@ import { useMode } from "@/app/context/ModeContext";
 
 import { Toast } from "@/app/components/Toast";
 import { Portal } from "@/app/components/Portal";
+import { ScrollReveal } from "@/app/components/ScrollReveal";
 
 interface Product {
   id: string;
@@ -193,8 +194,8 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                     key={idx}
                     onClick={() => setCurrentImageIndex(idx)}
                     className={`relative aspect-square rounded-xl overflow-hidden border-2 transition cursor-pointer transform hover:scale-105 ${idx === currentImageIndex
-                        ? 'border-lime-600 ring-2 ring-lime-300 shadow-lg'
-                        : 'border-gray-300 hover:border-gray-400 shadow-md'
+                      ? 'border-lime-600 ring-2 ring-lime-300 shadow-lg'
+                      : 'border-gray-300 hover:border-gray-400 shadow-md'
                       }`}
                   >
                     <Image
@@ -229,8 +230,8 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                   <button
                     onClick={() => setMode("buy")}
                     className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${mode === "buy"
-                        ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl scale-105"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl scale-105"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                   >
                     💳 Buy
@@ -240,8 +241,8 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                   <button
                     onClick={() => setMode("rent")}
                     className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${mode === "rent"
-                        ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg hover:shadow-xl scale-105"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                      ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg hover:shadow-xl scale-105"
+                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       }`}
                   >
                     � Rent
@@ -391,47 +392,49 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
       {/* Related Products */}
       {allProducts.length > 1 && (
-        <section className="border-t-2 border-gray-300 bg-gradient-to-br from-white to-gray-50">
-          <div className="mx-auto max-w-7xl px-4 md:px-6 py-12 md:py-16">
-            <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-8 flex items-center gap-3">
-              <span>✨</span> You May Also Like
-            </h2>
-            <div className="grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-              {allProducts
-                .filter(p => (p.id || p._id) !== productId && p.category === product.category)
-                .slice(0, 4)
-                .map(p => {
-                  const pId = p.id || p._id;
-                  return (
-                    <Link key={pId} href={`/product/${pId}`}>
-                      <div className="group bg-white rounded-xl overflow-hidden hover:shadow-2xl transition cursor-pointer border-2 border-gray-200 h-full flex flex-col transform hover:scale-105">
-                        <div className="relative w-full aspect-[4/5] overflow-hidden bg-gradient-to-br from-gray-50 to-white">
-                          <Image
-                            src={p.imageUrl}
-                            alt={p.name}
-                            fill
-                            className="object-cover group-hover:scale-110 transition duration-300"
-                          />
+        <ScrollReveal y={40}>
+          <section className="border-t-2 border-gray-300 bg-gradient-to-br from-white to-gray-50">
+            <div className="mx-auto max-w-7xl px-4 md:px-6 py-12 md:py-16">
+              <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-8 flex items-center gap-3">
+                <span>✨</span> You May Also Like
+              </h2>
+              <div className="grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+                {allProducts
+                  .filter(p => (p.id || p._id) !== productId && p.category === product.category)
+                  .slice(0, 4)
+                  .map(p => {
+                    const pId = p.id || p._id;
+                    return (
+                      <Link key={pId} href={`/product/${pId}`}>
+                        <div className="group bg-white rounded-xl overflow-hidden hover:shadow-2xl transition cursor-pointer border-2 border-gray-200 h-full flex flex-col transform hover:scale-105">
+                          <div className="relative w-full aspect-[4/5] overflow-hidden bg-gradient-to-br from-gray-50 to-white">
+                            <Image
+                              src={p.imageUrl}
+                              alt={p.name}
+                              fill
+                              className="object-cover group-hover:scale-110 transition duration-300"
+                            />
+                          </div>
+                          <div className="p-4 flex-grow flex flex-col">
+                            <h3 className="font-bold text-gray-900 text-sm line-clamp-2 mb-2">{p.name}</h3>
+                            {(p.costumeType || p.country) && (
+                              <div className="text-xs text-gray-600 mb-2">
+                                {p.costumeType && <span>{p.costumeType}</span>}
+                                {p.country && p.costumeType === 'Traditional Africa' && (
+                                  <span> • {p.country}</span>
+                                )}
+                              </div>
+                            )}
+                            <p className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-lime-600 to-green-600 mt-auto">{formatPrice(p.sellPrice)}</p>
+                          </div>
                         </div>
-                        <div className="p-4 flex-grow flex flex-col">
-                          <h3 className="font-bold text-gray-900 text-sm line-clamp-2 mb-2">{p.name}</h3>
-                          {(p.costumeType || p.country) && (
-                            <div className="text-xs text-gray-600 mb-2">
-                              {p.costumeType && <span>{p.costumeType}</span>}
-                              {p.country && p.costumeType === 'Traditional Africa' && (
-                                <span> • {p.country}</span>
-                              )}
-                            </div>
-                          )}
-                          <p className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-lime-600 to-green-600 mt-auto">{formatPrice(p.sellPrice)}</p>
-                        </div>
-                      </div>
-                    </Link>
-                  );
-                })}
+                      </Link>
+                    );
+                  })}
+              </div>
             </div>
-          </div>
-        </section>
+          </section>
+        </ScrollReveal>
       )}
 
       {/* Rental Policy Modal */}

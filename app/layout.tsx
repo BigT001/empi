@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Outfit, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "./components/CartContext";
 import { BuyerProvider } from "./context/BuyerContext";
@@ -10,6 +10,8 @@ import { CurrencyProvider } from "./context/CurrencyContext";
 import { NotificationProvider } from "./context/NotificationContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import { ScrollToTop } from "./components/ScrollToTop";
+import { SmoothScroll } from "./components/SmoothScroll";
+import { ScrollProgressBar } from "./components/ScrollProgressBar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -18,6 +20,16 @@ const geistSans = Geist({
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
+  subsets: ["latin"],
+});
+
+const outfit = Outfit({
+  variable: "--font-outfit",
+  subsets: ["latin"],
+});
+
+const playfair = Playfair_Display({
+  variable: "--font-playfair",
   subsets: ["latin"],
 });
 
@@ -78,7 +90,7 @@ export default function RootLayout({
         <script src="https://js.paystack.co/v1/inline.js"></script>
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} ${playfair.variable} antialiased font-outfit`}
       >
         <ThemeProvider>
           <CartProvider>
@@ -89,7 +101,10 @@ export default function RootLayout({
                     <ModeProvider>
                       <AdminProvider>
                         <ScrollToTop />
-                        {children}
+                        <ScrollProgressBar />
+                        <SmoothScroll>
+                          {children}
+                        </SmoothScroll>
                       </AdminProvider>
                     </ModeProvider>
                   </HomeModeProvider>

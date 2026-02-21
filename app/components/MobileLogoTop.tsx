@@ -27,13 +27,13 @@ export function MobileLogoTop() {
   return (
     <div className="md:hidden flex items-center px-0 pr-4 py-3 gap-3 relative z-[1000] bg-black/40 backdrop-blur-sm border-b border-white/10">
       {/* Logo */}
-      <Link href="/" className="flex-shrink-0">
+      <Link href="/" className="flex-shrink-0 group">
         <Image
           src="/logo/EMPI-2k24-LOGO-1.PNG"
           alt="EMPI Logo"
-          width={80}
-          height={80}
-          className="h-12 w-auto"
+          width={120}
+          height={120}
+          className="h-24 w-auto transition-transform group-hover:scale-105"
         />
       </Link>
 
@@ -55,7 +55,7 @@ export function MobileLogoTop() {
       <div className="flex items-center gap-3 flex-shrink-0">
         {/* Cart Icon */}
         <Link href="/cart" className="relative inline-flex items-center justify-center">
-          <button 
+          <button
             className="p-2 text-white/80 hover:text-white transition-colors duration-200 transform hover:scale-110 active:scale-95 relative"
             title="Cart"
           >

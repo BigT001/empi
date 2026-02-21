@@ -576,8 +576,6 @@ export default function CartPage() {
         rentalDays={Math.ceil((items.filter(i => i.mode === "rent").reduce((max, i) => Math.max(max, i.rentalDays || 1), 1)))}
         productName="All Rental Items"
       />
-
-      <Footer />
     </div>
   );
 }

@@ -94,35 +94,37 @@ export function Navigation({
   return (
     <div
       className={`hidden md:block fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-full'
-        } ${scrolled ? 'py-2' : 'py-4'}`}
+        }`}
     >
-      <div className="mx-auto max-w-7xl px-4">
-        <div className={`flex items-center justify-between gap-8 px-8 py-4 rounded-2xl transition-all duration-500 ${scrolled
+      {/* Announcement Bar */}
+      <div className="bg-lime-600 text-white py-1.5 px-4 text-center">
+        <p className="text-[10px] font-black uppercase tracking-[0.3em]">
+          Pre-order: Minimum 1 week delivery for all bespoke and shop units
+        </p>
+      </div>
+
+      <div className={`mx-auto max-w-7xl px-4 transition-all duration-500 ${scrolled ? 'py-2' : 'py-4'}`}>
+        <div className={`flex items-center justify-between gap-8 px-8 h-20 rounded-2xl transition-all duration-500 ${scrolled
           ? 'bg-white/80 dark:bg-black/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/20 dark:border-white/5'
           : 'bg-white dark:bg-[#111] border border-gray-100 dark:border-white/5 shadow-sm'
           }`}>
           {/* Logo */}
-          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 group">
-            <div className="flex items-center gap-3">
-              <Image
-                src="/logo/EMPI-2k24-LOGO-1.PNG"
-                alt="EMPI Logo"
-                width={50}
-                height={50}
-                className="h-10 w-auto rounded-xl shadow-md transition-transform group-hover:scale-110 duration-500"
-              />
-              <div className="flex flex-col">
-                <span className="text-xl font-black text-slate-900 dark:text-white leading-none tracking-tighter">EMPI</span>
-                <span className="text-[8px] uppercase font-black text-lime-500 tracking-widest mt-1">Costume Maker</span>
-              </div>
-            </div>
+          <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 group relative z-10 h-full flex items-center">
+            <Image
+              src="/logo/EMPI-2k24-LOGO-1.PNG"
+              alt="EMPI Logo"
+              width={140}
+              height={140}
+              className="h-32 md:h-40 w-auto transition-transform group-hover:scale-105 duration-500 dark:invert"
+              priority
+            />
           </Link>
 
           {/* Navigation */}
           <nav className="flex items-center gap-1 bg-gray-50/50 dark:bg-white/5 p-1 rounded-xl border border-gray-100 dark:border-white/5">
             {[
-              { id: 'adults', label: 'Adults' },
-              { id: 'kids', label: 'Kids' },
+              { id: 'adults', label: 'Home' },
+              { id: 'shop', label: 'Shop', href: '/shop' },
               { id: 'custom', label: 'Bespoke' },
               { id: 'about', label: 'My Story', href: '/about' }
             ].map((item) => {
@@ -199,7 +201,7 @@ export function Navigation({
             ) : (
               <Link href="/auth" className="flex items-center gap-2 bg-slate-900 dark:bg-lime-600 hover:bg-slate-800 dark:hover:bg-lime-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all hover:shadow-lg active:scale-95">
                 <User className="h-4 w-4" />
-                <span>Join EMPI</span>
+                <span>Sign In / Sign Up</span>
               </Link>
             )}
 

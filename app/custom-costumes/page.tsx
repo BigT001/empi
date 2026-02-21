@@ -348,7 +348,7 @@ export default function CustomCostumesPage({
       <main className={`flex-1 w-full flex flex-col items-center overflow-x-hidden transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-slate-50'
         }`}>
         {/* Cinematic Page Header */}
-        <section className={`relative w-full min-h-[70vh] flex items-center justify-center overflow-hidden transition-colors duration-1000 px-6 pt-32 pb-20 ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-slate-900'
+        <section className={`relative w-full min-h-[50vh] flex items-center justify-center overflow-hidden transition-colors duration-1000 px-6 pt-32 pb-20 ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-slate-900'
           }`}>
           {/* Animated Background */}
           <div className="absolute inset-0 z-0">
@@ -373,30 +373,30 @@ export default function CustomCostumesPage({
               Bespoke Artisan Tailoring
             </div>
 
-            <h1 className="text-5xl md:text-9xl font-black leading-tight tracking-tighter animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200">
+            <h1 className="text-4xl md:text-8xl font-black leading-[1.1] tracking-tight animate-in fade-in slide-in-from-bottom-6 duration-1000 delay-200 font-playfair">
               Your Vision <br />
               <span className={`text-transparent bg-clip-text bg-gradient-to-r transition-all duration-1000 ${theme === 'dark'
-                ? 'from-lime-300 via-lime-500 to-lime-600 drop-shadow-[0_0_20px_rgba(132,204,22,0.4)]'
+                ? 'from-lime-300 via-lime-500 to-lime-600'
                 : 'from-lime-600 via-lime-700 to-green-800'
-                }`}>Perfectly Crafted</span>
+                }`}>Perfectly Crafted.</span>
             </h1>
 
-            <p className={`text-base md:text-xl max-w-2xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-400 transition-colors duration-1000 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-600'
+            <p className={`text-base md:text-lg max-w-xl mx-auto leading-relaxed animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-400 transition-colors duration-1000 ${theme === 'dark' ? 'text-gray-400' : 'text-slate-600'
               }`}>
-              From sketch to reality. EMPI's master crafters create one-of-a-kind costumes tailored specifically to your imagination.
+              Partner with EMPI to bring your custom costume designs to life. Precise, bespoke, and tailored to your every requirement.
             </p>
 
             <button
               onClick={() => document.getElementById('custom-form')?.scrollIntoView({ behavior: 'smooth' })}
-              className="group relative mt-12 px-12 py-5 bg-lime-600 hover:bg-lime-500 text-white font-black rounded-full transition-all duration-500 shadow-[0_0_30px_rgba(132,204,22,0.3)] hover:shadow-[0_0_60px_rgba(132,204,22,0.6)] animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-600"
+              className="group relative mt-8 px-10 py-4 bg-lime-600 hover:bg-lime-500 text-white font-black rounded-full transition-all duration-500 shadow-[0_0_20px_rgba(132,204,22,0.2)] hover:shadow-[0_0_40px_rgba(132,204,22,0.4)] animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-600"
             >
-              <span className="relative z-10 uppercase tracking-widest text-sm">Start Your Design Unit</span>
+              <span className="relative z-10 uppercase tracking-widest text-xs">Start Your Order</span>
               <div className="absolute inset-0 bg-gradient-to-r from-white/0 via-white/20 to-white/0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
             </button>
           </div>
         </section>
 
-        <div className="max-w-6xl w-full mx-auto px-4 md:px-6 -mt-10 md:-mt-16 z-30 pb-32 space-y-32">
+        <div className="max-w-6xl w-full mx-auto px-4 md:px-6 -mt-8 md:-mt-12 z-30 pb-12 space-y-12">
           {/* Status Message */}
           {submitStatus === "success" && (
             <div className="bg-lime-900/10 backdrop-blur-2xl border border-lime-500/20 rounded-[2.5rem] p-8 md:p-12 flex flex-col md:flex-row gap-8 items-center text-center md:text-left shadow-2xl animate-in fade-in zoom-in duration-700">
@@ -410,43 +410,6 @@ export default function CustomCostumesPage({
             </div>
           )}
 
-          {/* Process Section */}
-          <section className={`relative glass-morphism rounded-[3rem] p-8 md:p-24 overflow-hidden border transition-all duration-1000 shadow-2xl group hover:border-lime-500/30 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'
-            }`}>
-            <div className="mb-24 text-center">
-              <h2 className={`text-4xl md:text-6xl font-black uppercase tracking-[0.2em] mb-8 transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
-                }`}>The Costume Process</h2>
-              <div className="h-1.5 w-40 bg-gradient-to-r from-transparent via-lime-500 to-transparent mx-auto rounded-full shadow-[0_0_30px_rgba(132,204,22,0.4)] animate-pulse" />
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 relative">
-              {/* Connector Line (Desktop) */}
-              <div className={`hidden md:block absolute top-[2.5rem] left-[12%] right-[12%] h-[1px] transition-opacity duration-1000 ${theme === 'dark' ? 'bg-gradient-to-r from-lime-500/0 via-lime-500/30 to-lime-500/0' : 'bg-gradient-to-r from-lime-500/0 via-lime-500/50 to-lime-500/0'
-                }`} />
-
-              {[
-                { step: "01", icon: "📸", title: "Visual Brief", desc: "Submit your sketches, moodboards, or descriptions." },
-                { step: "02", icon: "💬", title: "Concierge Quote", desc: "Consultation and pricing response within 24 hours." },
-                { step: "03", icon: "✨", title: "Artisan Build", desc: "Master tailors begin the hand-crafted production." },
-                { step: "04", icon: "🎁", title: "The Unveiling", desc: "Your bespoke costume is delivered world-wide." }
-              ].map((item, idx) => (
-                <div key={idx} className="group/step relative flex flex-col items-center text-center px-2 md:px-4">
-                  <div className={`relative w-24 h-24 md:w-32 md:h-32 mb-8 flex items-center justify-center rounded-[2.5rem] border transition-all duration-700 shadow-2xl group-hover/step:scale-110 ${theme === 'dark'
-                    ? 'bg-white/[0.03] border-white/10 group-hover/step:bg-lime-500/10 group-hover/step:border-lime-500/40'
-                    : 'bg-black/[0.03] border-black/10 group-hover/step:bg-lime-500/5 group-hover/step:border-lime-500/20'
-                    }`}>
-                    <span className="text-4xl md:text-5xl grayscale group-hover/step:grayscale-0 transition-all duration-1000 scale-100 group-hover/step:scale-110">{item.icon}</span>
-                    <span className={`absolute -top-3 -right-3 text-[10px] md:text-xs font-black tracking-widest px-4 py-2 rounded-2xl shadow-xl transition-all duration-1000 ${theme === 'dark' ? 'text-lime-400 bg-black border border-lime-400/40' : 'text-white bg-lime-600 border border-lime-400'
-                      }`}>{item.step}</span>
-                  </div>
-                  <h3 className={`font-black mb-4 transition-colors duration-700 uppercase tracking-[0.2em] text-[10px] md:text-sm ${theme === 'dark' ? 'text-white group-hover/step:text-lime-400' : 'text-slate-900 group-hover/step:text-lime-600'
-                    }`}>{item.title}</h3>
-                  <p className={`text-[10px] md:text-xs leading-relaxed max-w-[200px] transition-colors duration-1000 ${theme === 'dark' ? 'text-gray-500 group-hover/step:text-gray-400' : 'text-slate-500 group-hover/step:text-slate-600'
-                    }`}>{item.desc}</p>
-                </div>
-              ))}
-            </div>
-          </section>
 
           {/* Form Section */}
           <section id="custom-form" className="relative group">
@@ -455,12 +418,12 @@ export default function CustomCostumesPage({
             <div className={`glass-morphism rounded-[3.5rem] border transition-all duration-1000 shadow-[0_0_100px_rgba(0,0,0,0.4)] ${theme === 'dark' ? 'border-white/10 overflow-hidden' : 'border-black/5 overflow-hidden'
               }`}>
               {/* Form Header */}
-              <div className={`border-b transition-colors duration-1000 px-8 md:px-16 py-14 flex flex-col md:flex-row justify-between items-center gap-8 ${theme === 'dark' ? 'bg-white/[0.02] border-white/10' : 'bg-black/[0.02] border-black/5'
+              <div className={`border-b transition-colors duration-1000 px-6 md:px-12 py-8 flex flex-col md:flex-row justify-between items-center gap-6 ${theme === 'dark' ? 'bg-white/[0.02] border-white/10' : 'bg-black/[0.02] border-black/5'
                 }`}>
                 <div>
-                  <h2 className={`text-4xl font-black uppercase tracking-tighter transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
-                    }`}>Artisan Request Form</h2>
-                  <p className="text-lime-500 text-[11px] font-black uppercase tracking-[0.4em] mt-3">EMPI Bespoke Design Laboratory</p>
+                  <h2 className={`text-2xl md:text-3xl font-black tracking-tight transition-colors duration-1000 font-playfair ${theme === 'dark' ? 'text-white' : 'text-slate-900'
+                    }`}>Custom Order Form</h2>
+                  <p className="text-lime-500 text-[9px] font-black uppercase tracking-[0.2em] mt-1">Submit your design requirements below</p>
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -492,43 +455,43 @@ export default function CustomCostumesPage({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                         {/* Identity Group */}
                         <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Full Legal Name</label>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Full Name</label>
                           <input
                             name="fullName"
                             value={formData.fullName}
                             onChange={handleInputChange}
                             required
-                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
-                            placeholder="ALEXANDER PIERCE"
+                            placeholder="John Doe"
                           />
                         </div>
                         <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Email Connection</label>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Email Address</label>
                           <input
                             name="email"
                             type="email"
                             value={formData.email}
                             onChange={handleInputChange}
                             required
-                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
-                            placeholder="ALEX@BOUTIQUE.COM"
+                            placeholder="john@example.com"
                           />
                         </div>
                         <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Priority Phone</label>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Phone Number</label>
                           <input
                             name="phone"
                             type="tel"
                             value={formData.phone}
                             onChange={handleInputChange}
                             required
-                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
@@ -536,39 +499,39 @@ export default function CustomCostumesPage({
                           />
                         </div>
                         <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Metropolitan City</label>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">City</label>
                           <input
                             name="city"
                             value={formData.city}
                             onChange={handleInputChange}
                             required
-                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
-                            placeholder="LAGOS"
+                            placeholder="Lagos"
                           />
                         </div>
                         <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Regional State</label>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">State</label>
                           <input
                             name="state"
                             value={formData.state}
                             onChange={handleInputChange}
-                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
-                            placeholder="LAGOS STATE"
+                            placeholder="Lagos State"
                           />
                         </div>
                         <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Postal Code</label>
+                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Postal Code</label>
                           <input
                             name="postalCode"
                             value={formData.postalCode}
                             onChange={handleInputChange}
-                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
@@ -577,16 +540,16 @@ export default function CustomCostumesPage({
                         </div>
                       </div>
                       <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Full Delivery Address</label>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Delivery Address</label>
                         <input
                           name="address"
                           value={formData.address}
                           onChange={handleInputChange}
-                          className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-800 ${theme === 'dark'
+                          className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
                             ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                             : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                             }`}
-                          placeholder="No. 12 ... STREET, LAGOS"
+                          placeholder="No. 12 Street, Lagos"
                         />
                       </div>
 
@@ -606,8 +569,8 @@ export default function CustomCostumesPage({
                           : 'bg-black/5 hover:bg-black/10 text-slate-900 border-black/10'
                           }`}
                       >
-                        <span className="uppercase tracking-[0.3em] text-xs">Proceed to Design Blueprint</span>
-                        <ArrowRight className="h-6 w-6 group-hover:translate-x-3 transition-transform duration-500" />
+                        <span className="uppercase tracking-[0.2em] text-xs font-bold">Next: Design Details</span>
+                        <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform duration-500" />
                       </button>
                     </div>
                   )}
@@ -615,7 +578,7 @@ export default function CustomCostumesPage({
                   {currentStep === 'design' && (
                     <div className="space-y-16 animate-in fade-in slide-in-from-right-8 duration-1000">
                       <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Creative Vision & Technical Blueprint</label>
+                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Describe Your Vision</label>
                         <textarea
                           name="description"
                           value={formData.description}
@@ -816,23 +779,6 @@ export default function CustomCostumesPage({
             <div className="absolute top-1/2 left-1/2 w-4 h-4 bg-lime-500/5 rounded-full animate-float blur-lg" style={{ animationDelay: '-5s' }} />
           </div>
 
-          {/* Concierge Details */}
-          <section className={`grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-12 pb-24 border-t pt-24 px-8 transition-colors duration-1000 ${theme === 'dark' ? 'border-white/5' : 'border-black/5'
-            }`}>
-            {[
-              { t: "Elite Craftsmanship", d: "Every bespoke unit is constructed by EMPI master tailors with rigorous quality protocols and attention to every stitch." },
-              { t: "Direct Consultation", d: "Upon transmission of your blueprint, our design team will provide a comprehensive feasibility study and cost analysis." },
-              { t: "Global Logistics", d: "Insured, tracked, and secure delivery to your doorstep. We leverage premium courier partners for global transit." }
-            ].map((item, i) => (
-              <div key={i} className="space-y-6 group/item">
-                <div className="h-[1px] w-12 bg-lime-500 shadow-[0_0_15px_rgba(132,204,22,1)] group-hover/item:w-20 transition-all duration-700" />
-                <h3 className={`text-[11px] font-black uppercase tracking-[0.4em] transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
-                  }`}>{item.t}</h3>
-                <p className={`text-[11px] leading-relaxed font-bold uppercase tracking-widest transition-colors duration-1000 ${theme === 'dark' ? 'text-gray-600' : 'text-slate-500'
-                  }`}>{item.d}</p>
-              </div>
-            ))}
-          </section>
         </div>
       </main>
 

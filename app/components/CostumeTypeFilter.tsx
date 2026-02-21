@@ -18,8 +18,8 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
   const [selectedSubfilter, setSelectedSubfilter] = useState<string | null>(null);
   const [showSubfilters, setShowSubfilters] = useState(false);
 
-  // Only show filter for adult and kids categories
-  if (category !== "adults" && category !== "kids") {
+  // Only show filter for adult, kids and all categories
+  if (category !== "adults" && category !== "kids" && category !== "all") {
     return null;
   }
 
@@ -67,32 +67,34 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
       <div className="mb-6 text-center md:text-left">
         <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-4">Filter by Types</p>
 
-        {/* Mobile - Text links */}
-        <div className="md:hidden flex flex-wrap gap-3">
-          <button
-            onClick={() => handleTypeSelect(null)}
-            className={`text-sm font-semibold transition-colors ${selectedType === null
-              ? "text-lime-600 border-b-2 border-lime-600"
-              : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-              }`}
-          >
-            All
-          </button>
-          {typesToShow.map((type) => (
+        {/* Premium Mobile Style Pills */}
+        <div className="md:hidden -mx-6 mb-2">
+          <div className="flex overflow-x-auto scrollbar-hide gap-3 px-6 py-2 no-scrollbar">
             <button
-              key={type}
-              onClick={() => handleTypeSelect(type)}
-              className={`text-sm font-semibold transition-colors flex items-center gap-1 ${selectedType === type
-                ? "text-lime-600 border-b-2 border-lime-600"
-                : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
+              onClick={() => handleTypeSelect(null)}
+              className={`flex-none px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${selectedType === null
+                ? "bg-slate-900 dark:bg-lime-500 text-white border-transparent"
+                : "bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10"
                 }`}
             >
-              {type}
-              {type === "Traditional Africa" && selectedType === type && (
-                <ChevronDown className="h-4 w-4" />
-              )}
+              All Styles
             </button>
-          ))}
+            {typesToShow.map((type) => (
+              <button
+                key={type}
+                onClick={() => handleTypeSelect(type)}
+                className={`flex-none px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border flex items-center gap-2 ${selectedType === type
+                  ? "bg-slate-900 dark:bg-lime-500 text-white border-transparent"
+                  : "bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10"
+                  }`}
+              >
+                {type}
+                {type === "Traditional Africa" && selectedType === type && (
+                  <ChevronDown className="h-4 w-4" />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Desktop - Text links */}

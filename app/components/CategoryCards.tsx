@@ -20,9 +20,9 @@ export function CategoryCards({ currentCategory, onCategoryChange }: CategoryCar
       borderColor: "border-blue-200"
     },
     {
-      id: "kids",
-      label: "Kids",
-      icon: "🧒",
+      id: "all",
+      label: "Shop",
+      icon: "🛍️",
       color: "from-rose-600 to-pink-600",
       lightBg: "from-rose-50 to-pink-50",
       borderColor: "border-rose-200"
@@ -42,8 +42,10 @@ export function CategoryCards({ currentCategory, onCategoryChange }: CategoryCar
     let href = "/";
     if (categoryId === "custom") {
       href = "/custom-costumes";
-    } else if (categoryId === "kids") {
-      href = "/kids";
+    } else if (categoryId === "all") {
+      href = "/shop";
+    } else if (categoryId === "adults") {
+      href = "/shop?category=adults";
     }
     router.push(href);
   };
@@ -53,19 +55,18 @@ export function CategoryCards({ currentCategory, onCategoryChange }: CategoryCar
       <div className="flex gap-2 justify-between items-stretch">
         {categories.map((category) => {
           const isActive = currentCategory === category.id;
-          
+
           return (
             <button
               key={category.id}
               onClick={() => handleCategoryClick(category.id)}
-              className={`flex-1 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-visible group cursor-pointer relative border-2 ${
-                isActive
-                  ? `bg-gradient-to-br ${category.color} text-white shadow-lg border-transparent`
-                  : `bg-gradient-to-br ${category.lightBg} text-gray-800 hover:shadow-md ${category.borderColor}`
-              }`}
+              className={`flex-1 rounded-xl transition-all duration-300 transform hover:scale-105 active:scale-95 overflow-visible group cursor-pointer relative border-2 ${isActive
+                ? `bg-gradient-to-br ${category.color} text-white shadow-lg border-transparent`
+                : `bg-gradient-to-br ${category.lightBg} text-gray-800 hover:shadow-md ${category.borderColor}`
+                }`}
             >
               <div className="flex flex-row items-center justify-center gap-2 px-3 py-2" style={{ minHeight: "50px" }}>
-                <div 
+                <div
                   style={{
                     fontSize: "24px",
                     lineHeight: "1",

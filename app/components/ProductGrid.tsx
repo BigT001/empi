@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { products, CURRENCY_RATES } from "./constants";
 import { ProductCard } from "./ProductCard";
+import { motion, useScroll, useVelocity, useTransform, useSpring } from "framer-motion";
 import { useProducts } from "@/lib/useProducts";
 import { CostumeTypeFilter } from "./CostumeTypeFilter";
 
@@ -38,9 +39,12 @@ interface ProductGridProps {
   mode?: "buy" | "rent";
   onModeChange?: (mode: "buy" | "rent") => void;
   searchQuery?: string;
+  limit?: number;
+  hideHeader?: boolean;
+  hideFilters?: boolean;
 }
 
-export function ProductGrid({ currency, category, initialProducts, mode, onModeChange, searchQuery = "" }: ProductGridProps) {
+export function ProductGrid({ currency, category, initialProducts, mode, onModeChange, searchQuery = "", limit, hideHeader = false, hideFilters = false }: ProductGridProps) {
   const { products: cachedProducts, loading, error, pagination, loadMore } = useProducts(category);
   const [dbProducts, setDbProducts] = useState<Product[]>(initialProducts ?? (cachedProducts as Product[]));
   const [showError, setShowError] = useState(false);
@@ -125,38 +129,44 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
+  if (limit) {
+    filteredProducts = filteredProducts.slice(0, limit);
+  }
+
   // Get unique costume types for the filter
   // Always show all costume types, regardless of whether products exist
   const COSTUME_TYPES = ["Angel", "Carnival", "Western", "Traditional Africa", "Cosplay", "Other"];
   const availableCostumeTypes = COSTUME_TYPES;
 
   return (
-    <section ref={productGridRef} className="flex-grow mx-auto w-full max-w-7xl px-6 py-12 animate-in fade-in duration-500" data-products-section>
+    <section ref={productGridRef} className="flex-grow mx-auto w-full max-w-7xl px-2 md:px-6 py-12 animate-in fade-in duration-500" data-products-section>
       {/* Products Grid Header */}
-      <div className={`animate-in slide-in-from-top-4 fade-in duration-500 ${category === "adults" ? "mb-0 md:mb-8" : "mb-8"}`}>
-        <div className="flex items-start justify-between gap-4 md:justify-start">
-          <div className="flex-1 text-center md:text-left">
-            <h1 className={`text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-3 ${category === "adults" ? "hidden md:block" : ""}`}>
-              {category === "kids" ? "Kids' Collection" : category === "adults" ? "Adult Collection" : "All Costumes"}
-            </h1>
-            {searchQuery && (
-              <p className="text-lime-600 font-bold text-sm md:text-base mb-2">
-                {filteredProducts.length} costume{filteredProducts.length !== 1 ? 's' : ''} found
+      {!hideHeader && (
+        <div className={`animate-in slide-in-from-top-4 fade-in duration-500 ${category === "adults" ? "mb-0 md:mb-8" : "mb-8"}`}>
+          <div className="flex items-start justify-between gap-4 md:justify-start">
+            <div className="flex-1 text-center md:text-left">
+              <h1 className={`text-3xl md:text-4xl font-black text-gray-900 dark:text-white mb-3 ${category === "adults" ? "hidden md:block" : ""}`}>
+                {category === "kids" ? "EMPI Shop" : category === "adults" ? "Adult Collection" : "All Costumes"}
+              </h1>
+              {searchQuery && (
+                <p className="text-lime-600 font-bold text-sm md:text-base mb-2">
+                  {filteredProducts.length} costume{filteredProducts.length !== 1 ? 's' : ''} found
+                </p>
+              )}
+              <p className={`text-gray-700 dark:text-gray-400 font-medium text-sm md:text-base ${category === "adults" ? "hidden md:block" : ""}`}>
+                {category === "kids"
+                  ? "Our premier shop collection featuring hand-crafted masterpieces for all ages. Quality and vision in every thread."
+                  : category === "adults"
+                    ? "Curated selection of premium costumes for every style."
+                    : "Explore our complete range of beautifully crafted costumes for all ages and occasions."}
               </p>
-            )}
-            <p className={`text-gray-700 dark:text-gray-400 font-medium text-sm md:text-base ${category === "adults" ? "hidden md:block" : ""}`}>
-              {category === "kids"
-                ? "Magical and enchanting costumes designed for kids. From superheroes to fairy tales, every costume tells a story."
-                : category === "adults"
-                  ? "Curated selection of premium costumes for every style."
-                  : "Explore our complete range of beautifully crafted costumes for all ages and occasions."}
-            </p>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Costume Type Filter - Only show on Adults page */}
-      {category === "adults" && (
+      {/* Costume Type Filter - Show on all collection pages */}
+      {!hideFilters && (category === "adults" || category === "kids" || category === "all") && (
         <CostumeTypeFilter
           category={category}
           onTypeChange={setSelectedCostumeType}
@@ -200,38 +210,65 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
 
       {/* Products Masonry Layout */}
       {filteredProducts.length > 0 && (
-        <div>
+        <div className="relative">
           {/* CSS Columns Masonry - Natural card flow, no fixed heights */}
-          <div className="columns-1 sm:columns-2 lg:columns-3 xl:columns-4 gap-4 space-y-4">
+          <div className="columns-2 lg:columns-3 xl:columns-4 gap-2 md:gap-4 space-y-2 md:space-y-4">
             {filteredProducts.map((product, idx) => (
-              <div
+              <ProductGridItem
                 key={product.id || (product as any)._id || `product-${idx}`}
-                className="break-inside-avoid animate-in fade-in slide-in-from-bottom-4 duration-500 fill-mode-both"
-                style={{ animationDelay: `${idx * 50}ms` }}
-              >
-                <ProductCard
-                  product={product}
-                  formattedPrice={formatPrice(product.sellPrice)}
-                  currency={currency}
-                />
-              </div>
+                product={product}
+                idx={idx}
+                formatPrice={formatPrice}
+                currency={currency}
+              />
             ))}
           </div>
-
-          {/* Load More Button */}
-          {pagination?.hasMore && (
-            <div className="mt-12 flex justify-center">
-              <button
-                onClick={loadMore}
-                disabled={loading}
-                className="px-8 py-3 bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white font-semibold rounded-lg transition"
-              >
-                {loading ? "Loading..." : "Load More Products"}
-              </button>
-            </div>
-          )}
         </div>
       )}
     </section>
   );
 }
+
+// Separate component for each item to handle scroll velocity animation individually
+function ProductGridItem({ product, idx, formatPrice, currency }: {
+  product: Product,
+  idx: number,
+  formatPrice: (p: number) => string,
+  currency: string
+}) {
+  const { scrollY } = useScroll();
+  const scrollVelocity = useVelocity(scrollY);
+
+  // Create a spring-smoothed velocity value (higher values mean more 'stretchy' skew)
+  const smoothVelocity = useSpring(scrollVelocity, {
+    damping: 50,
+    stiffness: 400
+  });
+
+  // Map velocity to skew and scale values
+  // velocity ranges typically from -2000 to 2000 pixels/sec during scroll
+  const skew = useTransform(smoothVelocity, [-3000, 3000], [-10, 10]);
+  const scale = useTransform(smoothVelocity, [-3000, 3000], [0.95, 1.05]);
+
+  return (
+    <motion.div
+      className="break-inside-avoid"
+      style={{ skewY: skew, scale }}
+      initial={{ opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-50px" }}
+      transition={{
+        duration: 0.8,
+        delay: (idx % 4) * 0.1,
+        ease: [0.22, 1, 0.36, 1]
+      }}
+    >
+      <ProductCard
+        product={product}
+        formattedPrice={formatPrice(product.sellPrice)}
+        currency={currency}
+      />
+    </motion.div>
+  );
+}
+
