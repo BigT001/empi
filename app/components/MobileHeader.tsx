@@ -141,7 +141,7 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                 alt="EMPI Logo"
                 width={120}
                 height={120}
-                className="h-16 w-auto transition-transform group-hover:scale-105 duration-500 dark:invert"
+                className="h-16 w-auto transition-transform group-hover:scale-105 duration-500"
                 priority
               />
             </Link>
@@ -273,34 +273,34 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
               <Link
                 href="/auth"
                 onClick={() => setShowMobileMenu(false)}
-                className="flex items-center justify-center gap-3 w-full p-6 rounded-2xl bg-slate-900 dark:bg-lime-600 text-white font-black text-base shadow-[0_20px_40px_rgba(0,0,0,0.1)] dark:shadow-lime-500/20 active:scale-95 transition-all"
+                className="flex items-center justify-center gap-3 w-full p-5 rounded-2xl bg-slate-900 dark:bg-lime-600 text-white font-black text-sm shadow-[0_20px_40px_rgba(0,0,0,0.1)] dark:shadow-lime-500/20 active:scale-95 transition-all"
               >
                 <User className="h-5 w-5" />
-                <span>Sign In / Sign Up</span>
+                <span>My Account</span>
               </Link>
             )}
           </div>
 
           {/* Footer Sign-off & Mode Toggle */}
-          <div className="pt-8 border-t border-gray-100 dark:border-white/5 flex flex-col items-center gap-8">
+          <div className="pt-4 border-t border-gray-100 dark:border-white/5 flex flex-col items-center gap-4">
             <button
               onClick={toggleTheme}
-              className="flex items-center gap-4 px-8 py-4 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white transition-all active:scale-95 w-full justify-between group"
+              className="flex items-center gap-3 px-5 py-2.5 rounded-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white transition-all active:scale-95 w-full justify-between group"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
                   {theme === "dark" ? (
-                    <Sun className="h-5 w-5 text-lime-500" />
+                    <Sun className="h-4 w-4 text-lime-500" />
                   ) : (
-                    <Moon className="h-5 w-5 text-slate-900" />
+                    <Moon className="h-4 w-4 text-slate-900" />
                   )}
                 </div>
-                <span className="text-sm font-black uppercase tracking-widest">
+                <span className="text-[10px] font-black uppercase tracking-widest">
                   {theme === "dark" ? "Daylight Mode" : "Moonlight Mode"}
                 </span>
               </div>
-              <div className={`w-12 h-6 rounded-full relative transition-colors duration-300 ${theme === 'dark' ? 'bg-lime-500' : 'bg-slate-300'}`}>
-                <div className={`absolute top-1 w-4 h-4 rounded-full bg-white transition-all duration-300 ${theme === 'dark' ? 'left-7' : 'left-1'}`} />
+              <div className={`w-10 h-5 rounded-full relative transition-colors duration-300 ${theme === 'dark' ? 'bg-lime-500' : 'bg-slate-300'}`}>
+                <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all duration-300 ${theme === 'dark' ? 'left-6' : 'left-1'}`} />
               </div>
             </button>
 

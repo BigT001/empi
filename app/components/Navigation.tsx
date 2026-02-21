@@ -115,7 +115,7 @@ export function Navigation({
               alt="EMPI Logo"
               width={140}
               height={140}
-              className="h-32 md:h-40 w-auto transition-transform group-hover:scale-105 duration-500 dark:invert"
+              className="h-32 md:h-40 w-auto transition-transform group-hover:scale-105 duration-500"
               priority
             />
           </Link>

@@ -23,7 +23,7 @@ export default function AuthPage() {
           </Link>
         </div>
 
-        <main className="flex-1 flex items-center justify-center px-6 pb-12 lg:px-20">
+        <main className="flex-1 flex items-center justify-center px-4 md:px-6 pb-12 lg:px-20">
           <div className="w-full max-w-md">
             <AuthForm />
           </div>
@@ -31,15 +31,14 @@ export default function AuthPage() {
       </div>
 
       {/* Right Side: Premium Branding (Desktop/Tablet Only) */}
-      <div className="hidden lg:flex flex-1 relative items-center justify-center overflow-hidden">
+      <div className="hidden md:flex flex-1 relative items-center justify-center overflow-hidden">
         {/* Background Image */}
         <div className="absolute inset-0 z-0">
-          <Image
+          <img
             src="/empiimages/IMG_0793.JPG"
             alt="EMPI Artisan Craftsmanship"
-            fill
-            className="object-cover opacity-90"
-            priority
+            className="w-full h-full object-cover opacity-90"
+            loading="eager"
           />
           {/* Gradients for elite feel */}
           <div className="absolute inset-0 bg-gradient-to-r from-white dark:from-[#0a0a0a] via-transparent to-transparent z-10" />

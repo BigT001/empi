@@ -26,12 +26,11 @@ export function HeroSection() {
           style={{ y: yBg }}
           className="absolute inset-0 scale-110"
         >
-          <Image
+          <img
             src="/empiimages/IMG_1217.JPG"
             alt="Hero background"
-            fill
-            className="object-cover object-top opacity-60"
-            priority
+            className="w-full h-full object-cover object-top opacity-60"
+            loading="eager"
           />
         </motion.div>
         {/* Cinematic Overlays for better text readability and premium feel */}

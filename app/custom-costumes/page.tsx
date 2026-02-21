@@ -465,7 +465,7 @@ export default function CustomCostumesPage({
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
-                            placeholder="John Doe"
+                            placeholder="Your full name"
                           />
                         </div>
                         <div className="space-y-4">
@@ -480,7 +480,7 @@ export default function CustomCostumesPage({
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
-                            placeholder="john@example.com"
+                            placeholder="Your email address"
                           />
                         </div>
                         <div className="space-y-4">

@@ -101,6 +101,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 router.push("/checkout");
               } else if (onSuccessfulAuth) {
                 onSuccessfulAuth(buyer);
+              } else {
+                router.push("/dashboard");
               }
             }
           }
@@ -177,7 +179,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           } else if (onSuccessfulAuth) {
             onSuccessfulAuth(buyerProfile);
           } else {
-            router.push("/");
+            router.push("/dashboard");
           }
         }, 1500);
       } else {
@@ -243,7 +245,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
           } else if (onSuccessfulAuth) {
             onSuccessfulAuth(buyerProfile);
           } else {
-            router.push("/");
+            router.push("/dashboard");
           }
         }, 1500);
       }
@@ -257,7 +259,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
 
   return (
     <div
-      className="bg-white/80 dark:bg-black/40 backdrop-blur-xl rounded-3xl border border-gray-100 dark:border-white/5 p-10 w-full max-w-md transition-all duration-300"
+      className="bg-white/80 dark:bg-black/40 backdrop-blur-xl rounded-3xl border border-gray-100 dark:border-white/5 p-4 md:p-10 w-full max-w-md transition-all duration-300"
       onClick={(e) => e.stopPropagation()}
     >
       {/* Tabs */}
@@ -369,7 +371,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 name={loginType}
                 value={loginType === "email" ? formData.email : formData.phone}
                 onChange={handleChange}
-                placeholder={loginType === "email" ? "you@example.com" : "+234 801 234 5678"}
+                placeholder={loginType === "email" ? "Email Address" : "Phone Number"}
                 className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
               />
             </div>
@@ -385,7 +387,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="••••••••"
+                  placeholder="Password"
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs text-gray-900 dark:text-white outline-none"
                 />
                 <button
@@ -415,7 +417,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   name="firstName"
                   value={formData.firstName}
                   onChange={handleChange}
-                  placeholder="John"
+                  placeholder="First Name"
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
                 />
               </div>
@@ -429,7 +431,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleChange}
-                  placeholder="Doe"
+                  placeholder="Last Name"
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
                 />
               </div>
@@ -445,7 +447,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
-                placeholder="you@example.com"
+                placeholder="Email Address"
                 className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
               />
             </div>
@@ -460,7 +462,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="+234 801 234 5678"
+                placeholder="Phone Number"
                 className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
               />
             </div>
@@ -476,7 +478,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="••••••••"
+                  placeholder="Create Password"
                   className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs text-gray-900 dark:text-white outline-none"
                 />
                 <button
