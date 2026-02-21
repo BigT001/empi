@@ -197,13 +197,13 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
           <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] bg-green-500/10 dark:bg-green-500/5 rounded-full blur-[100px]" />
         </div>
 
-        <div className="relative h-full flex flex-col pt-24 px-6 pb-10 space-y-8 overflow-y-auto">
+        <div className="relative h-full flex flex-col pt-20 px-4 pb-8 space-y-6 overflow-y-auto">
           {/* Navigation Section */}
           <div>
-            <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-4 pl-1">
+            <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-3 pl-1">
               Costume Collections
             </p>
-            <nav className="grid grid-cols-1 gap-4">
+            <nav className="grid grid-cols-1 gap-3">
               {[
                 { id: 'home', label: 'Home', href: '/', icon: '🏠' },
                 { id: 'shop', label: 'Shop', href: '/shop', icon: '🛍️' },
@@ -217,11 +217,11 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                     setShowMobileMenu(false);
                     if (item.id === 'home' && onCategoryChange) onCategoryChange('adults');
                   }}
-                  className={`flex items-center justify-between px-6 py-5 rounded-2xl text-lg font-black transition-all transform active:scale-[0.98] ${showMobileMenu ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0'} bg-gray-50 dark:bg-white/5 border border-transparent hover:border-lime-500/30 shadow-sm`}
+                  className={`flex items-center justify-between px-5 py-4 rounded-2xl text-base font-black transition-all transform active:scale-[0.98] ${showMobileMenu ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0'} bg-gray-50 dark:bg-white/5 border border-transparent hover:border-lime-500/30 shadow-sm`}
                   style={{ transitionDelay: `${idx * 100}ms` }}
                 >
                   <div className="flex items-center gap-4">
-                    <span className="text-2xl">{item.icon}</span>
+                    <span className="text-xl">{item.icon}</span>
                     <span className={(pathname === item.href)
                       ? 'text-lime-600 dark:text-lime-400'
                       : 'text-gray-900 dark:text-gray-100'
@@ -230,7 +230,7 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                     </span>
                   </div>
                   {(pathname === item.href) && (
-                    <div className="w-2 h-2 rounded-full bg-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.6)]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-lime-500 shadow-[0_0_15px_rgba(132,204,22,0.6)]" />
                   )}
                 </button>
               ))}
@@ -238,8 +238,8 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
           </div>
 
           {/* User Experience Section */}
-          <div className={`flex-1 space-y-4 pt-6 border-t border-gray-100 dark:border-white/5 transition-all duration-700 delay-500 ${showMobileMenu ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
-            <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-4 pl-1">
+          <div className={`flex-1 space-y-3 pt-5 border-t border-gray-100 dark:border-white/5 transition-all duration-700 delay-500 ${showMobileMenu ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'}`}>
+            <p className="text-[10px] uppercase font-black text-gray-400 dark:text-gray-500 tracking-[0.2em] mb-3 pl-1">
               Your Experience
             </p>
             {buyer ? (
@@ -247,14 +247,14 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                 <Link
                   href="/dashboard"
                   onClick={() => setShowMobileMenu(false)}
-                  className="flex items-center gap-4 p-5 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-900 dark:text-white"
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-900 dark:text-white"
                 >
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-lime-500 to-green-600 flex items-center justify-center text-white shadow-lg shadow-lime-500/20">
-                    <User className="h-6 w-6" />
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-lime-500 to-green-600 flex items-center justify-center text-white shadow-lg shadow-lime-500/20">
+                    <User className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-0.5">Welcome back</p>
-                    <p className="text-base font-black">{buyer.fullName}</p>
+                    <p className="text-[10px] text-gray-500 dark:text-gray-400 font-bold uppercase tracking-wider mb-0.5">Welcome back</p>
+                    <p className="text-sm font-black">{buyer.fullName}</p>
                   </div>
                 </Link>
                 <button
@@ -263,9 +263,9 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                     await logout();
                     router.push('/');
                   }}
-                  className="w-full flex items-center gap-4 p-5 rounded-2xl text-red-600 dark:text-red-400 font-black text-sm bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/10"
+                  className="w-full flex items-center gap-4 p-4 rounded-2xl text-red-600 dark:text-red-400 font-black text-xs bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/10"
                 >
-                  <LogOut className="h-5 w-5" />
+                  <LogOut className="h-4 w-4" />
                   <span>Logout from Account</span>
                 </button>
               </div>
@@ -273,9 +273,9 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
               <Link
                 href="/auth"
                 onClick={() => setShowMobileMenu(false)}
-                className="flex items-center justify-center gap-3 w-full p-5 rounded-2xl bg-slate-900 dark:bg-lime-600 text-white font-black text-sm shadow-[0_20px_40px_rgba(0,0,0,0.1)] dark:shadow-lime-500/20 active:scale-95 transition-all"
+                className="flex items-center justify-center gap-3 w-full p-4 rounded-2xl bg-slate-900 dark:bg-lime-600 text-white font-black text-xs shadow-[0_20px_40px_rgba(0,0,0,0.1)] dark:shadow-lime-500/20 active:scale-95 transition-all"
               >
-                <User className="h-5 w-5" />
+                <User className="h-4 w-4" />
                 <span>My Account</span>
               </Link>
             )}

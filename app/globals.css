@@ -163,19 +163,16 @@
     font-size: 16px;
   }
 
-  /* Prevent zoom on input focus for iOS and ensure black text for inputs */
   input,
   textarea,
   select {
     font-size: 16px;
-    color: black;
-    @apply outline-none;
+    @apply text-foreground bg-transparent outline-none transition-colors border-transparent;
   }
 
   input::placeholder,
   textarea::placeholder {
-    color: #6b7280;
-    /* text-gray-500 equivalent */
+    @apply text-gray-400 dark:text-gray-500;
   }
 
   /* Disable zoom on user interaction */

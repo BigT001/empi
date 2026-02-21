@@ -10,9 +10,24 @@ import { KineticScroll } from "./KineticScroll";
 
 export function HeroSection() {
   const [isLoaded, setIsLoaded] = useState(false);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+
+  const heroImages = [
+    "/empiimages/IMG_1217.JPG",
+    "/empiimages/IMG_0793.JPG",
+    "/empiimages/IMG_1216.JPG",
+    "/empiimages/IMG_9345.JPG",
+    "/empiimages/IMG_0732.JPG"
+  ];
 
   useEffect(() => {
     setIsLoaded(true);
+
+    const interval = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
+    }, 5 * 60 * 1000); // 5 minutes
+
+    return () => clearInterval(interval);
   }, []);
 
   const { scrollY } = useScroll();
@@ -23,11 +38,16 @@ export function HeroSection() {
       {/* Background Image - Single high-impact premium image */}
       <div className="absolute inset-0 z-0">
         <motion.div
+          key={heroImages[currentImageIndex]}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 2 }}
           style={{ y: yBg }}
           className="absolute inset-0 scale-110"
         >
           <img
-            src="/empiimages/IMG_1217.JPG"
+            src={heroImages[currentImageIndex]}
             alt="Hero background"
             className="w-full h-full object-cover object-top opacity-60"
             loading="eager"
@@ -39,17 +59,17 @@ export function HeroSection() {
       </div>
 
       {/* Main Content Container - Centered and Minimal */}
-      <div className="relative z-30 container mx-auto px-6 text-center">
+      <div className="relative z-30 container mx-auto px-6 text-center pt-32 md:pt-0">
         <KineticScroll>
           <div className="max-w-4xl mx-auto">
-            {/* Accent Label */}
+            {/* Accent Label - Visible on all devices */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
-              className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-lime-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] mb-10"
+              className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-lime-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] mb-6 md:mb-10"
             >
-              <Sparkles className="w-4 h-4 animate-pulse" />
+              <Sparkles className="w-3 h-3 md:w-4 md:h-4 animate-pulse" />
               Lagos&apos;s Premier Costume Maker
             </motion.div>
 
@@ -58,7 +78,7 @@ export function HeroSection() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.2 }}
-              className="text-5xl md:text-8xl lg:text-[10rem] font-black text-white leading-[0.9] mb-12 font-playfair"
+              className="text-4xl md:text-8xl lg:text-[10rem] font-black text-white leading-[0.9] mb-8 md:mb-12 font-playfair"
             >
               Vision <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-lime-600 italic">
@@ -66,36 +86,36 @@ export function HeroSection() {
               </span>
             </motion.h1>
 
-            {/* Description - Brief and impactful */}
+            {/* Description - Hidden on mobile for minimalism */}
             <motion.p
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1, delay: 0.4 }}
-              className="text-lg md:text-2xl text-gray-300 max-w-2xl mx-auto mb-16 leading-relaxed font-medium"
+              className="hidden md:block text-lg md:text-2xl text-gray-300 max-w-2xl mx-auto mb-16 leading-relaxed font-medium"
             >
               Crafting premium bespoke experiences and elite costume rentals for those who demand excellence in every detail.
             </motion.p>
 
-            {/* Single Focused Action */}
+            {/* Actions */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8, delay: 0.6 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-6"
+              className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6"
             >
               <Link
                 href="/shop"
-                className="group relative px-12 py-6 bg-lime-500 hover:bg-lime-400 text-slate-950 font-black rounded-2xl overflow-hidden transition-all duration-500 shadow-[0_20px_40px_rgba(132,204,22,0.3)] hover:shadow-[0_30px_60px_rgba(132,204,22,0.4)] flex items-center gap-3 active:scale-95"
+                className="w-full sm:w-auto group relative px-8 md:px-12 py-4 md:py-6 bg-lime-500 hover:bg-lime-400 text-slate-950 font-black rounded-2xl overflow-hidden transition-all duration-500 shadow-[0_20px_40px_rgba(132,204,22,0.3)] hover:shadow-[0_30px_60px_rgba(132,204,22,0.4)] flex items-center justify-center gap-3 active:scale-95"
               >
-                <span className="relative z-10">Explore the Gallery</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+                <span className="relative z-10 text-xs md:text-base">Explore Gallery</span>
+                <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-2 transition-transform" />
               </Link>
 
               <Link
                 href="/custom-costumes"
-                className="px-12 py-6 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black rounded-2xl backdrop-blur-xl transition-all duration-500 flex items-center gap-3 active:scale-95"
+                className="w-full sm:w-auto px-8 md:px-12 py-4 md:py-6 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black rounded-2xl backdrop-blur-xl transition-all duration-500 flex items-center justify-center gap-3 active:scale-95 text-xs md:text-base"
               >
-                Start Custom Design
+                Custom Design
               </Link>
             </motion.div>
           </div>

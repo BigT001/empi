@@ -124,12 +124,12 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const mainImage = product.imageUrls?.[currentImageIndex] ?? product.imageUrl;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-lime-50">
+    <div className="min-h-screen bg-white dark:bg-[#0a0a0a] transition-colors duration-700">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-transparent backdrop-blur-md">
+      <header className="sticky top-0 z-40 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-gray-100 dark:border-white/5">
         <div className="mx-auto max-w-7xl px-4 md:px-6 py-4 flex items-center justify-between">
-          <Link href="/product" className="flex items-center gap-2 text-gray-700 hover:text-lime-600 transition font-semibold text-sm md:text-base group">
-            <ArrowLeft className="h-5 w-5 group-hover:-translate-x-1 transition" /> Back to Products
+          <Link href="/product" className="flex items-center gap-2 text-gray-500 dark:text-gray-400 hover:text-lime-600 dark:hover:text-lime-400 transition font-bold text-xs uppercase tracking-widest group">
+            <ArrowLeft className="h-4 w-4 group-hover:-translate-x-1 transition" /> Back to Products
           </Link>
           <button onClick={() => router.push('/cart')} className="flex items-center gap-2 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white px-4 py-2.5 rounded-xl font-semibold transition shadow-lg hover:shadow-xl relative">
             <ShoppingCart className="h-5 w-5" />
@@ -147,9 +147,9 @@ export default function ProductDetailClient({ product, allProducts, currency = "
       <main className="mx-auto max-w-7xl px-4 md:px-6 py-8 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16">
           {/* Image Gallery */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-6">
             {/* Main Image */}
-            <div className="relative bg-gradient-to-br from-white to-gray-50 rounded-2xl overflow-hidden aspect-[4/5] shadow-xl border border-gray-200 hover:shadow-2xl transition duration-300">
+            <div className="relative bg-gray-50 dark:bg-white/5 rounded-3xl overflow-hidden aspect-[4/5] border border-gray-100 dark:border-white/5 shadow-2xl transition-all duration-500 overflow-hidden">
               <Image
                 src={mainImage}
                 alt={product.name}
@@ -170,17 +170,17 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 <>
                   <button
                     onClick={prevImage}
-                    className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white p-3 rounded-full z-10 shadow-xl transition hover:scale-110 active:scale-95"
+                    className="absolute left-6 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-black/90 backdrop-blur-md p-4 rounded-full z-10 shadow-xl transition-all hover:scale-110 active:scale-95 group/btn"
                     title="Previous image"
                   >
-                    <ChevronLeft className="h-6 w-6 text-gray-800" />
+                    <ChevronLeft className="h-6 w-6 text-gray-900 dark:text-white group-hover/btn:text-lime-600 dark:group-hover/btn:text-lime-400" />
                   </button>
                   <button
                     onClick={nextImage}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/95 hover:bg-white p-3 rounded-full z-10 shadow-xl transition hover:scale-110 active:scale-95"
+                    className="absolute right-6 top-1/2 -translate-y-1/2 bg-white/90 dark:bg-black/90 backdrop-blur-md p-4 rounded-full z-10 shadow-xl transition-all hover:scale-110 active:scale-95 group/btn"
                     title="Next image"
                   >
-                    <ChevronRight className="h-6 w-6 text-gray-800" />
+                    <ChevronRight className="h-6 w-6 text-gray-900 dark:text-white group-hover/btn:text-lime-600 dark:group-hover/btn:text-lime-400" />
                   </button>
                 </>
               )}
@@ -193,9 +193,9 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                   <button
                     key={idx}
                     onClick={() => setCurrentImageIndex(idx)}
-                    className={`relative aspect-square rounded-xl overflow-hidden border-2 transition cursor-pointer transform hover:scale-105 ${idx === currentImageIndex
-                      ? 'border-lime-600 ring-2 ring-lime-300 shadow-lg'
-                      : 'border-gray-300 hover:border-gray-400 shadow-md'
+                    className={`relative aspect-square rounded-2xl overflow-hidden border transition-all duration-300 cursor-pointer transform hover:scale-105 ${idx === currentImageIndex
+                      ? 'border-lime-500 ring-4 ring-lime-500/20 shadow-lg'
+                      : 'border-gray-100 dark:border-white/10 hover:border-lime-500/50'
                       }`}
                   >
                     <Image
@@ -216,64 +216,64 @@ export default function ProductDetailClient({ product, allProducts, currency = "
           <div className="flex flex-col justify-between">
             {/* Product Info */}
             <div>
-              <div className="mb-4 flex items-center gap-2">
-                <span className="inline-block text-xs font-bold uppercase tracking-widest px-3 py-1.5 bg-gradient-to-r from-lime-100 to-green-100 text-lime-800 rounded-full border border-lime-300">
-                  {product.category === 'kids' ? '👶 Kids Costume' : '👔 Adults Costume'}
+              <div className="mb-6 flex items-center gap-2">
+                <span className="inline-block text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 rounded-full border border-gray-100 dark:border-white/5">
+                  {product.category === 'kids' ? '👶 Kids Boutique' : '👔 Elite Adults'}
                 </span>
               </div>
 
-              <h1 className="text-4xl md:text-5xl font-black text-gray-900 mb-4 leading-tight">{product.name}</h1>
+              <h1 className="text-5xl md:text-7xl font-black text-gray-900 dark:text-white mb-6 leading-tight font-playfair tracking-tight">{product.name}</h1>
 
               {/* Buy/Rent Mode Toggle */}
               <div className="flex gap-3 mb-6">
                 {product.availableForBuy !== false && (
                   <button
                     onClick={() => setMode("buy")}
-                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${mode === "buy"
-                      ? "bg-gradient-to-r from-lime-600 to-green-600 text-white shadow-lg hover:shadow-xl scale-105"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    className={`flex-1 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all transform ${mode === "buy"
+                      ? "bg-lime-600 text-white shadow-[0_10px_20px_rgba(101,163,13,0.3)] scale-105"
+                      : "bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-white/10"
                       }`}
                   >
-                    💳 Buy
+                    💳 Purchase
                   </button>
                 )}
                 {product.availableForRent !== false && product.rentPrice > 0 && (
                   <button
                     onClick={() => setMode("rent")}
-                    className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm md:text-base transition-all transform ${mode === "rent"
-                      ? "bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-lg hover:shadow-xl scale-105"
-                      : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    className={`flex-1 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all transform ${mode === "rent"
+                      ? "bg-blue-600 text-white shadow-[0_10px_20px_rgba(37,99,235,0.3)] scale-105"
+                      : "bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-white/10"
                       }`}
                   >
-                    � Rent
+                    🎭 Rental
                   </button>
                 )}
                 {product.availableForBuy === false && product.availableForRent !== false && (
-                  <div className="flex-1 px-4 py-3 rounded-xl bg-blue-100 text-blue-800 font-bold text-center text-sm md:text-base border-2 border-blue-300 flex items-center justify-center gap-2">
+                  <div className="flex-1 px-4 py-3 rounded-xl bg-blue-50 dark:bg-blue-600/10 text-blue-600 dark:text-blue-400 font-black text-center text-[10px] uppercase tracking-widest border border-blue-100 dark:border-blue-600/20 flex items-center justify-center gap-2">
                     <span>🎪</span> Rental Only
                   </div>
                 )}
                 {product.availableForRent === false && product.availableForBuy !== false && (
-                  <div className="flex-1 px-4 py-3 rounded-xl bg-green-100 text-green-800 font-bold text-center text-sm md:text-base border-2 border-green-300 flex items-center justify-center gap-2">
+                  <div className="flex-1 px-4 py-3 rounded-xl bg-green-50 dark:bg-lime-600/10 text-lime-600 dark:text-lime-400 font-black text-center text-[10px] uppercase tracking-widest border border-green-100 dark:border-lime-600/20 flex items-center justify-center gap-2">
                     <span>🛒</span> For Sale Only
                   </div>
                 )}
                 {product.availableForBuy === false && product.availableForRent === false && (
-                  <div className="flex-1 px-4 py-3 rounded-xl bg-red-100 text-red-800 font-bold text-center text-sm md:text-base border-2 border-red-300 flex items-center justify-center gap-2">
+                  <div className="flex-1 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-600/10 text-red-600 dark:text-red-400 font-black text-center text-[10px] uppercase tracking-widest border border-red-100 dark:border-red-600/20 flex items-center justify-center gap-2">
                     <span>⚠️</span> Unavailable
                   </div>
                 )}
               </div>
 
               {/* Price Section */}
-              <div className="mb-6 pb-6 border-b-2 border-gray-200">
-                <div className="flex items-baseline gap-3 mb-3">
-                  <span className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-lime-600 to-green-600">{displayPrice}</span>
-                  {mode === 'rent' && <span className="text-lg font-semibold text-gray-600">/ per day</span>}
+              <div className="mb-8 pb-8 border-b border-gray-100 dark:border-white/5">
+                <div className="flex items-baseline gap-4 mb-4">
+                  <span className="text-6xl md:text-8xl font-black text-gray-900 dark:text-white tracking-tighter">{displayPrice}</span>
+                  {mode === 'rent' && <span className="text-sm font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">/ per day</span>}
                 </div>
                 {mode === 'buy' && product.rentPrice > 0 && (
-                  <p className="text-sm text-gray-600 flex items-center gap-2">
-                    💡 <span>Or rent for <span className="font-bold text-gray-900">{formatPrice(product.rentPrice)}/day</span></span>
+                  <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest flex items-center gap-2">
+                    💡 <span>Or rent for <span className="text-lime-600 dark:text-lime-400">{formatPrice(product.rentPrice)}/day</span></span>
                   </p>
                 )}
 
@@ -281,63 +281,63 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 {mode === 'rent' && product.rentPrice > 0 && (
                   <button
                     onClick={() => setShowRentalPolicy(true)}
-                    className="mt-4 w-full px-5 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-black rounded-lg transition transform hover:scale-105 active:scale-95 shadow-lg hover:shadow-xl flex items-center justify-center gap-2"
+                    className="mt-6 w-full px-6 py-4 bg-blue-600/10 dark:bg-blue-600/20 text-blue-600 dark:text-blue-400 border border-blue-600/20 dark:border-blue-400/20 font-black text-[10px] uppercase tracking-[0.2em] rounded-2xl transition-all hover:bg-blue-600 hover:text-white dark:hover:bg-blue-600 dark:hover:text-white flex items-center justify-center gap-2 group"
                   >
                     <span>📋</span>
                     <span>View Rental Policy</span>
-                    <span>→</span>
+                    <span className="group-hover:translate-x-1 transition">→</span>
                   </button>
                 )}
               </div>
 
               {/* Description */}
               {product.description && (
-                <p className="text-gray-700 text-base md:text-lg mb-6 leading-relaxed bg-white p-4 rounded-xl border border-gray-200">
-                  {product.description}
+                <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base mb-8 leading-relaxed font-medium italic">
+                  "{product.description}"
                 </p>
               )}
 
               {/* Product Details Box */}
               {(product.costumeType || product.country || product.color || product.material || product.condition || sizes.length > 0) && (
-                <div className="bg-gradient-to-br from-white to-gray-50 rounded-xl border-2 border-gray-200 p-6 mb-6 shadow-md hover:shadow-lg transition">
-                  <h3 className="font-black text-gray-900 mb-4 text-lg flex items-center gap-2">
-                    <span>📦</span> Product Details
+                <div className="bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 p-8 mb-8">
+                  <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] mb-6 flex items-center gap-2">
+                    <span>📦</span> Boutique Specifications
                   </h3>
-                  <div className="grid grid-cols-2 gap-5 text-sm">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {product.costumeType && (
-                      <div className="bg-white p-3 rounded-lg border border-gray-200">
-                        <p className="text-gray-600 font-bold text-xs uppercase tracking-wide">Costume Type</p>
-                        <p className="text-gray-900 font-black mt-1 text-base">{product.costumeType}</p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">Style Variant</p>
+                        <p className="text-gray-900 dark:text-white font-black text-sm">{product.costumeType}</p>
                       </div>
                     )}
                     {product.country && product.costumeType === 'Traditional Africa' && (
-                      <div className="bg-white p-3 rounded-lg border border-gray-200">
-                        <p className="text-gray-600 font-bold text-xs uppercase tracking-wide">Country/Region</p>
-                        <p className="text-gray-900 font-black mt-1 text-base">{product.country}</p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">Heritage Source</p>
+                        <p className="text-gray-900 dark:text-white font-black text-sm">{product.country}</p>
                       </div>
                     )}
                     {product.color && (
-                      <div className="bg-white p-3 rounded-lg border border-gray-200">
-                        <p className="text-gray-600 font-bold text-xs uppercase tracking-wide">Color</p>
-                        <p className="text-gray-900 font-black mt-1 text-base">{product.color}</p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">Palette</p>
+                        <p className="text-gray-900 dark:text-white font-black text-sm">{product.color}</p>
                       </div>
                     )}
                     {product.material && (
-                      <div className="bg-white p-3 rounded-lg border border-gray-200">
-                        <p className="text-gray-600 font-bold text-xs uppercase tracking-wide">Material</p>
-                        <p className="text-gray-900 font-black mt-1 text-base">{product.material}</p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">Textile</p>
+                        <p className="text-gray-900 dark:text-white font-black text-sm">{product.material}</p>
                       </div>
                     )}
                     {product.condition && (
-                      <div className="bg-white p-3 rounded-lg border border-gray-200">
-                        <p className="text-gray-600 font-bold text-xs uppercase tracking-wide">Condition</p>
-                        <p className="text-gray-900 font-black mt-1 text-base">{product.condition}</p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">Boutique Status</p>
+                        <p className="text-gray-900 dark:text-white font-black text-sm">{product.condition}</p>
                       </div>
                     )}
                     {sizes.length > 0 && (
-                      <div className="bg-white p-3 rounded-lg border border-gray-200">
-                        <p className="text-gray-600 font-bold text-xs uppercase tracking-wide">Sizes</p>
-                        <p className="text-gray-900 font-black mt-1 text-base">{product.sizes}</p>
+                      <div className="flex flex-col gap-1">
+                        <p className="text-gray-400 dark:text-gray-500 font-bold text-[10px] uppercase tracking-wider">Available Sizes</p>
+                        <p className="text-gray-900 dark:text-white font-black text-sm">{product.sizes}</p>
                       </div>
                     )}
                   </div>
@@ -348,40 +348,41 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
 
             {/* Action Buttons Section */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               {/* Quantity */}
-              <div className="flex items-center gap-4 bg-white p-4 rounded-xl border-2 border-gray-200">
-                <label className="font-bold text-gray-900 flex items-center gap-2">
-                  <span>📦</span> Qty:
-                </label>
-                <div className="flex items-center border-2 border-gray-300 rounded-lg bg-gray-50">
+              <div className="flex items-center gap-6 bg-gray-50 dark:bg-white/5 p-2 rounded-2xl border border-gray-100 dark:border-white/5">
+                <div className="flex items-center bg-white dark:bg-black/40 rounded-xl border border-gray-100 dark:border-white/5 overflow-hidden">
                   <button
                     onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 transition font-bold"
+                    className="px-6 py-4 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition font-black"
                   >
                     −
                   </button>
-                  <span className="px-6 py-2 font-black text-gray-900">{quantity}</span>
+                  <span className="px-8 py-4 font-black text-gray-900 dark:text-white min-w-[3rem] text-center">{quantity}</span>
                   <button
                     onClick={() => setQuantity(quantity + 1)}
-                    className="px-4 py-2 text-gray-700 hover:bg-gray-100 transition font-bold"
+                    className="px-6 py-4 text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-white/5 transition font-black"
                   >
                     +
                   </button>
                 </div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-gray-500">Unit Quantity</p>
               </div>
 
               {/* Add to Cart Button */}
               {(mode === 'buy' && product.availableForBuy !== false) || (mode === 'rent' && product.availableForRent !== false) ? (
                 <button
                   onClick={handleAddToCart}
-                  className="w-full py-4 px-6 rounded-xl font-black text-lg transition duration-300 flex items-center justify-center gap-2 shadow-lg hover:shadow-2xl transform hover:scale-105 active:scale-95 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white"
+                  className={`w-full py-6 px-8 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all duration-500 flex items-center justify-center gap-3 shadow-2xl hover:scale-[1.02] active:scale-95 ${mode === 'buy'
+                    ? 'bg-lime-600 hover:bg-lime-500 text-white shadow-lime-600/20'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-600/20'
+                    }`}
                 >
-                  <ShoppingCart className="h-6 w-6" /> Add to Cart
+                  <ShoppingCart className="h-5 w-5" /> Add to Boutique Cart
                 </button>
               ) : (
-                <div className="w-full py-4 px-6 rounded-xl bg-gray-200 text-gray-600 font-black text-lg flex items-center justify-center gap-2 cursor-not-allowed opacity-60">
-                  <AlertCircle className="h-6 w-6" />
+                <div className="w-full py-6 px-8 rounded-2xl bg-gray-100 dark:bg-white/5 text-gray-400 dark:text-gray-500 font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 cursor-not-allowed border border-gray-200 dark:border-white/5">
+                  <AlertCircle className="h-5 w-5" />
                   {mode === 'buy' ? 'Not Available for Purchase' : 'Not Available for Rental'}
                 </div>
               )}
@@ -393,12 +394,12 @@ export default function ProductDetailClient({ product, allProducts, currency = "
       {/* Related Products */}
       {allProducts.length > 1 && (
         <ScrollReveal y={40}>
-          <section className="border-t-2 border-gray-300 bg-gradient-to-br from-white to-gray-50">
-            <div className="mx-auto max-w-7xl px-4 md:px-6 py-12 md:py-16">
-              <h2 className="text-3xl md:text-4xl font-black text-gray-900 mb-8 flex items-center gap-3">
-                <span>✨</span> You May Also Like
+          <section className="bg-white dark:bg-[#0a0a0a] border-t border-gray-100 dark:border-white/5 transition-colors duration-700">
+            <div className="mx-auto max-w-7xl px-4 md:px-6 py-20 md:py-32">
+              <h2 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.4em] mb-12 flex items-center gap-3 justify-center">
+                <span>✨</span> Curated Recommendations
               </h2>
-              <div className="grid gap-6 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+              <div className="grid gap-8 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
                 {allProducts
                   .filter(p => (p.id || p._id) !== productId && p.category === product.category)
                   .slice(0, 4)
@@ -406,26 +407,19 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                     const pId = p.id || p._id;
                     return (
                       <Link key={pId} href={`/product/${pId}`}>
-                        <div className="group bg-white rounded-xl overflow-hidden hover:shadow-2xl transition cursor-pointer border-2 border-gray-200 h-full flex flex-col transform hover:scale-105">
-                          <div className="relative w-full aspect-[4/5] overflow-hidden bg-gradient-to-br from-gray-50 to-white">
+                        <div className="group bg-transparent transition-all duration-500 cursor-pointer flex flex-col transform">
+                          <div className="relative w-full aspect-[4/5] rounded-3xl overflow-hidden bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 mb-6">
                             <Image
                               src={p.imageUrl}
                               alt={p.name}
                               fill
-                              className="object-cover group-hover:scale-110 transition duration-300"
+                              className="object-cover group-hover:scale-110 transition-all duration-700"
                             />
+                            <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-all duration-500" />
                           </div>
-                          <div className="p-4 flex-grow flex flex-col">
-                            <h3 className="font-bold text-gray-900 text-sm line-clamp-2 mb-2">{p.name}</h3>
-                            {(p.costumeType || p.country) && (
-                              <div className="text-xs text-gray-600 mb-2">
-                                {p.costumeType && <span>{p.costumeType}</span>}
-                                {p.country && p.costumeType === 'Traditional Africa' && (
-                                  <span> • {p.country}</span>
-                                )}
-                              </div>
-                            )}
-                            <p className="text-lg font-black text-transparent bg-clip-text bg-gradient-to-r from-lime-600 to-green-600 mt-auto">{formatPrice(p.sellPrice)}</p>
+                          <div className="flex flex-col text-center">
+                            <h3 className="font-black text-gray-900 dark:text-white text-xs uppercase tracking-widest mb-2 line-clamp-1">{p.name}</h3>
+                            <p className="text-sm font-black text-lime-600 dark:text-lime-400">{formatPrice(p.sellPrice)}</p>
                           </div>
                         </div>
                       </Link>
@@ -439,159 +433,73 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
       {/* Rental Policy Modal */}
       {showRentalPolicy && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-500">
+          <div className="bg-white dark:bg-[#0a0a0a] rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-gray-100 dark:border-white/5">
             {/* Modal Header */}
-            <div className="sticky top-0 bg-gradient-to-r from-blue-600 to-cyan-600 text-white border-b-4 border-blue-700 p-6 flex items-center justify-between">
-              <h2 className="text-2xl font-black flex items-center gap-2">
-                <span>📋</span> Rental Policy
+            <div className="sticky top-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-b border-gray-100 dark:border-white/5 p-8 flex items-center justify-between z-10">
+              <h2 className="text-xs font-black uppercase tracking-[0.3em] text-gray-900 dark:text-white flex items-center gap-3">
+                <span>📋</span> Boutique Rental Policy
               </h2>
               <button
                 onClick={() => setShowRentalPolicy(false)}
-                className="p-2 hover:bg-white/20 rounded-lg transition"
+                className="p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-full transition-all"
               >
-                <X className="h-6 w-6 text-white" />
+                <X className="h-5 w-5 text-gray-400 dark:text-gray-500" />
               </button>
             </div>
 
             {/* Modal Content */}
-            <div className="p-6 space-y-6">
+            <div className="p-8 space-y-10">
               {/* Overview */}
               <div>
-                <h3 className="text-lg font-black text-gray-900 mb-3 flex items-center gap-2">
-                  <span>🎯</span> Overview
+                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                  <span>🎯</span> Service Standards
                 </h3>
-                <p className="text-gray-700 leading-relaxed">
-                  Our rental service offers flexible costume rental options for events and occasions. All rentals come with a refundable caution fee and must be returned according to the specified terms.
+                <p className="text-gray-600 dark:text-gray-400 leading-relaxed text-sm">
+                  Our boutique rental service offers elite costume options. All rentals are subject to a security deposit and professional care standards.
                 </p>
               </div>
 
               {/* Rental Duration */}
-              <div>
-                <h3 className="text-lg font-black text-gray-900 mb-3 flex items-center gap-2">
-                  <span>📅</span> Rental Duration & Return
-                </h3>
-                <div className="bg-blue-50 border-l-4 border-blue-600 p-4 rounded-lg space-y-2">
-                  <p className="font-black text-gray-900">Return Deadline: Next Day After Use</p>
-                  <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
-                    <li>Rental period starts from the date of pickup/delivery</li>
-                    <li>Items must be returned by 6:00 PM on the next business day</li>
-                    <li>Weekend rentals (Friday-Sunday) require return by Monday 6:00 PM</li>
-                    <li>Holidays follow regular return schedule unless otherwise specified</li>
-                  </ul>
-                </div>
+              <div className="p-6 bg-blue-50/50 dark:bg-blue-600/5 rounded-2xl border border-blue-100 dark:border-blue-600/10">
+                <h3 className="text-[10px] font-black text-blue-600 dark:text-blue-400 uppercase tracking-[0.2em] mb-4">Rental Duration & Return</h3>
+                <ul className="space-y-3 text-gray-600 dark:text-gray-400 text-sm">
+                  <li className="flex items-start gap-2"><span>•</span> Return by 6:00 PM on the next business day after use.</li>
+                  <li className="flex items-start gap-2"><span>•</span> Weekend rentals due by Monday 6:00 PM.</li>
+                </ul>
               </div>
 
               {/* Caution Fee */}
-              <div>
-                <h3 className="text-lg font-black text-gray-900 mb-3 flex items-center gap-2">
-                  <span>🛡️</span> Caution Fee (Refundable)
-                </h3>
-                <div className="bg-green-50 border-l-4 border-green-600 p-4 rounded-lg space-y-2">
-                  <p className="font-black text-gray-900">Security Deposit: 50% of First Day Rental Price</p>
-                  <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
-                    <li>Required upfront with all rental bookings</li>
-                    <li>Fully refundable if item returned in good condition by deadline</li>
-                    <li>Protects against damage, loss, or improper care</li>
-                    <li>Refund processed within 5-7 business days of return</li>
-                  </ul>
-                </div>
+              <div className="p-6 bg-green-50/50 dark:bg-green-600/5 rounded-2xl border border-green-100 dark:border-green-600/10">
+                <h3 className="text-[10px] font-black text-green-600 dark:text-green-400 uppercase tracking-[0.2em] mb-4">Refundable Caution Fee</h3>
+                <ul className="space-y-3 text-gray-600 dark:text-gray-400 text-sm">
+                  <li className="flex items-start gap-2"><span>•</span> 50% security deposit required for all rentals.</li>
+                  <li className="flex items-start gap-2"><span>•</span> Fully refunded upon safe return within 48 hours.</li>
+                </ul>
               </div>
 
               {/* Late Return Charges */}
-              <div>
-                <h3 className="text-lg font-black text-gray-900 mb-3 flex items-center gap-2">
-                  <span>⏰</span> Late Return Fees
-                </h3>
-                <div className="bg-orange-50 border-l-4 border-orange-600 p-4 rounded-lg space-y-2">
-                  <p className="font-black text-gray-900">Additional Charges for Late Returns</p>
-                  <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
-                    <li><span className="font-bold">First 24 hours late:</span> Full day rental charge applies</li>
-                    <li><span className="font-bold">Each additional day:</span> Full rental price per day</li>
-                    <li><span className="font-bold">Example:</span> If daily rental is ₦2,000 and returned 2 days late: ₦4,000 additional charge</li>
-                    <li>Charges cumulative for each day overdue</li>
-                    <li>After 7 days late: Item considered forfeited; full replacement cost applies</li>
-                  </ul>
-                </div>
-              </div>
-
-              {/* Condition & Care */}
-              <div>
-                <h3 className="text-lg font-black text-gray-900 mb-3 flex items-center gap-2">
-                  <span>✨</span> Item Condition & Care
-                </h3>
-                <div className="space-y-3">
-                  <div className="bg-gradient-to-r from-green-50 to-lime-50 p-4 rounded-lg border-l-4 border-green-600">
-                    <p className="font-black text-green-900 mb-2">✓ Acceptable Condition</p>
-                    <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
-                      <li>Normal wear and tear</li>
-                      <li>Minor stains that come out with cleaning</li>
-                      <li>Lint and surface dust</li>
-                    </ul>
-                  </div>
-                  <div className="bg-gradient-to-r from-red-50 to-orange-50 p-4 rounded-lg border-l-4 border-red-600">
-                    <p className="font-black text-red-900 mb-2">✗ Damage (Caution Fee Deducted or Full Replacement)</p>
-                    <ul className="list-disc list-inside space-y-1 text-gray-700 text-sm">
-                      <li>Rips, tears, or large holes</li>
-                      <li>Broken zippers, buttons, or fasteners</li>
-                      <li>Permanent stains or discoloration</li>
-                      <li>Missing pieces or accessories</li>
-                      <li>Foul odor or biological contamination</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
-
-              {/* Cleaning & Delivery */}
-              <div>
-                <h3 className="text-lg font-black text-gray-900 mb-3 flex items-center gap-2">
-                  <span>🚚</span> Cleaning & Delivery
-                </h3>
-                <ul className="list-disc list-inside space-y-2 text-gray-700">
-                  <li>Items should be returned <span className="font-bold">clean and dry</span></li>
-                  <li>We provide delivery and pickup services for an additional fee</li>
-                  <li>Direct returns at our store location are welcome</li>
-                  <li>Items must be returned in original packaging when possible</li>
+              <div className="p-6 bg-orange-50/50 dark:bg-orange-600/5 rounded-2xl border border-orange-100 dark:border-orange-600/10">
+                <h3 className="text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-[0.2em] mb-4">Late Return Protocol</h3>
+                <ul className="space-y-3 text-gray-600 dark:text-gray-400 text-sm italic">
+                  <li>Full day rental charge applies for every 24 hours overdue.</li>
                 </ul>
-              </div>
-
-              {/* Cancellation Policy */}
-              <div>
-                <h3 className="text-lg font-black text-gray-900 mb-3 flex items-center gap-2">
-                  <span>🔄</span> Cancellation & Modification
-                </h3>
-                <ul className="list-disc list-inside space-y-2 text-gray-700">
-                  <li>Cancellations up to 24 hours before rental: Full refund</li>
-                  <li>Cancellations within 24 hours: 50% refund</li>
-                  <li>No show on rental date: Caution fee forfeited</li>
-                  <li>Modifications to rental period subject to availability</li>
-                </ul>
-              </div>
-
-              {/* Contact & Support */}
-              <div className="bg-gradient-to-r from-lime-50 to-green-50 border-l-4 border-lime-600 p-4 rounded-lg">
-                <h4 className="font-black text-gray-900 mb-2 flex items-center gap-2">
-                  <span>💬</span> Need Help?
-                </h4>
-                <p className="text-gray-700 text-sm">
-                  For questions about rental terms, damage claims, or refunds, contact our customer service team. We're here to help!
-                </p>
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="sticky bottom-0 bg-gradient-to-r from-gray-100 to-gray-50 border-t-2 border-gray-300 p-6 flex gap-3">
+            <div className="sticky bottom-0 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-xl border-t border-gray-100 dark:border-white/5 p-8 flex gap-4">
               <button
                 onClick={() => setShowRentalPolicy(false)}
-                className="flex-1 px-4 py-3 rounded-lg font-bold bg-gray-300 text-gray-900 hover:bg-gray-400 transition"
+                className="flex-1 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-gray-50 dark:bg-white/5 text-gray-500 dark:text-gray-400 hover:bg-white dark:hover:bg-white/10 transition-all border border-gray-100 dark:border-white/5"
               >
                 Close
               </button>
               <button
                 onClick={() => setShowRentalPolicy(false)}
-                className="flex-1 px-4 py-3 rounded-lg font-bold bg-gradient-to-r from-lime-600 to-green-600 text-white hover:from-lime-700 hover:to-green-700 transition"
+                className="flex-1 px-6 py-4 rounded-2xl font-black text-xs uppercase tracking-widest bg-lime-600 text-white hover:bg-lime-500 transition-all shadow-lg shadow-lime-600/20"
               >
-                ✓ I Understand & Accept
+                ✓ I Accept
               </button>
             </div>
           </div>
