@@ -49,7 +49,7 @@ export default function AuthPage() {
         <div className="relative z-20 px-20 text-white max-w-2xl">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-lime-400 text-[10px] font-black uppercase tracking-[0.3em] mb-8">
             <Sparkles className="w-4 h-4 animate-pulse" />
-            Lagos's Premier Costume Maker
+            Lagos's Premium Costume Maker
           </div>
 
           <h2 className="text-6xl font-black leading-tight mb-8 font-playfair tracking-tight">

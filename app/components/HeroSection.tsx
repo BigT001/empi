@@ -70,7 +70,7 @@ export function HeroSection() {
               className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-lime-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] mb-6 md:mb-10"
             >
               <Sparkles className="w-3 h-3 md:w-4 md:h-4 animate-pulse" />
-              Lagos&apos;s Premier Costume Maker
+              Lagos&apos;s Premium Costume Maker
             </motion.div>
 
             {/* Title - Playfair for Elegance */}
