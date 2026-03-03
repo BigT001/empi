@@ -155,7 +155,7 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
               )}
               <p className={`text-gray-700 dark:text-gray-400 font-medium text-sm md:text-base ${category === "adults" ? "hidden md:block" : ""}`}>
                 {category === "kids"
-                  ? "Our premier shop collection featuring hand-crafted masterpieces for all ages. Quality and vision in every thread."
+                  ? "Our premium shop collection featuring hand-crafted masterpieces for all ages. Quality and vision in every thread."
                   : category === "adults"
                     ? "Curated selection of premium costumes for every style."
                     : "Explore our complete range of beautifully crafted costumes for all ages and occasions."}

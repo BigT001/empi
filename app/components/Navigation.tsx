@@ -201,7 +201,7 @@ export function Navigation({
             ) : (
               <Link href="/auth" className="flex items-center gap-2 bg-slate-900 dark:bg-lime-600 hover:bg-slate-800 dark:hover:bg-lime-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all hover:shadow-lg active:scale-95">
                 <User className="h-4 w-4" />
-                <span>Sign In / Sign Up</span>
+                <span>Sign In</span>
               </Link>
             )}
 
