@@ -40,8 +40,10 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Update order status
+    // Update order status and payment verification
     order.status = 'approved';
+    order.paymentVerified = true;
+    order.paymentVerifiedAt = new Date();
     await order.save();
 
     // Create notification for buyer

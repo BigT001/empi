@@ -67,6 +67,9 @@ interface OrderCardProps {
   onShipped?: () => Promise<void>;
   disableShippedButton?: boolean;
   onDeleteConfirm?: (orderId: string) => Promise<void>;
+  paymentMethod?: string;
+  paymentVerified?: boolean;
+  paymentProofUrl?: string;
 }
 
 export function OrderCard({
@@ -109,13 +112,16 @@ export function OrderCard({
   onShipped,
   disableShippedButton = false,
   onDeleteConfirm,
+  paymentMethod,
+  paymentVerified,
+  paymentProofUrl,
 }: OrderCardProps) {
   const [expandPricing, setExpandPricing] = React.useState(true);  // EXPANDED by default for visibility
-  const isCustom = isCustomOrder || (description && !items?.length);
+  const isCustom = !!(isCustomOrder || (description && (!items || items.length === 0)));
   // Ensure prices are valid numbers to avoid NaN display
   const safeTotal = typeof total === 'number' && !isNaN(total) ? total : 0;
   const safeQuotedPrice = typeof quotedPrice === 'number' && !isNaN(quotedPrice) ? quotedPrice : 0;
-  
+
   return (
     <div className="bg-gradient-to-br from-lime-50 to-green-50 rounded-2xl border-2 border-lime-300 overflow-hidden shadow-md hover:shadow-xl hover:border-lime-400 transition-all flex flex-col">
       <OrderCardHeader
@@ -124,6 +130,9 @@ export function OrderCard({
         email={email}
         phone={phone}
         isApproved={isApproved}
+        paymentMethod={paymentMethod}
+        paymentVerified={paymentVerified}
+        isCustomOrder={isCustom}
       />
 
       <div className="p-5 space-y-4 flex-1 flex flex-col">
@@ -177,6 +186,58 @@ export function OrderCard({
                 <p className="text-sm text-gray-900">{quantity} piece(s)</p>
               </div>
             )}
+
+          </div>
+        )}
+
+        {/* 🎫 Manual Payment Receipt (Always show if manual & receipt exists) */}
+        {paymentMethod === 'manual' && paymentProofUrl && (
+          <div className="bg-amber-50 rounded-xl p-4 border-2 border-amber-300 shadow-inner -mt-1 mb-4">
+            <div className="flex items-center justify-between mb-3 border-b border-amber-200 pb-2">
+              <div className="flex items-center gap-2">
+                <div className="p-1 bg-amber-200 rounded-lg">
+                  <span className="w-2.5 h-2.5 bg-amber-600 rounded-full animate-pulse"></span>
+                </div>
+                <p className="text-xs font-bold text-amber-900 uppercase">
+                  Manual Receipt Attached
+                </p>
+              </div>
+              {!paymentVerified && (
+                <span className="text-[10px] px-2.5 py-1 bg-amber-600 text-white rounded-md font-black shadow-sm ring-2 ring-white">
+                  ACTION REQUIRED: VERIFY
+                </span>
+              )}
+            </div>
+
+            <div className="group relative">
+              <a
+                href={paymentProofUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block relative aspect-video bg-gray-200 rounded-lg overflow-hidden border border-amber-200 hover:ring-8 hover:ring-amber-500/20 transition-all shadow-md active:scale-[0.98]"
+              >
+                <Image
+                  src={paymentProofUrl}
+                  alt="Payment Proof Receipt"
+                  fill
+                  className="object-cover group-hover:scale-110 transition-transform duration-700"
+                  unoptimized={true}
+                />
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity duration-300">
+                  <div className="bg-white text-gray-900 px-5 py-2.5 rounded-full text-sm font-black shadow-2xl transform translate-y-4 group-hover:translate-y-0 transition-transform">
+                    View Full Receipt
+                  </div>
+                  <p className="text-white text-[10px] mt-2 font-semibold">Opens in new tab</p>
+                </div>
+              </a>
+
+              {/* Quick Status Pill */}
+              <div className="absolute top-2 right-2 flex gap-1 pointer-events-none">
+                <div className="px-2 py-0.5 bg-black/60 backdrop-blur-md rounded-md text-[9px] text-white font-bold border border-white/20">
+                  {paymentVerified ? '✅ VERIFIED' : '⏳ PENDING'}
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -273,6 +334,9 @@ export function OrderCard({
             quantity,
             quotedPrice,
             isCustomOrder,
+            paymentMethod,
+            paymentVerified,
+            paymentProofUrl,
           }}
         />
       </div>

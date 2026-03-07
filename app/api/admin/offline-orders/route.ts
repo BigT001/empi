@@ -76,6 +76,7 @@ export async function POST(request: NextRequest) {
       country: body.country || 'Nigeria',
       isOffline: true, // Mark as offline order
       offlineType: type, // Track the original type for reference
+      paymentVerified: true, // Mark as verified by default (admin-entered)
     });
 
     await offlineOrder.save();

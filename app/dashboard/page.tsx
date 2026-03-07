@@ -122,12 +122,18 @@ export default function BuyerDashboardPage() {
 
   // Check if first visit
   useEffect(() => {
+    if (isHydrated && !buyer) {
+      console.log("[Dashboard] 🔒 No buyer session found, redirecting to login...");
+      router.push("/auth?redirect=/dashboard");
+      return;
+    }
+
     if (buyer && isHydrated) {
       const dashboardVisitKey = `dashboard_visited_${buyer.id}`;
       // Removed localStorage - always start with isFirstVisit check from server
       setIsFirstVisit(buyer ? false : true);
     }
-  }, [buyer, isHydrated]);
+  }, [buyer, isHydrated, router]);
 
   // Handle invoice modal scroll locking
   useEffect(() => {
@@ -528,8 +534,18 @@ export default function BuyerDashboardPage() {
     router.push("/");
   };
 
-  if (!isHydrated) return null;
-  if (!buyer) return null;
+  if (!isHydrated || !buyer) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-gray-50'}`}>
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-lime-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className={`${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'} font-medium animate-pulse`}>
+            {isHydrated && !buyer ? 'Accessing Dashboard...' : 'Loading experience...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`min-h-screen flex flex-col transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-gradient-to-br from-white via-lime-50 to-green-50 text-gray-900'

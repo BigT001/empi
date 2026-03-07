@@ -129,6 +129,7 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
         if (!formData.email?.trim()) throw new Error("Email is required");
         if (!validateEmail(formData.email)) throw new Error("Please enter a valid email");
         if (!formData.phone?.trim()) throw new Error("Phone number is required");
+        if (formData.phone.length !== 11) throw new Error("Phone number must be exactly 11 digits");
         if (!validatePhone(formData.phone)) throw new Error("Please enter a valid phone number");
         if (!formData.password?.trim()) throw new Error("Password is required");
         if (formData.password.length < 6) throw new Error("Password must be at least 6 characters");
@@ -462,7 +463,8 @@ export function AuthForm({ onSuccessfulAuth, onCancel, redirectToCheckout = fals
                 name="phone"
                 value={formData.phone}
                 onChange={handleChange}
-                placeholder="Phone Number"
+                placeholder="Phone Number (11 digits)"
+                maxLength={11}
                 className="w-full px-4 py-3 bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 rounded-xl focus:border-lime-500/50 focus:bg-white dark:focus:bg-black/40 transition-all text-xs placeholder-gray-400 dark:placeholder-gray-500 text-gray-900 dark:text-white outline-none"
               />
             </div>

@@ -49,14 +49,14 @@ export async function GET(request: NextRequest) {
     if (ref) query.reference = ref;
 
     console.log('[Unified Orders API] 🔍 Query:', query);
-    
+
     let orders: any[] = [];
     try {
       const queryResult = await UnifiedOrder.find(query)
         .sort({ createdAt: -1 })
         .limit(limit)
         .lean();
-      
+
       // Ensure all discount fields are properly serialized
       orders = queryResult.map((order: any) => {
         // CRITICAL: Log pricing fields being returned
@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
             total: order.total,
           });
         }
-        
+
         // Log rental schedule if present
         if (order.rentalSchedule) {
           console.log(`[Unified Orders API] 📅 Order ${order.orderNumber} has rental schedule:`, {
@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
             rentalPolicyAgreed: order.rentalPolicyAgreed,
           });
         }
-        
+
         return {
           ...order,
           // Ensure numeric fields are properly converted
@@ -98,13 +98,13 @@ export async function GET(request: NextRequest) {
           rentalPolicyAgreed: order.rentalPolicyAgreed || false,
         };
       });
-      
+
       console.log(`[Unified Orders API] ✅ Found ${orders.length} orders`);
     } catch (dbError) {
       console.error('[Unified Orders API] ❌ Database query failed:', dbError);
       throw new Error(`Database query failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`);
     }
-    
+
     // Log custom order details for debugging (wrapped in try-catch to prevent crashes)
     try {
       orders.forEach((order: Record<string, unknown>) => {
@@ -126,24 +126,24 @@ export async function GET(request: NextRequest) {
       console.warn('[Unified Orders API] Warning logging order details:', logError);
       // Continue anyway, don't fail
     }
-    
+
     // If searching by reference and found single order, return just that order
     if (ref && orders.length === 1) {
       console.log('[Unified Orders API] Returning single order by reference');
       return NextResponse.json(orders[0]);
     }
-    
-    console.log('[Unified Orders API] ✅ Returning', orders.length, 'orders');
+
+    console.log(`[Unified Orders API] ✅ Returning ${orders.length} orders`);
     return NextResponse.json({
       success: true,
-      total: orders.length,
+      total: await UnifiedOrder.countDocuments(query),
       orders,
     });
   } catch (error) {
     console.error('[API] GET /orders/unified failed:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to fetch orders',
         details: errorMessage,
         timestamp: new Date().toISOString()
@@ -171,17 +171,17 @@ export async function POST(request: NextRequest) {
     const idempotencyKey = request.headers.get('X-Idempotency-Key');
     if (idempotencyKey) {
       console.log(`[Unified Orders API] 🔑 Idempotency key found: ${idempotencyKey}`);
-      
+
       // Check if we already processed this request
-      const existingOrder = await UnifiedOrder.findOne({ 
+      const existingOrder = await UnifiedOrder.findOne({
         paymentReference: idempotencyKey,
-        isActive: true 
+        isActive: true
       });
-      
+
       if (existingOrder) {
         console.log(`[Unified Orders API] ⚠️ Order already created for this payment reference: ${existingOrder.orderNumber}`);
         return NextResponse.json(
-          { 
+          {
             success: true,
             message: 'Order already exists for this payment',
             orderId: existingOrder._id?.toString(),
@@ -200,12 +200,12 @@ export async function POST(request: NextRequest) {
     if (contentType.includes('multipart/form-data')) {
       console.log('[Unified Orders API] Processing FormData (custom order)');
       const formData = await request.formData();
-      
+
       // Extract design images for background processing
       const designImages = formData.getAll('designImages') as File[];
       const quantity = parseInt(formData.get('quantity') as string) || 1;
       const fullName = (formData.get('fullName') as string) || '';
-      
+
       body = {
         email: (formData.get('email') as string || '').toLowerCase(),
         firstName: fullName?.split(/\s+/)[0] || '',
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
       // Handle JSON (regular orders)
       console.log('[Unified Orders API] Processing JSON body (regular order)');
       body = await request.json();
-      
+
       // CRITICAL LOGGING: Check if items have mode BEFORE any processing
       if (body.items && Array.isArray(body.items)) {
         console.log('[Unified Orders API] 🔍 RECEIVED ITEMS FROM CHECKOUT:');
@@ -240,7 +240,7 @@ export async function POST(request: NextRequest) {
           });
         });
       }
-      
+
       // Ensure all items have proper structure
       if (body.items && Array.isArray(body.items)) {
         body.items = body.items.map((item: Record<string, unknown>) => {
@@ -253,7 +253,7 @@ export async function POST(request: NextRequest) {
           return mapped;
         });
       }
-      
+
       // Log item details for debugging
       if (body.items && Array.isArray(body.items)) {
         console.log('[Unified Orders API] Items after processing:');
@@ -285,10 +285,10 @@ export async function POST(request: NextRequest) {
       const vat = (body.subtotal as number) * 0.075;
       if (!body.vat) body.vat = vat;
       if (!body.total) body.total = (body.subtotal as number) + vat;
-      console.log('[Unified Orders API] 💰 Custom order pricing:', { 
-        subtotal: body.subtotal, 
+      console.log('[Unified Orders API] 💰 Custom order pricing:', {
+        subtotal: body.subtotal,
         vat: body.vat,
-        total: body.total 
+        total: body.total
       });
     }
 
@@ -302,7 +302,7 @@ export async function POST(request: NextRequest) {
       // Basic Info
       orderNumber,
       orderType,
-      
+
       // Customer Info
       firstName: (body.firstName as string) || '',
       lastName: (body.lastName as string) || '',
@@ -314,7 +314,7 @@ export async function POST(request: NextRequest) {
       zipCode: (body.zipCode as string) || undefined,
       buyerId: (body.buyerId as string) || undefined,
       country: (body.country as string) || 'Nigeria',
-      
+
       // Items (empty for custom orders, will be populated when admin adds them)
       // CRITICAL FIX: Map incoming 'price' field to 'unitPrice' for schema compatibility
       items: (body.items as Record<string, unknown>[])?.map((item: Record<string, unknown>) => ({
@@ -327,12 +327,12 @@ export async function POST(request: NextRequest) {
         image: item.image as string | undefined,
         mode: item.mode as string || 'buy',
       })) || [],
-      
+
       // Custom Order Specific
       description: (body.description as string) || undefined,
       designUrls: [], // Will be filled by background task if images exist
       requiredQuantity: (body.requiredQuantity as number) || (body.quantity as number) || 1,
-      
+
       // Pricing
       subtotal: (body.subtotal as number) || 0,
       // CRITICAL: Include discount fields for regular orders
@@ -342,11 +342,11 @@ export async function POST(request: NextRequest) {
       vat: (body.vat as number) || 0,
       total: (body.total as number) || 0,
       cautionFee: (body.cautionFee as number) || 0,
-      
+
       // Shipping
       shippingType: (body.shippingType as string) || 'standard',
       shippingCost: (body.shippingCost as number) || 0,
-      
+
       // Rental Schedule (if rental items exist)
       rentalSchedule: body.rentalSchedule ? {
         pickupDate: (body.rentalSchedule as any).pickupDate,
@@ -356,19 +356,20 @@ export async function POST(request: NextRequest) {
         rentalDays: (body.rentalSchedule as any).rentalDays,
       } : undefined,
       rentalPolicyAgreed: (body as any).rentalPolicyAgreed || false,
-      
+
       // Payment
-      paymentVerified: orderType === 'regular' ? true : false,
-      paymentReference: idempotencyKey || (body.paymentReference as string) || undefined,
-      paymentMethod: (body.paymentMethod as string) || 'card', // Default to card for online orders
-      
+      paymentVerified: body.paymentVerified !== undefined ? body.paymentVerified : (orderType === 'regular' ? true : false),
+      paymentReference: idempotencyKey || (body.paymentReference as string) || (body.reference as string) || undefined,
+      paymentMethod: (body.paymentMethod as string) || 'paystack',
+      paymentProofUrl: (body.paymentProofUrl as string) || undefined,
+
       // Status & Logistics
       status: 'pending',
       currentHandler: 'production',
-      
+
       // Timeline
       deliveryDate: body.deliveryDate ? new Date(body.deliveryDate as string) : undefined,
-      
+
       // Metadata
       isActive: true,
     };
@@ -384,7 +385,7 @@ export async function POST(request: NextRequest) {
         console.log(`  [${idx}] "${item.name}" - mode: ${item.mode || '❌ MISSING IN SAVE OBJECT'}, has mode: ${!!item.mode}`);
       });
     }
-    
+
     // Log rental schedule if present
     if ((orderDataToSave as any).rentalSchedule) {
       console.log('[Unified Orders API] 📅 RENTAL SCHEDULE TO SAVE:');
@@ -402,13 +403,13 @@ export async function POST(request: NextRequest) {
 
     // CONSOLIDATION: No longer syncing to legacy Order collection
     // UnifiedOrder is now the single source of truth for all orders
-    console.log('[Unified Orders API] ✅ Order created in UnifiedOrder collection:', { 
-      id: newOrder._id, 
-      number: newOrder.orderNumber, 
+    console.log('[Unified Orders API] ✅ Order created in UnifiedOrder collection:', {
+      id: newOrder._id,
+      number: newOrder.orderNumber,
       type: orderType,
       itemCount: newOrder.items?.length || 0,
     });
-    
+
     // CRITICAL: Log what came back from MongoDB
     console.log('[Unified Orders API] 🔍 RETRIEVED FROM MONGODB (after create):');
     if (newOrder.items && Array.isArray(newOrder.items)) {
@@ -416,7 +417,7 @@ export async function POST(request: NextRequest) {
         console.log(`  [${idx}] "${item.name}" - mode: ${item.mode || '❌ MISSING FROM DB'}, has mode: ${!!item.mode}`);
       });
     }
-    
+
     // Log rental schedule from database
     if ((newOrder as any).rentalSchedule) {
       console.log('[Unified Orders API] ✅ RENTAL SCHEDULE RETRIEVED FROM DB:');
@@ -429,7 +430,7 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('[Unified Orders API] ❌ NO RENTAL SCHEDULE IN DATABASE');
     }
-    
+
     // Use diagnostic function to log detailed item info
     logOrderModeDiagnostics(newOrder, `API Order ${newOrder.orderNumber}`);
 
@@ -442,7 +443,7 @@ export async function POST(request: NextRequest) {
 
     // AUTO-GENERATE INVOICE for all paid orders
     let invoiceData = null;
-    if (body.paymentVerified || orderType === 'regular') {
+    if (newOrder.paymentVerified) {
       try {
         console.log('[Unified Orders API] 📧 Auto-generating invoice...');
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

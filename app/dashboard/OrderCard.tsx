@@ -44,6 +44,9 @@ interface CustomOrder {
   shippingCost?: number;
   shippingType?: string;
   orderType?: string;
+  paymentMethod?: string;
+  paymentVerified?: boolean;
+  paymentProofUrl?: string;
   // Rental fields
   rentalSchedule?: {
     pickupDate: string;
@@ -132,9 +135,24 @@ export function OrderCard({
             <div className="flex items-baseline gap-2 mb-2">
               <h3 className="text-lg md:text-xl font-bold text-gray-900 dark:text-white">Order #{order.orderNumber}</h3>
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold flex-shrink-0 whitespace-nowrap border ${statusColors.badge}`}>
-                {order.status === 'pending' && <Clock className="h-3.5 w-3.5" />}
-                {order.status === 'completed' && <Check className="h-3.5 w-3.5" />}
-                {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                {order.status === 'pending' ? (
+                  (order.paymentMethod === 'manual' && !order.paymentVerified) ? (
+                    <span className="flex items-center gap-1.5 text-amber-700">
+                      <Clock className="h-3.5 w-3.5 animate-pulse" />
+                      Payment Awaiting Review
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5" />
+                      Pending
+                    </span>
+                  )
+                ) : (
+                  <>
+                    {order.status === 'completed' && <Check className="h-3.5 w-3.5" />}
+                    {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                  </>
+                )}
               </span>
             </div>
             <p className={`text-xs font-medium ${statusColors.text}`}>Created {new Date(order.createdAt).toLocaleDateString()}</p>
@@ -272,41 +290,43 @@ export function OrderCard({
       </div>
 
       {/* Rental Schedule Section - if rental order */}
-      {(order as any).rentalSchedule && (
-        <div className="border-t border-gray-200 px-4 md:px-5 py-3 md:py-4 space-y-2 bg-gradient-to-r from-blue-50 to-cyan-50">
-          <h4 className="font-semibold text-gray-900 flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-blue-600" />
-            📅 Rental Schedule
-          </h4>
-          <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700">Pickup Date:</span>
-              <span className="font-semibold text-gray-900">{(order as any).rentalSchedule.pickupDate}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700">Pickup Time:</span>
-              <span className="font-semibold text-gray-900">{(order as any).rentalSchedule.pickupTime}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700">Return Date:</span>
-              <span className="font-semibold text-gray-900">{(order as any).rentalSchedule.returnDate}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700">Rental Duration:</span>
-              <span className="font-semibold text-blue-600">{(order as any).rentalSchedule.rentalDays} day{(order as any).rentalSchedule.rentalDays > 1 ? 's' : ''}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-gray-700">Pickup Location:</span>
-              <span className="font-semibold text-gray-900 capitalize">{(order as any).rentalSchedule.pickupLocation === 'iba' ? 'Ibafo Branch' : 'Surulere Branch'}</span>
-            </div>
-            {(order as any).rentalPolicyAgreed && (
-              <div className="flex items-center justify-between text-green-700 bg-green-50 px-2 py-1 rounded">
-                <span className="text-xs">✅ Rental Policy Agreed</span>
+      {
+        (order as any).rentalSchedule && (
+          <div className="border-t border-gray-200 px-4 md:px-5 py-3 md:py-4 space-y-2 bg-gradient-to-r from-blue-50 to-cyan-50">
+            <h4 className="font-semibold text-gray-900 flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-blue-600" />
+              📅 Rental Schedule
+            </h4>
+            <div className="space-y-2 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">Pickup Date:</span>
+                <span className="font-semibold text-gray-900">{(order as any).rentalSchedule.pickupDate}</span>
               </div>
-            )}
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">Pickup Time:</span>
+                <span className="font-semibold text-gray-900">{(order as any).rentalSchedule.pickupTime}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">Return Date:</span>
+                <span className="font-semibold text-gray-900">{(order as any).rentalSchedule.returnDate}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">Rental Duration:</span>
+                <span className="font-semibold text-blue-600">{(order as any).rentalSchedule.rentalDays} day{(order as any).rentalSchedule.rentalDays > 1 ? 's' : ''}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-700">Pickup Location:</span>
+                <span className="font-semibold text-gray-900 capitalize">{(order as any).rentalSchedule.pickupLocation === 'iba' ? 'Ibafo Branch' : 'Surulere Branch'}</span>
+              </div>
+              {(order as any).rentalPolicyAgreed && (
+                <div className="flex items-center justify-between text-green-700 bg-green-50 px-2 py-1 rounded">
+                  <span className="text-xs">✅ Rental Policy Agreed</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* Pricing Breakdown Section - Display what admin sent */}
       <div className="border-t border-gray-200 dark:border-white/10 px-4 md:px-5 py-3 md:py-4 space-y-2 bg-gradient-to-r from-lime-50 to-green-50 dark:from-lime-900/10 dark:to-green-900/10">
@@ -383,6 +403,6 @@ export function OrderCard({
           </button>
         ) : null}
       </div>
-    </div>
+    </div >
   );
 }

@@ -5,7 +5,7 @@ export interface IBankAccount {
   bankName: string;
   accountName: string;
   accountNumber: string;
-  bankCode: string;
+  bankCode?: string;
   sortCode?: string;
   instructions?: string;
   isActive: boolean;
@@ -18,10 +18,16 @@ export interface ISettings extends Document {
   bankName?: string;
   bankCode?: string;
   transferInstructions?: string;
-  
-  // New multi-bank support
+
+  // Multi-bank support
   bankAccounts?: IBankAccount[];
-  
+
+  // Payment Visibility Settings
+  paymentMethods?: {
+    manual: boolean;
+    paystack: boolean;
+  };
+
   updatedAt: Date;
   createdAt: Date;
 }
@@ -31,7 +37,7 @@ const bankAccountSchema = new Schema<IBankAccount>(
     bankName: { type: String, required: true },
     accountName: { type: String, required: true },
     accountNumber: { type: String, required: true },
-    bankCode: { type: String, required: true },
+    bankCode: { type: String, required: false },
     sortCode: String,
     instructions: String,
     isActive: { type: Boolean, default: false },
@@ -45,13 +51,23 @@ const settingsSchema = new Schema<ISettings>(
     bankAccountName: String,
     bankAccountNumber: String,
     bankName: String,
-    bankCode: String,
+    bankCode: { type: String, required: false },
     transferInstructions: String,
-    
-    // New multi-bank support
+
+    // Multi-bank support
     bankAccounts: [bankAccountSchema],
+
+    // Payment Visibility Settings
+    paymentMethods: {
+      manual: { type: Boolean, default: true },
+      paystack: { type: Boolean, default: true }
+    },
   },
   { timestamps: true }
 );
 
-export default mongoose.models.Settings || mongoose.model<ISettings>('Settings', settingsSchema);
+if (mongoose.models.Settings) {
+  delete mongoose.models.Settings;
+}
+
+export default mongoose.model<ISettings>('Settings', settingsSchema);

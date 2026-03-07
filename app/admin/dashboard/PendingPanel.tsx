@@ -47,6 +47,7 @@ interface PendingOrderData {
   fullName?: string;
   paymentVerified?: boolean;
   paymentProofUrl?: string;
+  paymentMethod?: string;
   quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
   // Discount fields
   subtotal?: number;
@@ -95,13 +96,13 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const detectPaymentStatus = async (orders: PendingOrderData[]) => {
     try {
       const statusMap: Record<string, 'pending' | 'paid' | 'approved'> = {};
-      
+
       // Fetch all invoices to check which orders have been paid
       const invoicesRes = await fetch('/api/invoices?limit=500');
       if (invoicesRes.ok) {
         const invoicesData = await invoicesRes.json();
         const invoices = Array.isArray(invoicesData) ? invoicesData : (invoicesData.invoices || []);
-        
+
         // Create a map of order references to invoice status
         const invoicesByReference = new Map();
         invoices.forEach((inv: any) => {
@@ -111,7 +112,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         });
 
         console.log('[PendingPanel] Invoice map:', Array.from(invoicesByReference.entries()));
-        
+
         // Check each order for payment
         orders.forEach((order: any) => {
           // For REGULAR orders: Check paymentVerified flag (payment made before order creation)
@@ -123,7 +124,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
               statusMap[order._id] = 'pending';
               console.log(`[PendingPanel] ⏳ Regular Order ${order.orderNumber} - paymentVerified=false - marked as PENDING`);
             }
-          } 
+          }
           // For CUSTOM orders: Check invoices (payment happens after quote)
           else if (order.orderType === 'custom') {
             if (invoicesByReference.has(order.orderNumber)) {
@@ -144,7 +145,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
           }
         });
       }
-      
+
       const serialized = JSON.stringify(statusMap);
       if (serialized !== prevPaymentStatusRef.current) {
         prevPaymentStatusRef.current = serialized;
@@ -179,8 +180,8 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
 
-        const unifiedFetch = fetch('/api/orders/unified?limit=200', { 
-          signal: signal || controller.signal, 
+        const unifiedFetch = fetch('/api/orders/unified?limit=200', {
+          signal: signal || controller.signal,
           cache: 'no-store',
           headers: {
             'Content-Type': 'application/json',
@@ -189,9 +190,9 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
 
         const res = await unifiedFetch;
         clearTimeout(timeoutId);
-        
+
         console.log('[PendingPanel] API response status:', res.status, res.statusText);
-        
+
         if (!res.ok) {
           const errorText = await res.text();
           console.error('[PendingPanel] API error response:', errorText);
@@ -205,9 +206,9 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
             throw new Error('Empty response from API');
           }
           data = JSON.parse(rawText);
-          console.log('[PendingPanel] ✅ Parsed API response:', { 
-            success: data.success, 
-            total: data.total, 
+          console.log('[PendingPanel] ✅ Parsed API response:', {
+            success: data.success,
+            total: data.total,
             ordersCount: Array.isArray(data.orders) ? data.orders.length : 'not array',
             keys: Object.keys(data).slice(0, 10)
           });
@@ -281,7 +282,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         let pendingList: any[] = [];
         let approvedList: any[] = [];
         let inProgressList: any[] = [];
-        
+
         try {
           pendingList = combinedOrders.filter((o: any) => {
             try {
@@ -310,7 +311,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
 
           // In-Progress list: Removed - orders go directly from approved to ready_for_delivery
           inProgressList = [];
-          
+
           console.log('[PendingPanel] Filtering complete - pending:', pendingList.length, 'approved:', approvedList.length);
         } catch (filterErr) {
           console.error('[PendingPanel] Error filtering orders:', filterErr);
@@ -319,21 +320,21 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
           approvedList = [];
           inProgressList = [];
         }
-        
+
         const allApprovedList = approvedList;
-        
+
         console.log('[PendingPanel] Approved list (current status only):', allApprovedList.length);
         console.log('[PendingPanel] In-progress list:', inProgressList.length);
 
         console.log('[PendingPanel] fetched orders count:', combinedOrders.length, 'pendingList count:', pendingList.length, 'approvedList count:', allApprovedList.length, 'inProgressList count:', inProgressList.length);
-        console.log('[PendingPanel] fetched orderNumbers:', combinedOrders.map(o => o.orderNumber).slice(0,50));
+        console.log('[PendingPanel] fetched orderNumbers:', combinedOrders.map(o => o.orderNumber).slice(0, 50));
         if (mounted) {
           // Create a simple fingerprint of both pending and approved lists to detect any changes
           const newPendingKey = pendingList.map(o => o._id || o.orderNumber).join(',');
           const newApprovedKey = allApprovedList.map(o => o._id || o.orderNumber).join(',');
           const newInProgressKey = inProgressList.map(o => o._id || o.orderNumber).join(',');
           const newKey = `${newPendingKey}|${newApprovedKey}|${newInProgressKey}`;
-          
+
           if (newKey !== prevPendingKeyRef.current) {
             prevPendingKeyRef.current = newKey;
             setPending(pendingList);
@@ -401,7 +402,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
 
       if (action === 'approved') {
         console.log(`[PendingPanel] ✅ APPROVED EVENT - Moving order ${orderId} from pending to approved`);
-        
+
         // Remove the order from pending list
         setPending(prevPending => {
           const filtered = prevPending.filter(o => o._id !== orderId);
@@ -427,7 +428,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
         console.log(`[PendingPanel] ✅ Order ${orderId} has been approved and moved from pending to approved`);
       } else if (action === 'shipped') {
         console.log(`[PendingPanel] 🚨 SHIPPING EVENT - Removing order ${orderId} from all tabs`);
-        
+
         // Remove the order from approved list
         setPending(prevPending => {
           const filtered = prevPending.filter(o => o._id !== orderId);
@@ -472,7 +473,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
   const fetchProductImages = async (orders: PendingOrderData[]) => {
     // Extract images directly from order items instead of fetching from products API
     const images: Record<string, ProductWithImage> = {};
-    
+
     orders.forEach(order => {
       if (order.items && Array.isArray(order.items)) {
         order.items.forEach(item => {
@@ -552,7 +553,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
       }
 
       setPending([]);
-      const message = failedCount > 0 
+      const message = failedCount > 0
         ? `Deleted ${deletedCount} orders, ${failedCount} failed`
         : `All ${deletedCount} pending orders deleted successfully!`;
       showToast(message, failedCount > 0 ? 'error' : 'success');
@@ -568,7 +569,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
     try {
       setLoading(true);
       console.log('[PendingPanel] 🗑️ Attempting to delete order:', orderId);
-      
+
       // Delete from database
       const res = await fetch(`/api/orders/unified/${orderId}`, {
         method: 'DELETE',
@@ -591,7 +592,7 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
       setPending(pending.filter(o => o._id !== orderId));
       setApproved(approved.filter(o => o._id !== orderId));
       setInProgress(inProgress.filter(o => o._id !== orderId));
-      
+
       // Database handles order deletion - sessionStorage removed for reliability
       console.log('[PendingPanel] Order deleted from database with status cleanup');
 
@@ -692,202 +693,204 @@ export function PendingPanel({ searchQuery = "" }: PendingPanelProps) {
     <div className="space-y-6">
       {/* Main Container */}
       <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-      {/* Tabs */}
-      <div className="border-b border-gray-200 bg-gray-50">
-        <div className="flex">
-          <button
-            onClick={() => setActiveTab('pending')}
-            className={`flex-1 py-4 px-6 font-semibold text-center transition-colors ${
-              activeTab === 'pending'
+        {/* Tabs */}
+        <div className="border-b border-gray-200 bg-gray-50">
+          <div className="flex">
+            <button
+              onClick={() => setActiveTab('pending')}
+              className={`flex-1 py-4 px-6 font-semibold text-center transition-colors ${activeTab === 'pending'
                 ? 'text-red-600 border-b-2 border-red-600 bg-white'
                 : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Clock className="h-4 w-4 inline mr-2" />
-            Pending ({pending.length})
-          </button>
-          <button
-            onClick={() => setActiveTab('approved')}
-            className={`flex-1 py-4 px-6 font-semibold text-center transition-colors ${
-              activeTab === 'approved'
+                }`}
+            >
+              <Clock className="h-4 w-4 inline mr-2" />
+              Pending ({pending.length})
+            </button>
+            <button
+              onClick={() => setActiveTab('approved')}
+              className={`flex-1 py-4 px-6 font-semibold text-center transition-colors ${activeTab === 'approved'
                 ? 'text-green-600 border-b-2 border-green-600 bg-white'
                 : 'text-gray-600 hover:text-gray-900'
-            }`}
-          >
-            <Check className="h-4 w-4 inline mr-2" />
-            Approved ({approved.length})
-          </button>
+                }`}
+            >
+              <Check className="h-4 w-4 inline mr-2" />
+              Approved ({approved.length})
+            </button>
 
-          {/* In Progress tab removed - orders go directly from approved to ready_for_delivery */}
+            {/* In Progress tab removed - orders go directly from approved to ready_for_delivery */}
+          </div>
         </div>
-      </div>
 
-      {/* Content */}
-      <div className="p-6">
-        {/* Error State */}
-        {error && (
-          <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+        {/* Content */}
+        <div className="p-6">
+          {/* Error State */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-semibold text-red-900">Error loading pending orders</p>
+                <p className="text-sm text-red-700">{error}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading && pending.length === 0 && approved.length === 0 && (
+            <div className="flex items-center justify-center py-12">
+              <div className="space-y-3">
+                <div className="h-8 w-8 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mx-auto" />
+                <p className="text-gray-600 text-sm">Loading pending orders...</p>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State */}
+          {!loading && !error && activeTab === 'pending' && pending.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="text-center">
+                <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
+                  <Clock className="h-6 w-6 text-green-600" />
+                </div>
+                <p className="font-semibold text-gray-900">All caught up!</p>
+                <p className="text-gray-600 text-sm mt-1">No pending or unpaid orders at the moment</p>
+              </div>
+            </div>
+          )}
+
+          {/* Empty State - Approved */}
+          {!loading && !error && activeTab === 'approved' && approved.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="text-center">
+                <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
+                  <Check className="h-6 w-6 text-blue-600" />
+                </div>
+                <p className="font-semibold text-gray-900">No approved orders</p>
+                <p className="text-gray-600 text-sm mt-1">Approved orders will appear here</p>
+              </div>
+            </div>
+          )}
+
+          {/* Orders Cards Grid */}
+          {!error && (pending.length > 0 || approved.length > 0 || inProgress.length > 0) && ((activeTab === 'pending' && pending.length > 0) || (activeTab === 'approved' && approved.length > 0) || (activeTab === 'in-progress' && inProgress.length > 0)) && (
             <div>
-              <p className="font-semibold text-red-900">Error loading pending orders</p>
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          </div>
-        )}
-
-        {/* Loading State */}
-        {loading && pending.length === 0 && approved.length === 0 && (
-          <div className="flex items-center justify-center py-12">
-            <div className="space-y-3">
-              <div className="h-8 w-8 border-4 border-red-200 border-t-red-600 rounded-full animate-spin mx-auto" />
-              <p className="text-gray-600 text-sm">Loading pending orders...</p>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State */}
-        {!loading && !error && activeTab === 'pending' && pending.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-                <Clock className="h-6 w-6 text-green-600" />
-              </div>
-              <p className="font-semibold text-gray-900">All caught up!</p>
-              <p className="text-gray-600 text-sm mt-1">No pending or unpaid orders at the moment</p>
-            </div>
-          </div>
-        )}
-
-        {/* Empty State - Approved */}
-        {!loading && !error && activeTab === 'approved' && approved.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-12">
-            <div className="text-center">
-              <div className="mx-auto w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mb-4">
-                <Check className="h-6 w-6 text-blue-600" />
-              </div>
-              <p className="font-semibold text-gray-900">No approved orders</p>
-              <p className="text-gray-600 text-sm mt-1">Approved orders will appear here</p>
-            </div>
-          </div>
-        )}
-
-        {/* Orders Cards Grid */}
-        {!error && (pending.length > 0 || approved.length > 0 || inProgress.length > 0) && ((activeTab === 'pending' && pending.length > 0) || (activeTab === 'approved' && approved.length > 0) || (activeTab === 'in-progress' && inProgress.length > 0)) && (
-          <div>
-            {/* Sort Controls */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-semibold text-gray-700">Sort:</span>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as any)}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600"
-                  >
-                    <option value="newest">Newest First</option>
-                    <option value="oldest">Oldest First</option>
-                    <option value="amount">Highest Amount</option>
-                  </select>
+              {/* Sort Controls */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold text-gray-700">Sort:</span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-red-600"
+                    >
+                      <option value="newest">Newest First</option>
+                      <option value="oldest">Oldest First</option>
+                      <option value="amount">Highest Amount</option>
+                    </select>
+                  </div>
                 </div>
               </div>
+
+              {/* Cards Grid */}
+              {(activeTab === 'pending' ? filteredPending : approved).length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 font-semibold">No orders found</p>
+                </div>
+              ) : (
+                <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-3 gap-6">
+                  {(activeTab === 'pending' ? filteredPending : approved).map((order) => {
+                    const isCustom = !order.items || order.items.length === 0;
+
+                    return (
+                      <div key={order._id} className="break-inside-avoid mb-6">
+                        {isCustom ? (
+                          <CustomOrderCard
+                            orderId={order._id}
+                            orderNumber={order.orderNumber}
+                            fullName={order.fullName || `${order.firstName} ${order.lastName}`.trim()}
+                            email={order.email}
+                            phone={order.phone || ''}
+                            quantity={order.requiredQuantity || order.quantity || 1}
+                            description={order.description || ''}
+                            designUrls={order.designUrls || []}
+                            status={order.status as any || 'pending'}
+                            quotedPrice={order.quotedPrice}
+                            quoteItems={order.quoteItems}
+                            paymentVerified={order.paymentVerified || false}
+                            paymentProofUrl={order.paymentProofUrl}
+                          />
+                        ) : (
+                          <OrderCard
+                            orderId={order._id}
+                            firstName={order.firstName || order.fullName?.split(' ')[0] || ''}
+                            lastName={order.lastName || order.fullName?.split(' ').slice(1).join(' ') || ''}
+                            email={order.email}
+                            phone={order.phone}
+                            items={order.items}
+                            total={order.total}
+                            orderNumber={order.orderNumber}
+                            isPaid={paymentStatus[order._id] === 'paid' || paymentStatus[order._id] === 'approved'}
+                            isApproving={approvingOrderId === order._id}
+                            rentalDays={order.rentalSchedule?.rentalDays}
+                            cautionFee={order.cautionFee || undefined}
+                            rentalSchedule={(order as any).rentalSchedule && (order as any).rentalSchedule.pickupDate ? (order as any).rentalSchedule : undefined}
+                            rentalPolicyAgreed={order.rentalPolicyAgreed}
+                            onApprove={activeTab === 'pending' ? () => setConfirmModalOpen(order._id) : () => { }}
+                            onChat={() => setChatModalOpen(order._id)}
+                            onDelete={deleteOrder}
+                            formatCurrency={formatCurrency}
+                            description={order.description}
+                            designUrls={order.designUrls}
+                            quantity={order.quantity}
+                            quotedPrice={order.quotedPrice}
+                            isApproved={activeTab === 'approved' || activeTab === 'in-progress'}
+                            subtotal={order.subtotal}
+                            discountPercentage={order.discountPercentage}
+                            discountAmount={order.discountAmount}
+                            subtotalAfterDiscount={order.subtotalAfterDiscount}
+                            vat={order.vat}
+                            paymentMethod={order.paymentMethod}
+                            paymentVerified={order.paymentVerified}
+                            paymentProofUrl={order.paymentProofUrl}
+                          />
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+          )}
 
-            {/* Cards Grid */}
-            {(activeTab === 'pending' ? filteredPending : approved).length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-gray-500 font-semibold">No orders found</p>
-              </div>
-            ) : (
-              <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-3 gap-6">
-                {(activeTab === 'pending' ? filteredPending : approved).map((order) => {
-                  const isCustom = !order.items || order.items.length === 0;
-                  
-                  return (
-                    <div key={order._id} className="break-inside-avoid mb-6">
-                      {isCustom ? (
-                        <CustomOrderCard
-                          orderId={order._id}
-                          orderNumber={order.orderNumber}
-                          fullName={order.fullName || `${order.firstName} ${order.lastName}`.trim()}
-                          email={order.email}
-                          phone={order.phone || ''}
-                          quantity={order.requiredQuantity || order.quantity || 1}
-                          description={order.description || ''}
-                          designUrls={order.designUrls || []}
-                          status={order.status as any || 'pending'}
-                          quotedPrice={order.quotedPrice}
-                          quoteItems={order.quoteItems}
-                          paymentVerified={order.paymentVerified || false}
-                          paymentProofUrl={order.paymentProofUrl}
-                        />
-                      ) : (
-                        <OrderCard
-                          orderId={order._id}
-                          firstName={order.firstName || order.fullName?.split(' ')[0] || ''}
-                          lastName={order.lastName || order.fullName?.split(' ').slice(1).join(' ') || ''}
-                          email={order.email}
-                          phone={order.phone}
-                          items={order.items}
-                          total={order.total}
-                          orderNumber={order.orderNumber}
-                          isPaid={paymentStatus[order._id] === 'paid' || paymentStatus[order._id] === 'approved'}
-                          isApproving={approvingOrderId === order._id}
-                          rentalDays={order.rentalSchedule?.rentalDays}
-                          cautionFee={order.cautionFee || undefined}
-                          rentalSchedule={(order as any).rentalSchedule && (order as any).rentalSchedule.pickupDate ? (order as any).rentalSchedule : undefined}
-                          rentalPolicyAgreed={order.rentalPolicyAgreed}
-                          onApprove={activeTab === 'pending' ? () => setConfirmModalOpen(order._id) : () => {}}
-                          onChat={() => setChatModalOpen(order._id)}
-                          onDelete={deleteOrder}
-                          formatCurrency={formatCurrency}
-                          description={order.description}
-                          designUrls={order.designUrls}
-                          quantity={order.quantity}
-                          quotedPrice={order.quotedPrice}
-                          isApproved={activeTab === 'approved' || activeTab === 'in-progress'}
-                          subtotal={order.subtotal}
-                          discountPercentage={order.discountPercentage}
-                          discountAmount={order.discountAmount}
-                          subtotalAfterDiscount={order.subtotalAfterDiscount}
-                          vat={order.vat}
-                        />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        )}
+          {/* Confirmation Modal */}
+          <ConfirmPaymentModal
+            isOpen={!!confirmModalOpen}
+            orderNumber={pending.find(o => o._id === confirmModalOpen)?.orderNumber || ''}
+            isPaid={confirmModalOpen ? paymentStatus[confirmModalOpen] === 'paid' : false}
+            total={pending.find(o => o._id === confirmModalOpen)?.total || 0}
+            onClose={() => setConfirmModalOpen(null)}
+            onApprove={() => {
+              if (confirmModalOpen) {
+                approvePayment(confirmModalOpen);
+                setConfirmModalOpen(null);
+              }
+            }}
+            formatCurrency={formatCurrency}
+            paymentMethod={pending.find(o => o._id === confirmModalOpen)?.paymentMethod}
+            paymentProofUrl={pending.find(o => o._id === confirmModalOpen)?.paymentProofUrl}
+          />
 
-        {/* Confirmation Modal */}
-        <ConfirmPaymentModal
-          isOpen={!!confirmModalOpen}
-          orderNumber={pending.find(o => o._id === confirmModalOpen)?.orderNumber || ''}
-          isPaid={confirmModalOpen ? paymentStatus[confirmModalOpen] === 'paid' : false}
-          total={pending.find(o => o._id === confirmModalOpen)?.total || 0}
-          onClose={() => setConfirmModalOpen(null)}
-          onApprove={() => {
-            if (confirmModalOpen) {
-              approvePayment(confirmModalOpen);
-              setConfirmModalOpen(null);
-            }
-          }}
-          formatCurrency={formatCurrency}
-        />
+          {/* Chat Modal - removed, to be replaced */}
 
-        {/* Chat Modal - removed, to be replaced */}
-
-        {/* Toast Notification */}
-        {toast && (
-          <div className={`fixed bottom-4 right-4 p-4 rounded-lg text-white font-semibold flex items-center gap-2 ${
-            toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
-          }`}>
-            {toast.type === 'success' ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
-            {toast.message}
-          </div>
-        )}
-      </div>
+          {/* Toast Notification */}
+          {toast && (
+            <div className={`fixed bottom-4 right-4 p-4 rounded-lg text-white font-semibold flex items-center gap-2 ${toast.type === 'success' ? 'bg-green-600' : 'bg-red-600'
+              }`}>
+              {toast.type === 'success' ? <Check className="h-5 w-5" /> : <X className="h-5 w-5" />}
+              {toast.message}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

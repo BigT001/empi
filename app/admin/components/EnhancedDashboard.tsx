@@ -89,6 +89,10 @@ function calculateDailyMetrics(orders: any[]): DailyMetrics[] {
   const dailyMetricsMap = new Map<string, DailyMetrics>();
 
   orders.forEach((order: any) => {
+    // Only count verified online payments or any offline payments
+    const isOnline = !order.isOffline;
+    if (isOnline && order.paymentVerified !== true) return;
+
     // Get order date
     const orderDate = order.createdAt || order.created_at || new Date();
     const dateObj = new Date(orderDate);
@@ -109,7 +113,7 @@ function calculateDailyMetrics(orders: any[]): DailyMetrics[] {
 
     const dailyMetric = dailyMetricsMap.get(dateStr)!;
     const items = order.items || [];
-    
+
     // Calculate revenue by item mode
     let orderSalesRevenue = 0;
     let orderRentalRevenue = 0;
@@ -213,7 +217,7 @@ export function EnhancedDashboard() {
             'Expires': '0',
           }
         });
-        const usersRes = await fetch("/api/admin/users?t=" + Date.now(), {
+        const usersRes = await fetch("/api/admin/buyers?t=" + Date.now(), {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -221,17 +225,22 @@ export function EnhancedDashboard() {
             'Expires': '0',
           }
         });
-        
-        const ordersData = ordersRes.ok ? await ordersRes.json() : { orders: [] };
-        const offlineOrdersData = offlineOrdersRes.ok ? await offlineOrdersRes.json() : { data: [] };
-        const productsData = productsRes.ok ? await productsRes.json() : { data: [] };
-        const usersData = usersRes.ok ? await usersRes.json() : { users: [] };
+
+        const ordersData = ordersRes.ok ? await ordersRes.json() : { orders: [], total: 0 };
+        const offlineOrdersData = offlineOrdersRes.ok ? await offlineOrdersRes.json() : { data: [], pagination: { total: 0 } };
+        const productsData = productsRes.ok ? await productsRes.json() : { data: [], pagination: { total: 0 } };
+        const usersData = usersRes.ok ? await usersRes.json() : { buyers: [], total: 0 };
 
         const onlineOrders = ordersData.orders?.filter((o: any) => !o.isOffline) || [];
         const offlineOrders = offlineOrdersData.data || [];
         const allOrders = [...onlineOrders, ...offlineOrders];
         const products = productsData.data || [];
-        const users = usersData.users || [];
+        const users = usersData.buyers || [];
+
+        const totalOrdersCount = ordersData.total || onlineOrders.length;
+        const totalOfflineOrdersCount = offlineOrdersData.pagination?.total || offlineOrders.length;
+        const totalProductsCount = productsData.pagination?.total || products.length;
+        const totalUsersCount = usersData.total || users.length;
 
         const onlineCount = onlineOrders.length;
         const offlineCount = offlineOrders.length;
@@ -255,13 +264,13 @@ export function EnhancedDashboard() {
             totalRevenue,
             totalSalesRevenue: onlineSales + offlineSales,
             totalRentalRevenue: onlineRentals + offlineRentals,
-            totalOrders: allOrders.length,
+            totalOrders: totalOrdersCount + totalOfflineOrdersCount,
             completedOrders,
             pendingOrders,
-            totalProducts: products.length,
+            totalProducts: totalProductsCount,
             totalCustomers: totalCustomerEmails.size,
-            registeredCustomers: users.filter((u: any) => !u.isGuest).length,
-            guestCustomers: users.filter((u: any) => u.isGuest).length,
+            registeredCustomers: totalUsersCount,
+            guestCustomers: Math.max(0, totalCustomerEmails.size - totalUsersCount),
             averageOrderValue,
             completionRate,
           },

@@ -29,7 +29,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const { mounted } = useResponsive();
   const [activeTab, setActiveTab] = useState<"sub-admins" | "security" | "bank">("sub-admins");
-  
+
   // Sub-Admins State
   const [subAdmins, setSubAdmins] = useState<SubAdmin[]>([]);
   const [loadingAdmins, setLoadingAdmins] = useState(false);
@@ -48,7 +48,7 @@ export default function SettingsPage() {
     password: '',
     department: 'general',
   });
-  
+
   // Security State
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
     currentPassword: '',
@@ -59,13 +59,13 @@ export default function SettingsPage() {
   const [changePassMessage, setChangePassMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
   const [sessions, setSessions] = useState<any[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
-  
+
   // UI State
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  // Settings page is locked - nobody can access it
-  const hasAccess = false;
+  // Settings page access control - only Super Administrators
+  const hasAccess = admin?.role === 'super_admin';
 
   // Function Definitions (must be before useEffect that uses them)
   const loadSubAdmins = async () => {
@@ -79,7 +79,7 @@ export default function SettingsPage() {
         },
       });
       console.log('Response status:', response.status);
-      
+
       if (response.ok) {
         const data = await response.json();
         console.log('Sub-admins data:', data);
@@ -344,11 +344,10 @@ export default function SettingsPage() {
           {admin?.role === 'super_admin' && (
             <button
               onClick={() => setActiveTab("sub-admins")}
-              className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${
-                activeTab === "sub-admins"
+              className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === "sub-admins"
                   ? "border-lime-600 text-lime-600"
                   : "border-transparent text-gray-600 hover:text-gray-900"
-              }`}
+                }`}
             >
               <Users className="h-5 w-5" />
               Sub-Admin Management
@@ -356,22 +355,20 @@ export default function SettingsPage() {
           )}
           <button
             onClick={() => setActiveTab("security")}
-            className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${
-              activeTab === "security"
+            className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === "security"
                 ? "border-lime-600 text-lime-600"
                 : "border-transparent text-gray-600 hover:text-gray-900"
-            }`}
+              }`}
           >
             <Lock className="h-5 w-5" />
             Security
           </button>
           <button
             onClick={() => setActiveTab("bank")}
-            className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${
-              activeTab === "bank"
+            className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === "bank"
                 ? "border-lime-600 text-lime-600"
                 : "border-transparent text-gray-600 hover:text-gray-900"
-            }`}
+              }`}
           >
             <DollarSign className="h-5 w-5" />
             Bank Details
@@ -383,11 +380,10 @@ export default function SettingsPage() {
       <main className="mx-auto max-w-7xl px-6 py-12 w-full">
         {/* Messages */}
         {message && (
-          <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 border ${
-            message.type === 'success' 
-              ? 'bg-green-50 border-green-200' 
+          <div className={`mb-6 p-4 rounded-lg flex items-center gap-2 border ${message.type === 'success'
+              ? 'bg-green-50 border-green-200'
               : 'bg-red-50 border-red-200'
-          }`}>
+            }`}>
             {message.type === 'success' ? (
               <CheckCircle2 className={`h-5 w-5 ${message.type === 'success' ? 'text-green-600' : 'text-red-600'}`} />
             ) : (
@@ -605,36 +601,35 @@ export default function SettingsPage() {
                           <td className="px-8 py-4 text-sm">
                             <button
                               onClick={() => handleToggleAdminStatus(subAdmin._id, subAdmin.isActive)}
-                              className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition ${
-                                subAdmin.isActive
+                              className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition ${subAdmin.isActive
                                   ? 'bg-green-100 text-green-700 hover:bg-green-200'
                                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                              }`}
+                                }`}
                             >
                               {subAdmin.isActive ? 'Active' : 'Inactive'}
                             </button>
                           </td>
                           <td className="px-8 py-4 text-sm flex gap-2">
-                            <button 
+                            <button
                               onClick={() => handleDeleteAdmin(subAdmin._id, subAdmin.email)}
                               disabled={isSaving}
-                              className="p-2 hover:bg-red-100 rounded-lg transition disabled:opacity-50" 
+                              className="p-2 hover:bg-red-100 rounded-lg transition disabled:opacity-50"
                               title="Delete"
                             >
                               <Trash2 className="h-4 w-4 text-red-600" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleEditAdmin(subAdmin)}
                               disabled={isSaving}
-                              className="p-2 hover:bg-blue-100 rounded-lg transition disabled:opacity-50" 
+                              className="p-2 hover:bg-blue-100 rounded-lg transition disabled:opacity-50"
                               title="Edit"
                             >
                               <Edit2 className="h-4 w-4 text-blue-600" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => handleManagePermissions(subAdmin)}
                               disabled={isSaving}
-                              className="p-2 hover:bg-purple-100 rounded-lg transition disabled:opacity-50" 
+                              className="p-2 hover:bg-purple-100 rounded-lg transition disabled:opacity-50"
                               title="Manage Permissions"
                             >
                               <Lock className="h-4 w-4 text-purple-600" />
@@ -657,13 +652,12 @@ export default function SettingsPage() {
             <div className="lg:col-span-1">
               <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
                 <h2 className="text-2xl font-bold text-gray-900 mb-6">Change Password</h2>
-                
+
                 {changePassMessage && (
-                  <div className={`mb-4 p-3 rounded-lg text-sm font-semibold flex items-center gap-2 border ${
-                    changePassMessage.type === 'success'
+                  <div className={`mb-4 p-3 rounded-lg text-sm font-semibold flex items-center gap-2 border ${changePassMessage.type === 'success'
                       ? 'bg-green-50 border-green-200 text-green-700'
                       : 'bg-red-50 border-red-200 text-red-700'
-                  }`}>
+                    }`}>
                     {changePassMessage.type === 'success' ? (
                       <CheckCircle2 className="h-4 w-4" />
                     ) : (

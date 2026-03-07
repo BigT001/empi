@@ -394,7 +394,9 @@ export function UserCustomOrderCard({
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1 min-w-0">
             <h3 className="text-xl font-bold text-white mb-1">Custom Order #{orderNumber}</h3>
-            <p className="text-white text-opacity-90 text-sm">Status: {status.charAt(0).toUpperCase() + status.slice(1)}</p>
+            <p className="text-white text-opacity-90 text-sm">
+              Status: {(status === 'pending' && paymentStatus.hasMixedPayment) ? 'Payment Awaiting Review' : (status.charAt(0).toUpperCase() + status.slice(1))}
+            </p>
           </div>
           {/* Expand/Collapse Button */}
           <button
@@ -415,7 +417,15 @@ export function UserCustomOrderCard({
         {status === 'pending' && (
           <div className="bg-white dark:bg-black/20 rounded-lg p-4 border-2 border-gray-200 dark:border-white/10">
             <div className="flex items-center gap-3 mb-3">
-              {hasQuote ? (
+              {paymentStatus.hasMixedPayment ? (
+                <>
+                  <Clock className="h-6 w-6 text-amber-600 animate-pulse flex-shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold text-amber-700 uppercase tracking-wide">Payment Awaiting Review</p>
+                    <p className="text-sm text-gray-900 dark:text-gray-100 font-semibold">We've received your proof of payment. Admin will verify it shortly.</p>
+                  </div>
+                </>
+              ) : (hasQuote ? (
                 <>
                   <CheckCircle className="h-6 w-6 text-emerald-600 flex-shrink-0" />
                   <div>
@@ -431,7 +441,7 @@ export function UserCustomOrderCard({
                     <p className="text-sm text-gray-900 dark:text-gray-100 font-semibold">Admin is preparing your quote...</p>
                   </div>
                 </>
-              )}
+              ))}
             </div>
 
             {lastChecked && !hasQuote && (

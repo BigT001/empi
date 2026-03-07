@@ -41,6 +41,8 @@ export async function getTotalOnlineSales(): Promise<number> {
     const totalOnlineSales = orders
       .filter((order: any) => {
         if (order.isOffline) return false;
+        // Only count verified payments in revenue
+        if (order.paymentVerified !== true) return false;
         const type = getTransactionType(order);
         return type === "sales" || type === "mixed";
       })
@@ -88,6 +90,8 @@ export async function getTotalOnlineRentals(): Promise<number> {
     const totalOnlineRentals = orders
       .filter((order: any) => {
         if (order.isOffline) return false;
+        // Only count verified payments in revenue
+        if (order.paymentVerified !== true) return false;
         const type = getTransactionType(order);
         return type === "rentals" || type === "mixed";
       })

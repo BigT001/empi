@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Phone, MessageCircle, Truck } from "lucide-react";
+import { Check, Phone, MessageCircle, Truck, ShieldCheck } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -60,10 +60,10 @@ export function ActionButtons({
     console.log('[ActionButtons] 🟢 handleReadyClick TRIGGERED');
     console.log('[ActionButtons] orderData:', orderData);
     console.log('[ActionButtons] orderId:', orderId);
-    
+
     if (orderData) {
       console.log('[ActionButtons] 📦 OrderData exists, updating database status...');
-      
+
       // Update order status to "ready_for_delivery" in the database
       try {
         console.log('[ActionButtons] 🔄 Updating order status in database...');
@@ -139,7 +139,7 @@ export function ActionButtons({
           <Phone className="h-4 w-4" />
           Call
         </button>
-        
+
         {/* Mark Delivered Button for Logistics Mode */}
         {logisticsMode && onShipped && (
           <button
@@ -151,7 +151,7 @@ export function ActionButtons({
             Mark Delivered?
           </button>
         )}
-        
+
         {/* Ready for Delivery Confirmation Modal - INSIDE isApproved block */}
         {showReadyForDeliveryModal && (
           <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50">
@@ -200,21 +200,31 @@ export function ActionButtons({
       <button
         onClick={() => onApprove(orderId)}
         disabled={isApproving}
-        className={`flex-1 text-white font-semibold py-2 px-4 rounded-lg transition-all flex items-center justify-center gap-2 ${
-          isPaid
-            ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800'
-            : 'bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700'
-        } disabled:from-gray-400 disabled:to-gray-400`}
+        className={`flex-1 text-white font-black py-3 px-4 rounded-xl transition-all flex items-center justify-center gap-2 transform active:scale-95 shadow-md ${orderData?.paymentMethod === 'manual' && !orderData?.paymentVerified
+          ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 ring-4 ring-amber-500/20 animate-pulse-gentle'
+          : isPaid || orderData?.paymentVerified
+            ? 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'
+            : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700'
+          } disabled:from-gray-400 disabled:to-gray-400 disabled:scale-100 disabled:ring-0`}
       >
         {isApproving ? (
           <>
             <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
-            {isPaid ? 'Confirming...' : 'Approving...'}
+            {(isPaid || orderData?.paymentMethod === 'manual') ? 'Confirming...' : 'Approving...'}
           </>
         ) : (
           <>
-            <Check className="h-4 w-4" />
-            Approve
+            {orderData?.paymentMethod === 'manual' && !orderData?.paymentVerified ? (
+              <>
+                <ShieldCheck className="h-5 w-5" />
+                VERIFY RECEIPT
+              </>
+            ) : (
+              <>
+                <Check className="h-5 w-5" />
+                {orderData?.paymentMethod === 'manual' ? 'Approve Payment' : 'Approve Order'}
+              </>
+            )}
           </>
         )}
       </button>

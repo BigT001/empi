@@ -1,14 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Edit2, Trash2, Check, X, Copy, Eye, EyeOff } from "lucide-react";
+import { Plus, Edit2, Trash2, Check, X, Copy, Eye, EyeOff, CreditCard, Landmark } from "lucide-react";
 
 interface BankDetails {
   id?: string;
   bankName: string;
   accountName: string;
   accountNumber: string;
-  bankCode: string;
+  bankCode?: string;
   sortCode?: string;
   instructions?: string;
   isActive: boolean;
@@ -22,14 +22,12 @@ export default function BankDetailsPage() {
   const [showNewForm, setShowNewForm] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [visibleAccounts, setVisibleAccounts] = useState<Set<string>>(new Set());
+  const [paymentMethods, setPaymentMethods] = useState({ manual: true, paystack: true });
 
   const [formData, setFormData] = useState<BankDetails>({
     bankName: "",
     accountName: "",
     accountNumber: "",
-    bankCode: "",
-    sortCode: "",
-    instructions: "",
     isActive: false,
   });
 
@@ -52,6 +50,10 @@ export default function BankDetailsPage() {
         } else {
           setBanks([]);
         }
+
+        if (data.paymentMethods) {
+          setPaymentMethods(data.paymentMethods);
+        }
       } else {
         setBanks([]);
       }
@@ -68,9 +70,6 @@ export default function BankDetailsPage() {
       bankName: "",
       accountName: "",
       accountNumber: "",
-      bankCode: "",
-      sortCode: "",
-      instructions: "",
       isActive: false,
     });
     setEditingId(null);
@@ -85,8 +84,13 @@ export default function BankDetailsPage() {
 
   const handleSave = async () => {
     // Validate required fields
-    if (!formData.bankName || !formData.accountName || !formData.accountNumber || !formData.bankCode) {
+    if (!formData.bankName || !formData.accountName || !formData.accountNumber) {
       setMessage({ type: "error", text: "Please fill in all required fields" });
+      return;
+    }
+
+    if (formData.accountNumber.length !== 10) {
+      setMessage({ type: "error", text: "Account number must be exactly 10 digits" });
       return;
     }
 
@@ -142,6 +146,32 @@ export default function BankDetailsPage() {
         type: "error",
         text: error instanceof Error ? error.message : "Failed to save bank details",
       });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleUpdatePaymentMethods = async (method: 'manual' | 'paystack', enabled: boolean) => {
+    try {
+      setSaving(true);
+      const updated = { ...paymentMethods, [method]: enabled };
+
+      const res = await fetch("/api/admin/payment-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updated),
+      });
+
+      if (res.ok) {
+        setPaymentMethods(updated);
+        setMessage({ type: "success", text: "Payment visibility updated successfully" });
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        setMessage({ type: "error", text: "Failed to update payment settings" });
+      }
+    } catch (error) {
+      console.error("Error updating payment settings:", error);
+      setMessage({ type: "error", text: "Error updating payment settings" });
     } finally {
       setSaving(false);
     }
@@ -250,11 +280,10 @@ export default function BankDetailsPage() {
         {/* Message */}
         {message && (
           <div
-            className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${
-              message.type === "success"
-                ? "bg-green-50 text-green-800 border border-green-200"
-                : "bg-red-50 text-red-800 border border-red-200"
-            }`}
+            className={`mb-6 p-4 rounded-lg flex items-center gap-2 ${message.type === "success"
+              ? "bg-green-50 text-green-800 border border-green-200"
+              : "bg-red-50 text-red-800 border border-red-200"
+              }`}
           >
             {message.type === "success" ? (
               <Check className="h-5 w-5" />
@@ -294,7 +323,7 @@ export default function BankDetailsPage() {
                   value={formData.bankName}
                   onChange={e => setFormData({ ...formData, bankName: e.target.value })}
                   placeholder="e.g., GTBank, Access Bank, First Bank"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
                 />
               </div>
 
@@ -308,7 +337,7 @@ export default function BankDetailsPage() {
                   value={formData.accountName}
                   onChange={e => setFormData({ ...formData, accountName: e.target.value })}
                   placeholder="e.g., EMPI Fashion Ltd"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
                 />
               </div>
 
@@ -322,51 +351,11 @@ export default function BankDetailsPage() {
                   value={formData.accountNumber}
                   onChange={e => setFormData({ ...formData, accountNumber: e.target.value })}
                   placeholder="10-digit account number"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                  maxLength={10}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 text-gray-900"
                 />
               </div>
 
-              {/* Bank Code */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Bank Code <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.bankCode}
-                  onChange={e => setFormData({ ...formData, bankCode: e.target.value })}
-                  placeholder="3-digit bank code"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              {/* Sort Code */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Sort Code (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={formData.sortCode || ""}
-                  onChange={e => setFormData({ ...formData, sortCode: e.target.value })}
-                  placeholder="6-digit sort code"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              {/* Instructions */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Transfer Instructions (Optional)
-                </label>
-                <input
-                  type="text"
-                  value={formData.instructions || ""}
-                  onChange={e => setFormData({ ...formData, instructions: e.target.value })}
-                  placeholder="e.g., Use your order number as reference"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
             </div>
 
             {/* Form Buttons */}
@@ -406,11 +395,10 @@ export default function BankDetailsPage() {
             {banks.map((bank, index) => (
               <div
                 key={bank.id || `bank-${index}`}
-                className={`relative rounded-lg shadow-md border-2 overflow-hidden transition ${
-                  bank.isActive
-                    ? "border-green-500 bg-gradient-to-br from-green-50 to-lime-50"
-                    : "border-gray-200 bg-white hover:border-gray-300"
-                }`}
+                className={`relative rounded-lg shadow-md border-2 overflow-hidden transition ${bank.isActive
+                  ? "border-green-500 bg-gradient-to-br from-green-50 to-lime-50"
+                  : "border-gray-200 bg-white hover:border-gray-300"
+                  }`}
               >
                 {/* Active Badge */}
                 {bank.isActive && (
@@ -463,74 +451,95 @@ export default function BankDetailsPage() {
                       </div>
                     </div>
 
-                    {/* Bank Code */}
-                    <div>
-                      <p className="text-xs text-gray-600 font-medium">Bank Code</p>
-                      <div className="flex items-center gap-2">
-                        <p className="flex-1 px-3 py-1 bg-gray-100 rounded text-sm font-mono font-semibold text-gray-900">
-                          {bank.bankCode}
-                        </p>
-                        <button
-                          onClick={() => copyToClipboard(bank.bankCode, "Bank Code")}
-                          className="p-1 text-gray-600 hover:text-gray-900 transition"
-                          title="Copy"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Sort Code */}
-                    {bank.sortCode && (
-                      <div>
-                        <p className="text-xs text-gray-600 font-medium">Sort Code</p>
-                        <p className="text-sm font-mono text-gray-900">{bank.sortCode}</p>
-                      </div>
-                    )}
-
-                    {/* Instructions */}
-                    {bank.instructions && (
-                      <div>
-                        <p className="text-xs text-gray-600 font-medium">Instructions</p>
-                        <p className="text-sm text-gray-700">{bank.instructions}</p>
-                      </div>
-                    )}
                   </div>
+                </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    {!bank.isActive && (
-                      <button
-                        onClick={() => handleSetActive(bank.id)}
-                        disabled={saving}
-                        className="flex-1 bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
-                      >
-                        <Check className="h-4 w-4" />
-                        Set Active
-                      </button>
-                    )}
+                {/* Action Buttons */}
+                <div className="flex gap-2">
+                  {!bank.isActive && (
                     <button
-                      onClick={() => handleEdit(bank)}
+                      onClick={() => handleSetActive(bank.id)}
                       disabled={saving}
-                      className="flex-1 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-200 text-blue-700 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
+                      className="flex-1 bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
                     >
-                      <Edit2 className="h-4 w-4" />
-                      Edit
+                      <Check className="h-4 w-4" />
+                      Set Active
                     </button>
-                    <button
-                      onClick={() => handleDelete(bank.id)}
-                      disabled={saving}
-                      className="flex-1 bg-red-100 hover:bg-red-200 disabled:bg-gray-200 text-red-700 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </button>
-                  </div>
+                  )}
+                  <button
+                    onClick={() => handleEdit(bank)}
+                    disabled={saving}
+                    className="flex-1 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-200 text-blue-700 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(bank.id)}
+                    disabled={saving}
+                    className="flex-1 bg-red-100 hover:bg-red-200 disabled:bg-gray-200 text-red-700 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    Delete
+                  </button>
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {/* Payment Visibility Settings */}
+        <div className="mt-12 bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
+          <div className="px-6 py-4 bg-gray-50 border-b border-gray-200">
+            <h3 className="text-lg font-bold text-gray-900 leading-tight">Payment Visibility Settings</h3>
+            <p className="text-sm text-gray-600">Choose which payment methods are visible to customers at checkout</p>
+          </div>
+          <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Manual Toggle */}
+            <div className={`p-4 rounded-xl border-2 transition ${paymentMethods.manual ? 'border-lime-500 bg-lime-50/50' : 'border-gray-200 bg-white'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-lg ${paymentMethods.manual ? 'bg-lime-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                    <Landmark className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900">Manual Bank Transfer</h4>
+                    <p className="text-[11px] text-gray-600">Directly into your active account</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleUpdatePaymentMethods('manual', !paymentMethods.manual)}
+                  disabled={saving}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${paymentMethods.manual ? 'bg-lime-600' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentMethods.manual ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+
+            {/* Paystack Toggle */}
+            <div className={`p-4 rounded-xl border-2 transition ${paymentMethods.paystack ? 'border-blue-500 bg-blue-50/50' : 'border-gray-200 bg-white'}`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2.5 rounded-lg ${paymentMethods.paystack ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                    <CreditCard className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="font-bold text-gray-900">Online (Paystack)</h4>
+                    <p className="text-[11px] text-gray-600">Cards, Transfer, USSD, Wallet</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => handleUpdatePaymentMethods('paystack', !paymentMethods.paystack)}
+                  disabled={saving}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${paymentMethods.paystack ? 'bg-blue-600' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${paymentMethods.paystack ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Info Box */}
         {banks.length > 0 && (
@@ -545,6 +554,6 @@ export default function BankDetailsPage() {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }

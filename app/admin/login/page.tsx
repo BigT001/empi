@@ -49,7 +49,7 @@ export default function AdminLoginPage() {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Login failed';
       setError(errorMessage);
-      
+
       // Extract remaining attempts from error message if present
       const attemptsMatch = errorMessage.match(/\((\d+)\s+attempts?\s+remaining\)/);
       if (attemptsMatch) {
@@ -92,19 +92,18 @@ export default function AdminLoginPage() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Error Messages */}
           {error && (
-            <div className={`p-4 rounded-lg flex items-start gap-3 ${
-              error.includes('rate limit') || error.includes('locked') || error.includes('Too many')
-                ? 'bg-red-50 border border-red-200 text-red-700'
-                : error.includes('disabled')
+            <div className={`p-4 rounded-lg flex items-start gap-3 ${error.includes('rate limit') || error.includes('locked') || error.includes('Too many')
+              ? 'bg-red-50 border border-red-200 text-red-700'
+              : error.includes('disabled')
                 ? 'bg-orange-50 border border-orange-200 text-orange-700'
                 : 'bg-red-50 border border-red-200 text-red-700'
-            }`}>
+              }`}>
               <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
               <div className="text-sm flex-1">
                 <p className="font-semibold mb-1">{
                   error.includes('rate limit') || error.includes('Too many') ? 'Account Temporarily Locked' :
-                  error.includes('disabled') ? 'Account Disabled' :
-                  'Login Failed'
+                    error.includes('disabled') ? 'Account Disabled' :
+                      'Login Failed'
                 }</p>
                 <p>{error}</p>
                 {remainingAttempts !== null && remainingAttempts > 0 && (
@@ -126,7 +125,7 @@ export default function AdminLoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="admin@example.com"
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 transition"
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 transition text-black"
               disabled={submitting}
               autoComplete="email"
             />
@@ -143,7 +142,7 @@ export default function AdminLoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Enter your password"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 transition pr-10"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 transition pr-10 text-black"
                 disabled={submitting}
                 autoComplete="current-password"
               />

@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
 
     // Return banks in standardized format
     const banks = settings.bankAccounts || [];
-    
+
     return NextResponse.json({
       banks,
       bankAccounts: banks,
@@ -29,6 +29,8 @@ export async function GET(req: NextRequest) {
       bankName: settings.bankName,
       bankCode: settings.bankCode,
       transferInstructions: settings.transferInstructions,
+      // Payment visibility settings
+      paymentMethods: settings.paymentMethods || { manual: true, paystack: true },
     });
   } catch (error) {
     console.error('[Bank Settings GET] Error:', error);
@@ -45,9 +47,9 @@ export async function POST(req: NextRequest) {
     const { bankName, accountName, accountNumber, bankCode, sortCode, instructions } = await req.json();
 
     // Validate required fields
-    if (!bankName || !accountName || !accountNumber || !bankCode) {
+    if (!bankName || !accountName || !accountNumber) {
       return NextResponse.json(
-        { error: 'Bank name, account name, number, and bank code are required' },
+        { error: 'Bank name, account name, and account number are required' },
         { status: 400 }
       );
     }
@@ -56,7 +58,7 @@ export async function POST(req: NextRequest) {
 
     // Get or create settings document
     let settings = await Settings.findOne({});
-    
+
     if (!settings) {
       settings = new Settings({
         bankAccounts: [],
@@ -77,15 +79,15 @@ export async function POST(req: NextRequest) {
     }
 
     // Create new bank account
-    const newBank = {
+    const newBank: any = {
       _id: new Types.ObjectId(),
       bankName,
       accountName,
       accountNumber,
-      bankCode,
-      sortCode: sortCode || undefined,
-      instructions: instructions || undefined,
-      isActive: settings.bankAccounts.length === 0, // First bank is active by default
+      bankCode: bankCode || "", // Use empty string as fallback
+      sortCode: sortCode || "",
+      instructions: instructions || "",
+      isActive: settings.bankAccounts.length === 0,
     };
 
     settings.bankAccounts.push(newBank);
