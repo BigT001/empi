@@ -39,6 +39,17 @@ export default function AdminDashboardPage() {
   // Default to 'dashboard' on each load - no localStorage persistence
   const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'pending' | 'products'>('dashboard');
   
+  // Adjust default tab based on admin permissions
+  useEffect(() => {
+    if (admin) {
+      const canViewDashboard = admin.permissions?.includes('all') || admin.permissions?.includes('view_dashboard');
+      if (!canViewDashboard) {
+        setActiveTab('pending');
+        window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: 'pending' } }));
+      }
+    }
+  }, [admin]);
+
   // Use session expiry hook to detect logout
   const { sessionError } = useSessionExpiry();
 

@@ -93,10 +93,11 @@ export default function EditProductModal({
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
+      
       <div className="bg-white rounded-2xl max-w-2xl w-full my-8">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white">
-          <h2 className="text-2xl font-bold text-gray-900">Edit Product</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Edit Product (Updated)</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition"
@@ -153,7 +154,7 @@ export default function EditProductModal({
               value={formData.name}
               onChange={handleInputChange}
               placeholder="Enter product name"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
             />
           </div>
 
@@ -169,7 +170,7 @@ export default function EditProductModal({
               onChange={handleInputChange}
               placeholder="Enter product description"
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
             />
           </div>
 
@@ -188,7 +189,7 @@ export default function EditProductModal({
                 placeholder="0"
                 step="0.01"
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
               />
             </div>
             <div>
@@ -204,7 +205,7 @@ export default function EditProductModal({
                 placeholder="0"
                 step="0.01"
                 min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
               />
             </div>
           </div>
@@ -219,7 +220,7 @@ export default function EditProductModal({
               name="category"
               value={formData.category}
               onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
             >
               <option value="adults">👔 Adults</option>
               <option value="kids">👶 Kids</option>
@@ -236,7 +237,7 @@ export default function EditProductModal({
               name="costumeType"
               value={formData.costumeType || "Other"}
               onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
             >
               <option value="Angel">👼 Angel</option>
               <option value="Carnival">🎪 Carnival</option>
@@ -255,7 +256,7 @@ export default function EditProductModal({
               name="condition"
               value={formData.condition || ''}
               onChange={handleInputChange}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
             >
               <option value="">Select condition</option>
               <option value="New">New</option>
@@ -275,7 +276,7 @@ export default function EditProductModal({
                 value={formData.color || ''}
                 onChange={handleInputChange}
                 placeholder="Color (e.g., Red, Blue)"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
               />
               <input
                 type="text"
@@ -283,7 +284,7 @@ export default function EditProductModal({
                 value={formData.material || ''}
                 onChange={handleInputChange}
                 placeholder="Material (e.g., Cotton, Silk)"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
               />
               <input
                 type="text"
@@ -291,7 +292,7 @@ export default function EditProductModal({
                 value={formData.sizes || ''}
                 onChange={handleInputChange}
                 placeholder="Available Sizes (e.g., S, M, L, XL)"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
               />
               <input
                 type="text"
@@ -299,7 +300,7 @@ export default function EditProductModal({
                 value={formData.badge || ''}
                 onChange={handleInputChange}
                 placeholder="Badge (e.g., Sale, New, Trending) - Leave empty for none"
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 placeholder-gray-500 !text-black !bg-white"
               />
             </div>
           </div>

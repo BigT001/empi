@@ -464,6 +464,7 @@ export default function MobileAdminUpload() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white pb-20 px-0">
+      
       {/* Success Notification Modal */}
       {showNotification && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
@@ -632,7 +633,7 @@ export default function MobileAdminUpload() {
               value={form.name}
               onChange={handleInputChange}
               placeholder="e.g., Vintage Red Dress"
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
               disabled={isSubmitting}
             />
           </div>
@@ -670,7 +671,7 @@ export default function MobileAdminUpload() {
                   value={form.sellPrice}
                   onChange={handleInputChange}
                   placeholder="50000"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                   disabled={isSubmitting}
                 />
               </div>
@@ -684,7 +685,7 @@ export default function MobileAdminUpload() {
                   value={form.rentPrice}
                   onChange={handleInputChange}
                   placeholder="5000"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                   disabled={isSubmitting}
                 />
               </div>
@@ -706,7 +707,7 @@ export default function MobileAdminUpload() {
                   name="category"
                   value={form.category}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                   disabled={isSubmitting}
                 >
                   <option value="adults">👔 Adults</option>
@@ -721,7 +722,7 @@ export default function MobileAdminUpload() {
                   name="costumeType"
                   value={form.costumeType}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                   disabled={isSubmitting}
                 >
                   <option value="Angel">👼 Angel</option>
@@ -743,7 +744,7 @@ export default function MobileAdminUpload() {
                     name="country"
                     value={form.country || ""}
                     onChange={handleInputChange}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                     disabled={isSubmitting}
                   >
                     <option value="">Select a country...</option>
@@ -777,7 +778,7 @@ export default function MobileAdminUpload() {
                   value={form.sizes}
                   onChange={handleInputChange}
                   placeholder="S, M, L, XL"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                   disabled={isSubmitting}
                 />
               </div>
@@ -791,7 +792,7 @@ export default function MobileAdminUpload() {
                   value={form.color}
                   onChange={handleInputChange}
                   placeholder="Red, Blue..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                   disabled={isSubmitting}
                 />
               </div>
@@ -805,7 +806,7 @@ export default function MobileAdminUpload() {
                   value={form.material}
                   onChange={handleInputChange}
                   placeholder="Cotton, Silk..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                   disabled={isSubmitting}
                 />
               </div>
@@ -817,7 +818,7 @@ export default function MobileAdminUpload() {
                   name="condition"
                   value={form.condition}
                   onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                   disabled={isSubmitting}
                 >
                   <option value="new">✨ New</option>
@@ -856,7 +857,7 @@ export default function MobileAdminUpload() {
               value={form.badge}
               onChange={handleInputChange}
               placeholder="New, Sale, Premium..."
-              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm bg-white transition hover:border-gray-400"
+              className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
               disabled={isSubmitting}
             />
             <p className="text-xs text-gray-500 mt-1">Optional badge to highlight this product on the store</p>
