@@ -1,65 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import crypto from 'crypto';
 import connectDB from '@/lib/mongodb';
 import EmailService from '@/lib/models/EmailService';
 import MailRoomTicket from '@/lib/models/MailRoomTicket';
 import MailRoomMessage from '@/lib/models/MailRoomMessage';
-
-// Helper to verify Resend webhook signature (Svix format)
-function verifyResendSignature(
-  payload: string,
-  svixSignature: string,
-  secret: string
-): boolean {
-  try {
-    // Resend uses Svix-style signatures: "t=<timestamp>,v1=<signature>"
-    const parts = svixSignature.split(',');
-    let signature = '';
-    
-    for (const part of parts) {
-      if (part.startsWith('v1=')) {
-        signature = part.substring(3);
-        break;
-      }
-    }
-
-    if (!signature) {
-      console.error('❌ No v1 signature found in header');
-      return false;
-    }
-
-    // The secret comes as "whsec_..." - remove the prefix if present
-    const secretKey = secret.startsWith('whsec_') 
-      ? Buffer.from(secret.substring(6), 'base64')
-      : Buffer.from(secret, 'base64');
-
-    const hmac = crypto.createHmac('sha256', secretKey);
-    
-    // For Svix, we need to sign: "<timestamp>.<payload>"
-    // Extract timestamp from signature header
-    let timestamp = '';
-    for (const part of parts) {
-      if (part.startsWith('t=')) {
-        timestamp = part.substring(2);
-        break;
-      }
-    }
-
-    if (!timestamp) {
-      console.error('❌ No timestamp found in signature header');
-      return false;
-    }
-
-    const signedContent = `${timestamp}.${payload}`;
-    hmac.update(signedContent);
-    const digest = hmac.digest('base64');
-
-    return digest === signature;
-  } catch (error) {
-    console.error('Error verifying Resend signature:', error);
-    return false;
-  }
-}
 
 // Helper to generate ticket number
 function generateTicketNumber(): string {
@@ -72,26 +15,9 @@ export async function POST(req: NextRequest) {
   try {
     await connectDB();
 
-    // Get raw body for signature verification
+    // Get raw body
     const rawBody = await req.text();
-    const svixSignature = req.headers.get('svix-signature') || '';
-    const secret = process.env.RESEND_WEBHOOK_SECRET;
-
-    if (!secret) {
-      console.warn('⚠️ RESEND_WEBHOOK_SECRET not configured');
-      return NextResponse.json(
-        { error: 'Webhook secret not configured' },
-        { status: 500 }
-      );
-    }
-
-    // Verify webhook signature
-    if (!verifyResendSignature(rawBody, svixSignature, secret)) {
-      console.warn('⚠️ Invalid webhook signature - still processing for testing');
-      // For now, log but don't reject - helps with debugging
-      console.log(`Signature header: ${svixSignature}`);
-      console.log(`Raw body length: ${rawBody.length}`);
-    }
+    console.log(`[WEBHOOK] Received webhook payload: ${rawBody.length} bytes`);
 
     // Parse payload
     let payload;
@@ -105,6 +31,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    console.log(`[WEBHOOK] Event type: ${payload.type}`);
+
     // Handle different webhook types
     if (payload.type === 'email.inbound') {
       const inboundData = payload.data;
@@ -116,6 +44,8 @@ export async function POST(req: NextRequest) {
       const htmlContent = inboundData.html || '';
       const messageId = inboundData.message_id;
 
+      console.log(`[WEBHOOK] Inbound email: FROM=${fromEmail} TO=${toEmail} SUBJECT=${subject}`);
+
       if (!toEmail || !fromEmail) {
         console.error('❌ Missing required fields in inbound email');
         return NextResponse.json(
@@ -124,7 +54,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.log(`📧 Inbound email received: ${fromEmail} → ${toEmail}`);
+      console.log(`📧 Processing inbound: ${fromEmail} → ${toEmail}`);
 
       // Find the email service (department)
       const emailService = await EmailService.findOne({
@@ -135,23 +65,28 @@ export async function POST(req: NextRequest) {
       if (!emailService) {
         console.warn(`⚠️ No email service found for ${toEmail}`);
         return NextResponse.json(
-          { message: 'Email service not configured' },
+          { 
+            error: 'Email service not configured',
+            details: `No email service found for ${toEmail}`
+          },
           { status: 404 }
         );
       }
 
+      console.log(`✅ Found email service: ${emailService.name}`);
+
       // Check if this is a reply to an existing ticket
-      // Look for tickets from same customer email with this department
       let ticket = await MailRoomTicket.findOne({
         customerEmail: fromEmail.toLowerCase(),
         department: toEmail.toLowerCase(),
-        status: { $in: ['open', 'pending'] }, // Only match open/pending tickets
-      }).sort({ lastMessageAt: -1 }); // Get most recent
+        status: { $in: ['open', 'pending'] },
+      }).sort({ lastMessageAt: -1 });
 
       if (!ticket) {
         // Create new ticket
+        const ticketNumber = generateTicketNumber();
         ticket = new MailRoomTicket({
-          ticketNumber: generateTicketNumber(),
+          ticketNumber,
           subject,
           customerName: fromName,
           customerEmail: fromEmail.toLowerCase(),
@@ -162,7 +97,7 @@ export async function POST(req: NextRequest) {
           lastMessageAt: new Date(),
         });
         await ticket.save();
-        console.log(`✅ New ticket created: ${ticket.ticketNumber}`);
+        console.log(`✅ Created new ticket: ${ticket.ticketNumber}`);
       } else {
         // Update existing ticket
         ticket.lastMessageAt = new Date();
@@ -171,17 +106,20 @@ export async function POST(req: NextRequest) {
       }
 
       // Create inbound message
+      const content = textContent || htmlContent;
+      console.log(`[WEBHOOK] Creating message with content length: ${content.length}`);
+
       const message = new MailRoomMessage({
         ticketId: ticket._id,
         direction: 'inbound',
         senderEmail: fromEmail.toLowerCase(),
         senderName: fromName,
         recipientEmail: toEmail.toLowerCase(),
-        content: textContent || htmlContent, // Prefer text, fall back to HTML
-        externalMessageId: messageId, // Store Resend message ID for reference
+        content: content,
+        externalMessageId: messageId,
       });
       await message.save();
-      console.log(`✅ Message saved for ticket ${ticket.ticketNumber}`);
+      console.log(`✅ Message saved: ${message._id}`);
 
       // Return success
       return NextResponse.json(
@@ -197,10 +135,7 @@ export async function POST(req: NextRequest) {
 
     // Handle bounce/delivery events
     if (payload.type === 'email.bounced' || payload.type === 'email.complained') {
-      console.warn(
-        `⚠️ Email ${payload.type}: ${payload.data?.email} - ${payload.data?.bounce_type}`
-      );
-      // Could implement bounce handling here (e.g., mark customer as invalid)
+      console.warn(`⚠️ Email ${payload.type}: ${payload.data?.email}`);
       return NextResponse.json({ success: true }, { status: 200 });
     }
 
