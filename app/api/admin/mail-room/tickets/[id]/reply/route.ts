@@ -33,46 +33,82 @@ async function sendReplyEmail(
   <head>
     <meta charset="UTF-8">
     <style>
-      body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #333; }
-      .container { max-width: 600px; margin: 0 auto; background: #fff; }
-      .header { background: linear-gradient(135deg, #84cc16 0%, #65a30d 100%); color: white; padding: 30px; text-align: center; }
-      .header h1 { margin: 0; font-size: 24px; }
-      .content { padding: 30px; border: 1px solid #e5e7eb; border-top: none; }
-      .ticket-info { background: #f9fafb; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; color: #666; }
-      .ticket-number { font-weight: bold; color: #84cc16; }
-      .message-body { background: #fafafa; padding: 20px; border-left: 4px solid #84cc16; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; }
-      .footer { background: #f9fafb; padding: 20px; text-align: center; font-size: 12px; color: #666; border-top: 1px solid #e5e7eb; }
-      .footer p { margin: 5px 0; }
-      .reply-instructions { background: #fef3c7; border: 1px solid #fcd34d; padding: 15px; border-radius: 8px; margin-top: 20px; font-size: 13px; color: #78350f; }
+      body { 
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        color: #202124;
+        line-height: 1.5;
+        margin: 0;
+        padding: 0;
+      }
+      .container {
+        max-width: 600px;
+        margin: 0;
+        padding: 20px;
+      }
+      .greeting {
+        margin: 0 0 20px 0;
+        font-size: 14px;
+      }
+      .message-body {
+        margin: 20px 0;
+        font-size: 14px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        color: #202124;
+      }
+      .divider {
+        border-top: 1px solid #dadce0;
+        margin: 20px 0;
+      }
+      .ticket-info {
+        font-size: 12px;
+        color: #5f6368;
+        margin-top: 30px;
+      }
+      .ticket-info-row {
+        margin: 5px 0;
+      }
+      .ticket-number {
+        font-weight: 500;
+        color: #202124;
+      }
+      .footer {
+        font-size: 12px;
+        color: #5f6368;
+        margin-top: 20px;
+        border-top: 1px solid #dadce0;
+        padding-top: 15px;
+      }
     </style>
   </head>
   <body>
     <div class="container">
-      <div class="header">
-        <h1>📧 Empi Costumes Support</h1>
-        <p>We've replied to your ticket</p>
-      </div>
+      <div class="greeting">Hi ${customerName},</div>
       
-      <div class="content">
-        <p>Hi ${customerName},</p>
-        
-        <div class="ticket-info">
-          <strong>Ticket:</strong> <span class="ticket-number">${ticketNumber}</span><br>
-          <strong>Subject:</strong> ${subject}<br>
-          <strong>Replied by:</strong> ${senderName} (${fromEmail})
+      <div class="message-body">${content}</div>
+      
+      <div class="divider"></div>
+      
+      <div class="ticket-info">
+        <div class="ticket-info-row">
+          <strong>Ticket:</strong> <span class="ticket-number">${ticketNumber}</span>
         </div>
-        
-        <div class="message-body">${content}</div>
-        
-        <div class="reply-instructions">
-          <strong>💡 To reply:</strong> Simply reply to this email and your message will be added to the ticket thread automatically.
+        <div class="ticket-info-row">
+          <strong>Subject:</strong> ${subject}
+        </div>
+        <div class="ticket-info-row">
+          <strong>From:</strong> ${senderName} (${fromEmail})
         </div>
       </div>
       
       <div class="footer">
-        <p><strong>Empi Costumes</strong> - Helping you look amazing</p>
-        <p>📧 ${fromEmail} | 📱 +234 808 577 9180</p>
-        <p style="margin-top: 10px; font-size: 11px;">This is an automated message. Do not reply with attachments larger than 25MB.</p>
+        <p style="margin: 10px 0; font-size: 12px;">
+          You can reply directly to this email and your response will be added to your support ticket.
+        </p>
+        <p style="margin: 10px 0; font-size: 11px; color: #9aa0a6;">
+          Empi Costumes Support<br>
+          📧 ${fromEmail} | 📱 +234 808 577 9180
+        </p>
       </div>
     </div>
   </body>
