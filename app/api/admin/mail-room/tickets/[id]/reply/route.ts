@@ -6,8 +6,6 @@ import MailRoomTicket from '@/lib/models/MailRoomTicket';
 import MailRoomMessage from '@/lib/models/MailRoomMessage';
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
 // Helper to send email via Resend (fire-and-forget)
 async function sendReplyEmail(
   fromEmail: string,
@@ -24,6 +22,9 @@ async function sendReplyEmail(
       console.log('⚠️ RESEND_API_KEY not configured - skipping email send');
       return;
     }
+
+    // Instantiate Resend client inside function (avoid build-time initialization)
+    const resend = new Resend(process.env.RESEND_API_KEY);
 
     // Create branded HTML template
     const htmlContent = `
