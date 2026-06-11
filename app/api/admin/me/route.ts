@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
+import { getRolePermissions, AdminRole } from '@/lib/permissions';
 
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
@@ -113,13 +114,16 @@ export async function GET(request: NextRequest) {
     const inactivityMinutes = Math.round(inactivityDuration / 1000 / 60);
     console.log(`[Admin/Me API] ✅ Admin authenticated: ${admin.email} (inactive for ${inactivityMinutes} mins - session valid, timer reset)`);
 
+    const rolePermissions = getRolePermissions(admin.role as AdminRole);
+    const mergedPermissions = Array.from(new Set([...(admin.permissions || []), ...rolePermissions]));
+
     const response = NextResponse.json({
       _id: admin._id,
       id: admin._id,
       email: admin.email,
       fullName: admin.fullName,
       role: admin.role,
-      permissions: admin.permissions,
+      permissions: mergedPermissions,
       lastLogin: admin.lastLogin,
     });
 

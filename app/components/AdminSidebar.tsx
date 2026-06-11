@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home, Truck, MessageCircle, Clock, Package, Users } from "lucide-react";
+import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home, Truck, MessageCircle, Clock, Package, Users, Mail } from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
 import { hasPermission } from "@/lib/permissions";
 import type { Permission } from "@/lib/permissions";
@@ -89,6 +89,13 @@ const sidebarItems: SidebarItem[] = [
     icon: <Truck className="h-5 w-5" />,
     permission: 'view_logistics',
     roles: ['super_admin', 'admin', 'logistics_admin', 'finance_admin'], // Finance team can also view orders
+  },
+  {
+    name: "Mail Room",
+    href: "/admin/mail-room",
+    icon: <Mail className="h-5 w-5" />,
+    permission: 'view_mail_room',
+    roles: ['super_admin', 'admin', 'finance_admin', 'logistics_admin'],
   },
   {
     name: "Settings",

@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
 import crypto from 'crypto';
 import { isRateLimited, recordFailedAttempt, clearRateLimit, getRemainingAttempts, getLockoutRemainingTime } from '@/lib/rate-limit';
+import { getRolePermissions, AdminRole } from '@/lib/permissions';
 
 // Session expires only on manual logout - set to 30 days (very long)
 const SESSION_EXPIRY = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -163,6 +164,9 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Admin logged in successfully: ${email} from IP: ${clientIP}`);
     console.log(`[Admin Login] Session verified in database - token: ${sessionToken.substring(0, 8)}...`);
 
+    const rolePermissions = getRolePermissions(admin.role as AdminRole);
+    const mergedPermissions = Array.from(new Set([...(admin.permissions || []), ...rolePermissions]));
+
     // Create response with admin data
     const response = NextResponse.json(
       {
@@ -171,7 +175,7 @@ export async function POST(request: NextRequest) {
         email: admin.email,
         fullName: admin.fullName,
         role: admin.role,
-        permissions: admin.permissions,
+        permissions: mergedPermissions,
         lastLogin: admin.lastLogin,
       },
       { status: 200 }

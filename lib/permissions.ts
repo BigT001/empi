@@ -15,7 +15,9 @@ export type Permission =
   | 'view_logistics'
   | 'manage_admins'
   | 'manage_store_settings'
-  | 'access_all_features';
+  | 'access_all_features'
+  | 'view_mail_room'
+  | 'manage_mail_room';
 
 /**
  * Define permissions for each role
@@ -32,6 +34,8 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'manage_admins',
     'manage_store_settings',
     'access_all_features',
+    'view_mail_room',
+    'manage_mail_room',
   ],
   admin: [
     'view_dashboard',
@@ -40,17 +44,21 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'view_finance',
     'view_invoices',
     'view_settings',
+    'view_mail_room',
+    'manage_mail_room',
   ],
   finance_admin: [
     'view_dashboard',
     'view_finance',
     'view_invoices',
     'view_orders',
+    'view_mail_room',
   ],
   logistics_admin: [
     'view_dashboard',
     'view_logistics',
     'view_orders',
+    'view_mail_room',
   ],
 };
 
@@ -67,6 +75,7 @@ export const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
   '/admin/settings': ['view_settings'],
   '/admin/logistics': ['view_logistics'],
   '/admin/settings/manage-admins': ['manage_admins'],
+  '/admin/mail-room': ['view_mail_room'],
 };
 
 /**
