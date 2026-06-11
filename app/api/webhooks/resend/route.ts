@@ -50,8 +50,12 @@ export async function POST(req: NextRequest) {
         }
       }
       
-      const fromEmail = inboundData.from?.email || inboundData.from; // Handle both object and string
-      const fromName = inboundData.from?.name || (typeof inboundData.from === 'string' ? inboundData.from : 'Unknown');
+      const fromEmail = typeof inboundData.from === 'object' 
+        ? inboundData.from?.email 
+        : inboundData.from;
+      const fromName = typeof inboundData.from === 'object'
+        ? inboundData.from?.name || 'Unknown'
+        : inboundData.from || 'Unknown';
       const subject = inboundData.subject || '(No Subject)';
       const textContent = inboundData.text || '';
       const htmlContent = inboundData.html || '';
