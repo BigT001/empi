@@ -36,9 +36,22 @@ export async function POST(req: NextRequest) {
     // Handle different webhook types
     if (payload.type === 'email.inbound') {
       const inboundData = payload.data;
-      const toEmail = inboundData.to?.[0]?.email; // Email destination
-      const fromEmail = inboundData.from?.email; // Sender's email
-      const fromName = inboundData.from?.name || 'Unknown'; // Sender's name
+      
+      // Handle both formats: string array OR array of objects with email property
+      let toEmail = '';
+      if (inboundData.to) {
+        if (Array.isArray(inboundData.to)) {
+          // Check if it's an array of strings or array of objects
+          if (typeof inboundData.to[0] === 'string') {
+            toEmail = inboundData.to[0];
+          } else if (inboundData.to[0]?.email) {
+            toEmail = inboundData.to[0].email;
+          }
+        }
+      }
+      
+      const fromEmail = inboundData.from?.email || inboundData.from; // Handle both object and string
+      const fromName = inboundData.from?.name || (typeof inboundData.from === 'string' ? inboundData.from : 'Unknown');
       const subject = inboundData.subject || '(No Subject)';
       const textContent = inboundData.text || '';
       const htmlContent = inboundData.html || '';
@@ -48,6 +61,7 @@ export async function POST(req: NextRequest) {
 
       if (!toEmail || !fromEmail) {
         console.error('❌ Missing required fields in inbound email');
+        console.error(`Details: to="${toEmail}", from="${fromEmail}"`);
         return NextResponse.json(
           { error: 'Missing to or from email' },
           { status: 400 }
