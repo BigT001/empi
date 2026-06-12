@@ -1,7 +1,16 @@
 import { Resend } from "resend";
+import connectDB from "@/lib/mongodb";
+import MailRoomMessage from "@/lib/models/MailRoomMessage";
+import MailRoomTicket from "@/lib/models/MailRoomTicket";
 
-// Initialize Resend client - use a dummy key if not configured to avoid build errors
-const resend = new Resend(process.env.RESEND_API_KEY || "re_dummy_key_for_build");
+// Initialize Resend - moved inside functions to avoid build-time execution
+function getResend(): Resend | null {
+  if (!process.env.RESEND_API_KEY) {
+    console.warn("⚠️ RESEND_API_KEY not configured");
+    return null;
+  }
+  return new Resend(process.env.RESEND_API_KEY);
+}
 
 export interface EmailOptions {
   to: string;
@@ -10,13 +19,19 @@ export interface EmailOptions {
   replyTo?: string;
 }
 
+interface SendEmailWithTrackingOptions extends EmailOptions {
+  ticketId?: string;
+  threadId?: string;
+  fromName?: string;
+}
+
 /**
- * Send an email using Resend
+ * Send an email using Resend and optionally track it in the Mail Room
  */
 export async function sendEmail(options: EmailOptions): Promise<boolean> {
   try {
-    // Skip if Resend API key not configured
-    if (!process.env.RESEND_API_KEY) {
+    const resend = getResend();
+    if (!resend) {
       console.log("⚠️ Email service not configured (missing RESEND_API_KEY)");
       console.log(`ℹ️ Would send email to: ${options.to}`);
       return false;
@@ -37,11 +52,79 @@ export async function sendEmail(options: EmailOptions): Promise<boolean> {
       return false;
     }
 
-    console.log(`✅ Email sent successfully to ${options.to}:`, result.data?.id);
+    console.log(`✅ Email sent successfully to ${options.to} (ID: ${result.data?.id})`);
     return true;
   } catch (error) {
     console.error(`❌ Failed to send email to ${options.to}:`, error);
     return false;
+  }
+}
+
+/**
+ * Send an email and track it in the Mail Room database
+ * This creates an outbound message record for conversation tracking
+ */
+export async function sendEmailWithTracking(
+  options: SendEmailWithTrackingOptions
+): Promise<{ success: boolean; messageId?: string }> {
+  try {
+    await connectDB();
+
+    const resend = getResend();
+    if (!resend) {
+      console.log("⚠️ Email service not configured (missing RESEND_API_KEY)");
+      return { success: false };
+    }
+
+    const from = process.env.RESEND_FROM || "noreply@empicostumes.com";
+    const fromName = options.fromName || "EMPI Costumes";
+
+    // 1. Send the email via Resend
+    const result = await resend.emails.send({
+      from: `${fromName} <${from}>`,
+      to: options.to,
+      subject: options.subject,
+      html: options.html,
+      replyTo: options.replyTo || from,
+    });
+
+    if (result.error) {
+      console.error(`❌ Failed to send email to ${options.to}:`, result.error);
+      return { success: false };
+    }
+
+    console.log(`✅ Email sent to ${options.to} (Resend ID: ${result.data?.id})`);
+
+    // 2. Track it in the Mail Room if ticket is specified
+    if (options.ticketId) {
+      try {
+        const message = new MailRoomMessage({
+          ticketId: options.ticketId,
+          direction: 'outbound',
+          senderEmail: from,
+          senderName: fromName,
+          recipientEmail: options.to.toLowerCase(),
+          content: options.html,
+          htmlContent: options.html,
+          externalMessageId: result.data?.id,
+          resendEmailId: result.data?.id,
+          threadId: options.threadId,
+          status: 'SENT',
+        });
+        await message.save();
+        console.log(`✅ Outbound message tracked in Mail Room (ID: ${message._id})`);
+        return { success: true, messageId: message._id.toString() };
+      } catch (dbError) {
+        console.warn('⚠️ Failed to track message in Mail Room:', dbError);
+        // Still return success since the email was sent
+        return { success: true, messageId: undefined };
+      }
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error(`❌ Failed in sendEmailWithTracking:`, error);
+    return { success: false };
   }
 }
 
@@ -56,19 +139,19 @@ export async function sendOrderDeclinedEmail(
 ): Promise<boolean> {
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
-      <div style="background: linear-gradient(135deg, #10b981 0%, #059669 100%); padding: 30px; border-radius: 10px 10px 0 0;">
-        <h1 style="color: white; margin: 0;">Order Update - EMPI Costumes</h1>
+      <div style="background: #f3f4f6; padding: 30px; border-radius: 10px 10px 0 0;">
+        <h1 style="color: #1f2937; margin: 0;">Order Update - EMPI Costumes</h1>
       </div>
       
-      <div style="background: #f9fafb; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 10px 10px;">
+      <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-radius: 0 0 10px 10px;">
         <p style="color: #374151;">Hi <strong>${customerName}</strong>,</p>
         
         <p style="color: #374151;">We regret to inform you that your custom costume order <strong>${orderNumber}</strong> has been declined.</p>
         
         ${reason
-      ? `<p style="background: #fee2e2; padding: 15px; border-left: 4px solid #ef4444; color: #991b1b; margin: 20px 0; border-radius: 4px;"><strong>Reason:</strong> ${reason}</p>`
-      : ""
-    }
+          ? `<p style="background: #fee2e2; padding: 15px; border-left: 4px solid #ef4444; color: #991b1b; margin: 20px 0; border-radius: 4px;"><strong>Reason:</strong> ${reason}</p>`
+          : ""
+        }
         
         <div style="background: #f0fdf4; padding: 15px; border-left: 4px solid #10b981; margin: 20px 0; border-radius: 4px;">
           <p style="color: #166534; margin: 0;"><strong>What's Next?</strong></p>
