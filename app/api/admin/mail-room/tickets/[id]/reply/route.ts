@@ -96,9 +96,6 @@ async function sendReplyEmail(
         <div class="ticket-info-row">
           <strong>Subject:</strong> ${subject}
         </div>
-        <div class="ticket-info-row">
-          <strong>From:</strong> ${senderName} (${fromEmail})
-        </div>
       </div>
       
       <div class="footer">
@@ -106,8 +103,7 @@ async function sendReplyEmail(
           You can reply directly to this email and your response will be added to your support ticket.
         </p>
         <p style="margin: 10px 0; font-size: 11px; color: #9aa0a6;">
-          Empi Costumes Support<br>
-          📧 ${fromEmail} | 📱 +234 808 577 9180
+          Empi Costumes Support
         </p>
       </div>
     </div>

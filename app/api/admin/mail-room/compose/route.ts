@@ -127,8 +127,7 @@ export async function POST(req: NextRequest) {
               <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
               
               <div style="color: #6b7280; font-size: 11px; text-align: center;">
-                <p style="margin: 4px 0;">Empi Costumes © 2024</p>
-                <p style="margin: 4px 0;">📞 +234 808 577 9180 | 📧 empicostumes@gmail.com</p>
+                <p style="margin: 4px 0;">Empi Costumes Support</p>
               </div>
             </div>
           </div>

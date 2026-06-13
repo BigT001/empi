@@ -636,9 +636,16 @@ export default function MailRoomPage() {
                                 : 'text-gray-700 hover:bg-gray-100'
                             }`}
                           >
-                            <div className="flex items-center gap-2.5 truncate">
-                              <Mail className="h-4 w-4 flex-shrink-0" />
-                              <span className="truncate">{service.name}</span>
+                            <div className="flex items-start gap-2.5 truncate w-full pr-2">
+                              <Mail className="h-4 w-4 flex-shrink-0 mt-1" />
+                              <div className="flex flex-col items-start truncate text-left">
+                                <span className="truncate">{service.name}</span>
+                                <span className={`text-[10px] font-normal truncate w-full ${
+                                  isSelected ? 'text-lime-100' : 'text-gray-400'
+                                }`}>
+                                  {service.email}
+                                </span>
+                              </div>
                             </div>
                             {open > 0 && (
                               <span className={`text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${isSelected ? 'bg-white text-lime-700' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
@@ -871,34 +878,56 @@ export default function MailRoomPage() {
                     ) : (
                       messages.map((msg) => {
                         const isInbound = msg.direction === 'inbound';
+                        const initial = msg.senderName ? msg.senderName.charAt(0).toUpperCase() : '?';
+                        const avatarColor = isInbound 
+                          ? 'bg-blue-50 text-blue-700 border-blue-100' 
+                          : 'bg-lime-50 text-lime-700 border-lime-100';
+
                         return (
-                          <div key={msg._id} className={`flex ${isInbound ? 'justify-start' : 'justify-end'}`}>
-                            <div
-                              className={`max-w-[80%] rounded-2xl p-4 shadow-sm border ${
-                                isInbound
-                                  ? 'bg-white text-gray-800 border-gray-200/80 rounded-tl-none'
-                                  : 'bg-lime-50 border-lime-200/80 text-gray-900 rounded-tr-none'
-                              }`}
-                            >
-                              {/* Metadata */}
-                              <div className="flex items-center justify-between gap-8 mb-2 border-b border-gray-200/50 pb-1 text-[10px] text-gray-400 font-bold uppercase">
-                                <span className={isInbound ? 'text-blue-600' : 'text-lime-700'}>
-                                  {msg.senderName} ({msg.senderEmail})
-                                </span>
-                                <span>
-                                  {new Date(msg.createdAt).toLocaleDateString([], {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    hour: '2-digit',
-                                    minute: '2-digit'
-                                  })}
-                                </span>
+                          <div 
+                            key={msg._id} 
+                            className={`w-full bg-white border border-gray-200/80 rounded-xl p-5 shadow-xs transition hover:border-gray-300/80 ${
+                              !isInbound ? 'bg-lime-50/5' : ''
+                            }`}
+                          >
+                            {/* Message Header */}
+                            <div className="flex items-start justify-between gap-4 mb-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                {/* Avatar */}
+                                <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border flex-shrink-0 ${avatarColor}`}>
+                                  {initial}
+                                </div>
+
+                                {/* Sender & Recipient Details */}
+                                <div className="flex flex-col min-w-0">
+                                  <div className="flex flex-wrap items-baseline gap-1.5 min-w-0">
+                                    <span className="font-extrabold text-sm text-gray-900 truncate">
+                                      {msg.senderName || 'Anonymous'}
+                                    </span>
+                                    <span className="text-xs text-gray-400 font-semibold truncate">
+                                      &lt;{msg.senderEmail}&gt;
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-gray-400 font-medium">
+                                    to {isInbound ? 'support' : (msg.recipientEmail || 'customer')}
+                                  </span>
+                                </div>
                               </div>
-                              
-                              {/* Content */}
-                              <div className="text-sm whitespace-pre-line leading-relaxed">
-                                {msg.content}
-                              </div>
+
+                              {/* Timestamp */}
+                              <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
+                                {new Date(msg.createdAt).toLocaleDateString([], {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+
+                            {/* Message Body */}
+                            <div className="text-sm whitespace-pre-line leading-relaxed text-gray-800 pl-12">
+                              {msg.content}
                             </div>
                           </div>
                         );
