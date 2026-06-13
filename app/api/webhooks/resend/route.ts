@@ -45,6 +45,23 @@ function parseFromAddress(fromStr: string): { email: string; name: string } {
 }
 
 /**
+ * Strip HTML tags from a string and replace line breaks
+ */
+function stripHtml(html: string): string {
+  if (!html) return '';
+  return html
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<p\s*\/?>/gi, '\n')
+    .replace(/<\/p>/gi, '\n')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&amp;/g, '&')
+    .trim();
+}
+
+/**
  * Verify webhook signature using Svix
  * This ensures the webhook is actually from Resend
  */
@@ -240,8 +257,8 @@ async function handleInboundEmail(payload: any): Promise<NextResponse> {
     console.log(`✅ Updated existing ticket: ${ticket.ticketNumber}`);
   }
 
-  // Create inbound message with both text and HTML
-  const content = htmlContent || textContent || '(No content)';
+  // Prefer plain text, and strip HTML if only HTML is available
+  const content = textContent || (htmlContent ? stripHtml(htmlContent) : '') || '(No content)';
   
   console.log(`📝 Creating inbound message (${content.length} bytes)`);
 
