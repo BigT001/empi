@@ -107,28 +107,11 @@ export async function POST(req: NextRequest) {
         to: recipientEmail,
         subject: subject,
         html: `
-          <div style="font-family: Arial, sans-serif; background: linear-gradient(135deg, #84cc16 0%, #65a30d 100%); padding: 20px;">
-            <div style="background: white; border-radius: 8px; padding: 24px; max-width: 600px; margin: 0 auto;">
-              <div style="border-bottom: 2px solid #84cc16; padding-bottom: 16px; margin-bottom: 16px;">
-                <h2 style="color: #1f2937; margin: 0; font-size: 20px;">Empi Costumes Support</h2>
-                <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 12px;">Ticket #${ticket.ticketNumber}</p>
-              </div>
-              
-              <p style="color: #374151; margin: 0 0 16px 0;">Hi ${recipientName || 'there'},</p>
-              
-              <div style="background: #f9fafb; padding: 16px; border-radius: 6px; margin: 16px 0; border-left: 4px solid #84cc16;">
-                ${content.split('\n').map((line: string) => `<p style="color: #374151; margin: 8px 0;">${line}</p>`).join('')}
-              </div>
-              
-              <p style="color: #6b7280; font-size: 12px; margin: 16px 0 0 0;">
-                Thank you for contacting Empi Costumes. We appreciate your business!
-              </p>
-              
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;">
-              
-              <div style="color: #6b7280; font-size: 11px; text-align: center;">
-                <p style="margin: 4px 0;">Empi Costumes Support</p>
-              </div>
+          <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; font-size: 14px; color: #202124; line-height: 1.5;">
+            <div style="white-space: pre-wrap;">${content}</div>
+            <div style="margin-top: 24px; color: #5f6368; font-size: 13px;">
+              --<br>
+              Empi Costumes
             </div>
           </div>
         `,

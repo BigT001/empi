@@ -34,78 +34,30 @@ async function sendReplyEmail(
     <meta charset="UTF-8">
     <style>
       body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         color: #202124;
         line-height: 1.5;
         margin: 0;
-        padding: 0;
-      }
-      .container {
-        max-width: 600px;
-        margin: 0;
         padding: 20px;
       }
-      .greeting {
-        margin: 0 0 20px 0;
-        font-size: 14px;
-      }
       .message-body {
-        margin: 20px 0;
-        font-size: 14px;
         white-space: pre-wrap;
         word-wrap: break-word;
+        font-size: 14px;
         color: #202124;
       }
-      .divider {
-        border-top: 1px solid #dadce0;
-        margin: 20px 0;
-      }
-      .ticket-info {
-        font-size: 12px;
+      .signature {
+        margin-top: 24px;
         color: #5f6368;
-        margin-top: 30px;
-      }
-      .ticket-info-row {
-        margin: 5px 0;
-      }
-      .ticket-number {
-        font-weight: 500;
-        color: #202124;
-      }
-      .footer {
-        font-size: 12px;
-        color: #5f6368;
-        margin-top: 20px;
-        border-top: 1px solid #dadce0;
-        padding-top: 15px;
+        font-size: 13px;
       }
     </style>
   </head>
   <body>
-    <div class="container">
-      <div class="greeting">Hi ${customerName},</div>
-      
-      <div class="message-body">${content}</div>
-      
-      <div class="divider"></div>
-      
-      <div class="ticket-info">
-        <div class="ticket-info-row">
-          <strong>Ticket:</strong> <span class="ticket-number">${ticketNumber}</span>
-        </div>
-        <div class="ticket-info-row">
-          <strong>Subject:</strong> ${subject}
-        </div>
-      </div>
-      
-      <div class="footer">
-        <p style="margin: 10px 0; font-size: 12px;">
-          You can reply directly to this email and your response will be added to your support ticket.
-        </p>
-        <p style="margin: 10px 0; font-size: 11px; color: #9aa0a6;">
-          Empi Costumes Support
-        </p>
-      </div>
+    <div class="message-body">${content}</div>
+    <div class="signature">
+      --<br>
+      Empi Costumes
     </div>
   </body>
 </html>
