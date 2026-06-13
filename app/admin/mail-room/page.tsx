@@ -29,7 +29,8 @@ import {
   Paperclip,
   Link2,
   Smile,
-  Image as ImageIcon
+  Image as ImageIcon,
+  ArrowLeft
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -101,6 +102,7 @@ export default function MailRoomPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [mobileActivePane, setMobileActivePane] = useState<'mailboxes' | 'tickets' | 'thread'>('tickets');
 
   // Form states
   const [replyContent, setReplyContent] = useState('');
@@ -261,6 +263,7 @@ export default function MailRoomPage() {
   const handleSelectTicket = async (ticket: Ticket) => {
     try {
       setSelectedTicket(ticket);
+      setMobileActivePane('thread');
       setTicketDetailLoading(true);
       setMessages([]);
       
@@ -583,13 +586,28 @@ export default function MailRoomPage() {
         {activeTab === 'inbox' && (
           <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col md:flex-row min-h-0">
             
-            {/* 1. Folders Pane (Departments) */}
-            <div className="w-full md:w-64 bg-gray-50 border-r border-gray-200 flex flex-col min-h-0 overflow-hidden shrink-0">
+             {/* 1. Folders Pane (Departments) */}
+            <div className={`w-full md:w-64 bg-gray-50 border-r border-gray-200 flex-col min-h-0 overflow-hidden shrink-0 ${
+              mobileActivePane === 'mailboxes' ? 'flex' : 'hidden md:flex'
+            }`}>
               <div className="p-4 flex flex-col gap-2 min-h-0 overflow-hidden flex-1">
-                <span className="text-xs font-bold text-gray-400 uppercase px-3 tracking-wider">Mailboxes</span>
+                <div className="flex items-center justify-between px-3 mb-1">
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Mailboxes</span>
+                  <button
+                    type="button"
+                    onClick={() => setMobileActivePane('tickets')}
+                    className="md:hidden p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-lg transition"
+                    title="Close"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               
                 <button
-                  onClick={() => setSelectedFolder('all')}
+                  onClick={() => {
+                    setSelectedFolder('all');
+                    setMobileActivePane('tickets');
+                  }}
                   className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
                     selectedFolder === 'all'
                       ? 'bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md shadow-lime-100'
@@ -629,7 +647,10 @@ export default function MailRoomPage() {
                         return (
                           <button
                             key={service._id}
-                            onClick={() => setSelectedFolder(service.email)}
+                            onClick={() => {
+                              setSelectedFolder(service.email);
+                              setMobileActivePane('tickets');
+                            }}
                             className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
                               isSelected
                                 ? 'bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md shadow-lime-100'
@@ -675,10 +696,20 @@ export default function MailRoomPage() {
             </div>
 
             {/* 2. Tickets List Pane */}
-            <div className="w-full md:w-80 border-r border-gray-200 flex flex-col min-h-0 overflow-hidden shrink-0">
+            <div className={`w-full md:w-80 border-r border-gray-200 flex-col min-h-0 overflow-hidden shrink-0 ${
+              mobileActivePane === 'tickets' ? 'flex' : 'hidden md:flex'
+            }`}>
               {/* Search header - Minimal */}
-              <div className="p-3 bg-white border-b border-gray-200 flex flex-col gap-2 flex-shrink-0">
-                <div className="relative">
+              <div className="p-3 bg-white border-b border-gray-200 flex items-center gap-2 flex-shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setMobileActivePane('mailboxes')}
+                  className="md:hidden p-2 hover:bg-gray-100 rounded-xl text-gray-500 transition border border-gray-200 flex-shrink-0"
+                  title="View Mailboxes"
+                >
+                  <Inbox className="h-4 w-4" />
+                </button>
+                <div className="relative flex-1">
                   <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400" />
                   <input
                     type="text"
@@ -800,7 +831,9 @@ export default function MailRoomPage() {
             </div>
 
             {/* 3. Conversation Thread Pane */}
-            <div className="flex-1 flex flex-col bg-gray-50/30 min-h-0 overflow-hidden">
+            <div className={`flex-1 flex-col bg-gray-50/30 min-h-0 overflow-hidden ${
+              mobileActivePane === 'thread' ? 'flex' : 'hidden md:flex'
+            }`}>
               {!selectedTicket ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center bg-gray-50/20">
                   <div className="w-16 h-16 rounded-3xl bg-lime-50 text-lime-600 flex items-center justify-center shadow-inner mb-4">
@@ -815,16 +848,27 @@ export default function MailRoomPage() {
                 <>
                   {/* Thread Header - Minimal & Clean */}
                   <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between gap-4 shadow-sm z-10 flex-shrink-0">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-lime-600 bg-lime-50 px-2 py-0.5 rounded border border-lime-200">
-                          {selectedTicket.ticketNumber}
-                        </span>
-                        <span className="text-xs text-gray-500">
-                          {selectedTicket.customerName} • {selectedTicket.customerEmail}
-                        </span>
+                    <div className="flex items-center gap-3 min-w-0">
+                      <button
+                        type="button"
+                        onClick={() => setMobileActivePane('tickets')}
+                        className="md:hidden p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition"
+                        title="Back to List"
+                      >
+                        <ArrowLeft className="h-5 w-5" />
+                      </button>
+                      
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs font-bold text-lime-600 bg-lime-50 px-2 py-0.5 rounded border border-lime-200">
+                            {selectedTicket.ticketNumber}
+                          </span>
+                          <span className="text-xs text-gray-500 truncate max-w-[120px] sm:max-w-none">
+                            {selectedTicket.customerName} • {selectedTicket.customerEmail}
+                          </span>
+                        </div>
+                        <h2 className="text-sm font-bold text-gray-900 truncate">{selectedTicket.subject}</h2>
                       </div>
-                      <h2 className="text-sm font-bold text-gray-900 truncate">{selectedTicket.subject}</h2>
                     </div>
 
                     {/* Quick Actions - Right side */}
@@ -1408,7 +1452,7 @@ export default function MailRoomPage() {
           // Minimized state tab
           <div 
             onClick={() => setIsComposeMinimized(false)}
-            className="fixed bottom-0 right-12 w-80 h-11 bg-gray-950 hover:bg-gray-900 text-gray-200 rounded-t-xl shadow-2xl flex items-center justify-between px-4 cursor-pointer z-50 border border-gray-800 transition-all duration-200"
+            className="fixed bottom-0 right-4 sm:right-12 w-72 sm:w-80 h-11 bg-gray-950 hover:bg-gray-900 text-gray-200 rounded-t-xl shadow-2xl flex items-center justify-between px-4 cursor-pointer z-50 border border-gray-800 transition-all duration-200"
           >
             <span className="text-xs font-bold flex items-center gap-2 truncate pr-4">
               <Mail className="h-3.5 w-3.5 text-lime-500 flex-shrink-0 animate-pulse" />
@@ -1442,8 +1486,8 @@ export default function MailRoomPage() {
           <div 
             className={`fixed z-50 bg-white shadow-2xl flex flex-col border border-gray-200/80 transition-all duration-300 ease-in-out ${
               isComposeMaximized 
-                ? 'inset-6 md:inset-12 md:max-w-4xl md:max-h-[750px] md:mx-auto md:my-auto rounded-2xl' 
-                : 'bottom-0 right-12 w-[540px] h-[550px] rounded-t-2xl'
+                ? 'inset-0 sm:inset-6 md:inset-12 md:max-w-4xl md:max-h-[750px] md:mx-auto md:my-auto rounded-none sm:rounded-2xl' 
+                : 'bottom-0 right-0 left-0 sm:left-auto sm:right-12 w-full sm:w-[540px] h-[90%] sm:h-[550px] rounded-t-2xl'
             }`}
           >
             {/* Widget Header */}
