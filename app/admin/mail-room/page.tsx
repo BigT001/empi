@@ -22,7 +22,14 @@ import {
   HelpCircle,
   Users,
   X,
-  Lock
+  Lock,
+  Minus,
+  Maximize2,
+  Minimize2,
+  Paperclip,
+  Link2,
+  Smile,
+  Image as ImageIcon
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -99,9 +106,10 @@ export default function MailRoomPage() {
   const [replyContent, setReplyContent] = useState('');
   const [showAddServiceModal, setShowAddServiceModal] = useState(false);
   const [showComposeModal, setShowComposeModal] = useState(false);
+  const [isComposeMinimized, setIsComposeMinimized] = useState(false);
+  const [isComposeMaximized, setIsComposeMaximized] = useState(false);
   const [composeForm, setComposeForm] = useState({
     recipientEmail: '',
-    recipientName: '',
     subject: '',
     content: '',
     department: '',
@@ -234,12 +242,13 @@ export default function MailRoomPage() {
       setSuccess('Email sent successfully!');
       setComposeForm({
         recipientEmail: '',
-        recipientName: '',
         subject: '',
         content: '',
         department: '',
       });
       setShowComposeModal(false);
+      setIsComposeMinimized(false);
+      setIsComposeMaximized(false);
       await fetchInitialData();
     } catch (err: any) {
       setError(err.message || 'Failed to send email');
@@ -486,7 +495,10 @@ export default function MailRoomPage() {
         <div className="flex items-center gap-3">
           {/* Compose Button */}
           <button
-            onClick={() => setShowComposeModal(true)}
+            onClick={() => {
+              setShowComposeModal(true);
+              setIsComposeMinimized(false);
+            }}
             className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 text-white font-semibold py-2 px-4 rounded-lg transition text-sm"
           >
             <Plus className="h-4 w-4" />
@@ -1361,109 +1373,201 @@ export default function MailRoomPage() {
         </div>
       )}
 
-      {/* COMPOSE MODAL */}
+      {/* GMAIL-STYLE FLOATING COMPOSE WIDGET */}
       {showComposeModal && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-auto">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 my-8">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-lime-100 p-2.5 rounded-lg">
-                  <Mail className="h-5 w-5 text-lime-600" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900">Compose Email</h2>
-              </div>
-              <button
-                onClick={() => setShowComposeModal(false)}
-                className="p-1 text-gray-400 hover:text-gray-600"
+        isComposeMinimized ? (
+          // Minimized state tab
+          <div 
+            onClick={() => setIsComposeMinimized(false)}
+            className="fixed bottom-0 right-12 w-80 h-11 bg-gray-950 hover:bg-gray-900 text-gray-200 rounded-t-xl shadow-2xl flex items-center justify-between px-4 cursor-pointer z-50 border border-gray-800 transition-all duration-200"
+          >
+            <span className="text-xs font-bold flex items-center gap-2 truncate pr-4">
+              <Mail className="h-3.5 w-3.5 text-lime-500 flex-shrink-0 animate-pulse" />
+              <span className="truncate">{composeForm.subject || 'New Message'}</span>
+            </span>
+            <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+              <button 
+                type="button"
+                onClick={() => setIsComposeMinimized(false)} 
+                title="Restore"
+                className="p-1 hover:bg-gray-800 rounded transition text-gray-400 hover:text-white"
               >
-                <X className="h-6 w-6" />
+                <Maximize2 className="h-3 w-3" />
+              </button>
+              <button 
+                type="button"
+                onClick={() => {
+                  setShowComposeModal(false);
+                  setIsComposeMinimized(false);
+                  setIsComposeMaximized(false);
+                }} 
+                title="Close"
+                className="p-1 hover:bg-red-900/50 rounded transition text-gray-400 hover:text-red-400"
+              >
+                <X className="h-3 w-3" />
               </button>
             </div>
-
-            <form onSubmit={handleComposeEmail} className="space-y-4">
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Recipient Email</label>
-                <input
-                  type="email"
-                  required
-                  value={composeForm.recipientEmail}
-                  onChange={(e) => setComposeForm({ ...composeForm, recipientEmail: e.target.value })}
-                  placeholder="customer@example.com"
-                  className="w-full px-4 py-2.5 border border-gray-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-lime-500"
-                />
+          </div>
+        ) : (
+          // Normal / Maximized Floating Widget
+          <div 
+            className={`fixed z-50 bg-white shadow-2xl flex flex-col border border-gray-200/80 transition-all duration-300 ease-in-out ${
+              isComposeMaximized 
+                ? 'inset-6 md:inset-12 md:max-w-4xl md:max-h-[750px] md:mx-auto md:my-auto rounded-2xl' 
+                : 'bottom-0 right-12 w-[540px] h-[550px] rounded-t-2xl'
+            }`}
+          >
+            {/* Widget Header */}
+            <div className="bg-gray-950 text-gray-100 px-4 py-3 flex items-center justify-between rounded-t-2xl border-b border-gray-800 flex-shrink-0">
+              <div className="flex items-center gap-2">
+                <Mail className="h-4 w-4 text-lime-500" />
+                <span className="text-xs font-bold text-gray-200">New Message</span>
               </div>
-
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Recipient Name</label>
-                <input
-                  type="text"
-                  value={composeForm.recipientName}
-                  onChange={(e) => setComposeForm({ ...composeForm, recipientName: e.target.value })}
-                  placeholder="Customer name"
-                  className="w-full px-4 py-2.5 border border-gray-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-lime-500"
-                />
+              <div className="flex items-center gap-1">
+                <button 
+                  type="button"
+                  onClick={() => setIsComposeMinimized(true)} 
+                  title="Minimize"
+                  className="p-1.5 hover:bg-gray-800 rounded transition text-gray-400 hover:text-white"
+                >
+                  <Minus className="h-3.5 w-3.5" />
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setIsComposeMaximized(!isComposeMaximized)} 
+                  title={isComposeMaximized ? 'Restore' : 'Maximize'}
+                  className="p-1.5 hover:bg-gray-800 rounded transition text-gray-400 hover:text-white"
+                >
+                  {isComposeMaximized ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => {
+                    setShowComposeModal(false);
+                    setIsComposeMaximized(false);
+                  }} 
+                  title="Close"
+                  className="p-1.5 hover:bg-red-900/50 rounded transition text-gray-400 hover:text-red-400"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
               </div>
+            </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Department</label>
+            {/* Form */}
+            <form onSubmit={handleComposeEmail} className="flex-1 flex flex-col min-h-0 bg-white">
+              {/* From / Department select */}
+              <div className="border-b border-gray-100 flex items-center px-4 py-1.5 flex-shrink-0">
+                <span className="text-xs font-semibold text-gray-400 w-16 select-none">From:</span>
                 <select
+                  required
                   value={composeForm.department}
                   onChange={(e) => setComposeForm({ ...composeForm, department: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-lime-500"
+                  className="flex-1 min-w-0 bg-transparent border-none text-xs text-gray-800 focus:outline-none focus:ring-0 py-1 outline-none cursor-pointer"
                 >
-                  <option value="">Select a department</option>
+                  <option value="" className="text-gray-400">Select Department Account</option>
                   {services.map((service) => (
                     <option key={service._id} value={service.email}>
-                      {service.name}
+                      {service.name} &lt;{service.email}&gt;
                     </option>
                   ))}
                 </select>
               </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Subject</label>
+              {/* To / Recipient Email input */}
+              <div className="border-b border-gray-100 flex items-center px-4 py-1.5 flex-shrink-0">
+                <span className="text-xs font-semibold text-gray-400 w-16 select-none">To:</span>
+                <input
+                  type="email"
+                  required
+                  placeholder="recipients@email.com"
+                  value={composeForm.recipientEmail}
+                  onChange={(e) => setComposeForm({ ...composeForm, recipientEmail: e.target.value })}
+                  className="flex-1 min-w-0 bg-transparent border-none text-xs text-gray-800 focus:outline-none focus:ring-0 py-1 outline-none placeholder-gray-400"
+                />
+              </div>
+
+              {/* Subject input */}
+              <div className="border-b border-gray-100 flex items-center px-4 py-1.5 flex-shrink-0">
+                <span className="text-xs font-semibold text-gray-400 w-16 select-none">Subject:</span>
                 <input
                   type="text"
                   required
+                  placeholder="Write a clear subject line..."
                   value={composeForm.subject}
                   onChange={(e) => setComposeForm({ ...composeForm, subject: e.target.value })}
-                  placeholder="Email subject"
-                  className="w-full px-4 py-2.5 border border-gray-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-lime-500"
+                  className="flex-1 min-w-0 bg-transparent border-none text-xs text-gray-800 focus:outline-none focus:ring-0 py-1 outline-none placeholder-gray-400"
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Message</label>
+              {/* Message Body Textarea */}
+              <div className="flex-1 min-h-0 overflow-y-auto bg-gray-50/10">
                 <textarea
                   required
-                  rows={6}
+                  placeholder="Write your email message here..."
                   value={composeForm.content}
                   onChange={(e) => setComposeForm({ ...composeForm, content: e.target.value })}
-                  placeholder="Write your message here..."
-                  className="w-full px-4 py-2.5 border border-gray-200 bg-white rounded-lg text-sm focus:ring-2 focus:ring-lime-500 resize-none"
+                  className="w-full h-full p-4 bg-transparent border-none text-xs text-gray-800 focus:outline-none focus:ring-0 resize-none font-sans leading-relaxed min-h-[150px] outline-none"
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+              {/* Footer Toolbar */}
+              <div className="px-4 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between flex-shrink-0 rounded-b-2xl">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white font-bold text-xs py-2 px-5 rounded-lg transition shadow-sm cursor-pointer"
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    {loading ? 'Sending...' : 'Send'}
+                  </button>
+
+                  {/* Decorative Rich Editing Icons */}
+                  <div className="hidden sm:flex items-center gap-1.5 text-gray-400 border-l border-gray-200 pl-3">
+                    <button type="button" title="Formatting Options" className="p-1.5 hover:bg-gray-150 hover:text-gray-600 rounded transition">
+                      <span className="font-serif text-sm font-bold">A</span>
+                    </button>
+                    <button type="button" title="Attach Files" className="p-1.5 hover:bg-gray-150 hover:text-gray-600 rounded transition">
+                      <Paperclip className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" title="Insert Link" className="p-1.5 hover:bg-gray-150 hover:text-gray-600 rounded transition">
+                      <Link2 className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" title="Insert Emoji" className="p-1.5 hover:bg-gray-150 hover:text-gray-600 rounded transition">
+                      <Smile className="h-3.5 w-3.5" />
+                    </button>
+                    <button type="button" title="Insert Image" className="p-1.5 hover:bg-gray-150 hover:text-gray-600 rounded transition">
+                      <ImageIcon className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Discard Draft Icon */}
                 <button
                   type="button"
-                  onClick={() => setShowComposeModal(false)}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-2 px-6 rounded-lg transition"
+                  title="Discard Draft"
+                  onClick={() => {
+                    if (confirm('Discard this draft?')) {
+                      setShowComposeModal(false);
+                      setComposeForm({
+                        recipientEmail: '',
+                        subject: '',
+                        content: '',
+                        department: '',
+                      });
+                      setIsComposeMinimized(false);
+                      setIsComposeMaximized(false);
+                    }
+                  }}
+                  className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition"
                 >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white font-bold py-2 px-6 rounded-lg transition cursor-pointer"
-                >
-                  <Send className="h-4 w-4" />
-                  {loading ? 'Sending...' : 'Send Email'}
+                  <Trash2 className="h-4 w-4" />
                 </button>
               </div>
             </form>
           </div>
-        </div>
+        )
       )}
     </div>
   );
