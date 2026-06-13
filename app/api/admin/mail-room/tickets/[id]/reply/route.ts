@@ -6,7 +6,28 @@ import MailRoomTicket from '@/lib/models/MailRoomTicket';
 import MailRoomMessage from '@/lib/models/MailRoomMessage';
 import { Resend } from 'resend';
 
-// Helper to send email via Resend (fire-and-forget)
+interface PreviousMessage {
+  direction: 'inbound' | 'outbound';
+  senderEmail: string;
+  senderName: string;
+  content: string;
+  createdAt: Date | string;
+}
+
+// Helper to format a date like Gmail: "Sat, Jun 13, 2026 at 11:02 AM"
+function formatGmailDate(date: Date | string): string {
+  return new Date(date).toLocaleString('en-US', {
+    weekday: 'short',
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  });
+}
+
+// Helper to send email via Resend with Gmail-style thread quoting (fire-and-forget)
 async function sendReplyEmail(
   fromEmail: string,
   toEmail: string,
@@ -14,7 +35,8 @@ async function sendReplyEmail(
   ticketNumber: string,
   customerName: string,
   subject: string,
-  content: string
+  content: string,
+  previousMessages: PreviousMessage[] = []
 ) {
   try {
     // Only send if Resend API key is configured
@@ -26,49 +48,64 @@ async function sendReplyEmail(
     // Instantiate Resend client inside function (avoid build-time initialization)
     const resend = new Resend(process.env.RESEND_API_KEY);
 
-    // Create branded HTML template
-    const htmlContent = `
-<!DOCTYPE html>
+    // Build Gmail-style quoted thread history (most recent first → oldest last)
+    let threadQuoteHtml = '';
+    if (previousMessages.length > 0) {
+      const quoteBlocks = previousMessages
+        .slice() // clone array to avoid mutation
+        .reverse() // oldest first for the quoted section
+        .map((msg) => {
+          const sentLabel = `On ${formatGmailDate(msg.createdAt)}, ${msg.senderName} &lt;${msg.senderEmail}&gt; wrote:`;
+          const escapedContent = msg.content
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;');
+          return `
+          <div style="margin-top: 16px; border-left: 3px solid #d1d5db; padding-left: 12px; color: #6b7280;">
+            <div style="font-size: 12px; color: #9ca3af; margin-bottom: 6px;">${sentLabel}</div>
+            <div style="font-size: 13px; white-space: pre-wrap; word-wrap: break-word; color: #6b7280;">${escapedContent}</div>
+          </div>`;
+        })
+        .join('\n');
+
+      threadQuoteHtml = `
+      <div style="margin-top: 28px; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+        ${quoteBlocks}
+      </div>`;
+    }
+
+    // Escape the current reply content
+    const escapedContent = content
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    // Create clean Gmail-like HTML template
+    const htmlContent = `<!DOCTYPE html>
 <html>
   <head>
     <meta charset="UTF-8">
-    <style>
-      body { 
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        color: #202124;
-        line-height: 1.5;
-        margin: 0;
-        padding: 20px;
-      }
-      .message-body {
-        white-space: pre-wrap;
-        word-wrap: break-word;
-        font-size: 14px;
-        color: #202124;
-      }
-      .signature {
-        margin-top: 24px;
-        color: #5f6368;
-        font-size: 13px;
-      }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
   </head>
-  <body>
-    <div class="message-body">${content}</div>
-    <div class="signature">
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; color: #202124; line-height: 1.6; margin: 0; padding: 20px; font-size: 14px;">
+    
+    <div style="white-space: pre-wrap; word-wrap: break-word; color: #202124;">${escapedContent}</div>
+    
+    <div style="margin-top: 24px; color: #5f6368; font-size: 13px;">
       --<br>
       Empi Costumes
     </div>
+
+    ${threadQuoteHtml}
   </body>
-</html>
-    `;
+</html>`;
 
     // Send via Resend (fire-and-forget)
     resend.emails
       .send({
         from: fromEmail,
         to: toEmail,
-        subject: `Re: ${subject} [${ticketNumber}]`,
+        subject: `Re: ${subject}`,
         html: htmlContent,
         replyTo: fromEmail,
       })
@@ -159,6 +196,11 @@ export async function POST(
       return NextResponse.json({ error: 'Reply content cannot be empty' }, { status: 400 });
     }
 
+    // Fetch previous messages BEFORE saving the new reply (for thread quoting)
+    const previousMessages = await MailRoomMessage.find({ ticketId: ticket._id })
+      .sort({ createdAt: 1 })
+      .lean();
+
     // Create outbound message
     const replyMessage = new MailRoomMessage({
       ticketId: ticket._id,
@@ -179,7 +221,7 @@ export async function POST(
     }
     await ticket.save();
 
-    // Send email via Resend (fire-and-forget - don't wait for it)
+    // Send email via Resend with Gmail-style thread quoting (fire-and-forget)
     sendReplyEmail(
       ticket.department,
       ticket.customerEmail,
@@ -187,7 +229,8 @@ export async function POST(
       ticket.ticketNumber,
       ticket.customerName,
       ticket.subject,
-      content
+      content,
+      previousMessages as any[]
     );
 
     return NextResponse.json(replyMessage, { status: 201 });

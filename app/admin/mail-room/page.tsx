@@ -30,7 +30,8 @@ import {
   Link2,
   Smile,
   Image as ImageIcon,
-  ArrowLeft
+  ArrowLeft,
+  Menu
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -103,6 +104,7 @@ export default function MailRoomPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [mobileActivePane, setMobileActivePane] = useState<'mailboxes' | 'tickets' | 'thread'>('tickets');
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = useState(false);
 
   // Form states
   const [replyContent, setReplyContent] = useState('');
@@ -487,9 +489,168 @@ export default function MailRoomPage() {
   const isSuperOrAdmin = currentAdmin?.role === 'super_admin' || currentAdmin?.role === 'admin';
 
   return (
-    <div className="h-screen bg-gray-50 flex flex-col font-sans overflow-hidden">
+    <div className="h-screen bg-gray-50 flex flex-col font-sans overflow-hidden pb-16 md:pb-0">
+      {/* Mobile Gmail-style Search Bar */}
+      <div className="md:hidden px-4 pt-3 pb-1 bg-white">
+        <div className="flex items-center gap-3 bg-gray-100 hover:bg-gray-200/80 px-4 py-2.5 rounded-full shadow-sm border border-gray-200/50 transition">
+          <button
+            type="button"
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className="p-1 text-gray-600 hover:bg-gray-200 rounded-full transition flex-shrink-0"
+            title="Open Menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+          <input
+            type="text"
+            placeholder="Search in mail"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 bg-transparent text-sm text-gray-800 placeholder-gray-500 focus:outline-none border-none p-0 focus:ring-0"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="text-gray-400 hover:text-gray-600 p-0.5"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+          <div className="w-7 h-7 rounded-full bg-gradient-to-br from-lime-500 to-lime-600 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 shadow-sm">
+            {currentAdmin?.fullName ? currentAdmin.fullName.charAt(0).toUpperCase() : 'A'}
+          </div>
+        </div>
+      </div>
+
+      {/* Mobile Sliding Navigation Drawer */}
+      {isMobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex">
+          {/* Backdrop overlay */}
+          <div
+            className="fixed inset-0 bg-black/50 transition-opacity duration-300"
+            onClick={() => setIsMobileDrawerOpen(false)}
+          />
+
+          {/* Drawer container */}
+          <div className="relative w-80 max-w-[85vw] bg-white h-full flex flex-col shadow-2xl transition-transform duration-300 ease-out z-10">
+            {/* Header / Brand */}
+            <div className="p-5 border-b border-gray-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="bg-lime-50 p-2 rounded-xl text-lime-600">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-gray-900 leading-tight">Mail Room</h2>
+                  <span className="text-[10px] text-gray-500 font-semibold">{currentAdmin?.fullName || 'Admin User'}</span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsMobileDrawerOpen(false)}
+                className="p-1.5 hover:bg-gray-100 rounded-lg text-gray-400 hover:text-gray-600 transition"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Folder list (Drawer content) */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div>
+                <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 block mb-2">Mailboxes</span>
+                <div className="space-y-1">
+                  <button
+                    onClick={() => {
+                      setSelectedFolder('all');
+                      setIsMobileDrawerOpen(false);
+                      setMobileActivePane('tickets');
+                    }}
+                    className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                      selectedFolder === 'all'
+                        ? 'bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md shadow-lime-100'
+                        : 'text-gray-700 hover:bg-gray-100'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Inbox className="h-4 w-4" />
+                      <span>All Messages</span>
+                    </div>
+                    {getAllOpenCount() > 0 && (
+                      <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${selectedFolder === 'all' ? 'bg-white text-lime-700' : 'bg-red-500 text-white'}`}>
+                        {getAllOpenCount()}
+                      </span>
+                    )}
+                  </button>
+
+                  <hr className="my-2 border-gray-100" />
+
+                  {/* Services */}
+                  {services.length === 0 ? (
+                    <div className="text-xs text-gray-500 px-3 py-2">
+                      No email accounts registered.
+                    </div>
+                  ) : (
+                    services.map((service) => {
+                      const open = getOpenCount(service.email);
+                      const isSelected = selectedFolder === service.email;
+                      return (
+                        <button
+                          key={service._id}
+                          onClick={() => {
+                            setSelectedFolder(service.email);
+                            setIsMobileDrawerOpen(false);
+                            setMobileActivePane('tickets');
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition ${
+                            isSelected
+                              ? 'bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md shadow-lime-100'
+                              : 'text-gray-700 hover:bg-gray-100'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2.5 truncate w-full pr-2">
+                            <Mail className="h-4 w-4 flex-shrink-0 mt-1" />
+                            <div className="flex flex-col items-start truncate text-left">
+                              <span className="truncate">{service.name}</span>
+                              <span className={`text-[10px] font-normal truncate w-full ${
+                                isSelected ? 'text-lime-100' : 'text-gray-400'
+                              }`}>
+                                {service.email}
+                              </span>
+                            </div>
+                          </div>
+                          {open > 0 && (
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-bold flex-shrink-0 ${isSelected ? 'bg-white text-lime-700' : 'bg-amber-100 text-amber-800 border border-amber-200'}`}>
+                              {open}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Clear all data button inside drawer */}
+            {!loading && tickets.length > 0 && (
+              <div className="p-4 border-t border-gray-100">
+                <button
+                  onClick={() => {
+                    handleClearAllData();
+                    setIsMobileDrawerOpen(false);
+                  }}
+                  className="w-full bg-red-50 hover:bg-red-100 text-red-700 text-xs py-2 px-4 rounded-xl font-bold transition border border-red-200 flex items-center justify-center gap-2"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Clear All Data
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Minimal Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shadow-sm">
+      <div className="hidden md:flex bg-white border-b border-gray-200 px-6 py-3 items-center justify-between shadow-sm">
         <div className="flex items-center gap-2">
           <Mail className="h-5 w-5 text-lime-600" />
           <h1 className="text-lg font-bold text-gray-900">Mail Room</h1>
@@ -579,17 +740,63 @@ export default function MailRoomPage() {
         </div>
       )}
 
+      {/* Mobile Compose Floating Action Button (FAB) */}
+      <button
+        onClick={() => {
+          setShowComposeModal(true);
+          setIsComposeMinimized(false);
+        }}
+        className="md:hidden fixed bottom-20 right-5 z-40 bg-lime-600 hover:bg-lime-700 text-white flex items-center justify-center gap-2 px-4 py-3 rounded-full shadow-xl font-bold transition-all hover:scale-105 active:scale-95"
+      >
+        <Plus className="h-5 w-5" />
+        <span className="text-sm">Compose</span>
+      </button>
+
+      {/* Mobile Bottom Navigation Bar (like Gmail Mail/Chat/Meet) */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex items-center justify-around py-2 z-40 shadow-lg">
+        <button
+          onClick={() => {
+            setActiveTab('inbox');
+            setMobileActivePane('tickets');
+          }}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-full transition ${
+            activeTab === 'inbox' ? 'text-lime-600 font-bold' : 'text-gray-500'
+          }`}
+        >
+          <Inbox className="h-5 w-5" />
+          <span className="text-[10px]">Inbox</span>
+        </button>
+        <button
+          onClick={() => setActiveTab('connections')}
+          className={`flex flex-col items-center gap-1 py-1 px-3 rounded-full transition ${
+            activeTab === 'connections' ? 'text-lime-600 font-bold' : 'text-gray-500'
+          }`}
+        >
+          <Users className="h-5 w-5" />
+          <span className="text-[10px]">Connections</span>
+        </button>
+        {isSuperOrAdmin && (
+          <button
+            onClick={() => setActiveTab('permissions')}
+            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-full transition ${
+              activeTab === 'permissions' ? 'text-lime-600 font-bold' : 'text-gray-500'
+            }`}
+          >
+            <Shield className="h-5 w-5" />
+            <span className="text-[10px]">Permissions</span>
+          </button>
+        )}
+      </div>
+
       {/* Main Container */}
-      <div className="flex-1 p-6 flex flex-col min-h-0 overflow-hidden">
+      <div className="flex-1 p-0 md:p-6 flex flex-col min-h-0 overflow-hidden">
         
         {/* INBOX TAB */}
         {activeTab === 'inbox' && (
-          <div className="flex-1 bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col md:flex-row min-h-0">
+          <div className="flex-1 bg-white md:rounded-2xl border-0 md:border border-gray-200 md:shadow-sm overflow-hidden flex flex-col md:flex-row min-h-0">
             
              {/* 1. Folders Pane (Departments) */}
-            <div className={`w-full md:w-64 bg-gray-50 border-r border-gray-200 flex-col min-h-0 overflow-hidden shrink-0 ${
-              mobileActivePane === 'mailboxes' ? 'flex' : 'hidden md:flex'
-            }`}>
+            <div className="hidden md:flex w-full md:w-64 bg-gray-50 border-r border-gray-200 flex-col min-h-0 overflow-hidden shrink-0">
               <div className="p-4 flex flex-col gap-2 min-h-0 overflow-hidden flex-1">
                 <div className="flex items-center justify-between px-3 mb-1">
                   <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Mailboxes</span>
@@ -694,13 +901,11 @@ export default function MailRoomPage() {
                 </div>
               )}
             </div>
-
             {/* 2. Tickets List Pane */}
-            <div className={`w-full md:w-80 border-r border-gray-200 flex-col min-h-0 overflow-hidden shrink-0 ${
+            <div className={`w-full md:w-80 border-r border-gray-200 bg-white flex-col min-h-0 ${
               mobileActivePane === 'tickets' ? 'flex' : 'hidden md:flex'
             }`}>
-              {/* Search header - Minimal */}
-              <div className="p-3 bg-white border-b border-gray-200 flex items-center gap-2 flex-shrink-0">
+              <div className="hidden md:flex p-3 border-b border-gray-100 items-center gap-2 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setMobileActivePane('mailboxes')}
@@ -772,57 +977,105 @@ export default function MailRoomPage() {
                       <div
                         key={ticket._id}
                         onClick={() => handleSelectTicket(ticket)}
-                        className={`p-4 cursor-pointer hover:bg-gray-50 transition border-l-4 ${
+                        className={`p-4 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 ${
                           isSelected
-                            ? 'bg-lime-50/40 border-lime-500 shadow-sm'
-                            : 'border-transparent'
+                            ? 'bg-lime-50/20 md:border-l-4 md:border-lime-500 md:shadow-sm'
+                            : 'md:border-l-4 md:border-transparent'
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                            {ticket.ticketNumber}
-                          </span>
-                          <span className="text-[10px] text-gray-400">
-                            {new Date(ticket.lastMessageAt).toLocaleDateString([], {
-                              month: 'short',
-                              day: 'numeric',
-                              hour: '2-digit',
-                              minute: '2-digit'
-                            })}
-                          </span>
+                        {/* Mobile View Layout (Gmail Style) */}
+                        <div className="md:hidden flex items-start gap-3">
+                          {/* Circular Avatar */}
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
+                            ticket.priority === 'urgent' ? 'bg-red-500' :
+                            ticket.priority === 'high' ? 'bg-amber-500' :
+                            ticket.status === 'open' ? 'bg-emerald-500' :
+                            'bg-blue-500'
+                          }`}>
+                            {initial}
+                          </div>
+
+                          {/* Message Content Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex justify-between items-baseline mb-0.5">
+                              <span className="text-sm font-semibold text-gray-900 truncate">
+                                {ticket.customerName || 'Anonymous'}
+                              </span>
+                              <span className="text-xs text-gray-500 flex-shrink-0 pl-2">
+                                {new Date(ticket.lastMessageAt).toLocaleDateString([], {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            
+                            <h4 className="text-xs font-bold text-gray-800 truncate mb-1">
+                              {ticket.subject}
+                            </h4>
+
+                            <div className="flex items-center justify-between gap-2 mt-1">
+                              <span className="text-[10px] text-gray-400 font-mono">
+                                {ticket.ticketNumber}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full border font-bold uppercase ${statusColors[ticket.status]}`}>
+                                  {ticket.status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
                         </div>
 
-                        <h3 className="text-sm font-bold text-gray-900 truncate mb-1">
-                          {ticket.subject}
-                        </h3>
-
-                        <div className="flex items-center justify-between mt-2">
-                          <div className="flex items-center gap-1.5 text-xs text-gray-600 truncate max-w-[60%]">
-                            <span className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 text-gray-700 text-[10px] font-bold flex items-center justify-center">
-                              {initial}
+                        {/* Desktop View Layout */}
+                        <div className="hidden md:block">
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                              {ticket.ticketNumber}
                             </span>
-                            <span className="truncate">{ticket.customerName || 'Anonymous'}</span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5">
-                            {/* Priority Indicator */}
-                            <span
-                              title={`Priority: ${ticket.priority}`}
-                              className={`w-2 h-2 rounded-full ${priorityDots[ticket.priority]}`}
-                            />
-                            {/* Status badge */}
-                            <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold uppercase ${statusColors[ticket.status]}`}>
-                              {ticket.status}
+                            <span className="text-[10px] text-gray-400">
+                              {new Date(ticket.lastMessageAt).toLocaleDateString([], {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
                             </span>
                           </div>
+
+                          <h3 className="text-sm font-bold text-gray-900 truncate mb-1">
+                            {ticket.subject}
+                          </h3>
+
+                          <div className="flex items-center justify-between mt-2">
+                            <div className="flex items-center gap-1.5 text-xs text-gray-600 truncate max-w-[60%]">
+                              <span className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-200 to-gray-300 text-gray-700 text-[10px] font-bold flex items-center justify-center">
+                                {initial}
+                              </span>
+                              <span className="truncate">{ticket.customerName || 'Anonymous'}</span>
+                            </div>
+
+                            <div className="flex items-center gap-1.5">
+                              {/* Priority Indicator */}
+                              <span
+                                title={`Priority: ${ticket.priority}`}
+                                className={`w-2 h-2 rounded-full ${priorityDots[ticket.priority]}`}
+                              />
+                              {/* Status badge */}
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold uppercase ${statusColors[ticket.status]}`}>
+                                {ticket.status}
+                              </span>
+                            </div>
+                          </div>
+
+                          {ticket.assignedTo && (
+                            <div className="mt-2 text-[10px] text-gray-500 flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              Assigned to: <span className="font-semibold text-gray-700">{ticket.assignedTo.fullName}</span>
+                            </div>
+                          )}
                         </div>
-
-                        {ticket.assignedTo && (
-                          <div className="mt-2 text-[10px] text-gray-500 flex items-center gap-1">
-                            <User className="h-3 w-3" />
-                            Assigned to: <span className="font-semibold text-gray-700">{ticket.assignedTo.fullName}</span>
-                          </div>
-                        )}
                       </div>
                     );
                   })
@@ -846,38 +1099,26 @@ export default function MailRoomPage() {
                 </div>
               ) : (
                 <>
-                  {/* Thread Header - Minimal & Clean */}
-                  <div className="p-4 bg-white border-b border-gray-200 flex items-center justify-between gap-4 shadow-sm z-10 flex-shrink-0">
-                    <div className="flex items-center gap-3 min-w-0">
+                  {/* Sticky Thread Toolbar */}
+                  <div className="bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between gap-3 flex-shrink-0 shadow-sm z-10">
+                    <div className="flex items-center gap-2 min-w-0">
                       <button
                         type="button"
                         onClick={() => setMobileActivePane('tickets')}
-                        className="md:hidden p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition"
+                        className="md:hidden p-1.5 hover:bg-gray-100 rounded-lg text-gray-500 transition flex-shrink-0"
                         title="Back to List"
                       >
                         <ArrowLeft className="h-5 w-5" />
                       </button>
-                      
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="text-xs font-bold text-lime-600 bg-lime-50 px-2 py-0.5 rounded border border-lime-200">
-                            {selectedTicket.ticketNumber}
-                          </span>
-                          <span className="text-xs text-gray-500 truncate max-w-[120px] sm:max-w-none">
-                            {selectedTicket.customerName} • {selectedTicket.customerEmail}
-                          </span>
-                        </div>
-                        <h2 className="text-sm font-bold text-gray-900 truncate">{selectedTicket.subject}</h2>
-                      </div>
+                      <span className="text-xs text-gray-500 truncate hidden md:inline">{selectedTicket.customerEmail}</span>
                     </div>
 
-                    {/* Quick Actions - Right side */}
-                    <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       <select
                         disabled={actionLoading}
                         value={selectedTicket.status}
                         onChange={(e) => handleUpdateTicketAttribute({ status: e.target.value })}
-                        className="px-2.5 py-1.5 border border-gray-200 bg-white rounded text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-lime-500"
+                        className="px-2.5 py-1.5 border border-gray-200 bg-white rounded-lg text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-lime-500 cursor-pointer"
                       >
                         <option value="open">Open</option>
                         <option value="pending">Pending</option>
@@ -889,9 +1130,9 @@ export default function MailRoomPage() {
                         disabled={actionLoading}
                         value={selectedTicket.assignedTo?._id || ''}
                         onChange={(e) => handleUpdateTicketAttribute({ assignedTo: e.target.value || null })}
-                        className="px-2.5 py-1.5 border border-gray-200 bg-white rounded text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-lime-500"
+                        className="px-2.5 py-1.5 border border-gray-200 bg-white rounded-lg text-xs font-semibold text-gray-700 focus:ring-2 focus:ring-lime-500 cursor-pointer"
                       >
-                        <option value="">Assign</option>
+                        <option value="">Assign to...</option>
                         {admins.map(adm => (
                           <option key={adm._id} value={adm._id}>{adm.fullName}</option>
                         ))}
@@ -899,106 +1140,162 @@ export default function MailRoomPage() {
                     </div>
                   </div>
 
-                  {/* Messages Feed */}
-                  <div className="flex-1 min-h-0 overflow-y-auto p-4 space-y-4">
+                  {/* Messages Feed - Gmail Style */}
+                  <div className="flex-1 min-h-0 overflow-y-auto bg-white">
+                    
+                    {/* Subject header row (like Gmail) */}
+                    <div className="px-6 pt-5 pb-2 border-b border-gray-100">
+                      <h2 className="text-xl font-semibold text-gray-900">{selectedTicket.subject}</h2>
+                      <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                        <span className="text-xs font-bold text-lime-700 bg-lime-50 px-2 py-0.5 rounded-full border border-lime-200">
+                          {selectedTicket.ticketNumber}
+                        </span>
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full border ${
+                          selectedTicket.status === 'open' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          selectedTicket.status === 'pending' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          selectedTicket.status === 'resolved' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                          'bg-gray-100 text-gray-600 border-gray-200'
+                        }`}>
+                          {selectedTicket.status}
+                        </span>
+                        <span className="text-xs text-gray-400">
+                          {messages.length} {messages.length === 1 ? 'message' : 'messages'}
+                        </span>
+                      </div>
+                    </div>
+
                     {ticketDetailLoading ? (
-                      <div className="space-y-4">
-                        <div className="flex gap-2 max-w-[70%] bg-white p-3 rounded-2xl border border-gray-100 shadow-sm animate-pulse">
-                          <div className="w-full space-y-2">
-                            <div className="h-4 bg-gray-100 rounded w-1/3"></div>
-                            <div className="h-3 bg-gray-100 rounded w-full"></div>
-                            <div className="h-3 bg-gray-100 rounded w-1/2"></div>
-                          </div>
-                        </div>
-                        <div className="flex justify-end">
-                          <div className="flex gap-2 max-w-[70%] bg-lime-50/50 p-3 rounded-2xl border border-lime-100 shadow-sm animate-pulse">
-                            <div className="w-64 space-y-2">
-                              <div className="h-4 bg-lime-100/50 rounded w-1/4"></div>
-                              <div className="h-3 bg-lime-100/50 rounded w-full"></div>
+                      <div className="space-y-0 px-6 pt-4">
+                        {[1,2].map((i) => (
+                          <div key={i} className="py-5 border-b border-gray-100 animate-pulse">
+                            <div className="flex items-center gap-3 mb-3">
+                              <div className="w-9 h-9 rounded-full bg-gray-200" />
+                              <div className="flex-1 space-y-1.5">
+                                <div className="h-3.5 bg-gray-200 rounded w-1/3" />
+                                <div className="h-3 bg-gray-100 rounded w-1/4" />
+                              </div>
+                            </div>
+                            <div className="pl-12 space-y-2">
+                              <div className="h-3 bg-gray-100 rounded w-full" />
+                              <div className="h-3 bg-gray-100 rounded w-3/4" />
                             </div>
                           </div>
-                        </div>
+                        ))}
                       </div>
                     ) : (
-                      messages.map((msg) => {
-                        const isInbound = msg.direction === 'inbound';
-                        const initial = msg.senderName ? msg.senderName.charAt(0).toUpperCase() : '?';
-                        const avatarColor = isInbound 
-                          ? 'bg-blue-50 text-blue-700 border-blue-100' 
-                          : 'bg-lime-50 text-lime-700 border-lime-100';
+                      <div className="divide-y divide-gray-100">
+                        {messages.map((msg, idx) => {
+                          const isInbound = msg.direction === 'inbound';
+                          const initial = msg.senderName ? msg.senderName.charAt(0).toUpperCase() : '?';
+                          const isLast = idx === messages.length - 1;
+                          const avatarBg = isInbound 
+                            ? 'bg-blue-500' 
+                            : 'bg-lime-600';
 
-                        return (
-                          <div 
-                            key={msg._id} 
-                            className={`w-full bg-white border border-gray-200/80 rounded-xl p-5 shadow-xs transition hover:border-gray-300/80 ${
-                              !isInbound ? 'bg-lime-50/5' : ''
-                            }`}
-                          >
-                            {/* Message Header */}
-                            <div className="flex items-start justify-between gap-4 mb-3">
-                              <div className="flex items-center gap-3 min-w-0">
-                                {/* Avatar */}
-                                <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm border flex-shrink-0 ${avatarColor}`}>
-                                  {initial}
-                                </div>
-
-                                {/* Sender & Recipient Details */}
-                                <div className="flex flex-col min-w-0">
-                                  <div className="flex flex-wrap items-baseline gap-1.5 min-w-0">
-                                    <span className="font-extrabold text-sm text-gray-900 truncate">
-                                      {msg.senderName || 'Anonymous'}
-                                    </span>
-                                    <span className="text-xs text-gray-400 font-semibold truncate">
-                                      &lt;{msg.senderEmail}&gt;
-                                    </span>
+                          return (
+                            <div 
+                              key={msg._id} 
+                              className={`px-6 py-5 transition-colors ${isLast ? '' : 'hover:bg-gray-50/60'}`}
+                            >
+                              {/* Message Header */}
+                              <div className="flex items-start justify-between gap-4 mb-3">
+                                <div className="flex items-start gap-3 min-w-0 flex-1">
+                                  {/* Avatar */}
+                                  <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm text-white flex-shrink-0 ${avatarBg}`}>
+                                    {initial}
                                   </div>
-                                  <span className="text-[10px] text-gray-400 font-medium">
-                                    to {isInbound ? 'support' : (msg.recipientEmail || 'customer')}
-                                  </span>
+
+                                  {/* Sender Details */}
+                                  <div className="flex flex-col min-w-0">
+                                    <div className="flex flex-wrap items-baseline gap-1.5">
+                                      <span className="font-semibold text-sm text-gray-900">
+                                        {msg.senderName || (isInbound ? msg.senderEmail : 'Empi Costumes')}
+                                      </span>
+                                      <span className="text-xs text-gray-400 font-normal truncate hidden sm:inline">
+                                        &lt;{msg.senderEmail}&gt;
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[11px] text-gray-400 mt-0.5">
+                                      <span>to</span>
+                                      <span className="font-medium text-gray-500 truncate max-w-[200px]">
+                                        {isInbound ? msg.senderEmail === selectedTicket.customerEmail 
+                                          ? selectedTicket.department 
+                                          : selectedTicket.department
+                                          : selectedTicket.customerEmail}
+                                      </span>
+                                    </div>
+                                  </div>
                                 </div>
+
+                                {/* Timestamp */}
+                                <span className="text-xs text-gray-400 font-medium whitespace-nowrap flex-shrink-0 mt-1">
+                                  {new Date(msg.createdAt).toLocaleString([], {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
                               </div>
 
-                              {/* Timestamp */}
-                              <span className="text-xs text-gray-400 font-medium whitespace-nowrap">
-                                {new Date(msg.createdAt).toLocaleDateString([], {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </span>
-                            </div>
+                              {/* Message Body */}
+                              <div className="text-sm leading-relaxed text-gray-700 pl-12 whitespace-pre-wrap">
+                                {msg.content}
+                              </div>
 
-                            {/* Message Body */}
-                            <div className="text-sm whitespace-pre-line leading-relaxed text-gray-800 pl-12">
-                              {msg.content}
+                              {/* Direction badge */}
+                              {!isInbound && (
+                                <div className="pl-12 mt-3">
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-lime-600 bg-lime-50 border border-lime-100 px-2 py-0.5 rounded-full">
+                                    <Send className="h-2.5 w-2.5" />
+                                    Sent
+                                  </span>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        );
-                      })
+                          );
+                        })}
+                      </div>
                     )}
                     <div ref={messagesEndRef} />
                   </div>
 
-                  {/* Reply Composer - Minimal */}
-                  <div className="p-4 bg-white border-t border-gray-200 z-10 flex-shrink-0">
-                    <form onSubmit={handleSendReply} className="flex flex-col gap-3">
-                      <textarea
-                        rows={3}
-                        value={replyContent}
-                        onChange={(e) => setReplyContent(e.target.value)}
-                        placeholder="Type your reply..."
-                        className="w-full p-3 border border-gray-200 rounded-lg text-sm bg-white text-gray-800 focus:ring-2 focus:ring-lime-500 transition resize-none"
-                      />
-                      <div className="flex justify-end">
-                        <button
-                          type="submit"
-                          disabled={replyLoading || !replyContent.trim()}
-                          className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 text-white font-semibold py-2 px-5 rounded-lg transition cursor-pointer text-sm"
-                        >
-                          <Send className="h-4 w-4" />
-                          {replyLoading ? 'Sending...' : 'Send'}
-                        </button>
+                  {/* Reply Composer - Gmail Style */}
+                  <div className="px-4 sm:px-6 py-4 bg-gray-50 border-t border-gray-200 flex-shrink-0">
+                    <form onSubmit={handleSendReply}>
+                      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden">
+                        {/* Reply header bar */}
+                        <div className="px-4 py-2.5 border-b border-gray-100 flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-500">Reply to</span>
+                          <span className="text-xs font-bold text-gray-800 truncate">{selectedTicket.customerEmail}</span>
+                        </div>
+                        {/* Textarea */}
+                        <textarea
+                          rows={4}
+                          value={replyContent}
+                          onChange={(e) => setReplyContent(e.target.value)}
+                          placeholder="Write your reply..."
+                          className="w-full px-4 py-3 text-sm bg-white text-gray-800 focus:outline-none focus:ring-0 resize-none border-none placeholder-gray-400 leading-relaxed"
+                        />
+                        {/* Toolbar */}
+                        <div className="px-4 py-2.5 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 text-gray-400">
+                            <button type="button" title="Attach file" className="p-1.5 hover:bg-gray-200 hover:text-gray-600 rounded transition">
+                              <Paperclip className="h-3.5 w-3.5" />
+                            </button>
+                            <button type="button" title="Insert link" className="p-1.5 hover:bg-gray-200 hover:text-gray-600 rounded transition">
+                              <Link2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={replyLoading || !replyContent.trim()}
+                            className="flex items-center gap-2 bg-lime-600 hover:bg-lime-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white font-semibold py-1.5 px-5 rounded-lg transition text-sm cursor-pointer"
+                          >
+                            <Send className="h-3.5 w-3.5" />
+                            {replyLoading ? 'Sending...' : 'Send'}
+                          </button>
+                        </div>
                       </div>
                     </form>
                   </div>
