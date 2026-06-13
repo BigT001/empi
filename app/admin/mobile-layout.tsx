@@ -3,7 +3,7 @@
 import { ReactNode, useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { Menu, X, Home, Users, Clock, Package, Plus, BarChart3, FileText, MessageCircle, Truck, Settings, LogOut } from "lucide-react";
+import { Menu, X, Home, Users, Clock, Package, Plus, BarChart3, FileText, MessageCircle, Truck, Settings, LogOut, Mail } from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
 
 interface SidebarItem {
@@ -62,6 +62,11 @@ const sidebarItems: SidebarItem[] = [
     name: "Logistics",
     href: "/admin/logistics",
     icon: <Truck className="h-5 w-5" />,
+  },
+  {
+    name: "Mail Room",
+    href: "/admin/mail-room",
+    icon: <Mail className="h-5 w-5" />,
   },
   {
     name: "Settings",
