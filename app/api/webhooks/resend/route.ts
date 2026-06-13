@@ -26,6 +26,25 @@ function generateThreadId(from: string, to: string): string {
 }
 
 /**
+ * Parse email address string formats like "Name <email@example.com>" or "email@example.com"
+ */
+function parseFromAddress(fromStr: string): { email: string; name: string } {
+  if (!fromStr) return { email: '', name: 'Unknown' };
+  
+  // Format: Name <email@example.com>
+  const match = fromStr.match(/^(?:"?([^"]*)"?\s)?(?:<([^>]+)>)$/);
+  if (match) {
+    const name = match[1]?.trim() || '';
+    const email = match[2]?.trim() || '';
+    return { email: email.toLowerCase(), name: name || email };
+  }
+  
+  // Format: email@example.com
+  const email = fromStr.trim();
+  return { email: email.toLowerCase(), name: email };
+}
+
+/**
  * Verify webhook signature using Svix
  * This ensures the webhook is actually from Resend
  */
@@ -78,35 +97,83 @@ function verifyWebhookSignature(
  * Handle inbound email webhook events
  */
 async function handleInboundEmail(payload: any): Promise<NextResponse> {
-  const inboundData = payload.data;
+  let inboundData = payload.data;
   
-  console.log('[WEBHOOK] Processing inbound email event');
+  console.log(`[WEBHOOK] Processing inbound email event of type: ${payload.type}`);
+
+  // If this is a real Resend email.received webhook, the payload is metadata-only.
+  // We must fetch the full email contents via the Resend API.
+  if (payload.type === 'email.received') {
+    const emailId = payload.data.email_id || payload.data.id;
+    if (!emailId) {
+      console.error('❌ Missing email_id in email.received payload');
+      return NextResponse.json(
+        { error: 'Missing email_id', success: false },
+        { status: 400 }
+      );
+    }
+
+    if (!resend) {
+      console.error('❌ Resend API client not initialized (missing RESEND_API_KEY)');
+      return NextResponse.json(
+        { error: 'Resend API key not configured', success: false },
+        { status: 500 }
+      );
+    }
+
+    try {
+      console.log(`[WEBHOOK] Fetching received email detail for ID: ${emailId}`);
+      const { data, error } = await resend.emails.receiving.get(emailId);
+      if (error || !data) {
+        console.error(`❌ Failed to retrieve received email from Resend:`, error);
+        return NextResponse.json(
+          { error: 'Failed to retrieve email content from Resend', success: false },
+          { status: 500 }
+        );
+      }
+      inboundData = data;
+    } catch (err: any) {
+      console.error('❌ Exception retrieving received email from Resend:', err);
+      return NextResponse.json(
+        { error: err.message || 'Error fetching email content', success: false },
+        { status: 500 }
+      );
+    }
+  }
   
-  // Extract to email (handle both string array and object array formats)
+  // Extract to email (handle both string array and object/string formats)
   let toEmail = '';
-  if (inboundData.to && Array.isArray(inboundData.to)) {
-    if (typeof inboundData.to[0] === 'string') {
-      toEmail = inboundData.to[0];
-    } else if (inboundData.to[0]?.email) {
-      toEmail = inboundData.to[0].email;
+  if (inboundData.to) {
+    if (Array.isArray(inboundData.to)) {
+      if (typeof inboundData.to[0] === 'string') {
+        toEmail = inboundData.to[0];
+      } else if (inboundData.to[0]?.email) {
+        toEmail = inboundData.to[0].email;
+      }
+    } else if (typeof inboundData.to === 'string') {
+      toEmail = inboundData.to;
     }
   }
   
   // Extract from email
-  const fromEmail = typeof inboundData.from === 'object'
-    ? inboundData.from?.email
-    : inboundData.from;
-  const fromName = typeof inboundData.from === 'object'
-    ? inboundData.from?.name || 'Unknown'
-    : inboundData.from || 'Unknown';
+  let fromEmail = '';
+  let fromName = 'Unknown';
+  if (typeof inboundData.from === 'object') {
+    fromEmail = inboundData.from?.email || '';
+    fromName = inboundData.from?.name || 'Unknown';
+  } else if (typeof inboundData.from === 'string') {
+    const parsed = parseFromAddress(inboundData.from);
+    fromEmail = parsed.email;
+    fromName = parsed.name;
+  }
   
   const subject = inboundData.subject || '(No Subject)';
   const textContent = inboundData.text || '';
   const htmlContent = inboundData.html || '';
-  const messageId = inboundData.message_id;
-  const emailId = inboundData.id; // Resend email ID
+  const messageId = inboundData.message_id || inboundData.headers?.['Message-ID'];
+  const emailId = inboundData.id || inboundData.email_id; // Resend email ID
 
-  console.log(`📧 FROM: ${fromEmail}`);
+  console.log(`📧 FROM: ${fromEmail} (${fromName})`);
   console.log(`📧 TO: ${toEmail}`);
   console.log(`📧 SUBJECT: ${subject}`);
 
@@ -280,7 +347,7 @@ export async function POST(req: NextRequest) {
     console.log(`[WEBHOOK] Event type: ${payload.type}`);
 
     // Route to appropriate handler
-    if (payload.type === 'email.inbound') {
+    if (payload.type === 'email.inbound' || payload.type === 'email.received') {
       return await handleInboundEmail(payload);
     }
 
