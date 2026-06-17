@@ -64,47 +64,20 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
 
   return (
     <div className="mb-8 animate-in slide-in-from-top-4 fade-in duration-500">
-      <div className="mb-6 text-center md:text-left">
-        <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-4">Filter by Types</p>
+      <div className="mb-6">
+        <p className="text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] mb-4 text-center md:text-left">
+          Filter by Types
+        </p>
 
-        {/* Premium Mobile Style Pills */}
-        <div className="md:hidden -mx-6 mb-2">
-          <div className="flex overflow-x-auto scrollbar-hide gap-3 px-6 py-2 no-scrollbar">
-            <button
-              onClick={() => handleTypeSelect(null)}
-              className={`flex-none px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border ${selectedType === null
-                ? "bg-slate-900 dark:bg-lime-500 text-white border-transparent"
-                : "bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10"
-                }`}
-            >
-              All Styles
-            </button>
-            {typesToShow.map((type) => (
-              <button
-                key={type}
-                onClick={() => handleTypeSelect(type)}
-                className={`flex-none px-6 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all shadow-sm border flex items-center gap-2 ${selectedType === type
-                  ? "bg-slate-900 dark:bg-lime-500 text-white border-transparent"
-                  : "bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-white/10"
-                  }`}
-              >
-                {type}
-                {type === "Traditional Africa" && selectedType === type && (
-                  <ChevronDown className="h-4 w-4" />
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Desktop - Text links */}
-        <div className="hidden md:flex gap-4 flex-wrap">
+        {/* Premium Pills Filter Container */}
+        <div className="flex items-center gap-3 overflow-x-auto md:flex-wrap md:overflow-visible no-scrollbar pb-3 md:pb-0 -mx-4 px-4 md:-mx-0 md:px-0">
           <button
             onClick={() => handleTypeSelect(null)}
-            className={`text-sm font-semibold transition-colors ${selectedType === null
-              ? "text-lime-600 border-b-2 border-lime-600"
-              : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-              }`}
+            className={`flex-none px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 shadow-sm border active:scale-95 hover:scale-[1.02] ${
+              selectedType === null
+                ? "bg-lime-600 text-white border-transparent shadow-lg shadow-lime-500/25 dark:bg-lime-500"
+                : "bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200/60 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
+            }`}
           >
             All Styles
           </button>
@@ -112,14 +85,15 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
             <button
               key={type}
               onClick={() => handleTypeSelect(type)}
-              className={`text-sm font-semibold transition-colors flex items-center gap-1 ${selectedType === type
-                ? "text-lime-600 border-b-2 border-lime-600"
-                : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                }`}
+              className={`flex-none px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all duration-300 shadow-sm border active:scale-95 hover:scale-[1.02] flex items-center gap-2 ${
+                selectedType === type
+                  ? "bg-lime-600 text-white border-transparent shadow-lg shadow-lime-500/25 dark:bg-lime-500"
+                  : "bg-slate-50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200/60 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
+              }`}
             >
-              {type}
-              {type === "Traditional Africa" && selectedType === type && (
-                <ChevronDown className="h-4 w-4" />
+              <span>{type}</span>
+              {type === "Traditional Africa" && (
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform duration-300 ${selectedType === type ? "rotate-180" : ""}`} />
               )}
             </button>
           ))}
@@ -127,15 +101,18 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
 
         {/* Traditional Africa Subfilters */}
         {showSubfilters && selectedType === "Traditional Africa" && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-white/10">
-            <p className="text-xs font-bold text-gray-600 dark:text-gray-400 uppercase tracking-widest mb-3">Select Country</p>
-            <div className="flex flex-wrap gap-2">
+          <div className="mt-6 pt-6 border-t border-gray-100 dark:border-white/5 animate-in slide-in-from-top-2 fade-in duration-300">
+            <p className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-widest mb-3 pl-1 text-center md:text-left">
+              Select Country
+            </p>
+            <div className="flex items-center gap-2 overflow-x-auto md:flex-wrap md:overflow-visible no-scrollbar pb-3 md:pb-0 -mx-4 px-4 md:-mx-0 md:px-0">
               <button
                 onClick={() => handleSubfilterSelect(null)}
-                className={`text-sm font-semibold transition-colors ${selectedSubfilter === null
-                  ? "text-lime-600 border-b-2 border-lime-600"
-                  : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                  }`}
+                className={`flex-none px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all duration-300 shadow-sm border active:scale-95 hover:scale-[1.02] ${
+                  selectedSubfilter === null
+                    ? "bg-lime-600/10 text-lime-600 dark:text-lime-400 border-lime-500/20"
+                    : "bg-slate-50/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200/40 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
+                }`}
               >
                 All Countries
               </button>
@@ -143,10 +120,11 @@ export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: Co
                 <button
                   key={country}
                   onClick={() => handleSubfilterSelect(country)}
-                  className={`text-sm font-semibold transition-colors ${selectedSubfilter === country
-                    ? "text-lime-600 border-b-2 border-lime-600"
-                    : "text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white"
-                    }`}
+                  className={`flex-none px-4 py-2 rounded-xl text-[9px] font-bold uppercase tracking-wider transition-all duration-300 shadow-sm border active:scale-95 hover:scale-[1.02] ${
+                    selectedSubfilter === country
+                      ? "bg-lime-600/10 text-lime-600 dark:text-lime-400 border-lime-500/20"
+                      : "bg-slate-50/50 dark:bg-white/5 text-slate-500 dark:text-slate-400 border-slate-200/40 dark:border-white/5 hover:bg-slate-100 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white"
+                  }`}
                 >
                   {country}
                 </button>

@@ -34,7 +34,7 @@ export function Navigation({
   const [scrolled, setScrolled] = useState(false);
 
   const { items } = useCart();
-  const isTransparent = pathname === "/" && !scrolled;
+  const isTransparent = pathname === "/" && category !== "custom" && !scrolled;
   const { buyer, logout } = useBuyer();
   const { admin } = useAdmin();
   const { theme, toggleTheme } = useTheme();
@@ -139,12 +139,10 @@ export function Navigation({
                   onClick={() => item.href ? router.push(item.href) : handleCategoryChange(item.id)}
                   className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${
                     isActive
-                      ? isTransparent
-                        ? 'bg-lime-600 text-white shadow-md shadow-lime-500/25'
-                        : 'bg-white dark:bg-lime-500 text-lime-600 dark:text-white shadow-sm'
+                      ? 'bg-lime-600 text-white shadow-md shadow-lime-500/20 hover:bg-lime-500'
                       : isTransparent
                         ? 'text-white/80 hover:text-white hover:bg-white/10'
-                        : 'text-gray-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                        : 'text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
                   }`}
                 >
                   {item.label}

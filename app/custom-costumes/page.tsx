@@ -396,16 +396,16 @@ export default function CustomCostumesPage({
           </div>
         </section>
 
-        <div className="max-w-6xl w-full mx-auto px-4 md:px-6 -mt-8 md:-mt-12 z-30 pb-12 space-y-12">
+        <div className="max-w-2xl w-full mx-auto px-4 md:px-6 -mt-8 md:-mt-12 z-30 pb-12 space-y-6">
           {/* Status Message */}
           {submitStatus === "success" && (
-            <div className="bg-lime-900/10 backdrop-blur-2xl border border-lime-500/20 rounded-[2.5rem] p-8 md:p-12 flex flex-col md:flex-row gap-8 items-center text-center md:text-left shadow-2xl animate-in fade-in zoom-in duration-700">
-              <div className="w-20 h-20 rounded-full bg-lime-500/20 flex items-center justify-center border border-lime-500/40 shadow-[0_0_30px_rgba(132,204,22,0.2)]">
-                <CheckCircle className="h-10 w-10 text-lime-400" />
+            <div className="bg-lime-900/10 backdrop-blur-2xl border border-lime-500/20 rounded-2xl p-6 md:p-8 flex flex-col md:flex-row gap-6 items-center text-center md:text-left shadow-lg animate-in fade-in zoom-in duration-700">
+              <div className="w-16 h-16 rounded-full bg-lime-500/20 flex items-center justify-center border border-lime-500/40 shadow-[0_0_20px_rgba(132,204,22,0.15)] flex-shrink-0">
+                <CheckCircle className="h-8 w-8 text-lime-400" />
               </div>
               <div>
-                <h3 className="text-3xl font-black text-white mb-2">Application Transmitted</h3>
-                <p className="text-lime-300/50 text-lg">Our master crafters are reviewing your design. Expect a concierge response within 24 hours.</p>
+                <h3 className="text-2xl font-black text-white mb-1">Application Transmitted</h3>
+                <p className="text-lime-300/60 text-sm">Our master crafters are reviewing your design. Expect a concierge response within 24 hours.</p>
               </div>
             </div>
           )}
@@ -415,31 +415,31 @@ export default function CustomCostumesPage({
           <section id="custom-form" className="relative group">
             <div className="absolute -inset-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-lime-500/5 via-transparent to-transparent blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-1000 -z-10" />
 
-            <div className={`glass-morphism rounded-[3.5rem] border transition-all duration-1000 shadow-[0_0_100px_rgba(0,0,0,0.4)] ${theme === 'dark' ? 'border-white/10 overflow-hidden' : 'border-black/5 overflow-hidden'
+            <div className={`glass-morphism rounded-2xl border transition-all duration-1000 shadow-xl ${theme === 'dark' ? 'border-white/10 overflow-hidden' : 'border-black/5 overflow-hidden'
               }`}>
               {/* Form Header */}
-              <div className={`border-b transition-colors duration-1000 px-6 md:px-12 py-8 flex flex-col md:flex-row justify-between items-center gap-6 ${theme === 'dark' ? 'bg-white/[0.02] border-white/10' : 'bg-black/[0.02] border-black/5'
+              <div className={`border-b transition-colors duration-1000 px-5 py-4 flex flex-col sm:flex-row justify-between items-center gap-4 ${theme === 'dark' ? 'bg-white/[0.02] border-white/10' : 'bg-black/[0.02] border-black/5'
                 }`}>
                 <div>
-                  <h2 className={`text-2xl md:text-3xl font-black tracking-tight transition-colors duration-1000 font-playfair ${theme === 'dark' ? 'text-white' : 'text-slate-900'
+                  <h2 className={`text-lg md:text-xl font-extrabold tracking-tight transition-colors duration-1000 font-playfair ${theme === 'dark' ? 'text-white' : 'text-slate-900'
                     }`}>Custom Order Form</h2>
-                  <p className="text-lime-500 text-[9px] font-black uppercase tracking-[0.2em] mt-1">Submit your design requirements below</p>
+                  <p className="text-lime-500 text-[8px] font-black uppercase tracking-[0.2em] mt-1">Submit your design requirements below</p>
                 </div>
 
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-3">
                   {['info', 'design', 'review'].map((step, idx) => (
                     <div key={step} className="flex items-center">
-                      <div className={`w-3 h-3 rounded-full transition-all duration-1000 ${currentStep === step ? 'bg-lime-400 ring-8 ring-lime-400/10 scale-125' :
+                      <div className={`w-2 h-2 rounded-full transition-all duration-1000 ${currentStep === step ? 'bg-lime-400 ring-4 ring-lime-400/20 scale-110' :
                         idx < ['info', 'design', 'review'].indexOf(currentStep) ? 'bg-lime-900 shadow-inner' :
                           (theme === 'dark' ? 'bg-white/10' : 'bg-black/10')
                         }`} />
-                      {idx < 2 && <div className={`w-12 h-[1px] mx-2 ${theme === 'dark' ? 'bg-white/10' : 'bg-black/10'}`} />}
+                      {idx < 2 && <div className={`w-6 h-[1px] mx-1.5 ${theme === 'dark' ? 'bg-white/10' : 'bg-black/10'}`} />}
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="p-8 md:p-16">
+              <div className="p-5 md:p-6">
                 {submitStatus === "error" && (
                   <div className="mb-12 bg-red-950/20 backdrop-blur-xl border border-red-500/30 rounded-3xl p-6 flex gap-6 items-center animate-in slide-in-from-top-4 duration-500">
                     <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center border border-red-500/40 flex-shrink-0">
@@ -449,89 +449,89 @@ export default function CustomCostumesPage({
                   </div>
                 )}
 
-                <form onSubmit={handleSubmit} className="space-y-16">
+                <form onSubmit={handleSubmit} className="space-y-8">
                   {currentStep === 'info' && (
-                    <div className="space-y-12 animate-in fade-in slide-in-from-right-4 duration-700">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                    <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-700">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {/* Identity Group */}
-                        <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Full Name</label>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">Full Name</label>
                           <input
                             name="fullName"
                             value={formData.fullName}
                             onChange={handleInputChange}
                             required
-                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
+                            className={`w-full rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 dark:placeholder:text-gray-600 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
                             placeholder="Your full name"
                           />
                         </div>
-                        <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Email Address</label>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">Email Address</label>
                           <input
                             name="email"
                             type="email"
                             value={formData.email}
                             onChange={handleInputChange}
                             required
-                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
+                            className={`w-full rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 dark:placeholder:text-gray-600 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
                             placeholder="Your email address"
                           />
                         </div>
-                        <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Phone Number</label>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">Phone Number</label>
                           <input
                             name="phone"
                             type="tel"
                             value={formData.phone}
                             onChange={handleInputChange}
                             required
-                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
+                            className={`w-full rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 dark:placeholder:text-gray-600 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
                             placeholder="+234 ..."
                           />
                         </div>
-                        <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">City</label>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">City</label>
                           <input
                             name="city"
                             value={formData.city}
                             onChange={handleInputChange}
                             required
-                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
+                            className={`w-full rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 dark:placeholder:text-gray-600 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
                             placeholder="Lagos"
                           />
                         </div>
-                        <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">State</label>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">State</label>
                           <input
                             name="state"
                             value={formData.state}
                             onChange={handleInputChange}
-                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
+                            className={`w-full rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 dark:placeholder:text-gray-600 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
                             placeholder="Lagos State"
                           />
                         </div>
-                        <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Postal Code</label>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">Postal Code</label>
                           <input
                             name="postalCode"
                             value={formData.postalCode}
                             onChange={handleInputChange}
-                            className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
+                            className={`w-full rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 dark:placeholder:text-gray-600 text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                               }`}
@@ -539,13 +539,13 @@ export default function CustomCostumesPage({
                           />
                         </div>
                       </div>
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Delivery Address</label>
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">Delivery Address</label>
                         <input
                           name="address"
                           value={formData.address}
                           onChange={handleInputChange}
-                          className={`w-full rounded-2xl px-6 py-4 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 text-sm ${theme === 'dark'
+                          className={`w-full rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 placeholder:text-gray-400 dark:placeholder:text-gray-600 text-sm ${theme === 'dark'
                             ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05]'
                             : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05]'
                             }`}
@@ -564,58 +564,58 @@ export default function CustomCostumesPage({
                             setSubmitStatus("error");
                           }
                         }}
-                        className={`group relative w-full font-black py-8 rounded-[2.5rem] transition-all duration-700 flex items-center justify-center gap-6 border ${theme === 'dark'
+                        className={`group relative w-full font-black py-3 rounded-lg transition-all duration-500 flex items-center justify-center gap-2 border ${theme === 'dark'
                           ? 'bg-white/5 hover:bg-white/10 text-white border-white/10'
                           : 'bg-black/5 hover:bg-black/10 text-slate-900 border-black/10'
                           }`}
                       >
-                        <span className="uppercase tracking-[0.2em] text-xs font-bold">Next: Design Details</span>
-                        <ArrowRight className="h-5 w-5 group-hover:translate-x-2 transition-transform duration-500" />
+                        <span className="uppercase tracking-[0.2em] text-[9px] font-bold">Next: Design Details</span>
+                        <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform duration-500" />
                       </button>
                     </div>
                   )}
 
                   {currentStep === 'design' && (
-                    <div className="space-y-16 animate-in fade-in slide-in-from-right-8 duration-1000">
-                      <div className="space-y-4">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] ml-2">Describe Your Vision</label>
+                    <div className="space-y-4 animate-in fade-in slide-in-from-right-8 duration-1000">
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.2em] ml-2">Describe Your Vision</label>
                         <textarea
                           name="description"
                           value={formData.description}
                           onChange={handleInputChange}
-                          rows={6}
+                          rows={3}
                           required
-                          className={`w-full rounded-[2.5rem] px-10 py-8 focus:outline-none focus:border-lime-500/50 transition-all duration-700 resize-none text-sm leading-relaxed ${theme === 'dark'
+                          className={`w-full rounded-xl px-4 py-3 focus:outline-none focus:border-lime-500/50 transition-all duration-700 resize-none text-sm leading-relaxed ${theme === 'dark'
                             ? 'bg-white/[0.03] border border-white/10 text-white focus:bg-white/[0.05] placeholder:text-gray-800'
                             : 'bg-black/[0.03] border border-black/10 text-slate-900 focus:bg-black/[0.05] placeholder:text-gray-400'
                             }`}
-                          placeholder="Detail the materials, color palette, inspiration, and technical requirements of your design unit..."
+                          placeholder="Detail the materials, color palette, inspiration, and technical requirements of your design brief..."
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
-                        <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Target Completion Date</label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Target Completion Date</label>
                           <input
                             type="date"
                             name="deliveryDate"
                             value={formData.deliveryDate}
                             onChange={handleInputChange}
-                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 [color-scheme:dark] font-bold ${theme === 'dark'
+                            className={`w-full rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 [color-scheme:dark] font-bold text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900'
                               }`}
                           />
                         </div>
-                        <div className="space-y-4">
-                          <label className="text-[10px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Unit Quantity</label>
+                        <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em] ml-2">Unit Quantity</label>
                           <input
                             type="number"
                             name="quantity"
                             min="1"
                             value={formData.quantity}
                             onChange={handleInputChange}
-                            className={`w-full rounded-2xl px-8 py-5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 font-black ${theme === 'dark'
+                            className={`w-full rounded-lg px-3.5 py-2.5 focus:outline-none focus:border-lime-500/50 transition-all duration-700 font-bold text-sm ${theme === 'dark'
                               ? 'bg-white/[0.03] border border-white/10 text-white'
                               : 'bg-black/[0.03] border border-black/10 text-slate-900'
                               }`}
@@ -624,33 +624,33 @@ export default function CustomCostumesPage({
                       </div>
 
                       {/* Asset Upload */}
-                      <div className="space-y-8">
+                      <div className="space-y-3">
                         <div
                           onClick={() => fileInputRef.current?.click()}
-                          className={`group border-2 border-dashed rounded-[2.5rem] p-16 text-center cursor-pointer hover:border-lime-500/40 transition-all duration-700 shadow-2xl ${theme === 'dark'
+                          className={`group border-2 border-dashed rounded-xl p-5 text-center cursor-pointer hover:border-lime-500/40 transition-all duration-500 shadow-sm ${theme === 'dark'
                             ? 'border-white/10 bg-white/[0.01] hover:bg-lime-500/5'
                             : 'border-black/10 bg-black/[0.01] hover:bg-lime-500/5'
                             }`}
                         >
                           <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={handleFileSelect} className="hidden" />
-                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-all duration-700 ${theme === 'dark' ? 'bg-white/5 group-hover:bg-lime-500/20' : 'bg-black/5 group-hover:bg-lime-500/10'
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center mx-auto mb-2.5 group-hover:scale-105 transition-all duration-500 ${theme === 'dark' ? 'bg-white/5 group-hover:bg-lime-500/20' : 'bg-black/5 group-hover:bg-lime-500/10'
                             }`}>
-                            <Upload className="h-6 w-6 text-lime-400" />
+                            <Upload className="h-4 w-4 text-lime-400" />
                           </div>
-                          <p className={`font-black text-xs uppercase tracking-[0.3em] transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
+                          <p className={`font-black text-[9px] uppercase tracking-[0.25em] transition-colors duration-500 ${theme === 'dark' ? 'text-white' : 'text-slate-900'
                             }`}>Transmit Visual Assets</p>
-                          <p className="text-gray-500 text-[10px] uppercase tracking-widest mt-2 font-medium">JPG, PNG, WEBP • MAX 5MB / UNIT</p>
+                          <p className="text-gray-500 text-[7px] uppercase tracking-widest mt-1 font-medium">JPG, PNG, WEBP • MAX 5MB / UNIT</p>
                         </div>
 
                         {previewUrls.length > 0 && (
-                          <div className="flex gap-4 flex-wrap animate-in fade-in duration-700">
+                          <div className="flex gap-2.5 flex-wrap animate-in fade-in duration-700">
                             {previewUrls.map((url, idx) => (
-                              <div key={idx} className="relative w-24 h-24 rounded-2xl overflow-hidden border-2 border-lime-500/20 group hover:border-lime-400 group shadow-xl transition-all duration-500 hover:scale-105">
+                              <div key={idx} className="relative w-16 h-16 rounded-lg overflow-hidden border border-lime-500/20 group hover:border-lime-400 shadow-sm transition-all duration-500 hover:scale-105">
                                 <img src={url} alt="Reference" className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
                                 <button
                                   type="button"
                                   onClick={(e) => { e.stopPropagation(); removeImage(idx); }}
-                                  className="absolute top-1 right-1 w-7 h-7 bg-red-500 hover:bg-red-400 text-white rounded-xl flex items-center justify-center text-[10px] opacity-0 group-hover:opacity-100 transition-all duration-500 shadow-xl"
+                                  className="absolute top-0.5 right-0.5 w-5 h-5 bg-red-500 hover:bg-red-400 text-white rounded flex items-center justify-center text-[8px] opacity-0 group-hover:opacity-100 transition-all duration-500 shadow"
                                 >
                                   ✕
                                 </button>
@@ -660,11 +660,11 @@ export default function CustomCostumesPage({
                         )}
                       </div>
 
-                      <div className="flex flex-col md:flex-row gap-6">
+                      <div className="flex flex-col sm:flex-row gap-3">
                         <button
                           type="button"
                           onClick={() => setCurrentStep('info')}
-                          className={`flex-1 font-black py-8 rounded-[2.5rem] transition-all duration-700 uppercase tracking-widest text-xs border ${theme === 'dark'
+                          className={`flex-1 font-black py-3 rounded-lg transition-all duration-500 uppercase tracking-widest text-[9px] border ${theme === 'dark'
                             ? 'bg-white/5 hover:bg-white/10 text-white border-white/10'
                             : 'bg-black/5 hover:bg-black/10 text-slate-900 border-black/10'
                             }`}
@@ -682,58 +682,58 @@ export default function CustomCostumesPage({
                               setSubmitStatus("error");
                             }
                           }}
-                          className={`flex-[2] group relative font-black py-8 rounded-[2.5rem] transition-all duration-700 flex items-center justify-center gap-6 border ${theme === 'dark'
+                          className={`flex-[2] group relative font-black py-3 rounded-lg transition-all duration-500 flex items-center justify-center gap-2.5 border ${theme === 'dark'
                             ? 'bg-white/5 hover:bg-white/10 text-white border-white/10'
                             : 'bg-black/5 hover:bg-black/10 text-slate-900 border-black/10'
                             }`}
                         >
-                          <span className="uppercase tracking-[0.3em] text-xs">Review & Transmit</span>
-                          <ArrowRight className="h-6 w-6 group-hover:translate-x-3 transition-transform duration-500" />
+                          <span className="uppercase tracking-[0.25em] text-[9px]">Review & Transmit</span>
+                          <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform duration-500" />
                         </button>
                       </div>
                     </div>
                   )}
 
                   {currentStep === 'review' && (
-                    <div className="space-y-16 animate-in fade-in slide-in-from-right-8 duration-1000">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-16">
-                        <div className="space-y-8">
-                          <h3 className="text-lime-500 text-[10px] font-black uppercase tracking-[0.4em] border-b border-lime-500/20 pb-6">Artisan Identity</h3>
-                          <div className="space-y-6">
-                            <p className={`text-2xl font-black transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formData.fullName}</p>
-                            <div className="space-y-2">
+                    <div className="space-y-6 animate-in fade-in slide-in-from-right-8 duration-1000">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-3">
+                          <h3 className="text-lime-500 text-[10px] font-black uppercase tracking-[0.4em] border-b border-lime-500/20 pb-3">Artisan Identity</h3>
+                          <div className="space-y-3">
+                            <p className={`text-lg font-black transition-colors duration-1000 ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formData.fullName}</p>
+                            <div className="space-y-1">
                               <p className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">{formData.email}</p>
                               <p className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">{formData.phone}</p>
                               <p className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">{formData.city}, {formData.state}</p>
                             </div>
                           </div>
                         </div>
-                        <div className="space-y-8">
-                          <h3 className="text-lime-500 text-[10px] font-black uppercase tracking-[0.4em] border-b border-lime-500/20 pb-6">Project Logistics</h3>
-                          <div className="space-y-6">
-                            <div className="flex justify-between items-center bg-black/5 p-4 rounded-2xl">
+                        <div className="space-y-3">
+                          <h3 className="text-lime-500 text-[10px] font-black uppercase tracking-[0.4em] border-b border-lime-500/20 pb-3">Project Logistics</h3>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center bg-black/5 dark:bg-white/5 p-3 rounded-lg">
                               <span className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">Units Requested</span>
-                              <span className={`text-lg font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formData.quantity}</span>
+                              <span className={`text-sm font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formData.quantity}</span>
                             </div>
-                            <div className="flex justify-between items-center bg-black/5 p-4 rounded-2xl">
+                            <div className="flex justify-between items-center bg-black/5 dark:bg-white/5 p-3 rounded-lg">
                               <span className="text-gray-500 text-[10px] font-bold uppercase tracking-[0.2em]">Target Date</span>
-                              <span className={`text-lg font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formData.deliveryDate || 'NOT SPECIFIED'}</span>
+                              <span className={`text-sm font-black ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>{formData.deliveryDate || 'NOT SPECIFIED'}</span>
                             </div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="space-y-8">
-                        <h3 className="text-lime-500 text-[10px] font-black uppercase tracking-[0.4em] border-b border-lime-500/20 pb-6">Creative Blueprint</h3>
-                        <p className={`text-lg leading-relaxed font-medium italic p-8 rounded-3xl ${theme === 'dark' ? 'bg-white/5 text-gray-300' : 'bg-black/5 text-slate-700'
+                      <div className="space-y-3">
+                        <h3 className="text-lime-500 text-[10px] font-black uppercase tracking-[0.4em] border-b border-lime-500/20 pb-3">Creative Blueprint</h3>
+                        <p className={`text-sm leading-relaxed font-medium italic p-4 rounded-xl ${theme === 'dark' ? 'bg-white/5 text-gray-300' : 'bg-black/5 text-slate-700'
                           }`}>"{formData.description}"</p>
                       </div>
 
-                      <div className="flex flex-col md:flex-row gap-6 pt-8">
+                      <div className="flex flex-col sm:flex-row gap-3 pt-2">
                         <button
                           type="button"
                           onClick={() => setCurrentStep('design')}
-                          className={`flex-1 font-black py-8 rounded-[2.5rem] transition-all duration-700 uppercase tracking-widest text-xs border ${theme === 'dark'
+                          className={`flex-1 font-black py-3 rounded-lg transition-all duration-500 uppercase tracking-widest text-[9px] border ${theme === 'dark'
                             ? 'bg-white/5 hover:bg-white/10 text-white border-white/10'
                             : 'bg-black/5 hover:bg-black/10 text-slate-900 border-black/10'
                             }`}
@@ -743,19 +743,19 @@ export default function CustomCostumesPage({
                         <button
                           type="submit"
                           disabled={isLoading}
-                          className="flex-[2] group relative bg-lime-600 hover:bg-lime-500 disabled:bg-gray-800 text-white font-black py-8 rounded-[2.5rem] transition-all duration-1000 flex items-center justify-center gap-6 shadow-[0_30px_60px_rgba(0,0,0,0.5)] hover:shadow-[0_40px_80px_rgba(132,204,22,0.3)]"
+                          className="flex-[2] group relative bg-lime-600 hover:bg-lime-500 disabled:bg-gray-800 text-white font-black py-3 rounded-lg transition-all duration-500 flex items-center justify-center gap-2 shadow-sm hover:shadow-md hover:shadow-lime-500/10"
                         >
                           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000" />
                           {isLoading ? (
                             <>
-                              <Loader className="h-6 w-6 animate-spin" />
-                              <span className="uppercase tracking-[0.3em] text-xs">Transmitting...</span>
+                              <Loader className="h-4 w-4 animate-spin" />
+                              <span className="uppercase tracking-[0.25em] text-[9px]">Transmitting...</span>
                             </>
                           ) : (
                             <>
-                              <span className="text-xl">✨</span>
-                              <span className="uppercase tracking-[0.3em] text-xs">Execute Design Request</span>
-                              <ArrowRight className="h-6 w-6 group-hover:translate-x-3 transition-transform duration-500" />
+                              <span className="text-sm">✨</span>
+                              <span className="uppercase tracking-[0.25em] text-[9px]">Execute Design Request</span>
+                              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform duration-500" />
                             </>
                           )}
                         </button>
@@ -763,7 +763,7 @@ export default function CustomCostumesPage({
                     </div>
                   )}
 
-                  <p className="text-center text-[9px] text-gray-700 uppercase tracking-[0.4em] font-black leading-loose">
+                  <p className="text-center text-[8px] text-gray-700 dark:text-gray-500 uppercase tracking-[0.4em] font-black leading-loose">
                     BY SUBMITTING YOU INITIATE A FORMAL BESPOKE CONSULTATION <br />
                     DATA ENCRYPTED VIA EMPI SECURE CHANNELS
                   </p>
