@@ -34,6 +34,7 @@ export function Navigation({
   const [scrolled, setScrolled] = useState(false);
 
   const { items } = useCart();
+  const isTransparent = pathname === "/" && !scrolled;
   const { buyer, logout } = useBuyer();
   const { admin } = useAdmin();
   const { theme, toggleTheme } = useTheme();
@@ -104,9 +105,12 @@ export function Navigation({
       </div>
 
       <div className={`mx-auto max-w-7xl px-4 transition-all duration-500 ${scrolled ? 'py-2' : 'py-4'}`}>
-        <div className={`flex items-center justify-between gap-8 px-8 h-20 rounded-2xl transition-all duration-500 ${scrolled
-          ? 'bg-white/80 dark:bg-black/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/20 dark:border-white/5'
-          : 'bg-white dark:bg-[#111] border border-gray-100 dark:border-white/5 shadow-sm'
+        <div className={`flex items-center justify-between gap-8 px-8 h-20 rounded-2xl transition-all duration-500 ${
+          scrolled
+            ? 'bg-white/80 dark:bg-black/60 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-white/20 dark:border-white/5'
+            : isTransparent
+              ? 'bg-white/5 dark:bg-black/20 backdrop-blur-md border border-white/10 shadow-none'
+              : 'bg-white dark:bg-[#111] border border-gray-100 dark:border-white/5 shadow-sm'
           }`}>
           {/* Logo */}
           <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 group relative z-10 h-full flex items-center">
@@ -133,10 +137,15 @@ export function Navigation({
                 <button
                   key={item.id}
                   onClick={() => item.href ? router.push(item.href) : handleCategoryChange(item.id)}
-                  className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${isActive
-                    ? 'bg-white dark:bg-lime-500 text-lime-600 dark:text-white shadow-sm'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-                    }`}
+                  className={`px-6 py-2 rounded-lg text-sm font-bold transition-all duration-300 ${
+                    isActive
+                      ? isTransparent
+                        ? 'bg-lime-600 text-white shadow-md shadow-lime-500/25'
+                        : 'bg-white dark:bg-lime-500 text-lime-600 dark:text-white shadow-sm'
+                      : isTransparent
+                        ? 'text-white/80 hover:text-white hover:bg-white/10'
+                        : 'text-gray-500 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+                  }`}
                 >
                   {item.label}
                 </button>
@@ -151,27 +160,43 @@ export function Navigation({
                 placeholder="Search costumes..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/5 focus:border-lime-500 dark:focus:border-lime-500 focus:bg-white dark:focus:bg-black/40 rounded-xl px-5 py-2.5 pl-11 text-sm outline-none transition-all placeholder:text-gray-400 dark:text-white font-medium"
+                className={`w-full text-sm outline-none transition-all font-medium rounded-xl px-5 py-2.5 pl-11 ${
+                  isTransparent
+                    ? 'bg-white/10 border border-white/15 focus:border-lime-400 focus:bg-white/20 text-white placeholder:text-white/60'
+                    : 'bg-gray-50/50 dark:bg-white/5 border border-gray-100 dark:border-white/5 focus:border-lime-500 dark:focus:border-lime-500 focus:bg-white dark:focus:bg-black/40 dark:text-white placeholder:text-gray-400'
+                }`}
               />
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-lime-500 transition-colors" />
+              <Search className={`absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 transition-colors ${isTransparent ? 'text-white/60 group-focus-within:text-lime-400' : 'text-gray-400 group-focus-within:text-lime-500'}`} />
             </form>
           </div>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
             {admin && (
-              <Link href="/admin" className="p-2.5 text-orange-500 hover:bg-orange-50 rounded-xl transition-all group relative" title="Admin">
+              <Link
+                href="/admin"
+                className={`p-2.5 rounded-xl transition-all group relative ${
+                  isTransparent
+                    ? 'text-orange-400 hover:bg-white/10'
+                    : 'text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/25'
+                }`}
+                title="Admin"
+              >
                 <Settings className="h-5 w-5 group-hover:rotate-45 transition-transform" />
                 <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Dashboard</span>
               </Link>
             )}
 
-            <NotificationBell />
+            <NotificationBell isTransparent={isTransparent} />
 
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2.5 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-500 dark:text-gray-400 hover:text-lime-600 dark:hover:text-lime-400 transition-all group"
+              className={`p-2.5 rounded-xl border transition-all group ${
+                isTransparent
+                  ? 'bg-white/10 border-white/15 text-white/85 hover:text-lime-400 hover:bg-white/20'
+                  : 'bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-500 dark:text-gray-400 hover:text-lime-600 dark:hover:text-lime-400'
+              }`}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
             >
               {theme === "dark" ? (
@@ -181,25 +206,48 @@ export function Navigation({
               )}
             </button>
 
-            <div className="h-6 w-[1px] bg-gray-200 dark:bg-white/10 mx-1"></div>
+            <div className={`h-6 w-[1px] mx-1 ${isTransparent ? 'bg-white/20' : 'bg-gray-200 dark:bg-white/10'}`}></div>
 
             {buyer ? (
               <div className="flex items-center gap-3">
                 <Link
                   href="/dashboard"
-                  className="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-lime-500 transition-all group"
+                  className={`flex items-center gap-3 px-4 py-2 rounded-xl border transition-all group ${
+                    isTransparent
+                      ? 'bg-white/10 border-white/15 hover:border-lime-400'
+                      : 'bg-slate-50 dark:bg-white/5 border-slate-100 dark:border-white/5 hover:border-lime-500'
+                  }`}
                 >
-                  <div className="w-8 h-8 rounded-full bg-lime-100 dark:bg-lime-900/30 flex items-center justify-center text-lime-600 dark:text-lime-400 group-hover:bg-lime-500 group-hover:text-white transition-colors">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${
+                    isTransparent
+                      ? 'bg-lime-600/20 text-lime-400 group-hover:bg-lime-500 group-hover:text-white'
+                      : 'bg-lime-100 dark:bg-lime-900/30 text-lime-600 dark:text-lime-400 group-hover:bg-lime-500 group-hover:text-white'
+                  }`}>
                     <User className="h-4 w-4" />
                   </div>
-                  <span className="text-sm font-bold text-slate-700 dark:text-gray-300">{buyer.fullName.split(' ')[0]}</span>
+                  <span className={`text-sm font-bold ${isTransparent ? 'text-white' : 'text-slate-700 dark:text-gray-300'}`}>{buyer.fullName.split(' ')[0]}</span>
                 </Link>
-                <button onClick={logout} className="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition-all" title="Logout">
+                <button
+                  onClick={logout}
+                  className={`p-2.5 rounded-xl transition-all ${
+                    isTransparent
+                      ? 'text-white/60 hover:text-red-400 hover:bg-white/10'
+                      : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
+                  }`}
+                  title="Logout"
+                >
                   <LogOut className="h-5 w-5" />
                 </button>
               </div>
             ) : (
-              <Link href="/auth" className="flex items-center gap-2 bg-slate-900 dark:bg-lime-600 hover:bg-slate-800 dark:hover:bg-lime-500 text-white px-6 py-2.5 rounded-xl font-bold text-sm transition-all hover:shadow-lg active:scale-95">
+              <Link
+                href="/auth"
+                className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all hover:shadow-lg active:scale-95 ${
+                  isTransparent
+                    ? 'bg-lime-600 hover:bg-lime-500 text-white shadow-md shadow-lime-500/25'
+                    : 'bg-slate-900 dark:bg-lime-600 hover:bg-slate-800 dark:hover:bg-lime-500 text-white'
+                }`}
+              >
                 <User className="h-4 w-4" />
                 <span>Sign In</span>
               </Link>

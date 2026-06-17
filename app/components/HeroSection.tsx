@@ -34,7 +34,7 @@ export function HeroSection() {
   const yBg = useTransform(scrollY, [0, 800], [0, 200]);
 
   return (
-    <section className="relative w-full h-screen min-h-[700px] overflow-hidden bg-black flex items-center justify-center font-outfit">
+    <section className="relative w-full h-screen min-h-[700px] overflow-hidden bg-black flex items-center justify-center font-outfit pt-24 md:pt-[136px]">
       {/* Background Image - Single high-impact premium image */}
       <div className="absolute inset-0 z-0">
         <motion.div
@@ -59,7 +59,7 @@ export function HeroSection() {
       </div>
 
       {/* Main Content Container - Centered and Minimal */}
-      <div className="relative z-30 container mx-auto px-6 text-center pt-32 md:pt-0">
+      <div className="relative z-30 container mx-auto px-6 text-center pt-8 md:pt-0">
         <KineticScroll>
           <div className="max-w-4xl mx-auto">
             {/* Accent Label - Visible on all devices */}

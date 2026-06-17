@@ -28,7 +28,7 @@ interface DetailedNotification {
   status?: string;
 }
 
-export function NotificationBell() {
+export function NotificationBell({ isTransparent }: { isTransparent?: boolean }) {
   const { unreadCount } = useNotification();
   const { buyer } = useBuyer();
   const router = useRouter();
@@ -213,10 +213,14 @@ export function NotificationBell() {
       {/* Bell Icon Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-white/10 transition"
+        className={`relative p-2 rounded-xl transition-all ${
+          isTransparent
+            ? 'hover:bg-white/10 text-white'
+            : 'hover:bg-gray-100 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300'
+        }`}
         title="Notifications"
       >
-        <Bell className="h-6 w-6 text-gray-700 dark:text-gray-300" />
+        <Bell className="h-6 w-6" />
         {badgeCount > 0 && (
           <span className="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center animate-pulse">
             {badgeCount > 9 ? '9+' : badgeCount}
