@@ -165,6 +165,62 @@ export async function POST(request: NextRequest) {
     console.log("✅ Field validation passed");
     console.log("🗄️ Creating product in database...");
 
+    let variantsData: any[] = [];
+    let sizesLegacy: string | undefined = undefined;
+    let colorLegacy: string | undefined = undefined;
+
+    if (Array.isArray(body.variants)) {
+      variantsData = body.variants.map((v: any) => ({
+        colorName: v.colorName || 'Default',
+        colorHex: v.colorHex || '',
+        sizes: Array.isArray(v.sizes) ? v.sizes.map((s: any) => ({
+          size: typeof s === 'string' ? s : s.size,
+          displayForSale: typeof s === 'string' ? true : s.displayForSale !== false,
+          displayForRent: typeof s === 'string' ? true : s.displayForRent !== false,
+        })) : []
+      }));
+    } else {
+      // Legacy fallback
+      let legacySizes: any[] = [];
+      if (typeof body.sizes === 'string' && body.sizes.trim()) {
+        sizesLegacy = body.sizes;
+        legacySizes = body.sizes.split(',').map((s: string) => ({
+          size: s.trim(),
+          displayForSale: true,
+          displayForRent: true,
+        })).filter((s: any) => s.size);
+      } else if (Array.isArray(body.sizes)) {
+        // Previous generation array format
+        legacySizes = body.sizes.map((s: any) => ({
+          size: s.name || typeof s === 'string' ? s : '',
+          displayForSale: s.displayInStore !== false,
+          displayForRent: s.displayInStore !== false,
+        })).filter((s: any) => s.size);
+      }
+
+      if (typeof body.color === 'string' && body.color.trim()) {
+        colorLegacy = body.color;
+        const colorStrings = body.color.split(',').map((c: string) => c.trim()).filter(Boolean);
+        variantsData = colorStrings.map((c: string) => ({
+          colorName: c,
+          colorHex: '',
+          sizes: legacySizes,
+        }));
+      } else if (Array.isArray(body.colors) && body.colors.length > 0) {
+        variantsData = body.colors.map((c: any) => ({
+          colorName: c.name || typeof c === 'string' ? c : '',
+          colorHex: c.hexCode || '',
+          sizes: legacySizes,
+        })).filter((c: any) => c.colorName);
+      } else if (legacySizes.length > 0) {
+        variantsData = [{
+          colorName: 'Standard',
+          colorHex: '',
+          sizes: legacySizes,
+        }];
+      }
+    }
+
     const product = new Product({
       name: body.name,
       description: body.description,
@@ -176,8 +232,9 @@ export async function POST(request: NextRequest) {
       badge: body.badge || null,
       imageUrl: body.imageUrl,
       imageUrls: body.imageUrls || [],
-      sizes: body.sizes || null,
-      color: body.color || null,
+      variants: variantsData,
+      sizesLegacy: sizesLegacy,
+      colorLegacy: colorLegacy,
       material: body.material || null,
       condition: body.condition || null,
       careInstructions: body.careInstructions || null,

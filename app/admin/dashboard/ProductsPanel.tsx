@@ -3,6 +3,8 @@
 import { useState, useEffect, useMemo } from "react";
 import { Package, Search, AlertCircle, Trash2, Edit2, X, ChevronDown, ChevronUp } from "lucide-react";
 import Image from "next/image";
+import EditProductModal from "../components/EditProductModal";
+
 
 interface ProductData {
   _id: string;
@@ -369,196 +371,12 @@ export function ProductsPanel() {
 
       {/* Edit Product Modal */}
       {editingProduct && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl max-w-2xl w-full my-8">
-            {/* Header */}
-            <div className="flex justify-between items-center p-6 border-b border-gray-200 sticky top-0 bg-white">
-              <h2 className="text-2xl font-bold text-gray-900">Edit Product</h2>
-              <button
-                onClick={() => setEditingProduct(null)}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
-              >
-                <X className="h-6 w-6 text-gray-600" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (editingProduct) {
-                  handleEditProduct(editingProduct);
-                }
-              }}
-              className="p-6 space-y-6 overflow-y-auto max-h-[calc(100vh-200px)]"
-            >
-              {/* Product Image Preview */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-3">Product Image</label>
-                <div className="relative w-full h-64 bg-gray-100 rounded-xl overflow-hidden border-2 border-gray-200">
-                  <img
-                    src={editingProduct.imageUrl}
-                    alt={editingProduct.name}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-
-              {/* Product Name */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Product Name *</label>
-                <input
-                  type="text"
-                  value={editingProduct.name}
-                  onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, name: e.target.value })
-                  }
-                  placeholder="Enter product name"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Description *</label>
-                <textarea
-                  value={editingProduct.description}
-                  onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, description: e.target.value })
-                  }
-                  placeholder="Enter product description"
-                  rows={4}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              {/* Prices */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Sell Price (₦) *</label>
-                  <input
-                    type="number"
-                    value={editingProduct.sellPrice}
-                    onChange={(e) =>
-                      setEditingProduct({
-                        ...editingProduct,
-                        sellPrice: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    placeholder="0"
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-bold text-gray-700 mb-2">Rent Price (₦/day)</label>
-                  <input
-                    type="number"
-                    value={editingProduct.rentPrice}
-                    onChange={(e) =>
-                      setEditingProduct({
-                        ...editingProduct,
-                        rentPrice: parseFloat(e.target.value) || 0,
-                      })
-                    }
-                    placeholder="0"
-                    step="0.01"
-                    min="0"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Category *</label>
-                <select
-                  value={editingProduct.category}
-                  onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, category: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Select category</option>
-                  <option value="adults">👔 Adults</option>
-                  <option value="kids">👶 Kids</option>
-                </select>
-              </div>
-
-              {/* Condition */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-2">Condition</label>
-                <select
-                  value={editingProduct.condition || ""}
-                  onChange={(e) =>
-                    setEditingProduct({ ...editingProduct, condition: e.target.value || undefined })
-                  }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="">Select condition</option>
-                  <option value="New">New</option>
-                  <option value="Like New">Like New</option>
-                  <option value="Good">Good</option>
-                  <option value="Fair">Fair</option>
-                </select>
-              </div>
-
-              {/* Additional Details */}
-              <div>
-                <label className="block text-sm font-bold text-gray-700 mb-4">Additional Details</label>
-                <div className="space-y-3">
-                  <input
-                    type="text"
-                    value={editingProduct.color || ""}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, color: e.target.value || undefined })
-                    }
-                    placeholder="Color (e.g., Red, Blue)"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                  <input
-                    type="text"
-                    value={editingProduct.material || ""}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, material: e.target.value || undefined })
-                    }
-                    placeholder="Material (e.g., Cotton, Silk)"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                  <input
-                    type="text"
-                    value={editingProduct.sizes || ""}
-                    onChange={(e) =>
-                      setEditingProduct({ ...editingProduct, sizes: e.target.value || undefined })
-                    }
-                    placeholder="Available Sizes (e.g., S, M, L, XL)"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                  />
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-6 border-t border-gray-200">
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex-1 py-3 px-4 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold transition disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {isSaving ? "Saving..." : "Save Changes"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditingProduct(null)}
-                  disabled={isSaving}
-                  className="flex-1 py-3 px-4 bg-gray-200 hover:bg-gray-300 text-gray-900 rounded-lg font-bold transition disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <EditProductModal
+          product={editingProduct as any}
+          onClose={() => setEditingProduct(null)}
+          onSave={handleEditProduct as any}
+          isSaving={isSaving}
+        />
       )}
     </div>
   );

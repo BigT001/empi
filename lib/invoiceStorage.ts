@@ -28,6 +28,9 @@ export interface StoredInvoice {
     price: number;
     mode?: string;
     productId?: string;
+    selectedColor?: string;
+    selectedSize?: string;
+    rentalDays?: number;
   }>;
   
   // Pricing

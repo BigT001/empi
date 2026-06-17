@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const body = await req.json();
-    const { orderNumber, orderId, buyerName, buyerEmail, amount, orderType } = body;
+    const { orderNumber, orderId, buyerName, buyerEmail, amount, orderType, items, pricing } = body;
 
     if (!orderNumber || !orderId) {
       return NextResponse.json(
@@ -47,6 +47,8 @@ export async function POST(req: NextRequest) {
         buyerName,
         buyerEmail,
         orderType,
+        items,
+        pricing,
       },
     });
 

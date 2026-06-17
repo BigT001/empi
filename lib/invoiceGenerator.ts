@@ -155,9 +155,16 @@ export function createInvoiceData(params: {
 export function generateInvoiceHTML(invoice: InvoiceData): string {
   const itemsHTML = invoice.items
     .map(
-      (item) => `
+      (item) => {
+        const itemColor = item.color || (item as any).selectedColor;
+        const itemSize = item.size || (item as any).selectedSize;
+        const rentalDuration = item.mode === 'rent' && item.rentalDays ? ` (${item.rentalDays} days rental)` : '';
+        const variantText = (itemColor || itemSize) 
+          ? ` (${[itemColor && `Color: ${itemColor}`, itemSize && `Size: ${itemSize}`].filter(Boolean).join(', ')})`
+          : '';
+        return `
     <tr>
-      <td style="padding: 12px; border-bottom: 1px solid #ddd;">${item.name}</td>
+      <td style="padding: 12px; border-bottom: 1px solid #ddd;">${item.name}${variantText}${rentalDuration}</td>
       <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: center;">${item.quantity}</td>
       <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right;">${formatCurrency(item.price, invoice.currencySymbol)}</td>
       <td style="padding: 12px; border-bottom: 1px solid #ddd; text-align: right; font-weight: bold;">${formatCurrency(
@@ -165,7 +172,8 @@ export function generateInvoiceHTML(invoice: InvoiceData): string {
         invoice.currencySymbol
       )}</td>
     </tr>
-  `
+  `;
+      }
     )
     .join("");
 
@@ -423,11 +431,19 @@ export function generateInvoiceHTML(invoice: InvoiceData): string {
 export function generateInvoiceText(invoice: InvoiceData): string {
   const itemsText = invoice.items
     .map(
-      (item) =>
-        `${item.name.padEnd(40)} ${item.quantity.toString().padStart(5)} ${formatCurrency(item.price, invoice.currencySymbol).padStart(15)} ${formatCurrency(
+      (item) => {
+        const itemColor = item.color || (item as any).selectedColor;
+        const itemSize = item.size || (item as any).selectedSize;
+        const rentalDuration = item.mode === 'rent' && item.rentalDays ? ` (${item.rentalDays}d rental)` : '';
+        const variantText = (itemColor || itemSize) 
+          ? ` (${[itemColor && `Color: ${itemColor}`, itemSize && `Size: ${itemSize}`].filter(Boolean).join(', ')})`
+          : '';
+        const displayName = `${item.name}${variantText}${rentalDuration}`;
+        return `${displayName.padEnd(40)} ${item.quantity.toString().padStart(5)} ${formatCurrency(item.price, invoice.currencySymbol).padStart(15)} ${formatCurrency(
           item.price * item.quantity,
           invoice.currencySymbol
-        ).padStart(15)}`
+        ).padStart(15)}`;
+      }
     )
     .join("\n");
 
@@ -512,6 +528,9 @@ export function saveInvoice(invoice: InvoiceData, buyerId?: string): void {
         quantity: item.quantity,
         price: item.price,
         mode: item.mode,
+        selectedColor: item.color,
+        selectedSize: item.size,
+        rentalDays: item.rentalDays,
       })),
       
       subtotal: invoice.subtotal,

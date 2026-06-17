@@ -158,7 +158,7 @@ async function sendNotificationEmail(payload: {
           html = generateAdminNewOrderEmail(orderNumber, amount || 0, details, dashboardLink);
         } else {
           subject = `📋 Order Confirmation - ${orderNumber}`;
-          html = generateOrderPlacedEmail(name, orderNumber, amount || 0, dashboardLink);
+          html = generateOrderPlacedEmail(name, orderNumber, amount || 0, dashboardLink, details);
         }
         break;
 
@@ -533,7 +533,94 @@ function generatePaymentFailedEmail(name: string, orderNumber: string, dashboard
   `;
 }
 
-function generateOrderPlacedEmail(name: string, orderNumber: string, amount: number, dashboardLink: string): string {
+function generateItemsTableHtml(items: any[], currencySymbol: string = '₦'): string {
+  if (!items || items.length === 0) return '';
+  return `
+    <div style="margin-top: 15px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: white; width: 100%;">
+      <table style="width: 100%; border-collapse: collapse; font-family: Arial, sans-serif; font-size: 13px; margin: 0;">
+        <thead>
+          <tr style="background: #f3f4f6; border-bottom: 2px solid #e5e7eb; text-align: left;">
+            <th style="padding: 10px 12px; font-weight: 700; color: #374151;">Product</th>
+            <th style="padding: 10px 12px; font-weight: 700; color: #374151; text-align: center;">Type</th>
+            <th style="padding: 10px 12px; font-weight: 700; color: #374151; text-align: center;">Qty</th>
+            <th style="padding: 10px 12px; font-weight: 700; color: #374151; text-align: right;">Price</th>
+            <th style="padding: 10px 12px; font-weight: 700; color: #374151; text-align: right;">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map((item) => {
+            const isRental = item.mode === 'rent';
+            const typeLabel = isRental ? '🔄 Rental' : '🛍️ Buy';
+            const typeColor = isRental ? '#a855f7' : '#059669';
+            const price = item.price || item.unitPrice || 0;
+            const qty = item.quantity || 1;
+            const itemTotal = price * qty * (isRental ? item.rentalDays || 1 : 1);
+            
+            return `
+              <tr style="border-bottom: 1px solid #f0f0f0;">
+                <td style="padding: 12px 12px; color: #111827; font-weight: bold; font-size: 13px;">
+                  ${item.name}
+                  ${item.selectedColor || item.selectedSize || (isRental && item.rentalDays) ? `
+                    <div style="font-size: 11px; color: #6b7280; margin-top: 4px; font-weight: normal; line-height: 1.3;">
+                      ${item.selectedColor ? `Color: <strong>${item.selectedColor}</strong>` : ''}
+                      ${item.selectedSize ? `${item.selectedColor ? ' • ' : ''}Size: <strong>${item.selectedSize}</strong>` : ''}
+                      ${(isRental && item.rentalDays) ? `${(item.selectedColor || item.selectedSize) ? ' • ' : ''}Duration: <strong>${item.rentalDays} days</strong>` : ''}
+                    </div>
+                  ` : ''}
+                </td>
+                <td style="padding: 12px 12px; text-align: center; color: ${typeColor}; font-weight: bold; font-size: 12px; white-space: nowrap;">${typeLabel}</td>
+                <td style="padding: 12px 12px; text-align: center; color: #374151; font-weight: 700;">${qty}</td>
+                <td style="padding: 12px 12px; text-align: right; color: #6b7280; white-space: nowrap;">${currencySymbol}${price.toLocaleString('en-NG')}</td>
+                <td style="padding: 12px 12px; text-align: right; color: #10b981; font-weight: bold; white-space: nowrap;">${currencySymbol}${itemTotal.toLocaleString('en-NG')}</td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function generatePricingBreakdownHtml(pricing: any, currencySymbol: string = '₦'): string {
+  if (!pricing) return '';
+  const { subtotal, discountPercentage, discountAmount, cautionFee, vat, total } = pricing;
+  
+  return `
+    <div style="margin-top: 15px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px 15px; font-family: Arial, sans-serif; font-size: 13px;">
+      <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #374151;">
+        <span>Subtotal</span>
+        <span style="font-weight: 600;">${currencySymbol}${subtotal.toLocaleString('en-NG')}</span>
+      </div>
+      ${discountPercentage && discountPercentage > 0 ? `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #15803d; background: #f0fdf4; padding: 4px 8px; border-radius: 4px;">
+          <span>🎁 Discount Applied (${discountPercentage}%)</span>
+          <span style="font-weight: 600;">-${currencySymbol}${discountAmount.toLocaleString('en-NG')}</span>
+        </div>
+      ` : ''}
+      ${cautionFee && cautionFee > 0 ? `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #92400e; background: #fef3c7; padding: 4px 8px; border-radius: 4px;">
+          <span>🔒 Caution Fee (Refundable)</span>
+          <span style="font-weight: 600;">${currencySymbol}${cautionFee.toLocaleString('en-NG')}</span>
+        </div>
+      ` : ''}
+      ${vat && vat > 0 ? `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 6px; color: #374151;">
+          <span>VAT (7.5%)</span>
+          <span style="font-weight: 600;">${currencySymbol}${vat.toLocaleString('en-NG')}</span>
+        </div>
+      ` : ''}
+      <div style="display: flex; justify-content: space-between; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 15px; font-weight: bold; color: #111827;">
+        <span>Total Amount</span>
+        <span style="color: #7c3aed;">${currencySymbol}${total.toLocaleString('en-NG')}</span>
+      </div>
+    </div>
+  `;
+}
+
+function generateOrderPlacedEmail(name: string, orderNumber: string, amount: number, dashboardLink: string, details?: any): string {
+  const items = details?.items || [];
+  const pricing = details?.pricing;
+  
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
       <div style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%); padding: 30px; border-radius: 10px 10px 0 0;">
@@ -549,15 +636,21 @@ function generateOrderPlacedEmail(name: string, orderNumber: string, amount: num
         <div style="background: #f3e8ff; border-left: 4px solid #8b5cf6; padding: 15px; margin: 20px 0; border-radius: 4px;">
           <p style="color: #5b21b6; margin: 0;"><strong>Order Number:</strong> ${orderNumber}</p>
           <p style="color: #5b21b6; margin: 5px 0;"><strong>Order Amount:</strong> ₦${amount.toLocaleString()}</p>
-          <p style="color: #5b21b6; margin: 5px 0;"><strong>Status:</strong> 📋 Order Received</p>
+          <p style="color: #5b21b6; margin: 5px 0;"><strong>Status:</strong> 📋 Order Received (Awaiting Payment Verification)</p>
         </div>
         
-        <p style="color: #374151; margin: 20px 0;"><strong>What Happens Next?</strong></p>
-        <ol style="color: #374151;">
-          <li><strong>Order Review:</strong> We'll review your order details (1-2 hours)</li>
-          <li><strong>Approval:</strong> We'll send you an approval email</li>
-          <li><strong>Production:</strong> Our team will start creating your costume</li>
-          <li><strong>Ready:</strong> We'll notify you when it's ready for pickup/delivery</li>
+        ${items && items.length > 0 ? `
+          <h3 style="color: #374151; margin-top: 25px; margin-bottom: 5px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">Items Ordered</h3>
+          ${generateItemsTableHtml(items)}
+          ${pricing ? generatePricingBreakdownHtml(pricing) : ''}
+        ` : ''}
+        
+        <p style="color: #374151; margin: 25px 0 20px 0;"><strong>What Happens Next?</strong></p>
+        <ol style="color: #374151; padding-left: 20px; margin-bottom: 25px;">
+          <li style="margin-bottom: 8px;"><strong>Payment Verification:</strong> If you paid via Bank Transfer, our team will verify your uploaded receipt shortly.</li>
+          <li style="margin-bottom: 8px;"><strong>Order Review:</strong> We'll review your order details and selections.</li>
+          <li style="margin-bottom: 8px;"><strong>Approval:</strong> We'll send you an approval and paid invoice email once verified.</li>
+          <li style="margin-bottom: 8px;"><strong>Production:</strong> Our team will start creating your costume.</li>
         </ol>
         
         <div style="text-align: center; margin: 30px 0;">
@@ -576,12 +669,8 @@ function generateOrderPlacedEmail(name: string, orderNumber: string, amount: num
   `;
 }
 
-/**
- * ADMIN NEW ORDER EMAIL TEMPLATE
- * Sent to admin when a new order is placed
- */
 function generateAdminNewOrderEmail(orderNumber: string, amount: number, details: any, dashboardLink: string): string {
-  const { buyerName, buyerEmail, orderType } = details || {};
+  const { buyerName, buyerEmail, orderType, items, pricing } = details || {};
 
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
@@ -603,12 +692,18 @@ function generateAdminNewOrderEmail(orderNumber: string, amount: number, details
           <p style="color: #92400e; margin: 5px 0;"><strong>Order Type:</strong> ${orderType || 'Regular'}</p>
         </div>
         
-        <p style="color: #374151; margin: 20px 0;"><strong>⚡ Next Steps:</strong></p>
-        <ul style="color: #374151;">
-          <li>✅ Review the order details</li>
-          <li>✅ Confirm with the customer if needed</li>
-          <li>✅ Approve or request modifications</li>
-          <li>✅ Start production once approved</li>
+        ${items && items.length > 0 ? `
+          <h3 style="color: #374151; margin-top: 25px; margin-bottom: 5px; border-bottom: 1px solid #e5e7eb; padding-bottom: 5px;">Order Items</h3>
+          ${generateItemsTableHtml(items)}
+          ${pricing ? generatePricingBreakdownHtml(pricing) : ''}
+        ` : ''}
+        
+        <p style="color: #374151; margin: 25px 0 15px 0;"><strong>⚡ Next Steps:</strong></p>
+        <ul style="color: #374151; padding-left: 20px; margin-bottom: 25px;">
+          <li style="margin-bottom: 8px;">✅ Review the order details, selections, colors, and sizes</li>
+          <li style="margin-bottom: 8px;">✅ Confirm with the customer if needed</li>
+          <li style="margin-bottom: 8px;">✅ Approve or request modifications</li>
+          <li style="margin-bottom: 8px;">✅ Start production once approved</li>
         </ul>
         
         <div style="text-align: center; margin: 30px 0;">

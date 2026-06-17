@@ -46,14 +46,67 @@ export async function PUT(
     if (body.sellPrice !== undefined) updateData.sellPrice = body.sellPrice;
     if (body.rentPrice !== undefined) updateData.rentPrice = body.rentPrice;
     if (body.category) updateData.category = body.category;
-    if (body.badge) updateData.badge = body.badge;
+    if (body.badge !== undefined) updateData.badge = body.badge;
     if (body.imageUrl) updateData.imageUrl = body.imageUrl;
     if (body.imageUrls) updateData.imageUrls = body.imageUrls;
-    if (body.sizes) updateData.sizes = body.sizes;
-    if (body.color) updateData.color = body.color;
     if (body.material) updateData.material = body.material;
     if (body.condition) updateData.condition = body.condition;
     if (body.careInstructions) updateData.careInstructions = body.careInstructions;
+    if (body.costumeType) updateData.costumeType = body.costumeType;
+    if (body.country !== undefined) updateData.country = body.country;
+
+    // Handle nested variants
+    if (body.variants !== undefined) {
+      if (Array.isArray(body.variants)) {
+        updateData.variants = body.variants.map((v: any) => ({
+          colorName: v.colorName || 'Default',
+          colorHex: v.colorHex || '',
+          sizes: Array.isArray(v.sizes) ? v.sizes.map((s: any) => ({
+            size: typeof s === 'string' ? s : s.size,
+            displayForSale: typeof s === 'string' ? true : s.displayForSale !== false,
+            displayForRent: typeof s === 'string' ? true : s.displayForRent !== false,
+          })) : []
+        }));
+      }
+    } else {
+      // Legacy fallback for PUT
+      let legacySizes: any[] = [];
+      if (body.sizes !== undefined) {
+        if (typeof body.sizes === 'string' && body.sizes.trim()) {
+          updateData.sizesLegacy = body.sizes;
+          legacySizes = body.sizes.split(',').map((s: string) => ({
+            size: s.trim(), displayForSale: true, displayForRent: true
+          })).filter((s: any) => s.size);
+        } else if (Array.isArray(body.sizes)) {
+          legacySizes = body.sizes.map((s: any) => ({
+            size: s.name || typeof s === 'string' ? s : '',
+            displayForSale: s.displayInStore !== false,
+            displayForRent: s.displayInStore !== false,
+          })).filter((s: any) => s.size);
+        }
+      }
+
+      let variantsData: any[] = [];
+      if (body.colors !== undefined && Array.isArray(body.colors) && body.colors.length > 0) {
+        variantsData = body.colors.map((c: any) => ({
+          colorName: c.name || typeof c === 'string' ? c : '',
+          colorHex: c.hexCode || '',
+          sizes: legacySizes
+        })).filter((c: any) => c.colorName);
+      } else if (body.color !== undefined && typeof body.color === 'string' && body.color.trim()) {
+        updateData.colorLegacy = body.color;
+        const colorStrings = body.color.split(',').map((c: string) => c.trim()).filter(Boolean);
+        variantsData = colorStrings.map((c: string) => ({
+          colorName: c, colorHex: '', sizes: legacySizes
+        }));
+      } else if (legacySizes.length > 0) {
+        variantsData = [{ colorName: 'Standard', colorHex: '', sizes: legacySizes }];
+      }
+
+      if (variantsData.length > 0) {
+        updateData.variants = variantsData;
+      }
+    }
 
     const product = await Product.findByIdAndUpdate(id, updateData, { new: true });
 

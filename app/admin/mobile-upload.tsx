@@ -2,7 +2,73 @@
 
 import { useState, useRef } from "react";
 import Image from "next/image";
-import { Upload, X, CheckCircle2, Bell, Clock, Zap } from "lucide-react";
+import { Upload, X, CheckCircle2, Bell, Clock, Zap, Plus, Check } from "lucide-react";
+
+export interface NestedSizeEntry {
+  size: string;
+  displayForSale: boolean;
+  displayForRent: boolean;
+}
+
+export interface VariantGroup {
+  colorName: string;
+  colorHex?: string;
+  sizes: NestedSizeEntry[];
+}
+
+const colorDictionary: Record<string, string> = {
+  burgundy: "#800020",
+  emerald: "#50c878",
+  ruby: "#e0115f",
+  sapphire: "#0f52ba",
+  rose: "#ff007f",
+  mint: "#3eb489",
+  mustard: "#e1ad01",
+  wine: "#722f37",
+  champagne: "#f7e7ce",
+  cream: "#fffdd0",
+  apricot: "#fbceb1",
+  mauve: "#e0b0ff",
+  amber: "#ffbf00",
+  bronze: "#cd7f32",
+  copper: "#b87333",
+  brass: "#b5a642",
+  rust: "#b7410e",
+  "rose gold": "#b76e79",
+  "rosegold": "#b76e79",
+  "emerald green": "#50c878",
+  "royal blue": "#4169e1",
+  "sky blue": "#87ceeb",
+  "navy blue": "#000080",
+  "forest green": "#228b22",
+  "hot pink": "#ff69b4",
+  "dark red": "#8b0000",
+  "light blue": "#add8e6",
+};
+
+export function getVariantColorStyle(name: string): React.CSSProperties {
+  const normalized = name.trim().toLowerCase();
+  
+  if (colorDictionary[normalized]) {
+    return { backgroundColor: colorDictionary[normalized] };
+  }
+  
+  if (typeof window !== 'undefined' && CSS.supports('color', normalized)) {
+    return { backgroundColor: normalized };
+  }
+  
+  const charCode = normalized.charCodeAt(0) || 0;
+  const hue = (charCode * 7) % 360;
+  return {
+    background: `linear-gradient(135deg, hsl(${hue}, 70%, 60%), hsl(${(hue + 40) % 360}, 70%, 45%))`,
+    color: '#ffffff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontWeight: 'bold',
+    fontSize: '0.75rem',
+  };
+}
 
 interface ProductForm {
   name: string;
@@ -13,8 +79,7 @@ interface ProductForm {
   costumeType: string;
   country?: string; // For Traditional Africa subfilter
   badge: string;
-  sizes: string;
-  color: string;
+  variants: VariantGroup[];
   material: string;
   condition: string;
   careInstructions: string;
@@ -29,8 +94,7 @@ interface FormErrors {
   description?: string;
   sellPrice?: string;
   rentPrice?: string;
-  sizes?: string;
-  color?: string;
+  variants?: string;
   material?: string;
   careInstructions?: string;
   images?: string;
@@ -48,8 +112,7 @@ export default function MobileAdminUpload() {
     costumeType: "Other",
     country: "",
     badge: "",
-    sizes: "",
-    color: "",
+    variants: [],
     material: "",
     condition: "new",
     careInstructions: "",
@@ -58,6 +121,17 @@ export default function MobileAdminUpload() {
     imageFiles: [],
     imagePreviews: [],
   });
+
+  // Modal States for Dynamic Variants (Unified Color Group Modal)
+  const [isColorModalOpen, setIsColorModalOpen] = useState(false);
+  const [editingColorIndex, setEditingColorIndex] = useState<number | null>(null);
+
+  // Local state for the modal inputs
+  const [modalColorName, setModalColorName] = useState("");
+  const [modalSizes, setModalSizes] = useState<NestedSizeEntry[]>([]);
+  const [modalNewSizeName, setModalNewSizeName] = useState("");
+  const [modalNewSizeDisplayForSale, setModalNewSizeDisplayForSale] = useState(true);
+  const [modalNewSizeDisplayForRent, setModalNewSizeDisplayForRent] = useState(true);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMessage, setSubmitMessage] = useState("");
@@ -278,8 +352,7 @@ export default function MobileAdminUpload() {
       !form.description ||
       !form.sellPrice ||
       !form.rentPrice ||
-      !form.sizes ||
-      !form.color ||
+      form.variants.length === 0 ||
       !form.material ||
       !form.condition ||
       !form.careInstructions ||
@@ -348,8 +421,7 @@ export default function MobileAdminUpload() {
         badge: form.badge || null,
         imageUrl: mainImage,
         imageUrls: cloudinaryUrls,
-        sizes: form.sizes,
-        color: form.color,
+        variants: form.variants,
         material: form.material,
         condition: form.condition,
         careInstructions: form.careInstructions,
@@ -433,8 +505,7 @@ export default function MobileAdminUpload() {
         costumeType: "Other",
         country: "",
         badge: "",
-        sizes: "",
-        color: "",
+        variants: [],
         material: "",
         condition: "new",
         careInstructions: "",
@@ -765,67 +836,148 @@ export default function MobileAdminUpload() {
           <div>
             <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
               <span className="text-lg">👕</span>
-              Product Attributes
+              Product Variants
             </h4>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">
-                  Sizes <span className="text-red-500">*</span>
+            
+            <div className="space-y-6">
+              {/* Variant Group Builder */}
+              <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm">
+                <label className="block text-sm font-bold text-gray-900 mb-4">
+                  Variant Groups (Colors & Sizes) <span className="text-red-500">*</span>
                 </label>
-                <input
-                  type="text"
-                  name="sizes"
-                  value={form.sizes}
-                  onChange={handleInputChange}
-                  placeholder="S, M, L, XL"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
-                  disabled={isSubmitting}
-                />
+                
+                {/* Action to open Add Color Modal */}
+                <div className="flex justify-center mb-6">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setEditingColorIndex(null);
+                      setModalColorName("");
+                      setModalSizes([]);
+                      setModalNewSizeName("");
+                      setModalNewSizeDisplayForSale(true);
+                      setModalNewSizeDisplayForRent(true);
+                      setIsColorModalOpen(true);
+                    }}
+                    className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-gray-900 to-black text-white rounded-xl text-sm font-bold shadow-lg hover:shadow-xl transition transform hover:-translate-y-0.5 active:scale-95"
+                  >
+                    <Plus className="w-4 h-4" /> Add Color Group
+                  </button>
+                </div>
+
+                {/* Variant List */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {form.variants.map((variant, vIdx) => (
+                    <div key={vIdx} className="border border-gray-200 rounded-xl overflow-hidden bg-white shadow-sm transition hover:border-gray-300 flex flex-col justify-between">
+                      {/* Color Header */}
+                      <div className="bg-gray-50/50 px-4 py-3 flex items-center justify-between border-b border-gray-100">
+                        <div className="flex items-center gap-2.5">
+                          <div 
+                            className="w-5.5 h-5.5 rounded-full shadow-inner border border-gray-200 flex-shrink-0" 
+                            style={getVariantColorStyle(variant.colorName)}
+                          >
+                            {getVariantColorStyle(variant.colorName).display === 'flex' && (
+                              <span className="text-white text-[9px] font-black uppercase">
+                                {variant.colorName.trim().charAt(0)}
+                              </span>
+                            )}
+                          </div>
+                          <span className="font-extrabold text-gray-900 text-xs tracking-wide">{variant.colorName}</span>
+                          <span className="text-[9px] font-bold bg-gray-200/50 text-gray-600 px-1.5 py-0.5 rounded">{variant.sizes.length} sizes</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setEditingColorIndex(vIdx);
+                              setModalColorName(variant.colorName);
+                              setModalSizes(variant.sizes || []);
+                              setModalNewSizeName("");
+                              setModalNewSizeDisplayForSale(true);
+                              setModalNewSizeDisplayForRent(true);
+                              setIsColorModalOpen(true);
+                            }}
+                            className="text-[10px] font-black text-lime-600 hover:bg-lime-50 px-2 py-1.5 rounded transition uppercase tracking-wider"
+                          >
+                            Edit
+                          </button>
+                          <button 
+                            type="button"
+                            onClick={() => {
+                              const newVariants = [...form.variants];
+                              newVariants.splice(vIdx, 1);
+                              setForm(prev => ({ ...prev, variants: newVariants }));
+                            }}
+                            className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-1.5 rounded-lg transition"
+                          >
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Sizes Content */}
+                      <div className="p-3 bg-white flex-1 flex items-center">
+                        {variant.sizes && variant.sizes.length > 0 ? (
+                          <div className="flex flex-wrap gap-1.5 w-full">
+                            {variant.sizes.map((sz, sIdx) => {
+                              const badgeStr = `${sz.displayForSale ? 'S' : ''}${sz.displayForSale && sz.displayForRent ? '/' : ''}${sz.displayForRent ? 'R' : ''}`;
+                              return (
+                                <div key={sIdx} className="flex items-center gap-1 bg-gray-50 border border-gray-150 rounded px-2 py-1 text-[10px] font-bold text-gray-800">
+                                  <span>{sz.size}</span>
+                                  {badgeStr && <span className="text-[8px] font-black text-gray-400">({badgeStr})</span>}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <p className="text-[11px] text-gray-400 italic">No sizes configured. Click Edit to add sizes.</p>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                  
+                  {form.variants.length === 0 && (
+                    <div className="text-center py-8 bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl w-full col-span-full">
+                      <p className="text-sm font-bold text-gray-500 mb-1">No variants added yet.</p>
+                      <p className="text-xs text-gray-400">Add a color group to start building sizes.</p>
+                    </div>
+                  )}
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">
-                  Color <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="color"
-                  value={form.color}
-                  onChange={handleInputChange}
-                  placeholder="Red, Blue..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">
-                  Material <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  name="material"
-                  value={form.material}
-                  onChange={handleInputChange}
-                  placeholder="Cotton, Silk..."
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
-                  disabled={isSubmitting}
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-gray-700 mb-2">
-                  Condition <span className="text-red-500">*</span>
-                </label>
-                <select
-                  name="condition"
-                  value={form.condition}
-                  onChange={handleInputChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
-                  disabled={isSubmitting}
-                >
-                  <option value="new">✨ New</option>
-                  <option value="like-new">⭐ Like New</option>
-                  <option value="good">👍 Good</option>
-                  <option value="fair">🔧 Fair</option>
-                </select>
+
+              {/* Material and Condition */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                    Material <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="material"
+                    value={form.material}
+                    onChange={handleInputChange}
+                    placeholder="Cotton, Silk..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
+                    disabled={isSubmitting}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-700 mb-2">
+                    Condition <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    name="condition"
+                    value={form.condition}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
+                    disabled={isSubmitting}
+                  >
+                    <option value="new">✨ New</option>
+                    <option value="like-new">⭐ Like New</option>
+                    <option value="good">👍 Good</option>
+                    <option value="fair">🔧 Fair</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -943,6 +1095,193 @@ export default function MobileAdminUpload() {
           )}
         </div>
       </form>
+
+      {/* Modals placed outside of form so their buttons don't accidentally submit */}
+      {/* Unified Color & Sizes Group Modal */}
+      {isColorModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl p-6 transform transition-all overflow-y-auto max-h-[90vh]">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-lg font-black text-gray-900 tracking-tight">
+                  {editingColorIndex !== null ? 'Edit Color Group' : 'Add Color Group'}
+                </h3>
+                <p className="text-xs font-bold text-lime-600 uppercase tracking-wider mt-1">
+                  Configure color & sizes variant
+                </p>
+              </div>
+              <button 
+                type="button" 
+                onClick={() => setIsColorModalOpen(false)}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-6">
+              {/* Color Name Section */}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-widest mb-2">Color Name</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="text"
+                    value={modalColorName}
+                    onChange={(e) => setModalColorName(e.target.value)}
+                    placeholder="e.g. Midnight Blue, Crimson"
+                    className="flex-1 px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-0 focus:border-gray-900 text-sm font-semibold transition bg-gray-50 focus:bg-white !text-black !bg-white"
+                  />
+                  {modalColorName.trim() && (
+                    <div 
+                      className="w-12 h-12 rounded-xl shadow-inner border border-gray-200 flex-shrink-0 transition-all duration-300"
+                      style={getVariantColorStyle(modalColorName)}
+                    >
+                      {getVariantColorStyle(modalColorName).display === 'flex' && (
+                        <span className="text-white text-xs font-black uppercase">
+                          {modalColorName.trim().charAt(0)}
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Sizes section inside the modal */}
+              <div className="border-t border-gray-100 pt-5">
+                <h4 className="text-xs font-bold text-gray-700 uppercase tracking-widest mb-4">Sizes & Availability</h4>
+                
+                {/* Size sub-form */}
+                <div className="bg-gray-50 rounded-2xl p-4 border border-gray-100 space-y-4 mb-4">
+                  <div className="grid grid-cols-3 gap-3 items-end">
+                    <div className="col-span-2">
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5">Size Name</label>
+                      <input
+                        type="text"
+                        value={modalNewSizeName}
+                        onChange={(e) => setModalNewSizeName(e.target.value)}
+                        placeholder="e.g. S, XL, 32"
+                        className="w-full px-3 py-2 border-2 border-gray-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-gray-900 !text-black !bg-white"
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const sizeVal = modalNewSizeName.trim();
+                            if (sizeVal && !modalSizes.some(s => s.size.toLowerCase() === sizeVal.toLowerCase())) {
+                              setModalSizes(prev => [...prev, { size: sizeVal, displayForSale: modalNewSizeDisplayForSale, displayForRent: modalNewSizeDisplayForRent }]);
+                              setModalNewSizeName("");
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const sizeVal = modalNewSizeName.trim();
+                          if (sizeVal && !modalSizes.some(s => s.size.toLowerCase() === sizeVal.toLowerCase())) {
+                            setModalSizes(prev => [...prev, { size: sizeVal, displayForSale: modalNewSizeDisplayForSale, displayForRent: modalNewSizeDisplayForRent }]);
+                            setModalNewSizeName("");
+                          }
+                        }}
+                        disabled={!modalNewSizeName.trim()}
+                        className="w-full py-2.5 bg-gray-900 hover:bg-black disabled:bg-gray-200 disabled:text-gray-400 text-white font-black rounded-xl text-xs transition active:scale-95 animate-none"
+                      >
+                        Add Size
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Availability checkboxes */}
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={modalNewSizeDisplayForSale}
+                        onChange={(e) => setModalNewSizeDisplayForSale(e.target.checked)}
+                        className="w-4 h-4 accent-lime-600 rounded cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-gray-700">Display for Sale</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={modalNewSizeDisplayForRent}
+                        onChange={(e) => setModalNewSizeDisplayForRent(e.target.checked)}
+                        className="w-4 h-4 accent-lime-600 rounded cursor-pointer"
+                      />
+                      <span className="text-xs font-bold text-gray-700">Display for Rent</span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* List of sizes added inside the modal */}
+                {modalSizes.length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {modalSizes.map((sz, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-white border border-gray-200 rounded-xl p-3 shadow-sm">
+                        <span className="font-bold text-sm text-gray-900">{sz.size}</span>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${sz.displayForSale ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-gray-100 text-gray-400'}`}>
+                            Sale
+                          </span>
+                          <span className={`text-[10px] font-extrabold px-2 py-0.5 rounded-full ${sz.displayForRent ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-gray-100 text-gray-400'}`}>
+                            Rent
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setModalSizes(prev => prev.filter((_, i) => i !== idx));
+                            }}
+                            className="text-gray-400 hover:text-red-500 p-1 rounded transition"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic text-center py-4 bg-gray-50 rounded-2xl border border-dashed border-gray-200">
+                    No sizes added for this color yet. Use the sub-form above.
+                  </p>
+                )}
+              </div>
+
+              {/* Main Modal Save action */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!modalColorName.trim()) return;
+                  
+                  if (editingColorIndex !== null) {
+                    const newVariants = [...form.variants];
+                    newVariants[editingColorIndex] = {
+                      colorName: modalColorName.trim(),
+                      colorHex: '',
+                      sizes: modalSizes
+                    };
+                    setForm(prev => ({ ...prev, variants: newVariants }));
+                  } else {
+                    setForm(prev => ({
+                      ...prev,
+                      variants: [...prev.variants, {
+                        colorName: modalColorName.trim(),
+                        colorHex: '',
+                        sizes: modalSizes
+                      }]
+                    }));
+                  }
+                  setIsColorModalOpen(false);
+                }}
+                disabled={!modalColorName.trim()}
+                className="w-full py-4 mt-4 bg-lime-500 hover:bg-lime-600 disabled:bg-gray-200 disabled:text-gray-400 text-white font-black rounded-xl transition shadow-lg shadow-lime-500/20 active:scale-95 text-sm uppercase tracking-wider"
+              >
+                {editingColorIndex !== null ? 'Save Color Group' : 'Add Color Group'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

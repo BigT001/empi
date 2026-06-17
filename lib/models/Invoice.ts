@@ -7,6 +7,9 @@ export interface IInvoiceItem {
   quantity: number;
   price: number;
   mode?: 'buy' | 'rent';
+  selectedSize?: string;
+  selectedColor?: string;
+  rentalDays?: number;
 }
 
 export interface IInvoice extends Document {
@@ -50,6 +53,9 @@ const invoiceItemSchema = new Schema<IInvoiceItem>({
   quantity: { type: Number, required: true },
   price: { type: Number, required: true },
   mode: String,
+  selectedSize: String,
+  selectedColor: String,
+  rentalDays: Number,
 });
 
 const invoiceSchema = new Schema<IInvoice>(

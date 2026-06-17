@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
 
     // Validate notification type
     const validTypes = [
+      'order-placed',
       'payment-received',
       'order-ready',
       'order-shipped',

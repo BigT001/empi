@@ -31,7 +31,7 @@ export default function PrivacyPolicy() {
                         <ul className="list-disc pl-6 space-y-2">
                             <li><strong>Identity Data:</strong> includes first name, last name, username or similar identifier.</li>
                             <li><strong>Contact Data:</strong> includes billing address, delivery address, email address and telephone numbers.</li>
-                            <li><strong>Financial Data:</strong> includes payment card details (processed securely via Paystack).</li>
+                            <li><strong>Financial Data:</strong> includes payment card details (processed securely via Flutterwave).</li>
                             <li><strong>Transaction Data:</strong> includes details about payments to and from you and other details of products and services you have purchased from us.</li>
                         </ul>
                     </section>

@@ -525,7 +525,7 @@ export default function BankDetailsPage() {
                     <CreditCard className="h-5 w-5" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-gray-900">Online (Paystack)</h4>
+                    <h4 className="font-bold text-gray-900">Online (Flutterwave)</h4>
                     <p className="text-[11px] text-gray-600">Cards, Transfer, USSD, Wallet</p>
                   </div>
                 </div>

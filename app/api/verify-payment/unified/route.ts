@@ -19,6 +19,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const reference = searchParams.get('reference');
+    const transactionId = searchParams.get('transaction_id');
     // email and name parameters reserved for future use
 
     if (!reference) {
@@ -44,8 +45,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify with Paystack
-    const paymentValid = await verifyPaystackPayment(reference);
+    // Verify with Flutterwave
+    const paymentValid = await verifyFlutterwavePayment(reference, transactionId);
 
     if (!paymentValid) {
       console.log(`[Verify Payment] ❌ Payment invalid for reference: ${reference}`);
@@ -236,35 +237,42 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Verify payment with Paystack API
+ * Verify payment with Flutterwave API
  */
-async function verifyPaystackPayment(reference: string): Promise<boolean> {
+async function verifyFlutterwavePayment(reference: string, transactionId?: string | null): Promise<boolean> {
   try {
+    let verifyUrl = "";
+    if (transactionId) {
+      verifyUrl = `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`;
+    } else {
+      verifyUrl = `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${reference}`;
+    }
+
     const response = await fetch(
-      `https://api.paystack.co/transaction/verify/${reference}`,
+      verifyUrl,
       {
         headers: {
-          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+          Authorization: `Bearer ${process.env.FLUTTERWAVE_SECRET_KEY}`,
         },
       }
     );
 
     if (!response.ok) {
-      console.log(`[Paystack] API error: ${response.status}`);
+      console.log(`[Flutterwave] API error: ${response.status}`);
       return false;
     }
 
     const data = await response.json();
 
-    if (data.status && data.data.status === 'success') {
-      console.log(`[Paystack] ✅ Payment confirmed: ${data.data.reference}`);
+    if (data.status === 'success' && (data.data?.status === 'successful' || data.data?.status === 'completed')) {
+      console.log(`[Flutterwave] ✅ Payment confirmed: ${data.data.tx_ref}`);
       return true;
     }
 
-    console.log(`[Paystack] ❌ Payment not successful: ${data.data.status}`);
+    console.log(`[Flutterwave] ❌ Payment not successful: ${data.data?.status}`);
     return false;
   } catch (error) {
-    console.error('[Paystack] Error verifying payment:', error);
+    console.error('[Flutterwave] Error verifying payment:', error);
     return false;
   }
 }

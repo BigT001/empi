@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -151,6 +151,28 @@ export default function CheckoutPage() {
       })
       .catch(err => console.error('Error fetching bank details:', err));
   }, [buyer?.id]);
+
+  // Handle URL redirect query parameters for Flutterwave redirect payments
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('reference') || params.get('tx_ref');
+      const transactionId = params.get('transaction_id');
+      const status = params.get('status');
+
+      if (ref) {
+        console.log(`Detected payment redirect: ref=${ref}, transactionId=${transactionId}, status=${status}`);
+        setIsProcessing(true);
+        if (status === 'failed') {
+          setOrderError("Payment failed. Please try again.");
+          setIsProcessing(false);
+        } else {
+          // Verify redirect payment
+          verifyAndProcessPayment(ref, '', '', transactionId || undefined);
+        }
+      }
+    }
+  }, []);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -346,8 +368,9 @@ export default function CheckoutPage() {
             mode: it.mode,
             unitPrice: it.price,
             rentalDays: it.rentalDays || rentalSchedule?.rentalDays || 1,
+            selectedSize: it.size,
+            selectedColor: it.color,
           };
-          // CRITICAL LOGGING: Verify mode is set before sending to API
           console.log(`[Checkout] 📦 Item "${it.name}":`, {
             mode: mappedItem.mode,
             hasMode: !!mappedItem.mode,
@@ -493,7 +516,7 @@ export default function CheckoutPage() {
   };
 
   // Helper function to poll for payment
-  const pollForPayment = (ref: string, customerEmail: string = '', customerName: string = '') => {
+  const pollForPayment = (ref: string, customerEmail: string = '', customerName: string = '', transactionId?: string | number) => {
     let pollCount = 0;
     const maxPolls = 180;
     const pollInterval = setInterval(async () => {
@@ -509,10 +532,11 @@ export default function CheckoutPage() {
         params.append('reference', ref);
         if (customerEmail) params.append('email', customerEmail);
         if (customerName) params.append('name', customerName);
+        if (transactionId) params.append('transaction_id', String(transactionId));
         const verifyRes = await fetch(`/api/verify-payment?${params.toString()}`);
         const verifyData = await verifyRes.json();
 
-        if (verifyData.success && verifyData.status === 'success') {
+        if (verifyData.success && (verifyData.status === 'success' || verifyData.status === 'successful')) {
           console.log("✅ Payment verified!");
           clearInterval(pollInterval);
           handlePaymentSuccess({ reference: ref, ...verifyData });
@@ -530,7 +554,7 @@ export default function CheckoutPage() {
   };
 
   // Helper function to verify payment
-  const verifyAndProcessPayment = async (ref: string, customerEmail: string = '', customerName: string = '') => {
+  const verifyAndProcessPayment = async (ref: string, customerEmail: string = '', customerName: string = '', transactionId?: string | number) => {
     try {
       // Skip if payment already processed
       if (paymentProcessed) {
@@ -542,20 +566,21 @@ export default function CheckoutPage() {
       params.append('reference', ref);
       if (customerEmail) params.append('email', customerEmail);
       if (customerName) params.append('name', customerName);
+      if (transactionId) params.append('transaction_id', String(transactionId));
       const res = await fetch(`/api/verify-payment?${params.toString()}`);
       const data = await res.json();
 
-      if (data.success && data.status === 'success') {
+      if (data.success && (data.status === 'success' || data.status === 'successful')) {
         console.log("✅ Payment confirmed!");
         handlePaymentSuccess({ reference: ref, ...data });
       } else {
         console.log("Payment pending or failed");
         const customerInfo = buyer || guestCustomer;
-        pollForPayment(ref, customerInfo?.email || '', customerInfo?.fullName || '');
+        pollForPayment(ref, customerInfo?.email || '', customerInfo?.fullName || '', transactionId);
       }
     } catch (err) {
       console.error("Verification error:", err);
-      pollForPayment(ref);
+      pollForPayment(ref, '', '', transactionId);
     }
   };
 
@@ -775,6 +800,12 @@ export default function CheckoutPage() {
                             Qty: {item.quantity || 1}
                             {isRental && rentalSchedule?.rentalDays && (
                               <span> • {rentalSchedule.rentalDays} days rental</span>
+                            )}
+                            {(item.color || item.selectedColor) && (
+                              <span> • Color: {item.color || item.selectedColor}</span>
+                            )}
+                            {(item.size || item.selectedSize) && (
+                              <span> • Size: {item.size || item.selectedSize}</span>
                             )}
                           </div>
                         </div>
@@ -1055,8 +1086,8 @@ export default function CheckoutPage() {
                     return;
                   }
 
-                  // Paystack Logic (Original logic continues below)
-                  if (!process.env.NEXT_PUBLIC_PAYSTACK_KEY) {
+                  // Flutterwave Logic
+                  if (!process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY) {
                     setOrderError("Online payment service is currently undergoing maintenance. Please use Bank Transfer.");
                     return;
                   }
@@ -1078,55 +1109,48 @@ export default function CheckoutPage() {
                       timestamp: Date.now()
                     }));
 
-                    // Attempt modal first if Paystack is available
+                    // Attempt modal first if Flutterwave is available
                     let modalAttempted = false;
-                    if (typeof window !== "undefined" && (window as any).PaystackPop) {
+                    if (typeof window !== "undefined" && (window as any).FlutterwaveCheckout) {
                       try {
-                        console.log("Attempting Paystack modal...");
-                        const handler = (window as any).PaystackPop.setup({
-                          key: process.env.NEXT_PUBLIC_PAYSTACK_KEY,
-                          email: buyer?.email || customerInfo.email,
-                          amount: amountInKobo,
+                        console.log("Attempting Flutterwave modal...");
+                        const handler = (window as any).FlutterwaveCheckout({
+                          public_key: process.env.NEXT_PUBLIC_FLUTTERWAVE_PUBLIC_KEY,
+                          tx_ref: ref,
+                          amount: displayTotal, // Flutterwave expects Naira amount
                           currency: "NGN",
-                          ref: ref,
-                          firstname: customerInfo.fullName.split(" ")[0] || "Customer",
-                          lastname: customerInfo.fullName.split(" ").slice(1).join(" ") || "",
-                          phone: customerInfo.phone,
-                          onClose: () => {
-                            console.log("Paystack modal closed - verifying payment...");
-                            // Small delay to ensure payment is processed
+                          payment_options: "card, banktransfer, ussd",
+                          customer: {
+                            email: customerInfo.email,
+                            phone_number: customerInfo.phone,
+                            name: customerInfo.fullName,
+                          },
+                          customizations: {
+                            title: "EMPI Costumes",
+                            description: "Payment for EMPI Order",
+                            logo: `${window.location.origin}/logo/EMPI-2k24-LOGO-1.PNG`,
+                          },
+                          callback: (response: any) => {
+                            console.log("Flutterwave onSuccess called with response:", response);
+                            if (response.status === "successful" || response.status === "completed") {
+                              const transId = response.transaction_id || response.id;
+                              handlePaymentSuccess({ reference: ref, transaction_id: transId, ...response });
+                            } else {
+                              setOrderError(response.message || "Payment not successful. Please try again.");
+                              setIsProcessing(false);
+                            }
+                            if (handler && typeof handler.close === "function") {
+                              handler.close();
+                            }
+                          },
+                          onclose: () => {
+                            console.log("Flutterwave modal closed - verifying payment...");
                             setTimeout(() => {
                               verifyAndProcessPayment(ref, customerInfo.email, customerInfo.fullName);
                             }, 1500);
                           },
-                          onSuccess: (response: any) => {
-                            console.log("Paystack onSuccess called with response:", response);
-                            // Immediately handle success
-                            handlePaymentSuccess({ reference: ref, ...response });
-                          },
                         });
-
-                        if (handler?.openIframe) {
-                          console.log("Opening Paystack iframe...");
-                          handler.openIframe();
-                          modalAttempted = true;
-                          // Start polling in case onSuccess doesn't fire
-                          setTimeout(() => {
-                            console.log("Starting payment verification poll...");
-                            pollForPayment(ref);
-                          }, 2000);
-                          return;
-                        } else if (handler?.pay) {
-                          // Fallback to pay() method
-                          console.log("Using pay() method...");
-                          handler.pay();
-                          modalAttempted = true;
-                          setTimeout(() => {
-                            console.log("Starting payment verification poll (pay method)...");
-                            pollForPayment(ref);
-                          }, 2000);
-                          return;
-                        }
+                        modalAttempted = true;
                       } catch (err) {
                         console.warn("Modal failed, using redirect:", err);
                       }
@@ -1176,11 +1200,11 @@ export default function CheckoutPage() {
               </button>
             </div>
 
-            {/* Secured by Paystack Badge */}
+            {/* Secured by Flutterwave Badge */}
             <div className="mt-4 text-center">
               <p className="text-xs text-gray-500 flex items-center justify-center gap-2">
                 🔒 Secured by{" "}
-                <span className="font-semibold text-gray-700">Paystack</span>
+                <span className="font-semibold text-gray-700">Flutterwave</span>
               </p>
             </div>
           </div>

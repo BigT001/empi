@@ -18,6 +18,7 @@ interface CheckoutItem {
   mode: "buy" | "rent";
   image?: string;
   size?: string;
+  color?: string;
 }
 
 interface RentalSchedule {
@@ -178,7 +179,7 @@ export default function CheckoutContent({
               <div className="space-y-3">
                 {items.map((item) => (
                   <div
-                    key={`${item.id}-${item.mode}`}
+                    key={`${item.id}-${item.mode}-${item.color || ''}-${item.size || ''}`}
                     className="flex gap-4 p-4 bg-gradient-to-r from-gray-50 to-transparent rounded-xl border border-gray-100 hover:border-blue-200 transition-all duration-200"
                   >
                     {/* Product Image - Always show */}
@@ -581,7 +582,7 @@ export default function CheckoutContent({
                       <p className="text-xs font-semibold text-gray-600 mb-3 uppercase tracking-wide">Items Breakdown</p>
                       <div className="space-y-3">
                         {(orderSummary?.items || items).map((item) => (
-                          <div key={`${item.id}-${item.mode}`} className="text-sm bg-gray-50 p-3 rounded-lg">
+                          <div key={`${item.id}-${item.mode}-${item.color || ''}-${item.size || ''}`} className="text-sm bg-gray-50 p-3 rounded-lg">
                             <div className="flex justify-between mb-1">
                               <span className="text-gray-700 font-medium">{item.name}</span>
                               <span className="font-semibold text-gray-900">

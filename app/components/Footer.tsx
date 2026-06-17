@@ -104,7 +104,7 @@ export function Footer() {
               &copy; {currentYear} EMPI COSTUMES
             </div>
             <div className="flex items-center gap-4 text-[9px] uppercase tracking-widest text-slate-400 font-bold">
-              <span>Secure Payments via Paystack</span>
+              <span>Secure Payments via Flutterwave</span>
               <span className="w-1 h-1 rounded-full bg-slate-300" />
               <span>Worldwide Shipping</span>
             </div>

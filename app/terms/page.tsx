@@ -36,7 +36,7 @@ export default function TermsOfService() {
                     <section>
                         <h2 className="text-2xl font-bold text-gray-900 mb-4">3. Payments</h2>
                         <p>
-                            All payments are processed securely. We use Paystack for all online transactions. EMPI Costumes
+                            All payments are processed securely. We use Flutterwave for all online transactions. EMPI Costumes
                             does not store your full card details on our servers.
                         </p>
                     </section>

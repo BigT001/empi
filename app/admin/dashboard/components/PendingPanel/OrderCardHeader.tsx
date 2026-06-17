@@ -22,7 +22,7 @@ export function OrderCardHeader({
   isCustomOrder = false
 }: OrderCardHeaderProps) {
   const isManual = paymentMethod === 'manual';
-  const isOnline = paymentMethod === 'paystack';
+  const isOnline = paymentMethod === 'paystack' || paymentMethod === 'flutterwave';
 
   return (
     <div className={`bg-gradient-to-r ${isApproved ? 'from-emerald-700 to-green-600' : isManual ? 'from-amber-600 to-orange-600' : 'from-blue-700 to-indigo-600'} p-5 text-white flex justify-between items-start shadow-inner`}>
@@ -39,7 +39,7 @@ export function OrderCardHeader({
           ) : isOnline ? (
             <span className="flex items-center gap-1.5 bg-sky-400/30 text-[10px] px-2.5 py-1 rounded-md font-black border border-white/30 backdrop-blur-md shadow-sm">
               <CreditCard className="h-3 w-3" />
-              ONLINE PAYMENT (PAYSTACK)
+              ONLINE PAYMENT (FLUTTERWAVE)
             </span>
           ) : (
             <span className="flex items-center gap-1.5 bg-rose-400/30 text-[10px] px-2.5 py-1 rounded-md font-black border border-white/30 backdrop-blur-md shadow-sm">

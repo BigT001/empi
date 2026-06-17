@@ -323,6 +323,7 @@ export async function POST(request: NextRequest) {
         unitPrice: (item.unitPrice || item.price || 0) as number, // ← Map price → unitPrice
         productId: item.productId as string | undefined,
         selectedSize: item.selectedSize as string | undefined,
+        selectedColor: item.selectedColor as string | undefined,
         imageUrl: (item.imageUrl || item.image) as string | undefined,
         image: item.image as string | undefined,
         mode: item.mode as string || 'buy',
@@ -441,7 +442,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // AUTO-GENERATE INVOICE for all paid orders
+    // AUTO-GENERATE INVOICE for all paid orders, or send confirmation for manual orders
     let invoiceData = null;
     if (newOrder.paymentVerified) {
       try {
@@ -454,6 +455,39 @@ export async function POST(request: NextRequest) {
       } catch (invoiceError) {
         console.error('[Unified Orders API] ⚠️ Invoice generation failed (non-blocking):', invoiceError);
         // Don't fail the order creation if invoice generation fails
+      }
+    } else {
+      // Send Order Placed Email for manual orders
+      try {
+        console.log('[Unified Orders API] 📧 Sending manual order confirmation email...');
+        const baseUrl = process.env.NEXTAUTH_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+        await fetch(`${baseUrl}/api/notifications/user-status-change`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            type: 'order-placed',
+            orderNumber: newOrder.orderNumber,
+            orderId: newOrder._id,
+            email: newOrder.email,
+            name: `${newOrder.firstName} ${newOrder.lastName}`,
+            amount: newOrder.total || 0,
+            details: {
+              items: newOrder.items,
+              pricing: {
+                subtotal: newOrder.subtotal,
+                discountPercentage: newOrder.discountPercentage,
+                discountAmount: newOrder.discountAmount,
+                cautionFee: newOrder.cautionFee,
+                vat: newOrder.vat,
+                total: newOrder.total,
+              }
+            }
+          }),
+        }).catch(err => {
+          console.error('[Unified Orders API] ⚠️ Failed to send user order-placed notification:', err);
+        });
+      } catch (userNotifError) {
+        console.error('[Unified Orders API] ⚠️ User order placement notification error (non-blocking):', userNotifError);
       }
     }
 
@@ -471,6 +505,15 @@ export async function POST(request: NextRequest) {
           buyerEmail: newOrder.email,
           amount: newOrder.total || 0,
           orderType: orderType,
+          items: newOrder.items,
+          pricing: {
+            subtotal: newOrder.subtotal,
+            discountPercentage: newOrder.discountPercentage,
+            discountAmount: newOrder.discountAmount,
+            cautionFee: newOrder.cautionFee,
+            vat: newOrder.vat,
+            total: newOrder.total,
+          }
         }),
       }).catch(err => {
         console.error('[Unified Orders API] ⚠️ Failed to send admin notification:', err);

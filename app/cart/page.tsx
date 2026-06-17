@@ -209,7 +209,7 @@ export default function CartPage() {
                       </div>
                     </div>
                     {items.filter(item => item.mode === "buy").map((item) => (
-                      <div key={`${item.id}-${item.mode}`} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                      <div key={`${item.id}-${item.mode}-${item.color || ''}-${item.size || ''}`} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
                         <div className="p-4 md:p-6 flex flex-col md:flex-row gap-4 md:gap-6">
                           {/* Image Section */}
                           <div className="flex-shrink-0 w-full md:w-32 h-32 relative rounded-xl overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
@@ -230,9 +230,19 @@ export default function CartPage() {
                                   <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap bg-green-100 text-green-700">
                                     Buy
                                   </span>
+                                  {item.color && (
+                                    <span className="inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-gray-100 text-gray-700">
+                                      Color: {item.color}
+                                    </span>
+                                  )}
+                                  {item.size && (
+                                    <span className="inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-gray-100 text-gray-700">
+                                      Size: {item.size}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
-                              <button onClick={() => removeItem(item.id, item.mode)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition flex-shrink-0">
+                              <button onClick={() => removeItem(item.id, item.mode, item.color, item.size)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition flex-shrink-0">
                                 <Trash2 className="h-5 w-5" />
                               </button>
                             </div>
@@ -240,11 +250,11 @@ export default function CartPage() {
                             {/* Footer with Controls and Price */}
                             <div className="flex items-center justify-between gap-4 pt-3 border-t border-gray-100">
                               <div className="flex items-center border-2 border-gray-200 rounded-lg">
-                                <button onClick={() => updateQuantity(item.id, item.mode, Math.max(1, item.quantity - 1))} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
+                                <button onClick={() => updateQuantity(item.id, item.mode, Math.max(1, item.quantity - 1), item.color, item.size)} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
                                   <Minus className="h-4 w-4" />
                                 </button>
                                 <span className="px-4 py-2 font-bold text-gray-900 min-w-14 text-center">{item.quantity}</span>
-                                <button onClick={() => updateQuantity(item.id, item.mode, item.quantity + 1)} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
+                                <button onClick={() => updateQuantity(item.id, item.mode, item.quantity + 1, item.color, item.size)} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
                                   <Plus className="h-4 w-4" />
                                 </button>
                               </div>
@@ -271,7 +281,7 @@ export default function CartPage() {
                       </div>
                     </div>
                     {items.filter(item => item.mode === "rent").map((item) => (
-                      <div key={`${item.id}-${item.mode}`} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
+                      <div key={`${item.id}-${item.mode}-${item.color || ''}-${item.size || ''}`} className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-shadow duration-300">
                         <div className="p-4 md:p-6 flex flex-col md:flex-row gap-4 md:gap-6">
                           {/* Image Section */}
                           <div className="flex-shrink-0 w-full md:w-32 h-32 relative rounded-xl overflow-hidden bg-gray-50 border border-gray-200 flex items-center justify-center">
@@ -292,6 +302,16 @@ export default function CartPage() {
                                   <span className="inline-block px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap bg-blue-100 text-blue-700">
                                     Rent
                                   </span>
+                                  {item.color && (
+                                    <span className="inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-gray-100 text-gray-700">
+                                      Color: {item.color}
+                                    </span>
+                                  )}
+                                  {item.size && (
+                                    <span className="inline-block px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap bg-gray-100 text-gray-700">
+                                      Size: {item.size}
+                                    </span>
+                                  )}
                                   <button
                                     onClick={() => setShowRentalPolicy(true)}
                                     className="text-xs text-blue-600 hover:text-blue-700 underline font-medium whitespace-nowrap"
@@ -300,7 +320,7 @@ export default function CartPage() {
                                   </button>
                                 </div>
                               </div>
-                              <button onClick={() => removeItem(item.id, item.mode)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition flex-shrink-0">
+                              <button onClick={() => removeItem(item.id, item.mode, item.color, item.size)} className="text-red-600 hover:bg-red-50 p-2 rounded-lg transition flex-shrink-0">
                                 <Trash2 className="h-5 w-5" />
                               </button>
                             </div>
@@ -331,11 +351,11 @@ export default function CartPage() {
                             {/* Footer with Controls and Price */}
                             <div className="flex items-center justify-between gap-4 pt-3 border-t border-gray-100">
                               <div className="flex items-center border-2 border-gray-200 rounded-lg">
-                                <button onClick={() => updateQuantity(item.id, item.mode, Math.max(1, item.quantity - 1))} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
+                                <button onClick={() => updateQuantity(item.id, item.mode, Math.max(1, item.quantity - 1), item.color, item.size)} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
                                   <Minus className="h-4 w-4" />
                                 </button>
                                 <span className="px-4 py-2 font-bold text-gray-900 min-w-14 text-center">{item.quantity}</span>
-                                <button onClick={() => updateQuantity(item.id, item.mode, item.quantity + 1)} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
+                                <button onClick={() => updateQuantity(item.id, item.mode, item.quantity + 1, item.color, item.size)} className="p-2 text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition">
                                   <Plus className="h-4 w-4" />
                                 </button>
                               </div>

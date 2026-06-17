@@ -633,7 +633,16 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
             <tbody>
               ${invoice.items.map((item) => `
                 <tr>
-                  <td><span class="item-name">${item.name}</span></td>
+                  <td>
+                    <span class="item-name">${item.name}</span>
+                    ${item.selectedColor || item.selectedSize || (item.mode === 'rent' && item.rentalDays) ? `
+                      <div style="font-size: 10px; color: #6b7280; margin-top: 4px; line-height: 1.2;">
+                        ${item.selectedColor ? `<span>Color: <strong>${item.selectedColor}</strong></span>` : ''}
+                        ${item.selectedSize ? `${item.selectedColor ? ' • ' : ''}<span>Size: <strong>${item.selectedSize}</strong></span>` : ''}
+                        ${(item.mode === 'rent' && item.rentalDays) ? `${(item.selectedColor || item.selectedSize) ? ' • ' : ''}<span>Duration: <strong>${item.rentalDays} days</strong></span>` : ''}
+                      </div>
+                    ` : ''}
+                  </td>
                   <td><span class="item-mode" style="font-weight: 600; ${(item.mode || 'buy') === 'rent' ? 'color: #a855f7;' : 'color: #059669;'}">${(item.mode || 'buy') === 'rent' ? '🔄 Rental' : '🛍️ Buy'}</span></td>
                   <td><span class="item-qty">${item.quantity}</span></td>
                   <td><span class="item-price">${invoice.currencySymbol}${((item.price || 0)).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>

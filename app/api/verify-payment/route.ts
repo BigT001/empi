@@ -22,17 +22,25 @@ export async function GET(request: NextRequest) {
     console.log("[verify-payment] 📋 Reference:", reference);
     console.log("[verify-payment] 🔍 Verifying payment for reference:", reference);
 
-    // Verify with Paystack API
-    const verifyUrl = `https://api.paystack.co/transaction/verify/${reference}`;
-    const secretKey = process.env.PAYSTACK_SECRET_KEY;
+    // Verify with Flutterwave API
+    const secretKey = process.env.FLUTTERWAVE_SECRET_KEY;
 
     if (!secretKey) {
-      console.error("❌ [verify-payment] PAYSTACK_SECRET_KEY not configured");
+      console.error("❌ [verify-payment] FLUTTERWAVE_SECRET_KEY not configured");
       return NextResponse.json({ error: 'Payment verification service not configured' }, { status: 500 });
+    }
+
+    const transactionId = request.nextUrl.searchParams.get('transaction_id');
+    
+    let verifyUrl = "";
+    if (transactionId) {
+      verifyUrl = `https://api.flutterwave.com/v3/transactions/${transactionId}/verify`;
+    } else {
+      verifyUrl = `https://api.flutterwave.com/v3/transactions/verify_by_reference?tx_ref=${reference}`;
     }
     
     console.log("[verify-payment] 🔑 Secret key found:", !!secretKey);
-    console.log("[verify-payment] 📡 Making request to Paystack API:", verifyUrl);
+    console.log("[verify-payment] 📡 Making request to Flutterwave API:", verifyUrl);
 
     const response = await fetch(verifyUrl, {
       method: 'GET',
@@ -43,12 +51,12 @@ export async function GET(request: NextRequest) {
     });
 
     const data = await response.json();
-    console.log("[verify-payment] ✅ Got response from Paystack");
+    console.log("[verify-payment] ✅ Got response from Flutterwave");
     console.log("[verify-payment] 📊 Response status:", response.status);
     console.log("[verify-payment] 📋 Response data:", JSON.stringify(data, null, 2));
 
     if (!response.ok) {
-      console.error("❌ [verify-payment] Paystack API error:", data);
+      console.error("❌ [verify-payment] Flutterwave API error:", data);
       return NextResponse.json(
         { error: data.message || 'Payment verification failed' },
         { status: response.status }
@@ -57,16 +65,23 @@ export async function GET(request: NextRequest) {
 
     // Check if payment was successful
     console.log("[verify-payment] 🔎 Checking payment status...");
-    console.log("[verify-payment] Payment status from Paystack:", data.data?.status);
+    console.log("[verify-payment] Payment status from Flutterwave:", data.data?.status);
     
-    if (data.data?.status === 'success') {
+    const isSuccess = data.status === 'success' && (data.data?.status === 'successful' || data.data?.status === 'completed');
+
+    if (isSuccess) {
       console.log("[verify-payment] ✅✅✅ PAYMENT VERIFIED AS SUCCESSFUL!");
       console.log("[verify-payment] 🎯 STARTING INVOICE CREATION PROCESS");
       
-      // Extract payment data from Paystack
-      const paymentAmount = data.data.amount / 100; // Convert from kobo to naira
-      const paymentReference = data.data.reference;
-      const paymentCustomer = data.data.customer || {};
+      // Extract payment data from Flutterwave (Flutterwave amount is in base currency, e.g. Naira)
+      const paymentAmount = Number(data.data.amount);
+      const paymentReference = data.data.tx_ref;
+      const paymentCustomer = {
+        email: data.data.customer?.email || '',
+        phone: data.data.customer?.phone_number || '',
+        first_name: data.data.customer?.name?.split(' ')[0] || '',
+        last_name: data.data.customer?.name?.split(' ').slice(1).join(' ') || '',
+      } as any;
       
       // Use email from query params (passed from checkout) first, fall back to Paystack data
       // IMPORTANT: Lowercase email to match invoice query logic
@@ -259,9 +274,9 @@ export async function GET(request: NextRequest) {
       console.log('[verify-payment] ✅✅✅ Sending SUCCESS response to frontend');
       const successResponse = {
         success: true,
-        reference: data.data.reference,
+        reference: data.data.tx_ref || data.data.reference,
         amount: data.data.amount,
-        status: data.data.status,
+        status: 'success', // Keep 'success' so the frontend verifyAndProcessPayment checks match
         customer: data.data.customer,
       };
       console.log('[verify-payment] Response:', JSON.stringify(successResponse, null, 2));

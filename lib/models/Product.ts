@@ -1,5 +1,17 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface ISizeVariant {
+  size: string;
+  displayForSale: boolean;
+  displayForRent: boolean;
+}
+
+export interface IColorVariant {
+  colorName: string;
+  colorHex?: string;
+  sizes: ISizeVariant[];
+}
+
 export interface IProduct extends Document {
   name: string;
   description: string;
@@ -11,8 +23,13 @@ export interface IProduct extends Document {
   badge?: string;
   imageUrl: string;
   imageUrls: string[];
-  sizes?: string;
-  color?: string;
+  // NEW nested variants
+  variants: IColorVariant[];
+  // Legacy string fields (kept for backward compat with old products)
+  /** @deprecated Use sizes[] array instead */
+  sizesLegacy?: string;
+  /** @deprecated Use colors[] array instead */
+  colorLegacy?: string;
   material?: string;
   condition?: string;
   careInstructions?: string;
@@ -26,6 +43,24 @@ export interface IProduct extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
+const sizeVariantSchema = new Schema<ISizeVariant>(
+  {
+    size: { type: String, required: true },
+    displayForSale: { type: Boolean, default: true },
+    displayForRent: { type: Boolean, default: true },
+  },
+  { _id: false }
+);
+
+const colorVariantSchema = new Schema<IColorVariant>(
+  {
+    colorName: { type: String, required: true },
+    colorHex: { type: String, default: '' },
+    sizes: { type: [sizeVariantSchema], default: [] },
+  },
+  { _id: false }
+);
 
 const productSchema = new Schema<IProduct>(
   {
@@ -51,8 +86,11 @@ const productSchema = new Schema<IProduct>(
     badge: String,
     imageUrl: { type: String, required: true },
     imageUrls: [String],
-    sizes: String,
-    color: String,
+    // NEW nested variants
+    variants: { type: [colorVariantSchema], default: [] },
+    // Legacy string fields (old products may still have these)
+    sizesLegacy: { type: String, default: undefined },
+    colorLegacy: { type: String, default: undefined },
     material: String,
     condition: String,
     careInstructions: String,

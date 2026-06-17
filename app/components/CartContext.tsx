@@ -11,7 +11,8 @@ export interface CartItem {
   mode: "buy" | "rent";
   quantity: number;
   // New delivery metadata
-  size?: ItemSize;
+  size?: any;
+  color?: string;
   weight?: number; // kg per unit
   fragile?: boolean;
   // Rental metadata - store rental days for reference only
@@ -21,8 +22,8 @@ export interface CartItem {
 interface CartContextType {
   items: CartItem[];
   addItem: (item: CartItem) => void;
-  removeItem: (id: string, mode: "buy" | "rent") => void;
-  updateQuantity: (id: string, mode: "buy" | "rent", quantity: number) => void;
+  removeItem: (id: string, mode: "buy" | "rent", color?: string, size?: string) => void;
+  updateQuantity: (id: string, mode: "buy" | "rent", quantity: number, color?: string, size?: string) => void;
   clearCart: () => void;
   total: number;
   // Caution fee for rentals (50% of rental total)
@@ -173,10 +174,19 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
   const addItem = (newItem: CartItem) => {
     setItems((prev) => {
-      const existing = prev.find((item) => item.id === newItem.id && item.mode === newItem.mode);
+      const existing = prev.find(
+        (item) =>
+          item.id === newItem.id &&
+          item.mode === newItem.mode &&
+          item.color === newItem.color &&
+          item.size === newItem.size
+      );
       if (existing) {
         return prev.map((item) =>
-          item.id === newItem.id && item.mode === newItem.mode
+          item.id === newItem.id &&
+          item.mode === newItem.mode &&
+          item.color === newItem.color &&
+          item.size === newItem.size
             ? { ...item, quantity: item.quantity + newItem.quantity }
             : item
         );
@@ -185,18 +195,39 @@ export function CartProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const removeItem = (id: string, mode: "buy" | "rent") => {
-    setItems((prev) => prev.filter((item) => !(item.id === id && item.mode === mode)));
+  const removeItem = (id: string, mode: "buy" | "rent", color?: string, size?: string) => {
+    setItems((prev) =>
+      prev.filter(
+        (item) =>
+          !(
+            item.id === id &&
+            item.mode === mode &&
+            (color === undefined || item.color === color) &&
+            (size === undefined || item.size === size)
+          )
+      )
+    );
   };
 
-  const updateQuantity = (id: string, mode: "buy" | "rent", quantity: number) => {
+  const updateQuantity = (
+    id: string,
+    mode: "buy" | "rent",
+    quantity: number,
+    color?: string,
+    size?: string
+  ) => {
     if (quantity <= 0) {
-      removeItem(id, mode);
+      removeItem(id, mode, color, size);
       return;
     }
     setItems((prev) =>
       prev.map((item) =>
-        item.id === id && item.mode === mode ? { ...item, quantity } : item
+        item.id === id &&
+        item.mode === mode &&
+        (color === undefined || item.color === color) &&
+        (size === undefined || item.size === size)
+          ? { ...item, quantity }
+          : item
       )
     );
   };

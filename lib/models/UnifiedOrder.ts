@@ -17,6 +17,7 @@ export interface IOrderItem {
   unitPrice: number;
   productId?: string | null; // null for custom orders
   selectedSize?: string;
+  selectedColor?: string;
   imageUrl?: string;
   image?: string; // Alternative field name for product image
   mode?: 'buy' | 'rent'; // Item mode: buy or rent
@@ -191,6 +192,7 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
         },
         productId: String,
         selectedSize: String,
+        selectedColor: String,
         imageUrl: String,
         image: String, // Alternative field for product image (from checkout)
         mode: {
