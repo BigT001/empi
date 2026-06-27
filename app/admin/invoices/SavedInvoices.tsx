@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, Download, Printer, Filter, Edit2 } from "lucide-react";
+import { Eye, Download, Printer, Filter, Edit2, Trash2 } from "lucide-react";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 
 interface Invoice {
@@ -368,6 +368,15 @@ export function SavedInvoices({ onEditInvoice }: SavedInvoicesProps) {
                             <Edit2 className="h-4 w-4" />
                           </button>
                         )}
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => handleDeleteInvoice(invoice._id, invoice.invoiceNumber)}
+                          className="p-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition"
+                          title="Delete Invoice"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
                       </div>
                     </td>
                   </tr>
