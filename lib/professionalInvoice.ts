@@ -287,6 +287,15 @@ export function generateProfessionalInvoiceHTML(
     .summary-section { 
       margin-bottom: 20px;
     }
+    .bank-details-box {
+      grid-column: 1 / -1;
+      margin-top: 16px;
+      padding: 14px;
+      border: 1.5px dashed #10b981;
+      border-radius: 12px;
+      background-color: #f0fdf4;
+      font-family: inherit;
+    }
     .payment-note { 
       background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.03));
       border-left: 4px solid #10b981;
@@ -547,11 +556,15 @@ export function generateProfessionalInvoiceHTML(
         flex-direction: column;
       }
       .payment-note {
-        order: 2;
+        order: 3;
         margin-bottom: 0;
       }
       .totals-box {
         order: 1;
+      }
+      .bank-details-box {
+        order: 2;
+        margin-top: 12px;
       }
       .footer-divider { gap: 4px; }
       .info-label { font-size: 8px; }
@@ -704,7 +717,7 @@ export function generateProfessionalInvoiceHTML(
 
         <!-- BANK PAYMENT DETAILS -->
         ${activeBank ? `
-        <div class="bank-details-box" style="margin-top: 16px; padding: 14px; border: 1.5px dashed #10b981; border-radius: 12px; background-color: #f0fdf4; font-family: inherit;">
+        <div class="bank-details-box">
           <h4 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #065f46; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
             🏛️ Bank Transfer Details
           </h4>
