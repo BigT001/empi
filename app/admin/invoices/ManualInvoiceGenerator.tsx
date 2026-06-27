@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Eye, Package, Share2 } from "lucide-react";
+import { Plus, Trash2, Eye, Package, Share2, MessageSquare, Mail, Download, Loader2, Save } from "lucide-react";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { StoredInvoice } from "@/lib/invoiceStorage";
 
@@ -48,6 +48,8 @@ export function ManualInvoiceGenerator() {
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [preview, setPreview] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showProductPicker, setShowProductPicker] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
@@ -116,7 +118,7 @@ export function ManualInvoiceGenerator() {
   const totalAmount = subtotal + taxAmount;
   const currency = CURRENCIES.find(c => c.code === formData.currency)!;
 
-  const handleSaveInvoice = async () => {
+  const handleShareAction = async (action: "whatsapp" | "download" | "email" | "save") => {
     if (!formData.customerName.trim()) {
       alert("Customer name is required");
       return;
@@ -125,6 +127,8 @@ export function ManualInvoiceGenerator() {
       alert("Add at least one item to the invoice");
       return;
     }
+
+    setIsSaving(true);
 
     const invoice = {
       invoiceNumber: formData.invoiceNumber,
@@ -158,30 +162,88 @@ export function ManualInvoiceGenerator() {
         body: JSON.stringify(invoice),
       });
 
-      if (response.ok) {
-        setSuccessMessage(`✅ Invoice ${formData.invoiceNumber} saved to database!`);
-        
-        // Reset form
-        setFormData({
-          invoiceNumber: `INV-${Date.now()}`,
-          customerName: "",
-          customerEmail: "",
-          customerPhone: "",
-          orderNumber: "",
-          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-          currency: "NGN",
-          taxRate: 7.5,
-        });
-        setItems([]);
-        
-        setTimeout(() => setSuccessMessage(""), 4000);
-      } else {
-        const error = await response.json();
-        alert(`Error: ${error.error || "Failed to save invoice"}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save invoice to database");
       }
+
+      const data = await response.json();
+      const savedInvoiceId = data.invoice?._id || data.invoice?.id;
+
+      if (!savedInvoiceId) {
+        throw new Error("API did not return a valid invoice ID");
+      }
+
+      const host = window.location.origin;
+      const downloadUrl = `${host}/api/invoices/${savedInvoiceId}/download`;
+
+      if (action === "whatsapp") {
+        const text = `Hello ${formData.customerName},\n\nHere is your invoice *${formData.invoiceNumber}* from *EMPI Costumes*.\n\n*Total:* ${currency.symbol}${totalAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}\n*Due Date:* ${formData.dueDate ? new Date(formData.dueDate).toLocaleDateString() : 'N/A'}\n\nYou can view and download it here: ${downloadUrl}\n\nThank you for your business!`;
+        const cleanPhone = formData.customerPhone ? formData.customerPhone.replace(/[^0-9]/g, "") : "";
+        
+        let finalPhone = cleanPhone;
+        if (cleanPhone.startsWith("0") && cleanPhone.length === 11) {
+          finalPhone = "234" + cleanPhone.substring(1);
+        } else if (cleanPhone.length > 0 && !cleanPhone.startsWith("234") && !cleanPhone.startsWith("+")) {
+          finalPhone = "234" + cleanPhone;
+        }
+
+        const whatsappUrl = finalPhone 
+          ? `https://api.whatsapp.com/send?phone=${finalPhone}&text=${encodeURIComponent(text)}`
+          : `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+        
+        window.open(whatsappUrl, "_blank");
+      } 
+      else if (action === "email") {
+        const subject = `Invoice ${formData.invoiceNumber} from EMPI Costumes`;
+        const body = `Hello ${formData.customerName},\n\nHere is your invoice ${formData.invoiceNumber} from EMPI Costumes.\n\nTotal: ${currency.symbol}${totalAmount.toLocaleString("en-NG", { minimumFractionDigits: 2 })}\nDue Date: ${formData.dueDate ? new Date(formData.dueDate).toLocaleDateString() : 'N/A'}\n\nYou can view and download the invoice here:\n${downloadUrl}\n\nThank you for your business!\n\nEMPI Costumes`;
+        const mailtoUrl = `mailto:${formData.customerEmail || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        window.open(mailtoUrl, "_blank");
+      } 
+      else if (action === "download") {
+        const professionalHtml = generateProfessionalInvoiceHTML({
+          ...invoice,
+          id: savedInvoiceId,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as any);
+        
+        const element = document.createElement("div");
+        element.innerHTML = professionalHtml;
+        
+        const html2pdf = (await import("html2pdf.js")).default;
+        const opt: any = {
+          margin: 10,
+          filename: `invoice-${formData.invoiceNumber}.pdf`,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        await html2pdf().from(element).set(opt).save();
+      }
+
+      setSuccessMessage(`✅ Invoice ${formData.invoiceNumber} saved successfully!`);
+      setShowShareModal(false);
+
+      // Reset form
+      setFormData({
+        invoiceNumber: `INV-${Date.now()}`,
+        customerName: "",
+        customerEmail: "",
+        customerPhone: "",
+        orderNumber: "",
+        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        currency: "NGN",
+        taxRate: 7.5,
+      });
+      setItems([]);
+      setTimeout(() => setSuccessMessage(""), 4000);
     } catch (err) {
-      console.error("Error saving invoice:", err);
-      alert("Error saving invoice to database");
+      console.error(err);
+      alert(err instanceof Error ? err.message : "Failed to save and share invoice");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -428,7 +490,7 @@ export function ManualInvoiceGenerator() {
                 Preview
               </button>
               <button
-                onClick={handleSaveInvoice}
+                onClick={() => setShowShareModal(true)}
                 disabled={items.length === 0 || !formData.customerName}
                 className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2"
               >
@@ -583,6 +645,91 @@ export function ManualInvoiceGenerator() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl animate-scaleIn border border-gray-100 flex flex-col">
+            <h3 className="text-xl font-bold mb-2 text-gray-900">Share Invoice</h3>
+            <p className="text-sm text-gray-500 mb-6">
+              Choose an action below. The invoice will be automatically saved to the database first.
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => handleShareAction("whatsapp")}
+                disabled={isSaving}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:bg-lime-50 hover:border-lime-500 transition text-left text-gray-900 group"
+              >
+                <div className="p-2 rounded-lg bg-lime-100 text-lime-600 group-hover:bg-lime-200">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm">Share on WhatsApp</p>
+                  <p className="text-xs text-gray-400">Send direct download link to client chat</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleShareAction("download")}
+                disabled={isSaving}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:bg-blue-50 hover:border-blue-500 transition text-left text-gray-900 group"
+              >
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-600 group-hover:bg-blue-200">
+                  <Download className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm">Download PDF</p>
+                  <p className="text-xs text-gray-400">Save high-quality PDF locally</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleShareAction("email")}
+                disabled={isSaving}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:bg-purple-50 hover:border-purple-500 transition text-left text-gray-900 group"
+              >
+                <div className="p-2 rounded-lg bg-purple-100 text-purple-600 group-hover:bg-purple-200">
+                  <Mail className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm">Share via Email</p>
+                  <p className="text-xs text-gray-400">Open client with pre-filled download link</p>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleShareAction("save")}
+                disabled={isSaving}
+                className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-gray-200 hover:bg-gray-50 hover:border-gray-500 transition text-left text-gray-900 group"
+              >
+                <div className="p-2 rounded-lg bg-gray-100 text-gray-600 group-hover:bg-gray-200">
+                  <Save className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm">Save Only</p>
+                  <p className="text-xs text-gray-400">Store in database without sending</p>
+                </div>
+              </button>
+            </div>
+
+            {isSaving && (
+              <div className="mt-4 flex items-center justify-center gap-2 text-sm text-lime-600 font-semibold">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Saving and preparing...
+              </div>
+            )}
+
+            <button
+              onClick={() => setShowShareModal(false)}
+              disabled={isSaving}
+              className="mt-6 w-full py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-bold transition text-sm disabled:opacity-50"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
