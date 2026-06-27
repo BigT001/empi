@@ -18,7 +18,17 @@ export async function GET(req: NextRequest) {
     }
 
     // Return banks in standardized format
-    const banks = settings.bankAccounts || [];
+    const banks = (settings.bankAccounts || []).map((b: any) => ({
+      id: b._id?.toString(),
+      _id: b._id?.toString(),
+      bankName: b.bankName,
+      accountName: b.accountName,
+      accountNumber: b.accountNumber,
+      bankCode: b.bankCode,
+      sortCode: b.sortCode,
+      instructions: b.instructions,
+      isActive: b.isActive,
+    }));
 
     return NextResponse.json({
       banks,
@@ -149,15 +159,21 @@ export async function PUT(req: NextRequest) {
       settings.bankAccounts.forEach((bank: any, idx: number) => {
         bank.isActive = idx === bankIndex;
       });
-    } else {
-      // Update bank details
-      if (bankName) settings.bankAccounts[bankIndex].bankName = bankName;
-      if (accountName) settings.bankAccounts[bankIndex].accountName = accountName;
-      if (accountNumber) settings.bankAccounts[bankIndex].accountNumber = accountNumber;
-      if (bankCode) settings.bankAccounts[bankIndex].bankCode = bankCode;
-      if (sortCode !== undefined) settings.bankAccounts[bankIndex].sortCode = sortCode || undefined;
-      if (instructions !== undefined) settings.bankAccounts[bankIndex].instructions = instructions || undefined;
+    } else if (isActive === false) {
+      settings.bankAccounts[bankIndex].isActive = false;
+      const hasActive = settings.bankAccounts.some((b: any) => b.isActive);
+      if (!hasActive && settings.bankAccounts.length > 0) {
+        settings.bankAccounts[0].isActive = true;
+      }
     }
+
+    // Update bank details if provided
+    if (bankName) settings.bankAccounts[bankIndex].bankName = bankName;
+    if (accountName) settings.bankAccounts[bankIndex].accountName = accountName;
+    if (accountNumber) settings.bankAccounts[bankIndex].accountNumber = accountNumber;
+    if (bankCode) settings.bankAccounts[bankIndex].bankCode = bankCode;
+    if (sortCode !== undefined) settings.bankAccounts[bankIndex].sortCode = sortCode || undefined;
+    if (instructions !== undefined) settings.bankAccounts[bankIndex].instructions = instructions || undefined;
 
     await settings.save();
 

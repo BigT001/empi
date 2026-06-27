@@ -18,11 +18,21 @@ export default function MyInvoicesPage() {
   const [selectedInvoice, setSelectedInvoice] = useState<StoredInvoice | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeBank, setActiveBank] = useState<any>(null);
 
   useEffect(() => {
     setIsHydrated(true);
     fetchInvoices();
   }, [buyer?.id]);
+
+  useEffect(() => {
+    fetch("/api/bank-details")
+      .then(res => res.json())
+      .then(data => {
+        if (data.bank) setActiveBank(data.bank);
+      })
+      .catch(err => console.error("Error fetching active bank details in MyInvoicesPage:", err));
+  }, []);
 
   const fetchInvoices = async () => {
     try {
@@ -67,7 +77,7 @@ export default function MyInvoicesPage() {
   };
 
   const handlePrintInvoice = (invoice: StoredInvoice) => {
-    const html = generateProfessionalInvoiceHTML(invoice);
+    const html = generateProfessionalInvoiceHTML(invoice, activeBank || undefined);
     const printWindow = window.open("", "", "width=1000,height=600");
     if (printWindow) {
       printWindow.document.write(html);
@@ -76,7 +86,7 @@ export default function MyInvoicesPage() {
   };
 
   const handleDownloadInvoice = (invoice: StoredInvoice) => {
-    const html = generateProfessionalInvoiceHTML(invoice);
+    const html = generateProfessionalInvoiceHTML(invoice, activeBank || undefined);
     const blob = new Blob([html], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

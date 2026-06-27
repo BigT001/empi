@@ -49,6 +49,16 @@ export function ManualInvoiceGenerator() {
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [preview, setPreview] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [activeBank, setActiveBank] = useState<any>(null);
+
+  useEffect(() => {
+    fetch("/api/bank-details")
+      .then(res => res.json())
+      .then(data => {
+        if (data.bank) setActiveBank(data.bank);
+      })
+      .catch(err => console.error("Error fetching active bank details in ManualInvoiceGenerator:", err));
+  }, []);
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showProductPicker, setShowProductPicker] = useState(false);
@@ -207,7 +217,7 @@ export function ManualInvoiceGenerator() {
           id: savedInvoiceId,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-        } as any);
+        } as any, activeBank || undefined);
         
         const element = document.createElement("div");
         element.innerHTML = professionalHtml;
@@ -543,7 +553,7 @@ export function ManualInvoiceGenerator() {
                   notes: 'Thank you for your business!',
                   createdAt: new Date().toISOString(),
                   updatedAt: new Date().toISOString(),
-                } as StoredInvoice)
+                } as StoredInvoice, activeBank || undefined)
               }} className="w-full" />
             </div>
           </div>

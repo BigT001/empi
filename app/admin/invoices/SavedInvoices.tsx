@@ -46,10 +46,22 @@ export function SavedInvoices() {
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmDialog, setConfirmDialog] = useState<ConfirmDialog>({ isOpen: false });
   const [updatingInvoiceId, setUpdatingInvoiceId] = useState<string | null>(null);
+  const [activeBank, setActiveBank] = useState<any>(null);
 
   useEffect(() => {
     loadInvoices();
   }, [filterType, filterStatus]);
+
+  useEffect(() => {
+    fetch("/api/bank-details")
+      .then(res => res.json())
+      .then(data => {
+        if (data.bank) {
+          setActiveBank(data.bank);
+        }
+      })
+      .catch(err => console.error("Error fetching active bank details in SavedInvoices:", err));
+  }, []);
 
   const loadInvoices = async () => {
     setIsLoading(true);
@@ -136,7 +148,7 @@ export function SavedInvoices() {
 
   const handlePrintInvoice = (invoice: Invoice) => {
     // Use the professional invoice HTML template for printing
-    const professionalHtml = generateProfessionalInvoiceHTML(invoice as any);
+    const professionalHtml = generateProfessionalInvoiceHTML(invoice as any, activeBank || undefined);
     const printWindow = window.open("", "", "width=1200,height=800");
     if (!printWindow) return;
     
@@ -147,7 +159,7 @@ export function SavedInvoices() {
 
   const handleDownloadInvoice = (invoice: Invoice) => {
     // Generate the professional invoice HTML
-    const professionalHtml = generateProfessionalInvoiceHTML(invoice as any);
+    const professionalHtml = generateProfessionalInvoiceHTML(invoice as any, activeBank || undefined);
     const blob = new Blob([professionalHtml], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -356,7 +368,7 @@ export function SavedInvoices() {
             {/* Professional Invoice Embedded */}
             <div className="flex-1 overflow-y-auto bg-gray-50 p-4">
               <iframe
-                srcDoc={generateProfessionalInvoiceHTML(selectedInvoice as any)}
+                srcDoc={generateProfessionalInvoiceHTML(selectedInvoice as any, activeBank || undefined)}
                 className="w-full h-full border-0 rounded-lg bg-white"
                 title={`Invoice ${selectedInvoice.invoiceNumber}`}
                 style={{ minHeight: "600px" }}

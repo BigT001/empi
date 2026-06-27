@@ -1,7 +1,10 @@
 // Mobile-Optimized Professional Invoice HTML Template
 import { StoredInvoice } from "./invoiceStorage";
 
-export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string {
+export function generateProfessionalInvoiceHTML(
+  invoice: StoredInvoice,
+  activeBank?: { bankName: string; accountName: string; accountNumber: string }
+): string {
   const invoiceDate = new Date(invoice.invoiceDate);
   const dateStr = invoiceDate.toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' });
 
@@ -698,6 +701,21 @@ export function generateProfessionalInvoiceHTML(invoice: StoredInvoice): string 
             <span>${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</span>
           </div>
         </div>
+
+        <!-- BANK PAYMENT DETAILS -->
+        ${activeBank ? `
+        <div class="bank-details-box" style="margin-top: 16px; padding: 14px; border: 1.5px dashed #10b981; border-radius: 12px; background-color: #f0fdf4; font-family: inherit;">
+          <h4 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #065f46; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
+            🏛️ Bank Transfer Details
+          </h4>
+          <div style="font-size: 12.5px; line-height: 1.5; color: #047857;">
+            <p style="margin-bottom: 4px;"><strong>Bank Name:</strong> ${activeBank.bankName}</p>
+            <p style="margin-bottom: 4px;"><strong>Account Name:</strong> ${activeBank.accountName}</p>
+            <p style="margin-bottom: 4px;"><strong>Account Number:</strong> <span style="font-family: monospace; font-size: 13.5px; font-weight: 700; background: #d1fae5; padding: 2px 6px; border-radius: 4px; border: 1px solid #a7f3d0; letter-spacing: 0.5px;">${activeBank.accountNumber}</span></p>
+            <p style="margin-top: 6px; font-size: 10px; color: #065f46; font-style: italic; opacity: 0.9;">Kindly make payments directly into this account and share your proof of payment.</p>
+          </div>
+        </div>
+        ` : ''}
         
         <div class="payment-note">
           ${invoice.type === 'automatic' ? `✓ Your payment has been received and processed. Thank you for your purchase!` : `📋 Invoice generated and ready. Awaiting payment.`}

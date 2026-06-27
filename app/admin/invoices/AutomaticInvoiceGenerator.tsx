@@ -9,9 +9,19 @@ export function AutomaticInvoiceGenerator() {
   const [invoices, setInvoices] = useState<StoredInvoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<StoredInvoice | null>(null);
+  const [activeBank, setActiveBank] = useState<any>(null);
 
   useEffect(() => {
     loadInvoices();
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/bank-details")
+      .then(res => res.json())
+      .then(data => {
+        if (data.bank) setActiveBank(data.bank);
+      })
+      .catch(err => console.error("Error fetching active bank details in AutomaticInvoiceGenerator:", err));
   }, []);
 
   const loadInvoices = () => {
@@ -39,7 +49,7 @@ export function AutomaticInvoiceGenerator() {
 
   const handlePrintInvoice = (invoice: StoredInvoice) => {
     // Use the professional invoice HTML template for printing
-    const professionalHtml = generateProfessionalInvoiceHTML(invoice);
+    const professionalHtml = generateProfessionalInvoiceHTML(invoice, activeBank || undefined);
     const printWindow = window.open("", "", "width=1200,height=800");
     if (!printWindow) return;
     printWindow.document.write(professionalHtml);
@@ -49,7 +59,7 @@ export function AutomaticInvoiceGenerator() {
 
   const handleDownloadInvoice = (invoice: StoredInvoice) => {
     // Generate the professional invoice HTML
-    const professionalHtml = generateProfessionalInvoiceHTML(invoice);
+    const professionalHtml = generateProfessionalInvoiceHTML(invoice, activeBank || undefined);
     const blob = new Blob([professionalHtml], { type: "text/html" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");

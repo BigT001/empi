@@ -3,6 +3,7 @@ import { IOrder } from '@/lib/models/Order';
 import { sendInvoiceEmail } from '@/lib/email';
 import { generateProfessionalInvoiceHTML } from '@/lib/professionalInvoice';
 import connectDB from '@/lib/mongodb';
+import { getActiveBankAccount } from '@/lib/utils/bank';
 
 /**
  * Generate a unique invoice number
@@ -96,7 +97,8 @@ export async function createInvoiceFromOrder(order: IOrder): Promise<any> {
 
     // Generate professional invoice HTML and send emails to customer and admin
     const invoiceForEmail = invoice.toObject ? invoice.toObject() : invoice;
-    const invoiceHtml = generateProfessionalInvoiceHTML(invoiceForEmail as any);
+    const activeBank = await getActiveBankAccount();
+    const invoiceHtml = generateProfessionalInvoiceHTML(invoiceForEmail as any, activeBank || undefined);
     await sendInvoiceEmail(invoice.customerEmail, invoice.customerName, invoice.invoiceNumber, invoiceHtml, invoice.orderNumber);
 
     return {

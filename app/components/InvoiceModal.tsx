@@ -12,9 +12,18 @@ interface InvoiceModalProps {
 
 export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
   const [mounted, setMounted] = useState(false);
+  const [activeBank, setActiveBank] = useState<any>(null);
 
   useEffect(() => {
     setMounted(true);
+    fetch("/api/bank-details")
+      .then(res => res.json())
+      .then(data => {
+        if (data.bank) {
+          setActiveBank(data.bank);
+        }
+      })
+      .catch(err => console.error("Error fetching bank details in modal:", err));
     return () => setMounted(false);
   }, []);
 
@@ -46,7 +55,7 @@ export function InvoiceModal({ invoice, onClose }: InvoiceModalProps) {
           </button>
           
           {/* PROFESSIONAL INVOICE CONTENT - Scrollable */}
-          <div className="p-4 md:p-8 overflow-y-auto flex-1" dangerouslySetInnerHTML={{ __html: generateProfessionalInvoiceHTML(invoice) }} />
+          <div className="p-4 md:p-8 overflow-y-auto flex-1" dangerouslySetInnerHTML={{ __html: generateProfessionalInvoiceHTML(invoice, activeBank || undefined) }} />
         </div>
       </div>
     </>

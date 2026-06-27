@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Invoice from "@/lib/models/Invoice";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
+import { getActiveBankAccount } from "@/lib/utils/bank";
 
 /**
  * GET /api/invoices/[id]/download
@@ -73,8 +74,11 @@ export async function GET(
       companyCountry: "Nigeria",
     };
 
+    // Fetch active bank details
+    const activeBank = await getActiveBankAccount();
+
     // Generate HTML
-    const html = generateProfessionalInvoiceHTML(invoiceData);
+    const html = generateProfessionalInvoiceHTML(invoiceData, activeBank || undefined);
 
     // Return as HTML response
     return new NextResponse(html, {

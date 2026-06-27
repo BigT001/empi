@@ -5,6 +5,7 @@ import { Plus, Edit2, Trash2, Check, X, Copy, Eye, EyeOff, CreditCard, Landmark 
 
 interface BankDetails {
   id?: string;
+  _id?: string;
   bankName: string;
   accountName: string;
   accountNumber: string;
@@ -78,7 +79,7 @@ export default function BankDetailsPage() {
 
   const handleEdit = (bank: BankDetails) => {
     setFormData(bank);
-    setEditingId(bank.id || null);
+    setEditingId(bank.id || bank._id || null);
     setShowNewForm(true);
   };
 
@@ -119,7 +120,7 @@ export default function BankDetailsPage() {
           throw new Error(error.error || "Failed to update bank");
         }
 
-        setBanks(banks.map(b => (b.id === editingId ? { ...formData, id: editingId } : b)));
+        setBanks(banks.map(b => ((b.id === editingId || b._id === editingId) ? { ...formData, id: editingId, _id: editingId } : b)));
         setMessage({ type: "success", text: "Bank details updated successfully" });
       } else {
         // Add new bank
@@ -193,7 +194,7 @@ export default function BankDetailsPage() {
         throw new Error(error.error || "Failed to delete bank");
       }
 
-      setBanks(banks.filter(b => b.id !== bankId));
+      setBanks(banks.filter(b => b.id !== bankId && b._id !== bankId));
       setMessage({ type: "success", text: "Bank deleted successfully" });
     } catch (error) {
       console.error("Error deleting bank:", error);
@@ -228,7 +229,7 @@ export default function BankDetailsPage() {
       setBanks(
         banks.map(b => ({
           ...b,
-          isActive: b.id === bankId ? true : false,
+          isActive: (b.id === bankId || b._id === bankId) ? true : false,
         }))
       );
       setMessage({ type: "success", text: "Active bank updated" });
@@ -391,100 +392,135 @@ export default function BankDetailsPage() {
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {banks.map((bank, index) => (
-              <div
-                key={bank.id || `bank-${index}`}
-                className={`relative rounded-lg shadow-md border-2 overflow-hidden transition ${bank.isActive
-                  ? "border-green-500 bg-gradient-to-br from-green-50 to-lime-50"
-                  : "border-gray-200 bg-white hover:border-gray-300"
-                  }`}
-              >
-                {/* Active Badge */}
-                {bank.isActive && (
-                  <div className="absolute top-0 right-0 bg-gradient-to-r from-green-600 to-lime-600 text-white px-4 py-2 rounded-bl-lg flex items-center gap-2 font-semibold">
-                    <Check className="h-4 w-4" />
-                    Active
-                  </div>
-                )}
-
-                <div className="p-6 pt-12">
-                  {/* Bank Name */}
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">{bank.bankName}</h3>
-
-                  {/* Account Details */}
-                  <div className="space-y-3 mb-6">
-                    {/* Account Name */}
-                    <div>
-                      <p className="text-xs text-gray-600 font-medium">Account Name</p>
-                      <p className="text-sm font-semibold text-gray-900">{bank.accountName}</p>
-                    </div>
-
-                    {/* Account Number */}
-                    <div>
-                      <p className="text-xs text-gray-600 font-medium mb-1">Account Number</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {banks.map((bank, index) => {
+              const bankId = bank.id || bank._id;
+              const isBankActive = bank.isActive;
+              return (
+                <div key={bankId || `bank-${index}`} className="flex flex-col gap-4">
+                  {/* Visual Debit Card */}
+                  <div
+                    className={`relative rounded-3xl p-6 shadow-md transition-all duration-300 transform hover:scale-[1.02] flex flex-col justify-between min-h-[220px] overflow-hidden ${
+                      isBankActive
+                        ? "bg-gradient-to-tr from-slate-900 via-emerald-950 to-slate-950 text-white border-2 border-emerald-500 shadow-lg shadow-emerald-950/20"
+                        : "bg-white text-slate-800 border border-slate-200 hover:border-slate-300 hover:shadow-lg"
+                    }`}
+                  >
+                    {/* Top row: Chip and Landmark Icon */}
+                    <div className="flex justify-between items-start mb-4">
+                      {/* Stylized Golden Card Chip */}
+                      <div className="w-10 h-7 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 rounded-md opacity-90 flex items-center justify-center border border-amber-300 shadow-sm">
+                        <div className="grid grid-cols-3 gap-[1.5px] w-full h-full p-[3px]">
+                          <div className="border-[0.5px] border-amber-700/20 rounded-sm"></div>
+                          <div className="border-[0.5px] border-amber-700/20 rounded-sm"></div>
+                          <div className="border-[0.5px] border-amber-700/20 rounded-sm"></div>
+                          <div className="border-[0.5px] border-amber-700/20 rounded-sm"></div>
+                          <div className="border-[0.5px] border-amber-700/20 rounded-sm"></div>
+                          <div className="border-[0.5px] border-amber-700/20 rounded-sm"></div>
+                        </div>
+                      </div>
                       <div className="flex items-center gap-2">
-                        <input
-                          type={visibleAccounts.has(bank.id || "") ? "text" : "password"}
-                          value={bank.accountNumber}
-                          readOnly
-                          className="flex-1 px-3 py-1 bg-gray-100 rounded text-sm font-mono font-semibold text-gray-900 border border-gray-300"
-                        />
-                        <button
-                          onClick={() => toggleVisibility(bank.id)}
-                          className="p-1 text-gray-600 hover:text-gray-900 transition"
-                          title={visibleAccounts.has(bank.id || "") ? "Hide" : "Show"}
-                        >
-                          {visibleAccounts.has(bank.id || "") ? (
-                            <EyeOff className="h-4 w-4" />
-                          ) : (
-                            <Eye className="h-4 w-4" />
-                          )}
-                        </button>
-                        <button
-                          onClick={() => copyToClipboard(bank.accountNumber, "Account Number")}
-                          className="p-1 text-gray-600 hover:text-gray-900 transition"
-                          title="Copy"
-                        >
-                          <Copy className="h-4 w-4" />
-                        </button>
+                        {isBankActive && (
+                          <span className="inline-flex items-center gap-1 bg-emerald-500/20 text-emerald-300 px-3 py-1 rounded-full text-xs font-semibold border border-emerald-500/30">
+                            <Check className="h-3 w-3" />
+                            Active
+                          </span>
+                        )}
+                        <Landmark className={`h-6 w-6 ${isBankActive ? "text-emerald-400" : "text-slate-400"}`} />
                       </div>
                     </div>
 
+                    {/* Middle: Bank Name & Stylized Account Number */}
+                    <div className="my-3">
+                      <h3 className={`text-xl font-black tracking-wide mb-2 ${isBankActive ? "text-white" : "text-slate-900"}`}>
+                        {bank.bankName}
+                      </h3>
+                      
+                      <div>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className={`text-[9px] uppercase tracking-widest font-bold ${isBankActive ? "text-slate-400" : "text-slate-500"}`}>
+                            Account Number
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleVisibility(bankId)}
+                              className={`p-1 rounded transition ${isBankActive ? "hover:bg-white/10 text-slate-400 hover:text-white" : "hover:bg-slate-100 text-slate-500 hover:text-slate-800"}`}
+                              title={visibleAccounts.has(bankId || "") ? "Hide" : "Show"}
+                            >
+                              {visibleAccounts.has(bankId || "") ? (
+                                <EyeOff className="h-4 w-4" />
+                              ) : (
+                                <Eye className="h-4 w-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={() => copyToClipboard(bank.accountNumber, "Account Number")}
+                              className={`p-1 rounded transition ${isBankActive ? "hover:bg-white/10 text-slate-400 hover:text-white" : "hover:bg-slate-100 text-slate-500 hover:text-slate-800"}`}
+                              title="Copy"
+                            >
+                              <Copy className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </div>
+                        <p className={`font-mono text-lg md:text-xl font-bold tracking-widest leading-none ${isBankActive ? "text-emerald-300" : "text-slate-800"}`}>
+                          {visibleAccounts.has(bankId || "") 
+                            ? bank.accountNumber 
+                            : "••••  ••••  " + bank.accountNumber.slice(-4)}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Bottom: Account Name */}
+                    <div className="mt-2 pt-2 border-t border-dashed border-slate-700/20">
+                      <span className={`text-[9px] uppercase tracking-widest font-bold block ${isBankActive ? "text-slate-400" : "text-slate-500"}`}>
+                        Account Holder
+                      </span>
+                      <p className={`font-bold tracking-wide truncate ${isBankActive ? "text-white" : "text-slate-900"}`}>
+                        {bank.accountName}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Actions Grid */}
+                  <div className="flex gap-2">
+                    {!isBankActive && (
+                      <button
+                        onClick={() => handleSetActive(bankId)}
+                        disabled={saving}
+                        className="flex-1 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-700 hover:to-green-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-sm hover:shadow-md active:scale-95"
+                      >
+                        <Check className="h-3.5 w-3.5" />
+                        Set Active
+                      </button>
+                    )}
+                    <button
+                      onClick={() => handleEdit(bank)}
+                      disabled={saving}
+                      className={`flex-1 font-semibold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border active:scale-95 ${
+                        isBankActive 
+                          ? "bg-slate-800 hover:bg-slate-750 text-slate-200 border-slate-700 hover:border-slate-600" 
+                          : "bg-blue-50 hover:bg-blue-100 text-blue-700 border-blue-100"
+                      }`}
+                    >
+                      <Edit2 className="h-3.5 w-3.5" />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleDelete(bankId)}
+                      disabled={saving}
+                      className={`flex-1 font-semibold py-2.5 px-3 rounded-xl text-xs transition flex items-center justify-center gap-1.5 border active:scale-95 ${
+                        isBankActive 
+                          ? "bg-red-950/30 hover:bg-red-950/50 text-red-400 border-red-900/30 hover:border-red-900/50" 
+                          : "bg-red-50 hover:bg-red-100 text-red-700 border-red-100"
+                      }`}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Delete
+                    </button>
                   </div>
                 </div>
-
-                {/* Action Buttons */}
-                <div className="flex gap-2">
-                  {!bank.isActive && (
-                    <button
-                      onClick={() => handleSetActive(bank.id)}
-                      disabled={saving}
-                      className="flex-1 bg-gradient-to-r from-green-600 to-lime-600 hover:from-green-700 hover:to-lime-700 disabled:from-gray-400 disabled:to-gray-400 text-white font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
-                    >
-                      <Check className="h-4 w-4" />
-                      Set Active
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleEdit(bank)}
-                    disabled={saving}
-                    className="flex-1 bg-blue-100 hover:bg-blue-200 disabled:bg-gray-200 text-blue-700 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(bank.id)}
-                    disabled={saving}
-                    className="flex-1 bg-red-100 hover:bg-red-200 disabled:bg-gray-200 text-red-700 font-semibold px-4 py-2 rounded-lg text-sm transition flex items-center justify-center gap-2"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    Delete
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
