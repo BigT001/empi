@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Eye, Download, Printer, Filter } from "lucide-react";
+import { Eye, Download, Printer, Filter, Edit2 } from "lucide-react";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 
 interface Invoice {
@@ -37,7 +37,11 @@ interface ConfirmDialog {
   invoiceNumber?: string;
 }
 
-export function SavedInvoices() {
+interface SavedInvoicesProps {
+  onEditInvoice?: (invoice: Invoice) => void;
+}
+
+export function SavedInvoices({ onEditInvoice }: SavedInvoicesProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -258,95 +262,119 @@ export function SavedInvoices() {
           <p className="text-sm text-gray-500">Try adjusting your filters or create a new invoice</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredInvoices.map((invoice) => (
-            <div key={invoice._id} className="bg-white rounded-lg shadow-md border border-gray-200 p-5 hover:shadow-lg hover:border-lime-300 transition-all">
-              {/* Card Header */}
-              <div className="mb-3">
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex-1">
-                    <p className="font-bold text-gray-900 text-base">{invoice.invoiceNumber}</p>
-                  </div>
-                  <span className={`inline-block px-2 py-1 rounded text-xs font-bold whitespace-nowrap ${typeColors[invoice.type]}`}>
-                    {invoice.type}
-                  </span>
-                </div>
-              </div>
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm text-gray-500">
+              <thead className="bg-gray-50 text-xs text-gray-700 uppercase tracking-wider border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-4 font-semibold text-gray-700">Invoice #</th>
+                  <th className="px-6 py-4 font-semibold text-gray-700">Customer</th>
+                  <th className="px-6 py-4 font-semibold text-gray-700">Type</th>
+                  <th className="px-6 py-4 font-semibold text-gray-700">Date</th>
+                  <th className="px-6 py-4 font-semibold text-gray-700">Amount</th>
+                  <th className="px-6 py-4 font-semibold text-gray-700">Status</th>
+                  <th className="px-6 py-4 font-semibold text-right text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-150">
+                {filteredInvoices.map((invoice) => (
+                  <tr key={invoice._id} className="hover:bg-gray-50 transition-colors">
+                    {/* Invoice Number */}
+                    <td className="px-6 py-4 font-bold text-gray-900 whitespace-nowrap">
+                      {invoice.invoiceNumber}
+                    </td>
 
-              {/* Customer Info */}
-              <div className="mb-3 pb-3 border-b border-gray-200">
-                <p className="font-semibold text-gray-900 text-sm mb-1">{invoice.customerName}</p>
-                <p className="text-xs text-gray-600 truncate">{invoice.customerEmail}</p>
-              </div>
+                    {/* Customer */}
+                    <td className="px-6 py-4">
+                      <div className="text-gray-900 font-semibold">{invoice.customerName}</div>
+                      <div className="text-xs text-gray-500">{invoice.customerEmail}</div>
+                    </td>
 
-              {/* Quick Info */}
-              <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
-                <div>
-                  <p className="text-xs text-gray-600 font-semibold">Date</p>
-                  <p className="text-gray-900">{new Date(invoice.invoiceDate).toLocaleDateString()}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-xs text-gray-600 font-semibold">Items</p>
-                  <p className="text-gray-900">{invoice.items.length}</p>
-                </div>
-              </div>
+                    {/* Type Badge */}
+                    <td className="px-6 py-4">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold capitalize ${typeColors[invoice.type]}`}>
+                        {invoice.type}
+                      </span>
+                    </td>
 
-              {/* Total Amount */}
-              <div className="bg-gradient-to-r from-lime-50 to-lime-100 rounded-lg p-3 mb-3 border border-lime-200">
-                <p className="text-xs text-lime-700 font-semibold mb-1">Amount</p>
-                <p className="text-xl font-bold text-lime-600">
-                  {invoice.currencySymbol}{invoice.totalAmount.toLocaleString("en-NG", { maximumFractionDigits: 0 })}
-                </p>
-              </div>
+                    {/* Date */}
+                    <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                      {new Date(invoice.invoiceDate).toLocaleDateString()}
+                    </td>
 
-              {/* Status & Actions */}
-              <div className="space-y-2">
-                {invoice.type === 'manual' && (
-                  <select
-                    value={invoice.status}
-                    onChange={(e) => handleStatusChange(invoice._id, invoice.invoiceNumber, invoice.status, e.target.value)}
-                    disabled={updatingInvoiceId === invoice._id}
-                    className={`w-full px-2 py-2 rounded text-xs font-semibold border-0 cursor-pointer transition disabled:opacity-50 disabled:cursor-not-allowed ${statusColors[invoice.status]}`}
-                  >
-                    <option value="draft">Draft</option>
-                    <option value="sent">Sent</option>
-                    <option value="paid">Paid</option>
-                    <option value="overdue">Overdue</option>
-                  </select>
-                )}
-                {invoice.type === 'automatic' && (
-                  <div className={`w-full px-2 py-2 rounded text-xs font-semibold text-center ${statusColors['paid']}`}>
-                    Paid (Automatic)
-                  </div>
-                )}
-                
-                <div className="grid grid-cols-4 gap-1.5">
-                  <button
-                    onClick={() => setSelectedInvoice(invoice)}
-                    className="flex items-center justify-center bg-blue-50 hover:bg-blue-100 text-blue-600 p-2 rounded text-xs transition"
-                    title="View"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handlePrintInvoice(invoice)}
-                    className="flex items-center justify-center bg-purple-50 hover:bg-purple-100 text-purple-600 p-2 rounded text-xs transition"
-                    title="Print"
-                  >
-                    <Printer className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleDownloadInvoice(invoice)}
-                    className="flex items-center justify-center bg-green-50 hover:bg-green-100 text-green-600 p-2 rounded text-xs transition"
-                    title="Download"
-                  >
-                    <Download className="h-4 w-4" />
-                  </button>
+                    {/* Amount */}
+                    <td className="px-6 py-4 font-bold text-gray-900 whitespace-nowrap">
+                      {invoice.currencySymbol}{invoice.totalAmount.toLocaleString("en-NG", { maximumFractionDigits: 2 })}
+                    </td>
 
-                </div>
-              </div>
-            </div>
-          ))}
+                    {/* Status Select/Badge */}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {invoice.type === 'manual' ? (
+                        <select
+                          value={invoice.status}
+                          onChange={(e) => handleStatusChange(invoice._id, invoice.invoiceNumber, invoice.status, e.target.value)}
+                          disabled={updatingInvoiceId === invoice._id}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-bold border-0 cursor-pointer transition focus:outline-none focus:ring-2 focus:ring-lime-500 disabled:opacity-50 ${statusColors[invoice.status]}`}
+                        >
+                          <option value="draft">Draft</option>
+                          <option value="sent">Sent</option>
+                          <option value="paid">Paid</option>
+                          <option value="overdue">Overdue</option>
+                        </select>
+                      ) : (
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${statusColors['paid']}`}>
+                          Paid (Automatic)
+                        </span>
+                      )}
+                    </td>
+
+                    {/* Actions */}
+                    <td className="px-6 py-4 text-right whitespace-nowrap">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* View Button */}
+                        <button
+                          onClick={() => setSelectedInvoice(invoice)}
+                          className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-600 rounded-lg transition"
+                          title="View"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        
+                        {/* Print Button */}
+                        <button
+                          onClick={() => handlePrintInvoice(invoice)}
+                          className="p-2 bg-purple-50 hover:bg-purple-100 text-purple-600 rounded-lg transition"
+                          title="Print"
+                        >
+                          <Printer className="h-4 w-4" />
+                        </button>
+                        
+                        {/* Download Button */}
+                        <button
+                          onClick={() => handleDownloadInvoice(invoice)}
+                          className="p-2 bg-green-50 hover:bg-green-100 text-green-600 rounded-lg transition"
+                          title="Download"
+                        >
+                          <Download className="h-4 w-4" />
+                        </button>
+
+                        {/* Edit Button (Only for manual invoices) */}
+                        {invoice.type === 'manual' && onEditInvoice && (
+                          <button
+                            onClick={() => onEditInvoice(invoice)}
+                            className="p-2 bg-amber-50 hover:bg-amber-100 text-amber-600 rounded-lg transition"
+                            title="Edit Invoice"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

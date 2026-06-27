@@ -29,7 +29,12 @@ const CURRENCIES = [
   { code: "EUR", symbol: "€", name: "Euro" },
 ];
 
-export function ManualInvoiceGenerator() {
+interface ManualInvoiceGeneratorProps {
+  invoiceToEdit?: any;
+  onCancelEdit?: () => void;
+}
+
+export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualInvoiceGeneratorProps) {
   // Generate short invoice number
   const generateShortInvoiceNumber = () => {
     return `INV-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
@@ -59,6 +64,32 @@ export function ManualInvoiceGenerator() {
       })
       .catch(err => console.error("Error fetching active bank details in ManualInvoiceGenerator:", err));
   }, []);
+
+  useEffect(() => {
+    if (invoiceToEdit) {
+      setFormData({
+        invoiceNumber: invoiceToEdit.invoiceNumber,
+        customerName: invoiceToEdit.customerName || "",
+        customerEmail: invoiceToEdit.customerEmail || "",
+        customerPhone: invoiceToEdit.customerPhone || "",
+        orderNumber: invoiceToEdit.orderNumber || "",
+        dueDate: invoiceToEdit.dueDate ? new Date(invoiceToEdit.dueDate).toISOString().split("T")[0] : "",
+        currency: invoiceToEdit.currency || "NGN",
+        taxRate: invoiceToEdit.taxRate || 7.5,
+      });
+
+      setItems(
+        (invoiceToEdit.items || []).map((item: any) => ({
+          id: item.id || Math.random().toString(36).substring(2, 9),
+          name: item.name || "",
+          quantity: item.quantity !== undefined ? item.quantity : "",
+          price: item.price !== undefined ? item.price : "",
+          productId: item.productId,
+          imageUrl: item.imageUrl,
+        }))
+      );
+    }
+  }, [invoiceToEdit]);
   const [isSaving, setIsSaving] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [showProductPicker, setShowProductPicker] = useState(false);
@@ -140,19 +171,21 @@ export function ManualInvoiceGenerator() {
 
     setIsSaving(true);
 
+    const isEditMode = !!invoiceToEdit;
+
     const invoice = {
       invoiceNumber: formData.invoiceNumber,
       customerName: formData.customerName,
       customerEmail: formData.customerEmail,
       customerPhone: formData.customerPhone,
-      orderNumber: formData.orderNumber || `MAN-${Date.now()}`,
-      invoiceDate: new Date().toISOString(),
+      orderNumber: formData.orderNumber || (invoiceToEdit ? invoiceToEdit.orderNumber : `MAN-${Date.now()}`),
+      invoiceDate: invoiceToEdit ? invoiceToEdit.invoiceDate : new Date().toISOString(),
       dueDate: formData.dueDate,
       currency: formData.currency,
       currencySymbol: currency.symbol,
       taxRate: formData.taxRate,
       type: 'manual',
-      status: 'sent',
+      status: invoiceToEdit ? invoiceToEdit.status : 'sent',
       items: items.map(item => ({
         id: item.id,
         name: item.name,
@@ -166,8 +199,10 @@ export function ManualInvoiceGenerator() {
     };
 
     try {
-      const response = await fetch("/api/invoices", {
-        method: "POST",
+      const url = isEditMode ? `/api/invoices/${invoiceToEdit._id || invoiceToEdit.id}` : "/api/invoices";
+      const method = isEditMode ? "PUT" : "POST";
+      const response = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(invoice),
       });
@@ -234,22 +269,29 @@ export function ManualInvoiceGenerator() {
         await html2pdf().from(element).set(opt).save();
       }
 
-      setSuccessMessage(`✅ Invoice ${formData.invoiceNumber} saved successfully!`);
+      setSuccessMessage(isEditMode ? `✅ Invoice ${formData.invoiceNumber} updated successfully!` : `✅ Invoice ${formData.invoiceNumber} saved successfully!`);
       setShowShareModal(false);
 
-      // Reset form
-      setFormData({
-        invoiceNumber: `INV-${Date.now()}`,
-        customerName: "",
-        customerEmail: "",
-        customerPhone: "",
-        orderNumber: "",
-        dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
-        currency: "NGN",
-        taxRate: 7.5,
-      });
-      setItems([]);
-      setTimeout(() => setSuccessMessage(""), 4000);
+      if (isEditMode && onCancelEdit) {
+        setTimeout(() => {
+          onCancelEdit();
+          setSuccessMessage("");
+        }, 1500);
+      } else {
+        // Reset form
+        setFormData({
+          invoiceNumber: generateShortInvoiceNumber(),
+          customerName: "",
+          customerEmail: "",
+          customerPhone: "",
+          orderNumber: "",
+          dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+          currency: "NGN",
+          taxRate: 7.5,
+        });
+        setItems([]);
+        setTimeout(() => setSuccessMessage(""), 4000);
+      }
     } catch (err) {
       console.error(err);
       alert(err instanceof Error ? err.message : "Failed to save and share invoice");
@@ -262,8 +304,12 @@ export function ManualInvoiceGenerator() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Create Manual Invoice</h2>
-        <p className="text-sm text-gray-600 mt-1">Generate custom invoices to send to your clients</p>
+        <h2 className="text-2xl font-bold text-gray-900">
+          {invoiceToEdit ? `Edit Invoice ${formData.invoiceNumber}` : "Create Manual Invoice"}
+        </h2>
+        <p className="text-sm text-gray-600 mt-1">
+          {invoiceToEdit ? "Modify invoice details and save changes" : "Generate custom invoices to send to your clients"}
+        </p>
       </div>
 
       {/* Success Message */}
@@ -506,8 +552,16 @@ export function ManualInvoiceGenerator() {
                 className="w-full bg-lime-600 hover:bg-lime-700 disabled:bg-gray-400 text-white px-4 py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2"
               >
                 <Share2 className="h-4 w-4" />
-                Share
+                {invoiceToEdit ? "Save & Share" : "Share"}
               </button>
+              {invoiceToEdit && onCancelEdit && (
+                <button
+                  onClick={onCancelEdit}
+                  className="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-semibold transition flex items-center justify-center gap-2 border border-gray-300"
+                >
+                  Cancel Edit
+                </button>
+              )}
             </div>
           </div>
         </div>

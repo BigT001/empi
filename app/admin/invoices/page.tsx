@@ -9,10 +9,21 @@ export default function AdminInvoicesPage() {
   const { mounted } = useResponsive();
   const [activeTab, setActiveTab] = useState<"manual" | "saved">("saved");
   const [isHydrated, setIsHydrated] = useState(false);
+  const [invoiceToEdit, setInvoiceToEdit] = useState<any>(null);
 
   useEffect(() => {
     setIsHydrated(true);
   }, []);
+
+  const handleEditInvoice = (invoice: any) => {
+    setInvoiceToEdit(invoice);
+    setActiveTab("manual");
+  };
+
+  const handleCancelEdit = () => {
+    setInvoiceToEdit(null);
+    setActiveTab("saved");
+  };
 
   if (!mounted || !isHydrated) {
     return null;
@@ -52,12 +63,18 @@ export default function AdminInvoicesPage() {
 
         {/* Tab Content */}
         <div className="animate-fadeIn">
-          {activeTab === "manual" && <ManualInvoiceGenerator />}
-          {activeTab === "saved" && <SavedInvoices />}
+          {activeTab === "manual" && (
+            <ManualInvoiceGenerator 
+              invoiceToEdit={invoiceToEdit} 
+              onCancelEdit={handleCancelEdit} 
+            />
+          )}
+          {activeTab === "saved" && (
+            <SavedInvoices onEditInvoice={handleEditInvoice} />
+          )}
         </div>
       </main>
       {/* Footer removed */}
     </div>
   );
 }
-
