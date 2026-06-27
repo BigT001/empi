@@ -164,7 +164,8 @@ export function ManualInvoiceGenerator() {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save invoice to database");
+        const errorMsg = errorData.details || errorData.error || "Failed to save invoice to database";
+        throw new Error(errorMsg);
       }
 
       const data = await response.json();
