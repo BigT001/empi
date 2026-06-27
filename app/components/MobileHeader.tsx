@@ -122,14 +122,16 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
   return (
     <>
       <div
-        className={`md:hidden fixed top-0 left-0 right-0 z-[110] transition-all duration-300 ease-in-out border-b border-gray-100 dark:border-white/5 shadow-sm ${headerVisible || showMobileMenu ? 'translate-y-0' : '-translate-y-full'
-          } ${scrolled ? 'bg-white/95 dark:bg-black/80 backdrop-blur-md' : 'bg-white dark:bg-[#0a0a0a]'}`}
+        className={`md:hidden fixed top-0 left-0 right-0 z-[110] transition-all duration-300 ease-in-out border-b border-slate-100 dark:border-white/5 shadow-sm ${headerVisible || showMobileMenu ? 'translate-y-0' : '-translate-y-full'
+          } ${scrolled ? 'bg-white/80 dark:bg-black/75 backdrop-blur-md border-b border-white/20 dark:border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.05)]' : 'bg-white dark:bg-[#0a0a0a]'}`}
       >
         {/* Announcement Bar */}
-        <div className="bg-lime-600 text-white py-1.5 px-4 text-center">
-          <p className="text-[8px] font-black uppercase tracking-[0.2em]">
+        <div className="bg-gradient-to-r from-lime-950 via-[#0a0f02] to-lime-950 dark:from-[#0d1704] dark:via-black dark:to-[#0d1704] text-white py-1.5 px-4 text-center border-b border-lime-500/10 flex items-center justify-center gap-1.5">
+          <span className="w-1 h-1 rounded-full bg-lime-500 animate-pulse shadow-[0_0_6px_rgba(132,204,22,0.8)]" />
+          <p className="text-[8px] font-black uppercase tracking-[0.15em] text-lime-400/90 dark:text-lime-400">
             Pre-order: Minimum 1 week delivery
           </p>
+          <span className="w-1 h-1 rounded-full bg-lime-500 animate-pulse shadow-[0_0_6px_rgba(132,204,22,0.8)]" />
         </div>
 
         <div className="relative flex items-center h-16 px-4 gap-3">
@@ -147,29 +149,29 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
             </Link>
           </div>
 
-          {/* Search Bar (Middle) - Functional Inline Search */}
+          {/* Search Bar (Middle) */}
           <div className="flex-1 min-w-0 z-10">
             <form onSubmit={handleSearch} className="relative group">
               <input
                 type="text"
-                placeholder="Search costumes..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-full px-4 py-2 pl-9 text-[11px] font-bold dark:text-white placeholder:text-slate-400 outline-none focus:ring-1 focus:ring-lime-500 transition-all shadow-sm"
+                className="w-full bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-full px-4 py-1.5 pl-8 text-[10px] font-bold dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-lime-500/20 focus:bg-white dark:focus:bg-black transition-all shadow-sm"
               />
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-lime-500" />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 group-focus-within:text-lime-500" />
             </form>
           </div>
 
           {/* Actions (Right) */}
-          <div className="flex-none flex items-center gap-1 z-20">
+          <div className="flex-none flex items-center gap-1.5 z-20">
             <Link
               href="/cart"
-              className="relative p-2 text-gray-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-90"
+              className="relative p-2 bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-400 hover:to-green-500 text-white rounded-full shadow-md transition-all active:scale-90"
             >
-              <ShoppingCart className="h-5 w-5" />
+              <ShoppingCart className="h-4 w-4" />
               {items.length > 0 && (
-                <span className="absolute top-1 right-1 bg-lime-500 text-white text-[10px] font-black rounded-full h-4 w-4 flex items-center justify-center ring-2 ring-white dark:ring-black animate-in zoom-in">
+                <span className="absolute -top-1 -right-1 bg-slate-950 text-lime-400 text-[8px] font-black rounded-full h-4 w-4 flex items-center justify-center ring-2 ring-white dark:ring-[#0a0a0a] animate-bounce">
                   {items.length}
                 </span>
               )}
@@ -177,10 +179,10 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
 
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="p-2 text-gray-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-95"
+              className="p-2 text-slate-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-95"
               aria-label="Toggle Menu"
             >
-              {showMobileMenu ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+              {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
           </div>
         </div>
@@ -217,13 +219,13 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                     setShowMobileMenu(false);
                     if (item.id === 'home' && onCategoryChange) onCategoryChange('adults');
                   }}
-                  className={`flex items-center justify-between px-5 py-4 rounded-2xl text-base font-black transition-all transform active:scale-[0.98] ${showMobileMenu ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0'} bg-gray-50 dark:bg-white/5 border border-transparent hover:border-lime-500/30 shadow-sm`}
+                  className={`flex items-center justify-between px-5 py-4 rounded-2xl text-sm font-black transition-all transform active:scale-[0.98] ${showMobileMenu ? 'translate-x-0 opacity-100' : '-translate-x-8 opacity-0'} bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 hover:border-lime-500/30 hover:bg-slate-100/50 shadow-sm`}
                   style={{ transitionDelay: `${idx * 100}ms` }}
                 >
                   <div className="flex items-center gap-4">
                     <span className="text-xl">{item.icon}</span>
                     <span className={(pathname === item.href)
-                      ? 'text-lime-600 dark:text-lime-400'
+                      ? 'text-lime-600 dark:text-lime-400 font-extrabold'
                       : 'text-gray-900 dark:text-gray-100'
                     }>
                       {item.label}
@@ -247,7 +249,7 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                 <Link
                   href="/dashboard"
                   onClick={() => setShowMobileMenu(false)}
-                  className="flex items-center gap-4 p-4 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-white/5 text-gray-900 dark:text-white"
+                  className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-gray-900 dark:text-white"
                 >
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-lime-500 to-green-600 flex items-center justify-center text-white shadow-lg shadow-lime-500/20">
                     <User className="h-5 w-5" />
@@ -290,7 +292,7 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-white dark:bg-zinc-800 flex items-center justify-center shadow-sm">
                   {theme === "dark" ? (
-                    <Sun className="h-4 w-4 text-lime-500" />
+                    <Sun className="h-4 w-4 text-lime-500 animate-spin" style={{ animationDuration: '8s' }} />
                   ) : (
                     <Moon className="h-4 w-4 text-slate-900" />
                   )}

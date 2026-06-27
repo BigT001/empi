@@ -3,7 +3,6 @@
 
 import { useCart } from "../components/CartContext";
 import { Footer } from "../components/Footer";
-import { Navigation } from "../components/Navigation";
 import { useBuyer } from "../context/BuyerContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -29,8 +28,6 @@ export default function CartPage() {
   const [showRentalPolicy, setShowRentalPolicy] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
   const [showRentalScheduleModal, setShowRentalScheduleModal] = useState(false);
-  const [category, setCategory] = useState("all");
-  const [currency, setCurrency] = useState("NGN");
   const [shippingOption, setShippingOption] = useState<"empi" | "self">("empi");
   const [deliveryError, setDeliveryError] = useState<string | null>(null);
 
@@ -160,14 +157,15 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 text-gray-900 flex flex-col">
-      {/* Navigation - Already has integrated fixed header with hide-on-scroll */}
-      <Navigation category={category} onCategoryChange={setCategory} currency={currency} onCurrencyChange={setCurrency} />
-
-      <main className="flex-1 max-w-7xl mx-auto px-4 py-12 w-full pt-20 sm:pt-24 md:pt-20">
+      <main className="flex-1 max-w-7xl mx-auto px-4 py-8 w-full pt-8 sm:pt-12">
         <div className="mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 text-lime-600 hover:text-lime-700 font-medium mb-4">
-            <ArrowLeft className="h-4 w-4" /> Continue Shopping
-          </Link>
+          <button
+            onClick={() => router.back()}
+            className="inline-flex items-center gap-2 text-lime-600 hover:text-lime-700 font-semibold mb-6 group transition-colors focus:outline-none"
+          >
+            <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
+            <span>Go Back</span>
+          </button>
           <h1 className="text-4xl font-bold mb-2">Shopping Cart</h1>
           <p className="text-gray-600">Review your items and select delivery</p>
         </div>

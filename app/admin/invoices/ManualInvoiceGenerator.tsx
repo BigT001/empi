@@ -8,8 +8,8 @@ import { StoredInvoice } from "@/lib/invoiceStorage";
 interface InvoiceItem {
   id: string;
   name: string;
-  quantity: number;
-  price: number;
+  quantity: number | "";
+  price: number | "";
   productId?: string;
   imageUrl?: string;
 }
@@ -100,7 +100,7 @@ export function ManualInvoiceGenerator() {
   };
 
   const addItem = () => {
-    setItems([...items, { id: Math.random().toString(), name: "", quantity: 1, price: 0 }]);
+    setItems([...items, { id: Math.random().toString(), name: "", quantity: "", price: "" }]);
   };
 
   const removeItem = (id: string) => {
@@ -111,7 +111,7 @@ export function ManualInvoiceGenerator() {
     setItems(items.map(item => (item.id === id ? { ...item, [field]: value } : item)));
   };
 
-  const subtotal = items.reduce((sum, item) => sum + item.quantity * item.price, 0);
+  const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
   const taxAmount = subtotal * (formData.taxRate / 100);
   const totalAmount = subtotal + taxAmount;
   const currency = CURRENCIES.find(c => c.code === formData.currency)!;
@@ -119,10 +119,6 @@ export function ManualInvoiceGenerator() {
   const handleSaveInvoice = async () => {
     if (!formData.customerName.trim()) {
       alert("Customer name is required");
-      return;
-    }
-    if (!formData.customerEmail.trim()) {
-      alert("Customer email is required");
       return;
     }
     if (items.length === 0) {
@@ -146,8 +142,8 @@ export function ManualInvoiceGenerator() {
       items: items.map(item => ({
         id: item.id,
         name: item.name,
-        quantity: item.quantity,
-        price: item.price,
+        quantity: Number(item.quantity) || 1,
+        price: Number(item.price) || 0,
       })),
       subtotal,
       taxAmount,
@@ -222,7 +218,7 @@ export function ManualInvoiceGenerator() {
                 />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-1">Email *</label>
+                <label className="block text-sm font-semibold text-gray-700 mb-1">Email</label>
                 <input
                   type="email"
                   value={formData.customerEmail}
@@ -342,8 +338,9 @@ export function ManualInvoiceGenerator() {
                             <input
                               type="number"
                               value={item.quantity}
-                              onChange={(e) => updateItem(item.id, "quantity", parseInt(e.target.value) || 1)}
+                              onChange={(e) => updateItem(item.id, "quantity", e.target.value === "" ? "" : (parseInt(e.target.value) || 1))}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 text-sm"
+                              placeholder="1"
                               min="1"
                             />
                           </div>
@@ -352,15 +349,16 @@ export function ManualInvoiceGenerator() {
                             <input
                               type="number"
                               value={item.price}
-                              onChange={(e) => updateItem(item.id, "price", parseFloat(e.target.value) || 0)}
+                              onChange={(e) => updateItem(item.id, "price", e.target.value === "" ? "" : (parseFloat(e.target.value) || 0))}
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 text-sm"
+                              placeholder="0"
                               min="0"
                               step="0.01"
                             />
                           </div>
                           <div className="w-24 text-right">
                             <p className="text-xs text-gray-600 mb-1">Total</p>
-                            <p className="font-semibold text-gray-900">{currency.symbol}{(item.quantity * item.price).toFixed(2)}</p>
+                            <p className="font-semibold text-gray-900">{currency.symbol}{((Number(item.quantity) || 0) * (Number(item.price) || 0)).toFixed(2)}</p>
                           </div>
                           <button
                             onClick={() => removeItem(item.id)}
@@ -467,8 +465,8 @@ export function ManualInvoiceGenerator() {
                   orderNumber: formData.orderNumber || '',
                   items: items.map(item => ({
                     name: item.name,
-                    quantity: item.quantity,
-                    price: item.price,
+                    quantity: Number(item.quantity) || 0,
+                    price: Number(item.price) || 0,
                   })),
                   subtotal,
                   taxAmount,

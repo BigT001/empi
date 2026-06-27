@@ -4,10 +4,16 @@ import Image from "next/image";
 import Link from "next/link";
 import { Mail, Phone, Instagram, MapPin } from "lucide-react";
 import { useTheme } from "../context/ThemeContext";
+import { usePathname } from "next/navigation";
 
 export function Footer() {
+  const pathname = usePathname();
   const currentYear = new Date().getFullYear();
   const { theme } = useTheme();
+
+  if (pathname !== "/" && pathname !== "/shop") {
+    return null;
+  }
 
   return (
     <footer className={`relative pt-20 pb-10 border-t transition-colors duration-500 ${theme === 'dark' ? 'bg-[#050505] text-slate-500 border-white/5' : 'bg-white text-slate-400 border-slate-100'

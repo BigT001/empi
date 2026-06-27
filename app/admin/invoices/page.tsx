@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Footer } from "../../components/Footer";
 import { ManualInvoiceGenerator } from "./ManualInvoiceGenerator";
 import { SavedInvoices } from "./SavedInvoices";
 import { useResponsive } from "@/app/hooks/useResponsive";
@@ -57,8 +56,7 @@ export default function AdminInvoicesPage() {
           {activeTab === "saved" && <SavedInvoices />}
         </div>
       </main>
-
-      <Footer />
+      {/* Footer removed */}
     </div>
   );
 }

@@ -17,8 +17,8 @@ export interface IInvoice extends Document {
   orderNumber?: string;
   buyerId?: Types.ObjectId;
   customerName: string;
-  customerEmail: string;
-  customerPhone: string;
+  customerEmail?: string;
+  customerPhone?: string;
   customerAddress?: string;
   customerCity?: string;
   customerState?: string;
@@ -64,8 +64,8 @@ const invoiceSchema = new Schema<IInvoice>(
     orderNumber: String,
     buyerId: { type: mongoose.Schema.Types.ObjectId, ref: 'Buyer' },
     customerName: { type: String, required: true },
-    customerEmail: { type: String, required: true },
-    customerPhone: { type: String, required: true },
+    customerEmail: { type: String, required: false },
+    customerPhone: { type: String, required: false },
     customerAddress: String,
     customerCity: String,
     customerState: String,

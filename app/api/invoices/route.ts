@@ -39,18 +39,16 @@ export async function POST(request: NextRequest) {
 
     if (
       !invoiceNumber ||
-      !customerName ||
-      !customerEmail ||
-      !customerPhone
+      !customerName
     ) {
       console.error("❌ Missing required fields");
-      console.error("📋 Received fields:", {invoiceNumber, customerName, customerEmail, customerPhone});
+      console.error("📋 Received fields:", {invoiceNumber, customerName});
       return NextResponse.json(
         {
           error:
-            "invoiceNumber, customerName, customerEmail, and customerPhone are required",
+            "invoiceNumber and customerName are required",
           details: "Please provide all required customer information",
-          received: {invoiceNumber, customerName, customerEmail, customerPhone}
+          received: {invoiceNumber, customerName}
         },
         { status: 400 }
       );
