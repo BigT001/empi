@@ -109,23 +109,14 @@ export function Navigation({
       className={`hidden md:block fixed top-0 left-0 right-0 z-[100] transition-all duration-500 ease-in-out ${headerVisible ? 'translate-y-0' : '-translate-y-full'
         }`}
     >
-      {/* Announcement Bar */}
-      <div className="bg-gradient-to-r from-lime-950 via-[#0a0f02] to-lime-950 dark:from-[#0d1704] dark:via-black dark:to-[#0d1704] text-white py-2 px-4 text-center border-b border-lime-500/10 transition-colors duration-500 flex items-center justify-center gap-2">
-        <span className="w-1.5 h-1.5 rounded-full bg-lime-500 animate-pulse shadow-[0_0_8px_rgba(132,204,22,0.8)]" />
-        <p className="text-[9px] font-black uppercase tracking-[0.25em] text-lime-400/90 dark:text-lime-400">
-          Pre-order: Minimum 1 week delivery for all bespoke and shop units
-        </p>
-        <span className="w-1.5 h-1.5 rounded-full bg-lime-500 animate-pulse shadow-[0_0_8px_rgba(132,204,22,0.8)]" />
-      </div>
-
-      <div className={`mx-auto max-w-7xl px-4 transition-all duration-500 ${scrolled ? 'py-3' : 'py-5'}`}>
-        <div className={`flex items-center justify-between gap-8 px-8 h-20 rounded-full transition-all duration-500 ${
-          scrolled
-            ? 'bg-white/70 dark:bg-black/65 backdrop-blur-xl shadow-[0_12px_40px_rgba(0,0,0,0.12)] border border-white/30 dark:border-white/10'
-            : isTransparent
-              ? 'bg-white/10 dark:bg-black/40 backdrop-blur-md border border-white/10 shadow-none'
-              : 'bg-white/90 dark:bg-[#0c0c0c]/90 backdrop-blur-md border border-slate-200/60 dark:border-white/5 shadow-[0_4px_24px_rgba(0,0,0,0.03)]'
-          }`}>
+      <div className={`w-full transition-all duration-500 border-b ${
+        scrolled
+          ? 'bg-white/80 dark:bg-black/85 backdrop-blur-xl border-slate-200/50 dark:border-white/5 shadow-md py-3'
+          : isTransparent
+            ? 'bg-transparent border-transparent py-5'
+            : 'bg-white/95 dark:bg-[#0c0c0c]/95 backdrop-blur-md border-slate-200/50 dark:border-white/5 shadow-sm py-4'
+      }`}>
+        <div className="w-full px-6 md:px-12 flex items-center justify-between gap-8 h-16">
           {/* Logo */}
           <Link href="/" onClick={handleLogoClick} className="flex-shrink-0 group relative z-10 h-full flex items-center">
             <Image
@@ -139,24 +130,29 @@ export function Navigation({
           </Link>
 
           {/* Navigation */}
-          <nav className="flex items-center gap-1 bg-slate-100/50 dark:bg-white/5 p-1 rounded-full border border-slate-200/50 dark:border-white/5">
+          <nav className="flex items-center gap-6 lg:gap-8">
             {[
               { id: 'adults', label: 'Home' },
+              { id: 'costume-show', label: 'Costumes Show 2026', href: '/costume-show-shop' },
               { id: 'shop', label: 'Shop', href: '/shop' },
               { id: 'custom', label: 'Bespoke' },
-              { id: 'about', label: 'My Story', href: '/about' }
+              { id: 'about', label: 'Our Story', href: '/about' }
             ].map((item) => {
               const isActive = item.href ? pathname === item.href : category === item.id;
               return (
                 <button
                   key={item.id}
                   onClick={() => item.href ? router.push(item.href) : handleCategoryChange(item.id)}
-                  className={`px-6 py-2 rounded-full text-sm font-extrabold transition-all duration-300 active:scale-95 ${
+                  className={`text-sm font-black tracking-wide transition-all duration-300 relative py-2 ${
                     isActive
-                      ? 'bg-gradient-to-r from-lime-500 to-green-600 text-white shadow-md shadow-lime-500/30 hover:shadow-lg hover:shadow-lime-500/40'
+                      ? 'text-lime-600 dark:text-lime-400 font-black after:absolute after:bottom-[-2px] after:left-1/2 after:-translate-x-1/2 after:w-1.5 after:h-1.5 after:bg-lime-500 after:rounded-full after:shadow-[0_0_8px_rgba(132,204,22,0.8)]'
                       : isTransparent
-                        ? 'text-white/85 hover:text-white hover:bg-white/10'
-                        : 'text-slate-600 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/5'
+                        ? theme === 'dark'
+                          ? 'text-white/75 hover:text-white hover:scale-102'
+                          : 'text-neutral-800 hover:text-black hover:scale-102'
+                        : theme === 'dark'
+                          ? 'text-gray-300 hover:text-white hover:scale-102'
+                          : 'text-neutral-800 hover:text-black hover:scale-102'
                   }`}
                 >
                   {item.label}
@@ -165,56 +161,16 @@ export function Navigation({
             })}
           </nav>
 
-          {/* Search Box */}
-          <div className="flex-1 max-w-xs">
-            <form onSubmit={handleSearch} className="relative group flex items-center">
-              <input
-                ref={searchInputRef}
-                placeholder="Search costumes..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className={`w-full text-xs outline-none transition-all font-semibold rounded-full px-5 py-2.5 pl-11 pr-10 ${
-                  isTransparent
-                    ? 'bg-white/10 border border-white/15 focus:border-lime-400 focus:bg-white/20 text-white placeholder:text-white/60 focus:ring-2 focus:ring-lime-500/20'
-                    : 'bg-slate-100/50 dark:bg-white/5 border border-slate-200/50 dark:border-white/5 focus:border-lime-500 dark:focus:border-lime-500 focus:bg-white dark:focus:bg-black/40 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-lime-500/20'
-                }`}
-              />
-              <Search className={`absolute left-4 top-1/2 -translate-y-1/2 h-3.5 w-3.5 transition-colors ${isTransparent ? 'text-white/60 group-focus-within:text-lime-400' : 'text-gray-400 group-focus-within:text-lime-500'}`} />
-              <span className={`absolute right-4 top-1/2 -translate-y-1/2 text-[9px] font-black px-1.5 py-0.5 rounded border pointer-events-none transition-opacity duration-300 group-focus-within:opacity-0 ${
-                isTransparent 
-                  ? 'border-white/20 text-white/50 bg-white/5' 
-                  : 'border-slate-200 dark:border-white/10 text-slate-400 dark:text-white/30 bg-slate-50 dark:bg-white/5'
-              }`}>
-                /
-              </span>
-            </form>
-          </div>
-
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {admin && (
-              <Link
-                href="/admin"
-                className={`p-2.5 rounded-full transition-all group relative ${
-                  isTransparent
-                    ? 'text-orange-400 hover:bg-white/10'
-                    : 'text-orange-500 hover:bg-orange-50 dark:hover:bg-orange-900/25'
-                }`}
-                title="Admin"
-              >
-                <Settings className="h-5 w-5 group-hover:rotate-45 transition-transform" />
-                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Dashboard</span>
-              </Link>
-            )}
-
-            <NotificationBell isTransparent={isTransparent} />
-
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
               className={`p-2.5 rounded-full border transition-all group ${
                 isTransparent
-                  ? 'bg-white/10 border-white/15 text-white/85 hover:text-lime-400 hover:bg-white/20'
+                  ? theme === 'dark'
+                    ? 'bg-white/10 border-white/15 text-white/85 hover:text-lime-400 hover:bg-white/20'
+                    : 'bg-black/5 border-black/10 text-neutral-800 hover:text-lime-600 hover:bg-black/10'
                   : 'bg-gray-50 dark:bg-white/5 border border-slate-200/50 dark:border-white/5 text-gray-500 dark:text-gray-400 hover:text-lime-600 dark:hover:text-lime-400 hover:bg-[#eaeaea]'
               }`}
               title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
@@ -222,11 +178,15 @@ export function Navigation({
               {theme === "dark" ? (
                 <Sun className="h-4.5 w-4.5 group-hover:rotate-90 transition-transform duration-500 text-lime-400 animate-pulse" />
               ) : (
-                <Moon className="h-4.5 w-4.5 group-hover:-rotate-45 transition-transform duration-500" />
+                <Moon className="h-4.5 w-4.5 group-hover:-rotate-45 transition-transform duration-500 text-neutral-800" />
               )}
             </button>
 
-            <div className={`h-6 w-[1px] mx-1 ${isTransparent ? 'bg-white/20' : 'bg-slate-200 dark:bg-white/10'}`}></div>
+            <div className={`h-6 w-[1px] mx-1 ${
+              isTransparent 
+                ? theme === 'dark' ? 'bg-white/20' : 'bg-black/10' 
+                : 'bg-slate-200 dark:bg-white/10'
+            }`}></div>
 
             {buyer ? (
               <div className="flex items-center gap-3">
@@ -234,24 +194,34 @@ export function Navigation({
                   href="/dashboard"
                   className={`flex items-center gap-3 px-4 py-2 rounded-full border transition-all group hover:scale-[1.02] active:scale-95 ${
                     isTransparent
-                      ? 'bg-white/10 border-white/15 hover:border-lime-400'
+                      ? theme === 'dark'
+                        ? 'bg-white/10 border-white/15 hover:border-lime-400'
+                        : 'bg-black/5 border-black/10 hover:border-lime-600 text-neutral-800'
                       : 'bg-slate-50 dark:bg-white/5 border border-slate-200/50 dark:border-white/5 hover:border-lime-500 hover:bg-slate-100'
                   }`}
                 >
                   <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${
                     isTransparent
-                      ? 'bg-lime-600/20 text-lime-400 group-hover:bg-gradient-to-r group-hover:from-lime-500 group-hover:to-green-600 group-hover:text-white shadow-sm'
-                      : 'bg-lime-100 dark:bg-lime-900/30 text-lime-600 dark:text-lime-400 group-hover:bg-gradient-to-r group-hover:from-lime-500 group-hover:to-green-600 group-hover:text-white shadow-sm'
+                      ? theme === 'dark'
+                        ? 'bg-lime-600/20 text-lime-400'
+                        : 'bg-lime-600/10 text-lime-600'
+                      : 'bg-lime-100 dark:bg-lime-900/30 text-lime-600 dark:text-lime-400'
                   }`}>
                     <User className="h-4 w-4" />
                   </div>
-                  <span className={`text-xs font-extrabold tracking-wide ${isTransparent ? 'text-white' : 'text-slate-700 dark:text-gray-300'}`}>{buyer.fullName.split(' ')[0]}</span>
+                  <span className={`text-xs font-extrabold tracking-wide ${
+                    isTransparent 
+                      ? theme === 'dark' ? 'text-white' : 'text-neutral-800' 
+                      : 'text-slate-700 dark:text-gray-300'
+                  }`}>{buyer.fullName.split(' ')[0]}</span>
                 </Link>
                 <button
                   onClick={logout}
                   className={`p-2.5 rounded-full transition-all ${
                     isTransparent
-                      ? 'text-white/60 hover:text-red-400 hover:bg-white/10'
+                      ? theme === 'dark'
+                        ? 'text-white/60 hover:text-red-400 hover:bg-white/10'
+                        : 'text-neutral-500 hover:text-red-600 hover:bg-black/10'
                       : 'text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20'
                   }`}
                   title="Logout"
@@ -268,7 +238,7 @@ export function Navigation({
                     : 'bg-slate-900 dark:bg-lime-600 hover:bg-slate-800 dark:hover:bg-lime-500 text-white'
                 }`}
               >
-                <User className="h-4 w-4 animate-pulse" />
+                <User className="h-4 w-4" />
                 <span>Sign In</span>
               </Link>
             )}

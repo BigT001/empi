@@ -91,7 +91,7 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
   }));
 
   // Filter by category and costume type
-  let filteredProducts = category === "all"
+  let filteredProducts = (category === "all" || category === "costume-show")
     ? displayProducts
     : displayProducts.filter((product) => product.category === category);
 

@@ -39,6 +39,7 @@ export interface Product {
   careInstructions?: string;
   availableForBuy?: boolean;
   availableForRent?: boolean;
+  isCostumeShow?: boolean;
 }
 
 // ─── Color resolver ───────────────────────────────────────────────────────────
@@ -132,6 +133,7 @@ export default function EditProductModal({
     variants: initialVariants,
     availableForBuy: product.availableForBuy ?? true,
     availableForRent: product.availableForRent ?? true,
+    isCostumeShow: product.isCostumeShow ?? false,
   });
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
@@ -581,6 +583,18 @@ export default function EditProductModal({
                 <div>
                   <p className="text-sm font-semibold text-gray-900">🎪 Available for Rental</p>
                   <p className="text-xs text-gray-500">Show this product in the rental section</p>
+                </div>
+              </label>
+              <label className="flex items-center gap-3 p-3 border border-gray-200 rounded-xl hover:border-lime-300 cursor-pointer transition">
+                <input
+                  type="checkbox"
+                  checked={formData.isCostumeShow ?? false}
+                  onChange={(e) => setFormData((p: any) => ({ ...p, isCostumeShow: e.target.checked }))}
+                  className="w-5 h-5 accent-lime-600 rounded"
+                />
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">✨ Featured in THE COSTUME SHOW 2026</p>
+                  <p className="text-xs text-gray-500">Show this product in the Costume Show special collection</p>
                 </div>
               </label>
             </div>

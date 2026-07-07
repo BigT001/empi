@@ -85,6 +85,7 @@ interface ProductForm {
   careInstructions: string;
   availableForBuy: boolean;
   availableForRent: boolean;
+  isCostumeShow?: boolean;
   imageFiles: File[];
   imagePreviews: string[];
 }
@@ -118,6 +119,7 @@ export default function MobileAdminUpload() {
     careInstructions: "",
     availableForBuy: true,
     availableForRent: true,
+    isCostumeShow: false,
     imageFiles: [],
     imagePreviews: [],
   });
@@ -427,6 +429,7 @@ export default function MobileAdminUpload() {
         careInstructions: form.careInstructions,
         availableForBuy: form.availableForBuy,
         availableForRent: form.availableForRent,
+        isCostumeShow: form.isCostumeShow || false,
       };
 
       console.log("📤 Creating product...");
@@ -511,6 +514,7 @@ export default function MobileAdminUpload() {
         careInstructions: "",
         availableForBuy: true,
         availableForRent: true,
+        isCostumeShow: false,
         imageFiles: [],
         imagePreviews: [],
       });
@@ -1053,6 +1057,23 @@ export default function MobileAdminUpload() {
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-gray-900">🎪 Available for Rental</p>
                   <p className="text-xs text-gray-500">Customers can rent this product</p>
+                </div>
+              </label>
+
+              {/* Costume Show Flag */}
+              <label className="flex items-center gap-3 p-3 rounded-lg border border-gray-200 hover:border-lime-300 cursor-pointer transition">
+                <input
+                  type="checkbox"
+                  checked={form.isCostumeShow || false}
+                  onChange={(e) =>
+                    setForm({ ...form, isCostumeShow: e.target.checked })
+                  }
+                  disabled={isSubmitting}
+                  className="w-5 h-5 accent-lime-600 cursor-pointer rounded"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-gray-900">✨ Featured in THE COSTUME SHOW 2026</p>
+                  <p className="text-xs text-gray-500">Show this product in the Costume Show special collection</p>
                 </div>
               </label>
 

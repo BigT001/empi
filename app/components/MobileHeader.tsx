@@ -34,6 +34,7 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
   const { theme, toggleTheme } = useTheme();
 
   const currentCurrency = propCurrency || currency;
+  const isTransparent = pathname === "/" && category !== "custom" && !scrolled;
 
   useEffect(() => {
     if (showMobileMenu) {
@@ -122,18 +123,16 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
   return (
     <>
       <div
-        className={`md:hidden fixed top-0 left-0 right-0 z-[110] transition-all duration-300 ease-in-out border-b border-slate-100 dark:border-white/5 shadow-sm ${headerVisible || showMobileMenu ? 'translate-y-0' : '-translate-y-full'
-          } ${scrolled ? 'bg-white/80 dark:bg-black/75 backdrop-blur-md border-b border-white/20 dark:border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.05)]' : 'bg-white dark:bg-[#0a0a0a]'}`}
+        className={`md:hidden fixed top-0 left-0 right-0 z-[110] transition-all duration-300 ease-in-out ${
+          headerVisible || showMobileMenu ? 'translate-y-0' : '-translate-y-full'
+        } ${
+          scrolled || showMobileMenu
+            ? 'bg-white/80 dark:bg-black/75 backdrop-blur-md border-b border-white/20 dark:border-white/5 shadow-[0_4px_20px_rgba(0,0,0,0.05)]'
+            : isTransparent
+              ? 'bg-transparent border-b border-transparent shadow-none'
+              : 'bg-white dark:bg-[#0a0a0a] border-b border-slate-100 dark:border-white/5 shadow-sm'
+        }`}
       >
-        {/* Announcement Bar */}
-        <div className="bg-gradient-to-r from-lime-950 via-[#0a0f02] to-lime-950 dark:from-[#0d1704] dark:via-black dark:to-[#0d1704] text-white py-1.5 px-4 text-center border-b border-lime-500/10 flex items-center justify-center gap-1.5">
-          <span className="w-1 h-1 rounded-full bg-lime-500 animate-pulse shadow-[0_0_6px_rgba(132,204,22,0.8)]" />
-          <p className="text-[8px] font-black uppercase tracking-[0.15em] text-lime-400/90 dark:text-lime-400">
-            Pre-order: Minimum 1 week delivery
-          </p>
-          <span className="w-1 h-1 rounded-full bg-lime-500 animate-pulse shadow-[0_0_6px_rgba(132,204,22,0.8)]" />
-        </div>
-
         <div className="relative flex items-center h-16 px-4 gap-3">
           {/* Logo (Left) */}
           <div className="flex-none z-20">
@@ -157,9 +156,19 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-white/10 rounded-full px-4 py-1.5 pl-8 text-[10px] font-bold dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-lime-500/20 focus:bg-white dark:focus:bg-black transition-all shadow-sm"
+                className={`w-full rounded-full px-4 py-1.5 pl-8 text-[10px] font-bold outline-none transition-all shadow-sm ${
+                  isTransparent
+                    ? theme === 'dark'
+                      ? 'bg-white/10 border border-white/15 text-white placeholder:text-white/60 focus:ring-2 focus:ring-lime-500/20 focus:bg-white/20'
+                      : 'bg-black/5 border border-black/10 text-neutral-800 placeholder:text-slate-500 focus:ring-2 focus:ring-lime-500/20 focus:bg-black/5'
+                    : 'bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-white/10 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-lime-500/20 focus:bg-white dark:focus:bg-black'
+                }`}
               />
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400 group-focus-within:text-lime-500" />
+              <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 transition-colors ${
+                isTransparent 
+                  ? theme === 'dark' ? 'text-white/60' : 'text-slate-600' 
+                  : 'text-slate-400 group-focus-within:text-lime-500'
+              }`} />
             </form>
           </div>
 
@@ -179,7 +188,13 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
 
             <button
               onClick={() => setShowMobileMenu(!showMobileMenu)}
-              className="p-2 text-slate-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400 transition-all active:scale-95"
+              className={`p-2 transition-all active:scale-95 ${
+                isTransparent
+                  ? theme === 'dark'
+                    ? 'text-white hover:text-lime-400'
+                    : 'text-neutral-800 hover:text-lime-600'
+                  : 'text-slate-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400'
+              }`}
               aria-label="Toggle Menu"
             >
               {showMobileMenu ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -208,9 +223,10 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
             <nav className="grid grid-cols-1 gap-3">
               {[
                 { id: 'home', label: 'Home', href: '/', icon: '🏠' },
+                { id: 'costume-show', label: 'Costumes Show 2026', href: '/costume-show-shop', icon: '🎭' },
                 { id: 'shop', label: 'Shop', href: '/shop', icon: '🛍️' },
                 { id: 'custom', label: 'Bespoke', href: '/?category=custom', icon: '✨' },
-                { id: 'about', label: 'My Story', href: '/about', icon: '📜' }
+                { id: 'about', label: 'Our Story', href: '/about', icon: '📜' }
               ].map((item, idx) => (
                 <button
                   key={item.id}
@@ -308,7 +324,7 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
 
             <div className="text-center">
               <p className="text-[10px] font-black tracking-[0.3em] uppercase text-gray-300 dark:text-gray-700">
-                EMPI &copy; 2024
+                EMPI &copy; {new Date().getFullYear()}
               </p>
             </div>
           </div>

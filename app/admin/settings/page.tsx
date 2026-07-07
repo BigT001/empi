@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAdmin } from "@/app/context/AdminContext";
 import { useResponsive } from "@/app/hooks/useResponsive";
-import { Save, Lock, Users, DollarSign, Plus, Edit2, Trash2, Eye, EyeOff, LogOut, Clock, CheckCircle2, AlertCircle } from "lucide-react";
+import { Save, Lock, Users, DollarSign, Plus, Edit2, Trash2, Eye, EyeOff, LogOut, Clock, CheckCircle2, AlertCircle, Sliders, Sparkles } from "lucide-react";
 
 interface SubAdmin {
   _id: string;
@@ -28,7 +28,11 @@ export default function SettingsPage() {
   const { admin } = useAdmin();
   const router = useRouter();
   const { mounted } = useResponsive();
-  const [activeTab, setActiveTab] = useState<"sub-admins" | "security" | "bank">("sub-admins");
+  const [activeTab, setActiveTab] = useState<"sub-admins" | "security" | "bank" | "homepage">("sub-admins");
+
+  // Homepage Settings State
+  const [activeHomePageSetting, setActiveHomePageSetting] = useState<"default" | "costume-show">("default");
+  const [loadingHomepage, setLoadingHomepage] = useState(false);
 
   // Sub-Admins State
   const [subAdmins, setSubAdmins] = useState<SubAdmin[]>([]);
@@ -112,6 +116,47 @@ export default function SettingsPage() {
     }
   };
 
+  const fetchHomepageSettings = async () => {
+    try {
+      setLoadingHomepage(true);
+      const res = await fetch("/api/admin/homepage-settings");
+      if (res.ok) {
+        const data = await res.json();
+        if (data.activeHomePage) {
+          setActiveHomePageSetting(data.activeHomePage);
+        }
+      }
+    } catch (err) {
+      console.error("Error fetching homepage settings:", err);
+    } finally {
+      setLoadingHomepage(false);
+    }
+  };
+
+  const handleSaveHomepageSetting = async (selectedVal: "default" | "costume-show") => {
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/homepage-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activeHomePage: selectedVal }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveHomePageSetting(data.activeHomePage);
+        setMessage({ type: "success", text: "Homepage settings updated successfully!" });
+      } else {
+        const error = await res.json();
+        setMessage({ type: "error", text: error.error || "Failed to update homepage settings" });
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: "Error saving homepage settings" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   useEffect(() => {
     if (activeTab === 'sub-admins' && admin?.role === 'super_admin') {
       console.log('👤 Admin context:', admin);
@@ -120,6 +165,9 @@ export default function SettingsPage() {
     }
     if (activeTab === 'security') {
       loadSessions();
+    }
+    if (activeTab === 'homepage') {
+      fetchHomepageSettings();
     }
   }, [activeTab, admin?.role]);
 
@@ -372,6 +420,16 @@ export default function SettingsPage() {
           >
             <DollarSign className="h-5 w-5" />
             Bank Details
+          </button>
+          <button
+            onClick={() => setActiveTab("homepage")}
+            className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === "homepage"
+                ? "border-lime-600 text-lime-600"
+                : "border-transparent text-gray-600 hover:text-gray-900"
+              }`}
+          >
+            <Sliders className="h-5 w-5" />
+            Homepage Selection
           </button>
         </div>
       </div>
@@ -808,6 +866,80 @@ export default function SettingsPage() {
                 <span className="font-semibold">💡 Tip:</span> Click "Manage Bank Accounts" to add, edit, or switch between your payment accounts. Only the active account will be displayed to customers.
               </p>
             </div>
+          </div>
+        )}
+
+        {/* Homepage Selection Tab */}
+        {activeTab === 'homepage' && (
+          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
+            <div className="mb-8">
+              <h2 className="text-2xl font-bold text-gray-900">Homepage Configuration</h2>
+              <p className="text-gray-600 mt-1">Select which landing page you want to show to your visitors.</p>
+            </div>
+
+            {loadingHomepage ? (
+              <div className="flex justify-center py-12">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-lime-600"></div>
+              </div>
+            ) : (
+              <div className="space-y-6 max-w-2xl">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Option 1: Default Homepage */}
+                  <div
+                    onClick={() => handleSaveHomepageSetting('default')}
+                    className={`cursor-pointer p-6 rounded-2xl border-2 transition-all flex flex-col justify-between h-48 ${
+                      activeHomePageSetting === 'default'
+                        ? 'border-lime-500 bg-lime-50/20 shadow-md shadow-lime-500/5'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-lg font-bold text-gray-900">Default Homepage</span>
+                        {activeHomePageSetting === 'default' && (
+                          <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-lime-700 bg-lime-100 rounded-full">Active</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        The standard e-commerce layout featuring the hero section slideshow, trust bar badges, and product categories collection grid.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Option 2: The Costume Show Homepage */}
+                  <div
+                    onClick={() => handleSaveHomepageSetting('costume-show')}
+                    className={`cursor-pointer p-6 rounded-2xl border-2 transition-all flex flex-col justify-between h-48 ${
+                      activeHomePageSetting === 'costume-show'
+                        ? 'border-lime-500 bg-lime-50/20 shadow-md shadow-lime-500/5'
+                        : 'border-gray-200 hover:border-gray-300 bg-white'
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-lg font-bold text-gray-950 flex items-center gap-1.5"><Sparkles className="h-4.5 w-4.5 text-lime-500" /> THE COSTUME SHOW</span>
+                        {activeHomePageSetting === 'costume-show' && (
+                          <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-lime-700 bg-lime-100 rounded-full">Active</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 leading-relaxed">
+                        A dynamic interactive promotion page specifically for the upcoming Costume Show. Ideal for marketing the movement and show-only shop collections.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 flex gap-3.5">
+                  <AlertCircle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-sm font-bold text-amber-900 mb-1">Production Status Info</h4>
+                    <p className="text-xs text-amber-800 leading-relaxed">
+                      Updating this choice takes effect instantly for all visitors. Make sure you have checked and marked appropriate products as <strong>Featured in THE COSTUME SHOW 2026</strong> so that the dedicated costumes show shop page displays content correctly.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>

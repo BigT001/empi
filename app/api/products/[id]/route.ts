@@ -54,6 +54,9 @@ export async function PUT(
     if (body.careInstructions) updateData.careInstructions = body.careInstructions;
     if (body.costumeType) updateData.costumeType = body.costumeType;
     if (body.country !== undefined) updateData.country = body.country;
+    if (body.isCostumeShow !== undefined) updateData.isCostumeShow = body.isCostumeShow;
+    if (body.availableForBuy !== undefined) updateData.availableForBuy = body.availableForBuy;
+    if (body.availableForRent !== undefined) updateData.availableForRent = body.availableForRent;
 
     // Handle nested variants
     if (body.variants !== undefined) {

@@ -18,10 +18,11 @@ export async function GET(request: NextRequest) {
   const search = searchParams.get('search'); // New: search query
   const minPrice = searchParams.get('minPrice');
   const maxPrice = searchParams.get('maxPrice');
+  const costumeShow = searchParams.get('costumeShow');
 
   try {
     console.log("📥 GET /api/products - Fetching products from database...");
-    console.log("🔍 Filters:", { category, costumeType, color, material, search });
+    console.log("🔍 Filters:", { category, costumeType, color, material, search, costumeShow });
 
     await connectDB();
 
@@ -30,6 +31,10 @@ export async function GET(request: NextRequest) {
     
     if (category) {
       query.category = category;
+    }
+
+    if (costumeShow === 'true') {
+      query.isCostumeShow = true;
     }
 
     if (costumeType) {
@@ -241,6 +246,7 @@ export async function POST(request: NextRequest) {
       // Availability flags
       availableForBuy: body.availableForBuy !== false ? true : false,
       availableForRent: body.availableForRent !== false ? true : false,
+      isCostumeShow: body.isCostumeShow === true || body.isCostumeShow === 'true',
       // Delivery metadata
       deliverySize: body.deliverySize || 'MEDIUM',
       weight: body.weight || 0.5,

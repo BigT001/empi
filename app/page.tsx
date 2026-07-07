@@ -8,6 +8,7 @@ import { ProductGrid } from "./components/ProductGrid";
 import { Footer } from "./components/Footer";
 import { DiscountPopup } from "./components/DiscountPopup";
 import { HeroSection } from "./components/HeroSection";
+import { CostumeShowHome } from "./components/CostumeShowHome";
 // import { BrandsSection } from "./components/BrandsSection";
 import { useHomeMode } from "./context/HomeModeContext";
 import { useCurrency } from "./context/CurrencyContext";
@@ -31,11 +32,31 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const isInitialized = useRef(false);
 
+  const [activeHomePage, setActiveHomePage] = useState<string>("default");
+  const [loadingConfig, setLoadingConfig] = useState(true);
+
   useEffect(() => {
     if (!isInitialized.current) {
       isInitialized.current = true;
       setIsClient(true);
     }
+
+    const fetchConfig = async () => {
+      try {
+        const res = await fetch("/api/homepage-settings");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.activeHomePage) {
+            setActiveHomePage(data.activeHomePage);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to load homepage settings:", err);
+      } finally {
+        setLoadingConfig(false);
+      }
+    };
+    fetchConfig();
   }, []);
 
   useEffect(() => {
@@ -69,8 +90,37 @@ export default function Home() {
   }
 
   // Only render when hydrated to prevent hydration mismatch
-  if (!isHydrated || !isClient) {
-    return null;
+  if (!isHydrated || !isClient || loadingConfig) {
+    return (
+      <div className="min-h-screen bg-[#050505] flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-500"></div>
+      </div>
+    );
+  }
+
+  if (activeHomePage === "costume-show") {
+    return (
+      <div className="flex flex-col min-h-screen bg-[#050505] text-white">
+        <Navigation
+          category={category}
+          onCategoryChange={setCategory}
+          currency={currency}
+          onCurrencyChange={setCurrency}
+          mode={mode}
+          onModeChange={setMode}
+        />
+        <MobileHeader
+          category={category}
+          onCategoryChange={setCategory}
+          currency={currency}
+          onCurrencyChange={setCurrency}
+          mode={mode}
+          onModeChange={setMode}
+        />
+        <CostumeShowHome />
+        <Footer />
+      </div>
+    );
   }
 
   const categories = [

@@ -47,7 +47,11 @@ export function useProducts(category?: string) {
     try {
       // Fetch fresh data from API (HTTP caching is handled by next.config)
       const params = new URLSearchParams();
-      if (category && category !== 'all') params.append('category', category);
+      if (category === 'costume-show') {
+        params.append('costumeShow', 'true');
+      } else if (category && category !== 'all') {
+        params.append('category', category);
+      }
       params.append('page', pageNum.toString());
       params.append('limit', '100'); // Increased to show all products as requested
       const url = `/api/products?${params.toString()}`;

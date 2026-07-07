@@ -36,6 +36,7 @@ export interface IProduct extends Document {
   // Availability flags
   availableForBuy?: boolean; // Can be purchased
   availableForRent?: boolean; // Can be rented
+  isCostumeShow?: boolean; // Featured in the costume show
   // Delivery metadata
   deliverySize?: 'SMALL' | 'MEDIUM' | 'LARGE';
   weight?: number; // in kg
@@ -97,6 +98,7 @@ const productSchema = new Schema<IProduct>(
     // Availability flags
     availableForBuy: { type: Boolean, default: true },
     availableForRent: { type: Boolean, default: true },
+    isCostumeShow: { type: Boolean, default: false },
     // Delivery metadata
     deliverySize: { type: String, enum: ['SMALL', 'MEDIUM', 'LARGE'], default: 'MEDIUM' },
     weight: { type: Number, default: 0.5 }, // in kg
@@ -111,6 +113,7 @@ productSchema.index({ costumeType: 1 });
 productSchema.index({ country: 1 });
 productSchema.index({ costumeType: 1, country: 1 });
 productSchema.index({ category: 1, costumeType: 1 });
+productSchema.index({ isCostumeShow: 1 });
 productSchema.index({ createdAt: -1 });
 productSchema.index({ name: 'text' }); // text search index
 
