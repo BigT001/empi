@@ -65,7 +65,7 @@ export function CostumeShowHome() {
   ];
 
   return (
-    <div className={`min-h-screen font-outfit overflow-hidden transition-colors duration-500 ${
+    <div className={`min-h-screen font-outfit overflow-x-hidden transition-colors duration-500 ${
       isDark ? 'bg-[#050505] text-white' : 'bg-[#FAF9F5] text-neutral-900'
     }`}>
       {/* Cinematic Glowing Background Elements */}
@@ -82,16 +82,13 @@ export function CostumeShowHome() {
       </div>
 
       {/* Hero Section */}
-      <section className="fixed inset-0 h-screen z-0 flex items-center justify-center pt-24 pointer-events-none">
+      <section className="relative lg:fixed inset-0 h-[85vh] lg:h-screen w-full z-0 flex items-center justify-center pt-20 lg:pt-24 pointer-events-none">
         {/* Background Image Overlay */}
         <div className="absolute inset-0 z-0 select-none">
-          <Image
+          <img
             src="/empiimages/IMG_1216.JPG"
             alt="Costume Show Hero Background"
-            fill
-            sizes="100vw"
-            className="object-cover object-top"
-            priority
+            className="w-full h-full object-cover object-top"
           />
           {/* Subtle gradient to keep text readable without washing out the photo */}
           <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/60 via-black/20 to-black/80" />
@@ -161,7 +158,7 @@ export function CostumeShowHome() {
       </section>
 
       {/* Overlay Scrollable Container */}
-      <div className={`relative z-10 mt-[100vh] transition-colors duration-500 border-t ${
+      <div className={`relative z-10 mt-0 lg:mt-[100vh] transition-colors duration-500 border-t ${
         isDark 
           ? 'bg-[#050505] border-white/5 shadow-[0_-20px_50px_rgba(0,0,0,0.9)]' 
           : 'bg-[#FAF9F5] border-black/5 shadow-[0_-20px_40px_rgba(0,0,0,0.08)]'
@@ -222,12 +219,10 @@ export function CostumeShowHome() {
                 >
                   {/* Full Bleed Image Backdrop */}
                   <div className="absolute inset-0 z-0 opacity-[0.88] group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-700 ease-out">
-                    <Image
+                    <img
                       src={dim.bgImage}
                       alt={dim.title}
-                      fill
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-                      className="object-cover object-top"
+                      className="w-full h-full object-cover object-top"
                       loading="lazy"
                     />
                     {/* Dark bottom vignette for legible text rendering */}
@@ -265,12 +260,10 @@ export function CostumeShowHome() {
             <div className={`lg:col-span-6 relative h-[400px] rounded-3xl overflow-hidden border ${
               isDark ? 'border-white/10' : 'border-black/10'
             }`}>
-              <Image
+              <img
                 src="/empiimages/IMG_9345.JPG"
                 alt="Evolution of Costume design"
-                fill
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover object-center"
+                className="w-full h-full object-cover object-center"
                 loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
@@ -329,12 +322,10 @@ export function CostumeShowHome() {
               <div className={`lg:col-span-6 order-1 lg:order-2 relative h-[380px] rounded-3xl overflow-hidden border ${
                 isDark ? 'border-white/10 shadow-2xl' : 'border-black/10 shadow-lg'
               }`}>
-                <Image
+                <img
                   src="/empiimages/IMG_0732.JPG"
                   alt="Debut Show Character"
-                  fill
-                  sizes="(max-width: 1024px) 100vw, 50vw"
-                  className="object-cover object-top"
+                  className="w-full h-full object-cover object-top"
                   loading="lazy"
                 />
               </div>
