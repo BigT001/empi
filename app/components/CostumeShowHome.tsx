@@ -89,6 +89,7 @@ export function CostumeShowHome() {
             src="/empiimages/IMG_1216.JPG"
             alt="Costume Show Hero Background"
             fill
+            sizes="100vw"
             className="object-cover object-top"
             priority
           />
@@ -224,7 +225,9 @@ export function CostumeShowHome() {
                       src={dim.bgImage}
                       alt={dim.title}
                       fill
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       className="object-cover object-top"
+                      loading="lazy"
                     />
                     {/* Dark bottom vignette for legible text rendering */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
@@ -265,7 +268,9 @@ export function CostumeShowHome() {
                 src="/empiimages/IMG_9345.JPG"
                 alt="Evolution of Costume design"
                 fill
+                sizes="(max-width: 1024px) 100vw, 50vw"
                 className="object-cover object-center"
+                loading="lazy"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
             </div>
@@ -327,7 +332,9 @@ export function CostumeShowHome() {
                   src="/empiimages/IMG_0732.JPG"
                   alt="Debut Show Character"
                   fill
+                  sizes="(max-width: 1024px) 100vw, 50vw"
                   className="object-cover object-top"
+                  loading="lazy"
                 />
               </div>
             </div>
