@@ -84,7 +84,7 @@ export function CostumeShowHome() {
       {/* Hero Section */}
       <section className="fixed inset-0 h-screen z-0 flex items-center justify-center pt-24 pointer-events-none">
         {/* Background Image Overlay */}
-        <div className="absolute inset-0 z-0 opacity-[0.68]">
+        <div className="absolute inset-0 z-0 select-none">
           <Image
             src="/empiimages/IMG_1216.JPG"
             alt="Costume Show Hero Background"
@@ -93,7 +93,8 @@ export function CostumeShowHome() {
             className="object-cover object-top"
             priority
           />
-          <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/80 via-black/45 to-black" />
+          {/* Subtle gradient to keep text readable without washing out the photo */}
+          <div className="absolute inset-0 z-10 bg-gradient-to-b from-black/60 via-black/20 to-black/80" />
         </div>
 
         <div className="relative z-10 max-w-5xl mx-auto px-6 text-center pointer-events-auto text-white">

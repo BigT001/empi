@@ -73,6 +73,10 @@ export async function POST(request: NextRequest) {
     settings.activeHomePage = activeHomePage;
     await settings.save();
 
+    // Update public homepage settings memory cache
+    const globalWithSettings = global as any;
+    globalWithSettings.cachedHomepageSettings = { activeHomePage };
+
     return NextResponse.json({
       success: true,
       activeHomePage: settings.activeHomePage

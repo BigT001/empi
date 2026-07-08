@@ -32,8 +32,21 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const isInitialized = useRef(false);
 
-  const [activeHomePage, setActiveHomePage] = useState<string>("default");
-  const [loadingConfig, setLoadingConfig] = useState(true);
+  // Initialize from cache if available to make it load instantly (stale-while-revalidate pattern)
+  const [activeHomePage, setActiveHomePage] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("active_home_page") || "default";
+    }
+    return "default";
+  });
+
+  const [loadingConfig, setLoadingConfig] = useState(() => {
+    if (typeof window !== "undefined") {
+      // If we have a cached value, we don't block the screen with a spinner
+      return !localStorage.getItem("active_home_page");
+    }
+    return true;
+  });
 
   useEffect(() => {
     if (!isInitialized.current) {
@@ -48,6 +61,7 @@ export default function Home() {
           const data = await res.json();
           if (data.activeHomePage) {
             setActiveHomePage(data.activeHomePage);
+            localStorage.setItem("active_home_page", data.activeHomePage);
           }
         }
       } catch (err) {
