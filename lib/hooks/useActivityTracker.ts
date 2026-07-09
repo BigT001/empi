@@ -17,8 +17,15 @@ export function useActivityTracker() {
   const ACTIVITY_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
   useEffect(() => {
+    let lastEventTime = 0;
     const handleActivity = () => {
-      lastActivityRef.current = Date.now();
+      const now = Date.now();
+      if (now - lastEventTime < 10000) {
+        return;
+      }
+      lastEventTime = now;
+
+      lastActivityRef.current = now;
       isActiveRef.current = true;
 
       // Clear any existing timeout
@@ -31,7 +38,7 @@ export function useActivityTracker() {
         validateSession();
       }, ACTIVITY_CHECK_INTERVAL);
 
-      console.log('[ActivityTracker] User activity detected at', new Date(lastActivityRef.current).toLocaleTimeString());
+      console.log('[ActivityTracker] User activity recorded at', new Date(now).toLocaleTimeString());
     };
 
     const validateSession = async () => {

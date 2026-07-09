@@ -32,26 +32,17 @@ export default function Home() {
   const [isClient, setIsClient] = useState(false);
   const isInitialized = useRef(false);
 
-  // Initialize from cache if available to make it load instantly (stale-while-revalidate pattern)
-  const [activeHomePage, setActiveHomePage] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("active_home_page") || "default";
-    }
-    return "default";
-  });
-
-  const [loadingConfig, setLoadingConfig] = useState(() => {
-    if (typeof window !== "undefined") {
-      // If we have a cached value, we don't block the screen with a spinner
-      return !localStorage.getItem("active_home_page");
-    }
-    return true;
-  });
+  const [activeHomePage, setActiveHomePage] = useState<string>("default");
 
   useEffect(() => {
     if (!isInitialized.current) {
       isInitialized.current = true;
       setIsClient(true);
+    }
+
+    const cachedPage = localStorage.getItem("active_home_page");
+    if (cachedPage) {
+      setActiveHomePage(cachedPage);
     }
 
     const fetchConfig = async () => {
@@ -66,8 +57,6 @@ export default function Home() {
         }
       } catch (err) {
         console.error("Failed to load homepage settings:", err);
-      } finally {
-        setLoadingConfig(false);
       }
     };
     fetchConfig();
@@ -104,7 +93,7 @@ export default function Home() {
   }
 
   // Only render when hydrated to prevent hydration mismatch
-  if (!isHydrated || !isClient || loadingConfig) {
+  if (!isClient) {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-500"></div>
