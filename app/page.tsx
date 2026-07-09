@@ -14,6 +14,7 @@ import CustomCostumesPage from "./custom-costumes/page";
 import { useTheme } from "./context/ThemeContext";
 
 
+import { motion } from "framer-motion";
 import Link from "next/link";
 import { ArrowRight, Sparkles, Wand2, ShoppingBag, Clock, ShieldCheck, Truck, BookOpen } from "lucide-react";
 import { ScrollReveal } from "./components/ScrollReveal";
@@ -22,37 +23,37 @@ import { KineticScroll } from "./components/KineticScroll";
 
 const dimensions = [
   {
-    title: "Stage & Theatrical",
+    title: "Stage and theatrical costumes",
     bgImage: "/empiimages/IMG_1217.JPG",
     span: "lg:col-span-8 h-[500px]",
     index: "01"
   },
   {
-    title: "Film & Television",
+    title: "Film and television costume design",
     bgImage: "/empiimages/IMG_0793.JPG",
     span: "lg:col-span-4 h-[500px]",
     index: "02"
   },
   {
-    title: "Cultural & Heritage",
+    title: "Cultural and heritage-inspired costumes",
     bgImage: "/empiimages/IMG_1216.JPG",
     span: "lg:col-span-4 h-[600px]",
     index: "03"
   },
   {
-    title: "Avant-Garde & Futuristic",
+    title: "Avant-garde and futuristic costume concepts",
     bgImage: "/empiimages/IMG_9345.JPG",
     span: "lg:col-span-8 h-[600px]",
     index: "04"
   },
   {
-    title: "Fantasy & Character",
+    title: "Fantasy, mythological, and character-based creations",
     bgImage: "/empiimages/IMG_0732.JPG",
     span: "lg:col-span-6 h-[420px]",
     index: "05"
   },
   {
-    title: "Performance & Concert",
+    title: "Contemporary performance and entertainment costumes",
     bgImage: "/empiimages/IMG_0794.JPG",
     span: "lg:col-span-6 h-[420px]",
     index: "06"
@@ -60,12 +61,14 @@ const dimensions = [
 ];
 
 const futurePlans = [
-  { title: "Annual Showcases", desc: "Setting a permanent stage for live, theatrical costume runway shows." },
-  { title: "Creative Masterclasses", desc: "Interactive workshops led by industry veterans for aspiring creators." },
-  { title: "Industry Collaborations", desc: "Bridging the gap between designers, Nollywood filmmakers, and theatres." },
-  { title: "Exhibitions & Galleries", desc: "Museum-grade interactive installations where costumes are treated as physical art." },
-  { title: "Talent Discoveries", desc: "Creating platforms and mentorships for emerging designers." },
-  { title: "Awards & Recognitions", desc: "Celebrating craftsmanship and innovation in technical costume design." }
+  { title: "Annual Showcases", desc: "Annual costume showcases and live productions" },
+  { title: "Masterclasses", desc: "Creative workshops and masterclasses for young designers" },
+  { title: "Collaborations", desc: "Industry collaborations across film, theatre, fashion, and entertainment" },
+  { title: "Exhibitions", desc: "Costume exhibitions and interactive installations" },
+  { title: "Talent Discovery", desc: "Talent discovery platforms for emerging creators" },
+  { title: "Partnerships", desc: "National and international partnerships" },
+  { title: "Storytelling", desc: "Digital content, documentaries, and behind-the-scenes storytelling" },
+  { title: "Awards & Recognitions", desc: "Awards and recognition programs for excellence in costume design" }
 ];
 
 export default function Home() {
@@ -152,8 +155,7 @@ export default function Home() {
   ];
 
   return (
-    <div className={`flex flex-col min-h-screen transition-colors duration-1000 ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-white text-gray-900'
-      }`}>
+    <div className="flex flex-col min-h-screen bg-[#050505] text-white">
       {/* Navigation */}
       <Navigation
         category={category}
@@ -285,50 +287,7 @@ export default function Home() {
         </ScrollReveal>
 
         <main className="flex-grow">
-          <ScrollReveal>
-            {/* Shop by Category - Stepped 3-Column Layout */}
-            <KineticScroll>
-              <section className="py-6 md:py-24 max-w-7xl mx-auto px-6">
-                <div className="text-center mb-6 md:mb-16">
-                  <h2 className="text-3xl md:text-5xl font-black mb-2 font-playfair tracking-tight">Our Collections</h2>
-                  <p className="text-gray-500 dark:text-gray-400 max-w-2xl mx-auto font-medium text-[10px] md:text-base uppercase tracking-widest">Select Your Style</p>
-                </div>
 
-                <div className="grid grid-cols-3 gap-2 md:gap-10 pb-6 md:pb-0">
-                  {categories.map((cat, i) => (
-                    <Link
-                      href={cat.link}
-                      key={i}
-                      className={`group relative h-[250px] md:h-[600px] rounded-2xl md:rounded-[3rem] overflow-hidden shadow-lg md:shadow-2xl transition-all duration-700
-                      ${i === 1 ? 'mt-4 md:mt-0' : i === 2 ? 'mt-8 md:mt-0' : ''}
-                      hover:scale-[1.02] active:scale-95`}
-                    >
-                      <img
-                        src={cat.image}
-                        alt={cat.title}
-                        className="absolute inset-0 w-full h-full object-cover object-top transition-transform duration-1000 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent opacity-90 group-hover:opacity-100 transition-opacity" />
-                      <div className="absolute inset-x-0 bottom-0 p-3 md:p-10">
-                        <div className={`w-7 h-7 md:w-14 md:h-14 rounded-lg md:rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center text-white mb-2 md:mb-6 shadow-xl`}>
-                          <div className="scale-[0.6] md:scale-100">
-                            {cat.icon}
-                          </div>
-                        </div>
-                        <h3 className="text-[10px] md:text-3xl font-black text-white mb-1 md:mb-3 font-playfair leading-tight uppercase tracking-tighter">
-                          {cat.title.split(' ')[0]}
-                        </h3>
-                        <div className="flex items-center gap-1 text-lime-400 font-black text-[7px] md:text-xs uppercase tracking-widest">
-                          <span>Go</span>
-                          <ArrowRight className="w-2 h-2 md:w-3 md:h-3" />
-                        </div>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </section>
-            </KineticScroll>
-          </ScrollReveal>
 
           <ScrollReveal y={60}>
             {/* The Runway Collection Section */}
@@ -367,48 +326,7 @@ export default function Home() {
             </KineticScroll>
           </ScrollReveal>
 
-          <ScrollReveal x={-40} y={0}>
-            {/* Bespoke CTA Section */}
-            <KineticScroll>
-              <section className="py-32 max-w-7xl mx-auto px-6">
-                <div className="relative rounded-[4rem] overflow-hidden bg-slate-900 border border-white/5 shadow-2xl">
-                  <div className="absolute inset-0">
-                    <img src="/empiimages/IMG_0732.JPG" alt="Bespoke" className="w-full h-full object-cover opacity-30 mix-blend-overlay" />
-                  </div>
-                  <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/90 to-transparent" />
 
-                  <div className="relative z-10 grid lg:grid-cols-2 gap-20 p-12 md:p-24 items-center">
-                    <div>
-                      <div className="inline-flex items-center gap-3 px-5 py-2.5 bg-lime-500/10 rounded-full border border-lime-500/20 text-lime-400 text-[10px] font-black uppercase tracking-[0.2em] mb-8">
-                        <Sparkles className="w-4 h-4" />
-                        The Bespoke Experience
-                      </div>
-                      <h2 className="text-5xl md:text-7xl font-black text-white mb-10 font-playfair leading-[1.1]">
-                        Where <span className="text-lime-500 italic">Vision</span> <br />Meets Artistry.
-                      </h2>
-                      <p className="text-gray-400 text-lg md:text-xl mb-12 leading-relaxed max-w-xl font-medium">
-                        Can't find the perfect piece? Our master couturiers create one-of-a-kind bespoke costumes tailored to your individual spirit and measurements.
-                      </p>
-                      <div className="flex flex-col sm:flex-row gap-6">
-                        <Link href="/custom-costumes" className="px-12 py-6 bg-lime-500 hover:bg-lime-400 text-slate-950 font-black rounded-2xl transition-all shadow-xl shadow-lime-500/20 flex items-center justify-center gap-3 active:scale-95 group">
-                          Begin Your Design <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-                        </Link>
-                        <Link href="/about" className="px-12 py-6 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black rounded-2xl transition-all flex items-center justify-center gap-3 backdrop-blur-md">
-                          The EMPI Process
-                        </Link>
-                      </div>
-                    </div>
-                    <div className="hidden lg:block relative group">
-                      <div className="absolute -inset-8 bg-lime-500/20 rounded-full blur-[120px] opacity-50 group-hover:opacity-80 transition-opacity duration-1000" />
-                      <div className="relative z-10 p-4 bg-white/5 backdrop-blur-2xl rounded-[3rem] border border-white/10 rotate-2 group-hover:rotate-0 transition-transform duration-1000">
-                        <img src="/empiimages/IMG_1216.JPG" alt="Featured Work" className="w-full h-[650px] object-cover rounded-[2.5rem] shadow-2xl" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </section>
-            </KineticScroll>
-          </ScrollReveal>
 
           {/* Beyond the Debut & Future Plans */}
           <ScrollReveal y={30} delay={0.15}>
@@ -445,59 +363,145 @@ export default function Home() {
             </section>
           </ScrollReveal>
 
-          <ScrollReveal scale={0.95}>
-            {/* Artisan Spotlight / Quote Section */}
-            <section className={`py-32 overflow-hidden ${theme === 'dark' ? 'bg-black/80' : 'bg-slate-50/50'}`}>
-              <div className="max-w-5xl mx-auto px-6 text-center">
-                <span className="text-lime-600 font-black uppercase tracking-[0.4em] text-[10px] mb-12 block">A Note from Our Founder</span>
-                <blockquote className="text-3xl md:text-5xl lg:text-6xl font-playfair italic text-slate-900 dark:text-white leading-tight mb-16 relative">
-                  <span className="absolute -top-12 -left-8 text-lime-500/20 text-9xl font-serif">&ldquo;</span>
-                  We don&apos;t just make costumes; we craft the skin for your next great story. Every thread is an invitation to become <span className="text-lime-600 underline decoration-lime-500/30 underline-offset-8">extraordinary</span>.
-                  <span className="absolute -bottom-24 -right-8 text-lime-500/20 text-9xl font-serif">&rdquo;</span>
-                </blockquote>
-                <div className="flex items-center justify-center gap-4">
-                  <div className="h-px w-12 bg-slate-300" />
-                  <cite className="not-italic font-black text-slate-500 uppercase tracking-widest text-xs">EMPI Creation Studio, Lagos</cite>
-                  <div className="h-px w-12 bg-slate-300" />
+          {/* The Evolution of Costume Creativity */}
+          <ScrollReveal y={40} delay={0.2}>
+            <section className="py-24 max-w-7xl mx-auto px-6 border-t border-white/5">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center text-left">
+                <div className="lg:col-span-7 space-y-6 animate-in fade-in slide-in-from-left duration-700">
+                  <div className="w-12 h-1 bg-lime-500 animate-pulse" />
+                  <h2 className="text-3xl md:text-5xl font-black font-playfair uppercase tracking-tight leading-tight">
+                    The Evolution of <br />
+                    Costume Creativity
+                  </h2>
+                  <p className="text-base md:text-lg leading-relaxed text-gray-300 font-medium">
+                    Costume design has evolved tremendously over the years. What once served purely functional purposes has transformed into one of the most powerful tools of visual communication.
+                  </p>
+                  <p className="text-sm leading-relaxed text-gray-400">
+                    Across global entertainment industries from Broadway productions to Nollywood films, fashion editorials, live performances, and cultural festivals, costume has become an essential storytelling language. In Nigeria especially, costume artistry continues to grow as creatives merge indigenous heritage with contemporary design, creating pieces that speak both locally and globally. THE COSTUME SHOW embraces this evolution by becoming a stage where history, technology, craftsmanship, culture, and imagination coexist.
+                  </p>
+                </div>
+                <div className="lg:col-span-5 relative group">
+                  <div className="absolute -inset-4 bg-lime-500/10 rounded-3xl blur-2xl opacity-50 group-hover:opacity-75 transition-opacity" />
+                  <div className="relative p-3 bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+                    <img
+                      src="/empiimages/IMG_9345.JPG"
+                      alt="Evolution of Costume design"
+                      className="w-full h-[400px] object-cover rounded-2xl group-hover:scale-105 transition-transform duration-700"
+                    />
+                  </div>
                 </div>
               </div>
             </section>
           </ScrollReveal>
 
+          {/* The First Show Section */}
           <ScrollReveal y={40} delay={0.2}>
-            {/* Why EMPI - SEO Section */}
-            <KineticScroll>
-              <section className={`py-24 px-6 ${theme === 'dark' ? 'bg-black/60' : 'bg-white'}`}>
-                <div className="max-w-7xl mx-auto">
-                  <div className="grid lg:grid-cols-2 gap-20 items-center">
-                    <div>
-                      <p className="text-lime-600 font-black uppercase tracking-widest mb-4">Lagos's Finest</p>
-                      <h2 className="text-4xl md:text-5xl font-black mb-8 font-playfair tracking-tight">Why Choose EMPI <br />Costumes?</h2>
-                      <div className="grid sm:grid-cols-2 gap-8">
-                        {[
-                          { title: "Lagos's Top Maker", desc: "Most trusted name in Nigeria with thousands of satisfied clients." },
-                          { title: "Wide Selection", desc: "Thousands of themes from traditional to modern fantasy." },
-                          { title: "Affordable Luxury", desc: "Premium quality at prices that make sense for everyone." },
-                          { title: "Reliable Service", desc: "Professional alterations and on-time delivery across Lagos." }
-                        ].map((item, i) => (
-                          <div key={i}>
-                            <h3 className="text-lg font-black mb-2 flex items-center gap-2">
-                              <span className="w-1.5 h-1.5 rounded-full bg-lime-500 shadow-[0_0_10px_rgba(132,204,22,0.6)]" />
-                              {item.title}
-                            </h3>
-                            <p className="text-gray-500 dark:text-gray-400 text-sm leading-relaxed">{item.desc}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <img src="/empiimages/IMG_0793.JPG" className="rounded-3xl w-full h-80 object-cover shadow-xl" alt="Gallery" />
-                      <img src="/empiimages/IMG_0794.JPG" className="rounded-3xl w-full h-80 object-cover shadow-xl translate-y-8" alt="Gallery" />
+            <section className="py-24 relative border-t border-white/5 bg-black/20">
+              <div className="max-w-7xl mx-auto px-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center text-left">
+                  <div className="lg:col-span-5 relative order-2 lg:order-1 group">
+                    <div className="absolute -inset-4 bg-lime-500/10 rounded-3xl blur-2xl opacity-50" />
+                    <div className="relative p-3 bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
+                      <img
+                        src="/empiimages/IMG_0732.JPG"
+                        alt="Debut Show Character"
+                        className="w-full h-[400px] object-cover rounded-2xl"
+                      />
                     </div>
                   </div>
+                  <div className="lg:col-span-7 order-1 lg:order-2 space-y-6">
+                    <div className="w-12 h-1 bg-lime-500" />
+                    <h2 className="text-3xl md:text-5xl font-black font-playfair uppercase tracking-tight leading-tight">
+                      The First Show: <br />
+                      A Beginning of <br />
+                      Something Powerful
+                    </h2>
+                    <p className="text-base md:text-lg leading-relaxed text-gray-300 font-medium">
+                      The debut edition of THE COSTUME SHOW marks the beginning of a bold creative journey. This first showcase serves as an introduction to the vision, a carefully curated experience featuring groundbreaking designs, immersive performances, unforgettable characters, and stories brought to life through costume.
+                    </p>
+                    <p className="text-sm leading-relaxed text-gray-400">
+                      It is the moment where creators step out from behind the scenes and take center stage. It is where audiences witness the depth, discipline, and brilliance that costume creation truly demands. And most importantly, it sets the foundation for what promises to become a defining platform in the creative industry.
+                    </p>
+                  </div>
                 </div>
-              </section>
-            </KineticScroll>
+              </div>
+            </section>
+          </ScrollReveal>
+
+          {/* Outro Cinematic Typography */}
+          <ScrollReveal y={50} delay={0.2}>
+            <section className="py-32 relative border-t border-white/5">
+              <div className="max-w-4xl mx-auto px-6 text-center space-y-8">
+                <div className="space-y-6 mb-16">
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8 }}
+                    className="text-2xl md:text-4xl font-black tracking-widest uppercase font-playfair text-lime-400"
+                  >
+                    This is not just a show.
+                  </motion.p>
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.2 }}
+                    className="text-2xl md:text-4xl font-black tracking-widest uppercase font-playfair text-lime-500"
+                  >
+                    This is a movement.
+                  </motion.p>
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.4 }}
+                    className="text-2xl md:text-4xl font-black tracking-widest uppercase font-playfair text-lime-600"
+                  >
+                    This is a celebration of imagination.
+                  </motion.p>
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.6 }}
+                    className="text-2xl md:text-4xl font-black tracking-widest uppercase font-playfair text-gray-200"
+                  >
+                    This is where stories are worn.
+                  </motion.p>
+                  <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.8, delay: 0.8 }}
+                    className="text-2xl md:text-5xl font-black tracking-widest uppercase font-playfair text-white"
+                  >
+                    This is where the future is costumed.
+                  </motion.p>
+                </div>
+
+                <motion.div
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  whileInView={{ scale: 1, opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ type: "spring", stiffness: 50, delay: 1 }}
+                  className="space-y-8"
+                >
+                  <h2 className="text-4xl md:text-7xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-lime-400 via-lime-500 to-green-500 font-playfair uppercase">
+                    WELCOME TO THE COSTUME SHOW!!!
+                  </h2>
+                  <div className="pt-8">
+                    <Link
+                      href="/costume-show-shop"
+                      className="px-10 py-5 bg-gradient-to-r from-lime-500 to-green-600 hover:from-lime-400 hover:to-green-500 text-white font-black text-sm rounded-full shadow-lg shadow-lime-500/20 hover:shadow-xl hover:shadow-lime-500/35 transition-all transform hover:-translate-y-0.5 active:scale-95 inline-flex items-center gap-2 group tracking-widest uppercase"
+                    >
+                      Enter the Showroom
+                      <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    </Link>
+                  </div>
+                </motion.div>
+              </div>
+            </section>
           </ScrollReveal>
         </main>
       </div>

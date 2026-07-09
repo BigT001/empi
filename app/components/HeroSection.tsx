@@ -78,11 +78,11 @@ export function HeroSection() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1, delay: 0.2 }}
-              className="text-4xl md:text-8xl lg:text-[7rem] font-black text-white leading-[0.95] mb-8 md:mb-12 font-playfair uppercase tracking-tight"
+              className="text-5xl md:text-8xl lg:text-[8.5rem] font-black text-white leading-[0.95] mb-8 md:mb-12 font-playfair uppercase tracking-tight"
             >
               The Costume <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-lime-600 italic font-black">
-                Show 2026.
+                Show
               </span>
             </motion.h1>
 
@@ -91,9 +91,9 @@ export function HeroSection() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 1, delay: 0.4 }}
-              className="hidden md:block text-lg md:text-2xl text-gray-300 max-w-2xl mx-auto mb-16 leading-relaxed font-semibold tracking-wide"
+              className="hidden md:block text-xl md:text-3xl text-gray-300 max-w-2xl mx-auto mb-16 leading-relaxed font-bold tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400"
             >
-              Where Imagination Wears Form! Crafting premium bespoke experiences and elite costume runway showpieces.
+              Where Imagination Wears Form!
             </motion.p>
 
             {/* Actions */}
