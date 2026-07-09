@@ -8,8 +8,6 @@ import { ProductGrid } from "./components/ProductGrid";
 import { Footer } from "./components/Footer";
 import { DiscountPopup } from "./components/DiscountPopup";
 import { HeroSection } from "./components/HeroSection";
-import { CostumeShowHome } from "./components/CostumeShowHome";
-// import { BrandsSection } from "./components/BrandsSection";
 import { useHomeMode } from "./context/HomeModeContext";
 import { useCurrency } from "./context/CurrencyContext";
 import CustomCostumesPage from "./custom-costumes/page";
@@ -17,49 +15,74 @@ import { useTheme } from "./context/ThemeContext";
 
 
 import Link from "next/link";
-import { ArrowRight, Sparkles, Wand2, ShoppingBag, Clock, ShieldCheck, Truck } from "lucide-react";
+import { ArrowRight, Sparkles, Wand2, ShoppingBag, Clock, ShieldCheck, Truck, BookOpen } from "lucide-react";
 import { ScrollReveal } from "./components/ScrollReveal";
 import { FloatingDecor } from "./components/FloatingDecor";
 import { KineticScroll } from "./components/KineticScroll";
+
+const dimensions = [
+  {
+    title: "Stage & Theatrical",
+    bgImage: "/empiimages/IMG_1217.JPG",
+    span: "lg:col-span-8 h-[500px]",
+    index: "01"
+  },
+  {
+    title: "Film & Television",
+    bgImage: "/empiimages/IMG_0793.JPG",
+    span: "lg:col-span-4 h-[500px]",
+    index: "02"
+  },
+  {
+    title: "Cultural & Heritage",
+    bgImage: "/empiimages/IMG_1216.JPG",
+    span: "lg:col-span-4 h-[600px]",
+    index: "03"
+  },
+  {
+    title: "Avant-Garde & Futuristic",
+    bgImage: "/empiimages/IMG_9345.JPG",
+    span: "lg:col-span-8 h-[600px]",
+    index: "04"
+  },
+  {
+    title: "Fantasy & Character",
+    bgImage: "/empiimages/IMG_0732.JPG",
+    span: "lg:col-span-6 h-[420px]",
+    index: "05"
+  },
+  {
+    title: "Performance & Concert",
+    bgImage: "/empiimages/IMG_0794.JPG",
+    span: "lg:col-span-6 h-[420px]",
+    index: "06"
+  }
+];
+
+const futurePlans = [
+  { title: "Annual Showcases", desc: "Setting a permanent stage for live, theatrical costume runway shows." },
+  { title: "Creative Masterclasses", desc: "Interactive workshops led by industry veterans for aspiring creators." },
+  { title: "Industry Collaborations", desc: "Bridging the gap between designers, Nollywood filmmakers, and theatres." },
+  { title: "Exhibitions & Galleries", desc: "Museum-grade interactive installations where costumes are treated as physical art." },
+  { title: "Talent Discoveries", desc: "Creating platforms and mentorships for emerging designers." },
+  { title: "Awards & Recognitions", desc: "Celebrating craftsmanship and innovation in technical costume design." }
+];
 
 export default function Home() {
   const { currency, setCurrency } = useCurrency();
   const searchParams = useSearchParams();
   const [category, setCategory] = useState("adults");
   const [searchQuery, setSearchQuery] = useState("");
-  const { mode, setMode, isHydrated } = useHomeMode();
+  const { mode, setMode } = useHomeMode();
   const { theme } = useTheme();
   const [isClient, setIsClient] = useState(false);
   const isInitialized = useRef(false);
-
-  const [activeHomePage, setActiveHomePage] = useState<string>("default");
 
   useEffect(() => {
     if (!isInitialized.current) {
       isInitialized.current = true;
       setIsClient(true);
     }
-
-    const cachedPage = localStorage.getItem("active_home_page");
-    if (cachedPage) {
-      setActiveHomePage(cachedPage);
-    }
-
-    const fetchConfig = async () => {
-      try {
-        const res = await fetch("/api/homepage-settings");
-        if (res.ok) {
-          const data = await res.json();
-          if (data.activeHomePage) {
-            setActiveHomePage(data.activeHomePage);
-            localStorage.setItem("active_home_page", data.activeHomePage);
-          }
-        }
-      } catch (err) {
-        console.error("Failed to load homepage settings:", err);
-      }
-    };
-    fetchConfig();
   }, []);
 
   useEffect(() => {
@@ -97,31 +120,6 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-[#050505] flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-500"></div>
-      </div>
-    );
-  }
-
-  if (activeHomePage === "costume-show") {
-    return (
-      <div className="flex flex-col min-h-screen bg-[#050505] text-white">
-        <Navigation
-          category={category}
-          onCategoryChange={setCategory}
-          currency={currency}
-          onCurrencyChange={setCurrency}
-          mode={mode}
-          onModeChange={setMode}
-        />
-        <MobileHeader
-          category={category}
-          onCategoryChange={setCategory}
-          currency={currency}
-          onCurrencyChange={setCurrency}
-          mode={mode}
-          onModeChange={setMode}
-        />
-        <CostumeShowHome />
-        <Footer />
       </div>
     );
   }
@@ -207,6 +205,85 @@ export default function Home() {
           </div>
         </ScrollReveal>
 
+        {/* The Movement Section */}
+        <ScrollReveal y={30} delay={0.15}>
+          <section className="py-24 relative max-w-7xl mx-auto px-6 border-b border-gray-100 dark:border-white/5">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center text-left">
+              <div className="lg:col-span-5 space-y-6">
+                <div className="w-12 h-1 bg-lime-500" />
+                <h2 className="text-3xl md:text-4xl font-black font-playfair uppercase tracking-tight leading-tight">
+                  A Movement <br />
+                  Beyond Creative <br />
+                  <span className="text-lime-500 italic">Boundaries.</span>
+                </h2>
+                <p className="font-medium leading-relaxed text-gray-500 dark:text-gray-400">
+                  In every generation, there comes a movement that challenges creative boundaries, redefines artistic expression, and gives new meaning to culture through visual storytelling.
+                </p>
+              </div>
+              <div className="lg:col-span-7 border rounded-3xl p-8 shadow-2xl relative overflow-hidden backdrop-blur-md bg-black/5 dark:bg-white/5 border-black/10 dark:border-white/10">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-lime-500/10 rounded-full blur-2xl" />
+                <p className="text-lg md:text-xl leading-relaxed font-semibold mb-6 text-neutral-800 dark:text-gray-200">
+                  "THE COSTUME SHOW is an innovative platform created to celebrate, showcase, and elevate the art of costume design and creative fashion expression."
+                </p>
+                <p className="text-sm leading-relaxed text-neutral-500 dark:text-gray-400">
+                  More than just a show, it is a creative experience, a cultural statement, and a growing movement dedicated to exploring the limitless possibilities of costume artistry in modern times.
+                </p>
+              </div>
+            </div>
+          </section>
+        </ScrollReveal>
+
+        {/* Celebration & Magazine Gallery Section */}
+        <ScrollReveal y={40} delay={0.2}>
+          <section className="py-24 relative z-10">
+            <div className="max-w-7xl mx-auto px-0 md:px-6">
+              <div className="text-center max-w-3xl mx-auto mb-16 px-6 md:px-0">
+                <h2 className="text-3xl md:text-5xl font-black uppercase font-playfair mb-6">
+                  Creativity Without <span className="text-lime-500 italic">Limits</span>
+                </h2>
+                <p className="text-base md:text-lg leading-relaxed text-neutral-600 dark:text-gray-300">
+                  At its core, THE COSTUME SHOW is a celebration of creativity where fashion meets storytelling, where tradition meets innovation, and where artistic expression takes physical form.
+                </p>
+              </div>
+
+              {/* Editorial Magazine Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-0 md:gap-8">
+                {dimensions.map((dim, idx) => (
+                  <div
+                    key={idx}
+                    className={`group relative rounded-none md:rounded-2xl overflow-hidden border-0 md:border transition-all duration-500 flex flex-col justify-end p-8 ${dim.span} border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5`}
+                  >
+                    <div className="absolute inset-0 z-0 opacity-[0.88] group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-700 ease-out">
+                      <img
+                        src={dim.bgImage}
+                        alt={dim.title}
+                        className="w-full h-full object-cover object-top"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    </div>
+
+                    <div className="relative z-10 text-white text-left font-outfit">
+                      <span className="text-xs font-mono text-lime-400 tracking-widest block mb-1">
+                        {dim.index} // COLLECTION
+                      </span>
+                      <h3 className="text-xl md:text-2xl font-black font-playfair uppercase tracking-tight">
+                        {dim.title}
+                      </h3>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-16 p-6 rounded-2xl border max-w-4xl mx-auto text-center backdrop-blur-sm bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5">
+                <p className="text-sm md:text-base leading-relaxed text-neutral-600 dark:text-gray-300">
+                  Every piece showcased tells a story. Every design carries emotion, purpose, and identity. Through this platform, audiences are invited into the minds of creators, to see not just what is worn, but what it represents.
+                </p>
+              </div>
+            </div>
+          </section>
+        </ScrollReveal>
+
         <main className="flex-grow">
           <ScrollReveal>
             {/* Shop by Category - Stepped 3-Column Layout */}
@@ -254,16 +331,16 @@ export default function Home() {
           </ScrollReveal>
 
           <ScrollReveal y={60}>
-            {/* New Arrivals Section - Tightened spacing */}
+            {/* The Runway Collection Section */}
             <KineticScroll>
               <section className={`py-6 md:py-24 ${theme === 'dark' ? 'bg-black/40' : 'bg-slate-50'}`}>
                 <div className="max-w-7xl mx-auto px-6">
                   <div className="flex items-end justify-between mb-8 md:mb-12">
                     <div>
-                      <h2 className="text-3xl md:text-5xl font-black mb-2 md:mb-4 font-playfair tracking-tight">New Arrivals</h2>
-                      <p className="text-gray-500 dark:text-gray-400 font-medium text-xs md:text-base">The latest additions to our premium gallery.</p>
+                      <h2 className="text-3xl md:text-5xl font-black mb-2 md:mb-4 font-playfair tracking-tight">The Runway Collection</h2>
+                      <p className="text-gray-500 dark:text-gray-400 font-medium text-xs md:text-base">Exclusive hand-crafted showpieces designed for the runway.</p>
                     </div>
-                    <Link href="/shop" className="hidden md:flex items-center gap-2 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 px-8 py-4 rounded-2xl font-bold hover:shadow-xl transition-all active:scale-95">
+                    <Link href="/costume-show-shop" className="hidden md:flex items-center gap-2 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 px-8 py-4 rounded-2xl font-bold hover:shadow-xl transition-all active:scale-95">
                       View All <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
@@ -271,18 +348,18 @@ export default function Home() {
                   <div id="product-grid">
                     <ProductGrid
                       currency={currency}
-                      category="all"
+                      category="costume-show"
                       mode={mode}
                       onModeChange={setMode}
-                      limit={4}
+                      limit={8}
                       hideHeader={true}
                       hideFilters={true}
                     />
                   </div>
 
                   <div className="mt-12 text-center md:hidden">
-                    <Link href="/shop" className="inline-flex items-center gap-2 bg-slate-900 dark:bg-lime-600 text-white px-10 py-5 rounded-2xl font-black shadow-xl">
-                      Shop Everything <ArrowRight className="w-4 h-4" />
+                    <Link href="/costume-show-shop" className="inline-flex items-center gap-2 bg-slate-900 dark:bg-lime-600 text-white px-10 py-5 rounded-2xl font-black shadow-xl">
+                      Shop the Show <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
                 </div>
@@ -331,6 +408,41 @@ export default function Home() {
                 </div>
               </section>
             </KineticScroll>
+          </ScrollReveal>
+
+          {/* Beyond the Debut & Future Plans */}
+          <ScrollReveal y={30} delay={0.15}>
+            <section className="py-24 relative z-10 max-w-7xl mx-auto px-6 border-t border-slate-100 dark:border-white/5">
+              <div className="text-center max-w-3xl mx-auto mb-16">
+                <h2 className="text-3xl md:text-4xl font-black font-playfair uppercase">
+                  Beyond The <span className="text-lime-500 italic">Debut</span>
+                </h2>
+                <p className="mt-4 text-gray-500 dark:text-gray-400 font-medium">
+                  The first show is only the beginning. We aim to expand into a larger creative movement with future plans focused on cultural growth.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
+                {futurePlans.map((plan, idx) => (
+                  <div
+                    key={idx}
+                    className="p-6 rounded-2xl border backdrop-blur-sm space-y-4 transition-all duration-300 transform hover:-translate-y-1 border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5 hover:border-lime-500/20 dark:hover:border-lime-500/20 shadow-sm"
+                  >
+                    <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs bg-lime-100 dark:bg-lime-950/40 text-lime-600 dark:text-lime-400">
+                      {idx + 1}
+                    </div>
+                    <h3 className="text-lg font-bold uppercase tracking-tight text-neutral-800 dark:text-white">{plan.title}</h3>
+                    <p className="text-xs leading-relaxed text-neutral-500 dark:text-gray-400">{plan.desc}</p>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-16 p-8 border rounded-3xl max-w-5xl mx-auto bg-gradient-to-r from-lime-100/20 to-emerald-100/20 dark:from-lime-950/20 dark:to-emerald-950/20 border-lime-600/10 dark:border-lime-500/10">
+                <p className="text-sm md:text-base leading-relaxed font-semibold text-center text-neutral-700 dark:text-gray-300">
+                  The long-term vision is to establish THE COSTUME SHOW as a leading creative institution; one that influences culture, empowers artists, and places costume design on the global stage. As the creative industry continues to evolve, the demand for originality, storytelling, and visual excellence becomes stronger than ever.
+                </p>
+              </div>
+            </section>
           </ScrollReveal>
 
           <ScrollReveal scale={0.95}>
