@@ -13,6 +13,8 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import { SmoothScroll } from "./components/SmoothScroll";
 import { ScrollProgressBar } from "./components/ScrollProgressBar";
 
+import Script from "next/script";
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -87,11 +89,11 @@ export default function RootLayout({
     <html lang="en">
       <head>
         <link rel="icon" href="/favicon.ico" />
-        <script src="https://checkout.flutterwave.com/v3.js"></script>
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${outfit.variable} ${playfair.variable} antialiased font-outfit`}
       >
+        <Script src="https://checkout.flutterwave.com/v3.js" strategy="afterInteractive" />
         <ThemeProvider>
           <CartProvider>
             <BuyerProvider>
