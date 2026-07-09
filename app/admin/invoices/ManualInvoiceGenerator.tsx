@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Eye, Package, Share2, MessageSquare, Mail, Download, Loader2, Save } from "lucide-react";
+import { Plus, Trash2, Eye, Package, Share2, MessageSquare, Mail, Download, Loader2, Save, ShoppingBag, Calendar } from "lucide-react";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { StoredInvoice } from "@/lib/invoiceStorage";
 
@@ -12,6 +12,9 @@ interface InvoiceItem {
   price: number | "";
   productId?: string;
   imageUrl?: string;
+  mode?: "buy" | "rent";
+  sellPrice?: number;
+  rentPrice?: number;
 }
 
 interface Product {
@@ -99,10 +102,8 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
   const [selectedProductQuantity, setSelectedProductQuantity] = useState<{ [key: string]: number }>({});
 
   useEffect(() => {
-    if (showProductPicker && products.length === 0) {
-      loadProducts();
-    }
-  }, [showProductPicker]);
+    loadProducts();
+  }, []);
 
   const loadProducts = async () => {
     setProductsLoading(true);
@@ -137,13 +138,16 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
         price: product.sellPrice,
         productId: product._id,
         imageUrl: product.imageUrl,
+        mode: "buy",
+        sellPrice: product.sellPrice,
+        rentPrice: product.rentPrice,
       },
     ]);
     setSelectedProductQuantity({});
   };
 
   const addItem = () => {
-    setItems([...items, { id: Math.random().toString(), name: "", quantity: "", price: "" }]);
+    setItems([...items, { id: Math.random().toString(), name: "", quantity: "", price: "", mode: "buy" }]);
   };
 
   const removeItem = (id: string) => {
@@ -152,6 +156,31 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
 
   const updateItem = (id: string, field: keyof InvoiceItem, value: any) => {
     setItems(items.map(item => (item.id === id ? { ...item, [field]: value } : item)));
+  };
+
+  const handleModeChange = (itemId: string, newMode: "buy" | "rent") => {
+    setItems(items.map(item => {
+      if (item.id === itemId) {
+        let updatedPrice = item.price;
+        const product = products.find(p => p._id === item.productId);
+        const sellPrice = item.sellPrice !== undefined ? item.sellPrice : product?.sellPrice;
+        const rentPrice = item.rentPrice !== undefined ? item.rentPrice : product?.rentPrice;
+
+        if (newMode === "buy" && sellPrice !== undefined) {
+          updatedPrice = sellPrice;
+        } else if (newMode === "rent" && rentPrice !== undefined) {
+          updatedPrice = rentPrice;
+        }
+        return {
+          ...item,
+          mode: newMode,
+          price: updatedPrice,
+          sellPrice,
+          rentPrice,
+        };
+      }
+      return item;
+    }));
   };
 
   const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
@@ -191,6 +220,7 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
         name: item.name,
         quantity: Number(item.quantity) || 1,
         price: Number(item.price) || 0,
+        mode: item.mode || "buy",
       })),
       subtotal,
       taxAmount,
@@ -451,7 +481,36 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
                             placeholder="Product name"
                           />
                         </div>
-                        <div className="flex gap-3">
+                        <div className="flex flex-wrap sm:flex-nowrap gap-3 items-end">
+                          <div className="w-36 flex-shrink-0">
+                            <label className="block text-xs font-semibold text-gray-700 mb-1">Type</label>
+                            <div className="flex bg-gray-100 p-0.5 rounded-lg border border-gray-200">
+                              <button
+                                type="button"
+                                onClick={() => handleModeChange(item.id, "buy")}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-bold transition-all duration-200 ${
+                                  (item.mode || "buy") === "buy"
+                                    ? "bg-white text-emerald-700 shadow-sm border border-gray-200"
+                                    : "text-gray-500 hover:text-gray-900 border border-transparent"
+                                }`}
+                              >
+                                <ShoppingBag className="h-3.5 w-3.5" />
+                                Buy
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleModeChange(item.id, "rent")}
+                                className={`flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-md text-xs font-bold transition-all duration-200 ${
+                                  (item.mode || "buy") === "rent"
+                                    ? "bg-white text-purple-700 shadow-sm border border-gray-200"
+                                    : "text-gray-500 hover:text-gray-900 border border-transparent"
+                                }`}
+                              >
+                                <Calendar className="h-3.5 w-3.5" />
+                                Rent
+                              </button>
+                            </div>
+                          </div>
                           <div className="w-20">
                             <label className="block text-xs font-semibold text-gray-700 mb-1">Qty</label>
                             <input
@@ -475,13 +534,13 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
                               step="0.01"
                             />
                           </div>
-                          <div className="w-24 text-right">
+                          <div className="w-24 text-right mb-2">
                             <p className="text-xs text-gray-600 mb-1">Total</p>
                             <p className="font-semibold text-gray-900">{currency.symbol}{((Number(item.quantity) || 0) * (Number(item.price) || 0)).toFixed(2)}</p>
                           </div>
                           <button
                             onClick={() => removeItem(item.id)}
-                            className="flex-shrink-0 bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg transition"
+                            className="flex-shrink-0 bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-lg transition mb-1"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
@@ -594,6 +653,7 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
                     name: item.name,
                     quantity: Number(item.quantity) || 0,
                     price: Number(item.price) || 0,
+                    mode: item.mode || "buy",
                   })),
                   subtotal,
                   taxAmount,
@@ -667,8 +727,11 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
                         )}
                         <div className="flex-1">
                           <h4 className="font-semibold text-gray-900 mb-1">{product.name}</h4>
-                          <p className="text-sm text-gray-600 mb-3">
-                            Price: <span className="font-bold text-lime-600">{currency.symbol}{product.sellPrice.toFixed(2)}</span>
+                          <p className="text-sm text-gray-600 mb-3 flex flex-wrap gap-x-2 gap-y-1">
+                            <span>Buy: <span className="font-bold text-lime-600">{currency.symbol}{product.sellPrice.toLocaleString("en-NG", { minimumFractionDigits: 2 })}</span></span>
+                            {product.rentPrice !== undefined && (
+                              <span>• Rent: <span className="font-bold text-purple-600">{currency.symbol}{product.rentPrice.toLocaleString("en-NG", { minimumFractionDigits: 2 })}</span></span>
+                            )}
                           </p>
                           <div className="flex gap-2 items-center">
                             <input
