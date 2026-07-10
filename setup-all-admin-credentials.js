@@ -14,7 +14,7 @@ async function updateAllAdminCredentials() {
       {
         email: 'admin@empicostumes.com',
         password: 'Mastercode@empicostumes',
-        name: 'Super Admin',
+        fullName: 'Super Admin',
         role: 'super_admin',
         isActive: true,
         permissions: ['all']
@@ -22,7 +22,7 @@ async function updateAllAdminCredentials() {
       {
         email: 'finance@empicostumes.com',
         password: 'Finance009206',
-        name: 'Finance Admin',
+        fullName: 'Finance Admin',
         role: 'finance_admin',
         isActive: true,
         permissions: ['view_finance', 'view_invoices', 'view_orders']
@@ -30,7 +30,7 @@ async function updateAllAdminCredentials() {
       {
         email: 'logistics@empicostumes.com',
         password: 'Logistics009206',
-        name: 'Logistics Admin',
+        fullName: 'Logistics Admin',
         role: 'logistics_admin',
         isActive: true,
         permissions: ['view_logistics', 'view_orders']
