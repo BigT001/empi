@@ -116,6 +116,7 @@ export async function GET(request: NextRequest) {
         let customerState = '';
         let customerPhone = paymentCustomer.phone || '';
         let customerName = queryName || paymentCustomer.customer_code?.split('_')[0] || paymentCustomer.first_name || 'Customer';
+        let customerCountry = '';
 
         // Check UnifiedOrder first (unified source of truth)
         const unifiedOrder = await UnifiedOrder.findOne({
@@ -131,6 +132,7 @@ export async function GET(request: NextRequest) {
           customerCity = unifiedOrder.city || '';
           customerState = unifiedOrder.state || '';
           if (unifiedOrder.phone) customerPhone = unifiedOrder.phone;
+          if (unifiedOrder.country) customerCountry = unifiedOrder.country;
           if (unifiedOrder.firstName || unifiedOrder.lastName) {
             customerName = `${unifiedOrder.firstName} ${unifiedOrder.lastName}`.trim();
           }
@@ -169,6 +171,7 @@ export async function GET(request: NextRequest) {
             customerState = customOrder.state || '';
             if (customOrder.phone) customerPhone = customOrder.phone;
             if (customOrder.fullName) customerName = customOrder.fullName;
+            if ((customOrder as any).country) customerCountry = (customOrder as any).country;
 
             if (customOrder.quoteItems && customOrder.quoteItems.length > 0) {
               invoiceItems = customOrder.quoteItems.map((item: any) => ({
@@ -187,6 +190,7 @@ export async function GET(request: NextRequest) {
               customerCity = legacyOrder.city || '';
               customerState = legacyOrder.state || '';
               if (legacyOrder.phone) customerPhone = legacyOrder.phone;
+              if ((legacyOrder as any).country) customerCountry = (legacyOrder as any).country;
               if (legacyOrder.firstName || legacyOrder.lastName) {
                 customerName = `${legacyOrder.firstName} ${legacyOrder.lastName}`.trim();
               }
@@ -213,7 +217,7 @@ export async function GET(request: NextRequest) {
           customerName: customerName,
           customerEmail: customerEmail,
           customerPhone: customerPhone || '',
-          customerAddress: customerAddress || '',
+          customerAddress: customerAddress ? (customerCountry && customerCountry.toLowerCase() !== 'nigeria' ? `${customerAddress}, ${customerCountry}` : customerAddress) : '',
           customerCity: customerCity || '',
           customerState: customerState || '',
           subtotal: invoiceSubtotal,

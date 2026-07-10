@@ -670,7 +670,7 @@ function generateOrderPlacedEmail(name: string, orderNumber: string, amount: num
 }
 
 function generateAdminNewOrderEmail(orderNumber: string, amount: number, details: any, dashboardLink: string): string {
-  const { buyerName, buyerEmail, buyerPhone, shippingAddress, shippingCity, shippingState, orderType, items, pricing } = details || {};
+  const { buyerName, buyerEmail, buyerPhone, shippingAddress, shippingCity, shippingState, shippingCountry, orderType, items, pricing } = details || {};
 
   return `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; max-width: 600px; margin: 0 auto;">
@@ -693,6 +693,7 @@ function generateAdminNewOrderEmail(orderNumber: string, amount: number, details
           <p style="color: #92400e; margin: 5px 0;"><strong>Shipping Address:</strong> ${shippingAddress || 'Not specified'}</p>
           <p style="color: #92400e; margin: 5px 0;"><strong>City:</strong> ${shippingCity || 'N/A'}</p>
           <p style="color: #92400e; margin: 5px 0;"><strong>State:</strong> ${shippingState || 'N/A'}</p>
+          <p style="color: #92400e; margin: 5px 0;"><strong>Country:</strong> ${shippingCountry || 'Nigeria'}</p>
           <p style="color: #92400e; margin: 5px 0;"><strong>Order Type:</strong> ${orderType || 'Regular'}</p>
         </div>
         

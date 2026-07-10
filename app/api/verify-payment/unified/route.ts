@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       customerEmail: order.email,
       customerName: `${order.firstName} ${order.lastName}`,
       customerPhone: order.phone,
-      customerAddress: order.address,
+      customerAddress: order.address ? (order.country && order.country.toLowerCase() !== 'nigeria' ? `${order.address}, ${order.country}` : order.address) : '',
       customerCity: order.city,
       customerState: order.state,
       customerPostalCode: order.zipCode,

@@ -52,6 +52,7 @@ export default function CheckoutPage() {
     city: '',
     address: '',
     state: '',
+    country: 'Nigeria',
   });
 
   // Pre-fill checkout form details from logged in buyer
@@ -65,6 +66,7 @@ export default function CheckoutPage() {
         address: prev.address || buyer.address || '',
         city: prev.city || buyer.city || '',
         state: prev.state || buyer.state || '',
+        country: prev.country || (buyer as any).country || 'Nigeria',
       }));
     }
   }, [buyer]);
@@ -117,6 +119,7 @@ export default function CheckoutPage() {
                   city: customOrder.city || '',
                   address: customOrder.address || '',
                   state: customOrder.state || '',
+                  country: customOrder.country || 'Nigeria',
                 });
 
                 // 🎁 ALSO LOAD DISCOUNT FROM DATABASE if it was persisted
@@ -266,8 +269,8 @@ export default function CheckoutPage() {
       // Use the unified form state guestCustomer
       const customerInfo = guestCustomer;
 
-      if (!customerInfo.fullName || !customerInfo.email || !customerInfo.phone || !customerInfo.address || !customerInfo.city || !customerInfo.state) {
-        setOrderError("Customer information is incomplete. Please fill in all required fields (Name, Email, Phone, Address, City, State).");
+      if (!customerInfo.fullName || !customerInfo.email || !customerInfo.phone || !customerInfo.address || !customerInfo.city || !customerInfo.state || !customerInfo.country) {
+        setOrderError("Customer information is incomplete. Please fill in all required fields (Name, Email, Phone, Address, City, State, Country).");
         setIsProcessing(false);
         return;
       }
@@ -305,6 +308,7 @@ export default function CheckoutPage() {
               address: customerInfo.address || '',
               city: customerInfo.city || '',
               state: customerInfo.state || '',
+              country: customerInfo.country || 'Nigeria',
             }),
           });
 
@@ -440,6 +444,7 @@ export default function CheckoutPage() {
           city: customerInfo.city || '',
           address: customerInfo.address || '',
           state: customerInfo.state || '',
+          country: customerInfo.country || 'Nigeria',
           orderType: 'regular',
           items: itemsWithRentalDays,
           rentalSchedule: rentalSchedule || null,
@@ -810,8 +815,8 @@ export default function CheckoutPage() {
                 Shipping Information
               </h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="md:col-span-3">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Contact Email
                   </label>
@@ -825,7 +830,7 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Full Name
                   </label>
@@ -839,22 +844,21 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                <div>
+                <div className="md:col-span-1">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Phone Number
                   </label>
                   <input
                     type="text"
                     required
-                    placeholder="Phone Number (11 digits)"
-                    maxLength={11}
+                    placeholder="Phone Number"
                     value={guestCustomer.phone}
                     onChange={(e) => setGuestCustomer({ ...guestCustomer, phone: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 text-gray-900 transition"
                   />
                 </div>
 
-                <div className="md:col-span-2">
+                <div className="md:col-span-3">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     Delivery Address
                   </label>
@@ -868,7 +872,7 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                <div>
+                <div className="md:col-span-1">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
                     City
                   </label>
@@ -882,30 +886,32 @@ export default function CheckoutPage() {
                   />
                 </div>
 
-                <div>
+                <div className="md:col-span-1">
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
-                    State
+                    State / Region
                   </label>
-                  <select
-                    value={guestCustomer.state}
+                  <input
+                    type="text"
                     required
+                    placeholder="State / Region"
+                    value={guestCustomer.state}
                     onChange={(e) => setGuestCustomer({ ...guestCustomer, state: e.target.value })}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 text-gray-900 transition"
-                  >
-                    <option value="">Select State</option>
-                    <option value="Lagos">Lagos</option>
-                    <option value="Abuja">Abuja (FCT)</option>
-                    <option value="Ogun">Ogun</option>
-                    <option value="Oyo">Oyo</option>
-                    <option value="Anambra">Anambra</option>
-                    <option value="Rivers">Rivers</option>
-                    <option value="Delta">Delta</option>
-                    <option value="Edo">Edo</option>
-                    <option value="Enugu">Enugu</option>
-                    <option value="Kano">Kano</option>
-                    <option value="Kaduna">Kaduna</option>
-                    <option value="Other">Other</option>
-                  </select>
+                  />
+                </div>
+
+                <div className="md:col-span-1">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                    Country
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Country"
+                    value={guestCustomer.country}
+                    onChange={(e) => setGuestCustomer({ ...guestCustomer, country: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-600/20 focus:border-purple-600 text-gray-900 transition"
+                  />
                 </div>
               </div>
             </div>
@@ -1023,8 +1029,8 @@ export default function CheckoutPage() {
                   // Use the unified form state guestCustomer
                   const customerInfo = guestCustomer;
 
-                  if (!customerInfo?.fullName || !customerInfo?.email || !customerInfo?.phone || !customerInfo?.address || !customerInfo?.city || !customerInfo?.state) {
-                    setOrderError("Please provide your full name, email, phone number, delivery address, city, and state.");
+                  if (!customerInfo?.fullName || !customerInfo?.email || !customerInfo?.phone || !customerInfo?.address || !customerInfo?.city || !customerInfo?.state || !customerInfo?.country) {
+                    setOrderError("Please provide your full name, email, phone number, delivery address, city, state, and country.");
                     return;
                   }
 

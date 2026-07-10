@@ -69,7 +69,7 @@ export async function createInvoiceFromOrder(order: IOrder): Promise<any> {
       customerName: `${order.firstName} ${order.lastName}`,
       customerEmail: order.email,
       customerPhone: order.phone || '',
-      customerAddress: order.address || '',
+      customerAddress: order.address ? ((order as any).country && (order as any).country.toLowerCase() !== 'nigeria' ? `${order.address}, ${(order as any).country}` : order.address) : '',
       customerCity: order.city || '',
       customerState: order.state || '',
       customerPostalCode: order.zipCode || '',

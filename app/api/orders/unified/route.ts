@@ -507,6 +507,7 @@ export async function POST(request: NextRequest) {
           shippingAddress: newOrder.address,
           shippingCity: newOrder.city,
           shippingState: newOrder.state,
+          shippingCountry: newOrder.country,
           amount: newOrder.total || 0,
           orderType: orderType,
           items: newOrder.items,

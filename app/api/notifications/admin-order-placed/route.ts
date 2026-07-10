@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       shippingAddress,
       shippingCity,
       shippingState,
+      shippingCountry,
       amount, 
       orderType, 
       items, 
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
       shippingAddress,
       shippingCity,
       shippingState,
+      shippingCountry,
       amount,
     });
 
@@ -67,6 +69,7 @@ export async function POST(req: NextRequest) {
         shippingAddress,
         shippingCity,
         shippingState,
+        shippingCountry,
         orderType,
         items,
         pricing,
