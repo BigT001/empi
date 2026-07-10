@@ -49,6 +49,8 @@ export interface StoredInvoice {
   shippingMethod?: string;
   paymentStatus?: "pending" | "completed" | "failed";
   paymentMethod?: string;
+  paymentVerified?: boolean;
+  paymentReference?: string;
   
   currency?: string;
   currencySymbol?: string;

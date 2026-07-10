@@ -42,6 +42,7 @@ export interface IInvoice extends Document {
   status: 'draft' | 'sent' | 'paid' | 'overdue';
   paymentVerified?: boolean;
   paymentReference?: string;
+  paymentMethod?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -89,6 +90,7 @@ const invoiceSchema = new Schema<IInvoice>(
     status: { type: String, enum: ['draft', 'sent', 'paid', 'overdue'], default: 'sent' },
     paymentVerified: { type: Boolean, default: false },
     paymentReference: String,
+    paymentMethod: String,
   },
   { timestamps: true }
 );

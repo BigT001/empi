@@ -87,8 +87,11 @@ export async function createInvoiceFromOrder(order: IOrder): Promise<any> {
       currency: 'NGN',
       currencySymbol: '₦',
       taxRate: order.vatRate || 7.5,
-      type: 'automatic',
-      status: 'sent',
+      type: order.paymentMethod === 'manual' ? 'manual' : 'automatic',
+      status: (order.status === 'payment_confirmed' || order.status === 'completed' || order.paymentStatus === 'confirmed' || (order as any).paymentVerified === true) ? 'paid' : 'sent',
+      paymentVerified: (order.status === 'payment_confirmed' || order.status === 'completed' || order.paymentStatus === 'confirmed' || (order as any).paymentVerified === true),
+      paymentReference: (order as any).paymentReference || undefined,
+      paymentMethod: order.paymentMethod || undefined,
     });
 
     // Save invoice

@@ -1,6 +1,36 @@
 // Mobile-Optimized Professional Invoice HTML Template
 import { StoredInvoice } from "./invoiceStorage";
 
+/**
+ * Determines if a payment was made online (e.g. Flutterwave or Paystack)
+ * or if it has already been verified and paid.
+ */
+function isOnlineOrPaid(invoice: StoredInvoice): boolean {
+  // If payment is already verified or status is paid, we don't need to ask for manual bank transfer payment
+  if (invoice.paymentVerified === true || invoice.status === 'paid') {
+    return true;
+  }
+  
+  // Check the payment method
+  if (invoice.paymentMethod) {
+    const method = invoice.paymentMethod.toLowerCase();
+    if (method === 'flutterwave' || method === 'paystack') {
+      return true;
+    }
+    if (method === 'manual') {
+      return false;
+    }
+  }
+
+  // If type is automatic, it means it's an online system-generated invoice, which usually goes through the online gateway.
+  // Unless payment method is explicitly manual, we treat automatic invoices as online/system-handled.
+  if (invoice.type === 'automatic' && invoice.paymentMethod !== 'manual') {
+    return true;
+  }
+
+  return false;
+}
+
 export function generateProfessionalInvoiceHTML(
   invoice: StoredInvoice,
   activeBank?: { bankName: string; accountName: string; accountNumber: string }
@@ -583,7 +613,7 @@ export function generateProfessionalInvoiceHTML(
             <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAACE4AAAhOAFmwQcnAAABpElEQVR4nO3YwUrDMBCG4ZA7iJ5EsV7Fi4gHQRBFPYiCB0Hx4tGTZ09e9OpBeAzBiyBqb56k15O0pGmTZJrZzPwwH8wBGfj2m2Q3SSccx3H+JXmelzUajRwAiKIoRZZlMZ1OR4vFYrJcLhfr9foyiiKMbMux7RskSRK0Wi0Wy+VyQ6GUyj7PY1mWlCRJNJ1OJ4vFYkWhVKrVajGbzcZCoRBIkmShkIlEIikSHo+n1mq1OBxUyhT9fp/pdBqPx+NRqVSSJEnkcrkMc9sKhUIg/X6faTabdF1HUZSEvt/PyeXyxnWBfD4fyuOYzWbmdR0gn89HvV6PXq+HLMuKxqWnpmJbFi6Xi2azycjj8RBFUb/f1wVyPp85HA7Z5/OhKAq6rj/v0Ov18jAY/VvdbleXiJZlKZZlKZZlxRRK6RP/EB0iO4RGsCOQHUIjWBAzsgNoBGoH5BSoHUAjUDsgKyBTdwBoB9AOyAoIs3cAaAfQDsgKIHsBaAfQDsgKwJIaAvwNvz+gHZAVEGbvANAOoB2QFRBm7wDQDqAdkBUAaAdkBQDaAVkBQDuAdiAL+AVm/w7RpmOC5gAAAABJRU5ErkJggg==" alt="EMPI Logo" class="logo-img">
             <div class="company-name">EMPI</div>
           </div>
-          ${invoice.type === 'automatic' ? '<div class="status-badge">PAID</div>' : ''}
+          ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? '<div class="status-badge">PAID</div>' : ''}
         </div>
         
         <div class="header-info">
@@ -619,13 +649,13 @@ export function generateProfessionalInvoiceHTML(
           <h4>📦 Order</h4>
           <strong>Order #${invoice.orderNumber}</strong>
           <p>${invoice.items.length} ${invoice.items.length === 1 ? 'Item' : 'Items'}</p>
-          <p>Status: ${invoice.type === 'automatic' ? 'Paid ✓' : (invoice.status || 'Draft').charAt(0).toUpperCase() + (invoice.status || 'Draft').slice(1)}</p>
+          <p>Status: ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? 'Paid ✓' : (invoice.status || 'Draft').charAt(0).toUpperCase() + (invoice.status || 'Draft').slice(1)}</p>
           <p style="font-size: 11px; color: #666; margin-top: 4px;">${dateStr}</p>
         </div>
         <div class="info-box">
           <h4>💰 Total Amount</h4>
           <strong style="font-size: 18px;">${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</strong>
-          <p style="font-size: 11px; color: ${invoice.type === 'automatic' ? '#047857' : '#6b7280'};\">${invoice.type === 'automatic' ? '✓ Paid & Verified' : invoice.status === 'sent' ? '📤 Sent' : '📋 Draft'}</p>
+          <p style="font-size: 11px; color: ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? '#047857' : '#6b7280'};\">${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? '✓ Paid & Verified' : invoice.status === 'sent' ? '📤 Sent' : '📋 Draft'}</p>
         </div>
       </div>
       
@@ -716,7 +746,7 @@ export function generateProfessionalInvoiceHTML(
         </div>
 
         <!-- BANK PAYMENT DETAILS -->
-        ${activeBank ? `
+        ${(activeBank && !isOnlineOrPaid(invoice)) ? `
         <div class="bank-details-box">
           <h4 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #065f46; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
             🏛️ Bank Transfer Details
@@ -731,7 +761,7 @@ export function generateProfessionalInvoiceHTML(
         ` : ''}
         
         <div class="payment-note">
-          ${invoice.type === 'automatic' ? `✓ Your payment has been received and processed. Thank you for your purchase!` : `📋 Invoice generated and ready. Awaiting payment.`}
+          ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? `✓ Your payment has been received and processed. Thank you for your purchase!` : `📋 Invoice generated and ready. Awaiting payment.`}
           ${invoice.cautionFee && invoice.cautionFee > 0 ? `<br><br>📌 <strong>Caution Fee Note:</strong> The caution fee of ${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 2 })} is a refundable deposit for rental items. It will be refunded upon successful return in good condition.` : ''}
         </div>
       </div>

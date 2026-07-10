@@ -81,8 +81,11 @@ export async function createInvoiceFromCustomOrder(customOrder: ICustomOrder): P
       currency: 'NGN',
       currencySymbol: '₦',
       taxRate: 7.5,
-      type: 'automatic',
-      status: 'sent',
+      type: (customOrder as any).paymentMethod === 'manual' ? 'manual' : 'automatic',
+      status: customOrder.paymentVerified ? 'paid' : 'sent',
+      paymentVerified: customOrder.paymentVerified || false,
+      paymentReference: customOrder.paymentReference || undefined,
+      paymentMethod: (customOrder as any).paymentMethod || undefined,
     });
 
     // Save invoice
