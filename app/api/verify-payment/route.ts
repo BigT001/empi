@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 import CustomOrder from '@/lib/models/CustomOrder';
+import UnifiedOrder from '@/lib/models/UnifiedOrder';
 import Invoice from '@/lib/models/Invoice';
 import { sendInvoiceEmail } from '@/lib/email';
 
@@ -110,18 +111,87 @@ export async function GET(request: NextRequest) {
         }];
         let invoiceSubtotal = paymentAmount;
         
-        const customOrder = await CustomOrder.findOne({ orderNumber: reference });
-        if (customOrder && customOrder.quoteItems && customOrder.quoteItems.length > 0) {
-          console.log('[verify-payment] 🎯 Found custom order with quote items');
-          invoiceItems = customOrder.quoteItems.map((item: any) => ({
-            name: item.itemName,
-            quantity: item.quantity,
-            price: item.unitPrice,
-            mode: 'buy',
-          }));
-          invoiceSubtotal = customOrder.quoteItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
-          console.log('[verify-payment]   - Quote items:', invoiceItems.length);
-          console.log('[verify-payment]   - Subtotal:', invoiceSubtotal);
+        let customerAddress = '';
+        let customerCity = '';
+        let customerState = '';
+        let customerPhone = paymentCustomer.phone || '';
+        let customerName = queryName || paymentCustomer.customer_code?.split('_')[0] || paymentCustomer.first_name || 'Customer';
+
+        // Check UnifiedOrder first (unified source of truth)
+        const unifiedOrder = await UnifiedOrder.findOne({
+          $or: [
+            { paymentReference: paymentReference },
+            { orderNumber: paymentReference }
+          ]
+        });
+
+        if (unifiedOrder) {
+          console.log('[verify-payment] 🎯 Found unified order:', unifiedOrder.orderNumber);
+          customerAddress = unifiedOrder.address || '';
+          customerCity = unifiedOrder.city || '';
+          customerState = unifiedOrder.state || '';
+          if (unifiedOrder.phone) customerPhone = unifiedOrder.phone;
+          if (unifiedOrder.firstName || unifiedOrder.lastName) {
+            customerName = `${unifiedOrder.firstName} ${unifiedOrder.lastName}`.trim();
+          }
+
+          if (unifiedOrder.orderType === 'custom') {
+            if (unifiedOrder.quoteItems && unifiedOrder.quoteItems.length > 0) {
+              invoiceItems = unifiedOrder.quoteItems.map((item: any) => ({
+                name: item.itemName,
+                quantity: item.quantity,
+                price: item.unitPrice,
+                mode: 'buy',
+              }));
+              invoiceSubtotal = unifiedOrder.quoteItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
+            }
+          } else {
+            if (unifiedOrder.items && unifiedOrder.items.length > 0) {
+              invoiceItems = unifiedOrder.items.map((item: any) => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.unitPrice || item.price || 0,
+                mode: item.mode || 'buy',
+                rentalDays: item.rentalDays || 0,
+                selectedSize: item.selectedSize,
+                selectedColor: item.selectedColor,
+              }));
+              invoiceSubtotal = unifiedOrder.subtotal;
+            }
+          }
+        } else {
+          // Fallback to legacy models
+          const customOrder = await CustomOrder.findOne({ orderNumber: paymentReference });
+          if (customOrder) {
+            console.log('[verify-payment] 🎯 Found legacy custom order:', customOrder.orderNumber);
+            customerAddress = customOrder.address || '';
+            customerCity = customOrder.city || '';
+            customerState = customOrder.state || '';
+            if (customOrder.phone) customerPhone = customOrder.phone;
+            if (customOrder.fullName) customerName = customOrder.fullName;
+
+            if (customOrder.quoteItems && customOrder.quoteItems.length > 0) {
+              invoiceItems = customOrder.quoteItems.map((item: any) => ({
+                name: item.itemName,
+                quantity: item.quantity,
+                price: item.unitPrice,
+                mode: 'buy',
+              }));
+              invoiceSubtotal = customOrder.quoteItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
+            }
+          } else {
+            const legacyOrder = await Order.findOne({ reference: paymentReference });
+            if (legacyOrder) {
+              console.log('[verify-payment] 🎯 Found legacy order:', legacyOrder.orderNumber);
+              customerAddress = legacyOrder.address || '';
+              customerCity = legacyOrder.city || '';
+              customerState = legacyOrder.state || '';
+              if (legacyOrder.phone) customerPhone = legacyOrder.phone;
+              if (legacyOrder.firstName || legacyOrder.lastName) {
+                customerName = `${legacyOrder.firstName} ${legacyOrder.lastName}`.trim();
+              }
+            }
+          }
         }
         
         const invoiceNumber = `INV-${Date.now()}-${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
@@ -142,7 +212,10 @@ export async function GET(request: NextRequest) {
           orderNumber: paymentReference,
           customerName: customerName,
           customerEmail: customerEmail,
-          customerPhone: paymentCustomer.phone || '',
+          customerPhone: customerPhone || '',
+          customerAddress: customerAddress || '',
+          customerCity: customerCity || '',
+          customerState: customerState || '',
           subtotal: invoiceSubtotal,
           shippingCost: 0,
           taxAmount: 0,

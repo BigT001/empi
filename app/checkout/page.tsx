@@ -287,6 +287,10 @@ export default function CheckoutPage() {
         // For custom orders, update via unified endpoint
         // Status should REMAIN 'pending' - admin must explicitly approve
         try {
+          const nameParts = (customerInfo.fullName || '').trim().split(/\s+/);
+          const firstName = nameParts[0] || '';
+          const lastName = nameParts.slice(1).join(' ') || '';
+
           const updateRes = await fetch(`/api/orders/unified/${customQuote.orderId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
@@ -294,6 +298,13 @@ export default function CheckoutPage() {
               status: 'pending', // Custom orders stay pending until admin approves
               paymentReference: response.reference,
               paymentVerified: true,
+              firstName: firstName,
+              lastName: lastName,
+              email: customerInfo.email.toLowerCase(),
+              phone: customerInfo.phone,
+              address: customerInfo.address || '',
+              city: customerInfo.city || '',
+              state: customerInfo.state || '',
             }),
           });
 
@@ -779,7 +790,15 @@ export default function CheckoutPage() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50/50">
       <Header />
-      <main className="flex-1 max-w-6xl mx-auto px-4 py-12 w-full pt-20 sm:pt-24 md:pt-20">
+      <main className="flex-1 max-w-6xl mx-auto px-4 py-8 w-full pt-20 sm:pt-24 md:pt-20">
+        <div className="mb-6">
+          <Link
+            href="/cart"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-gray-600 hover:text-purple-600 transition"
+          >
+            ← Back to Cart
+          </Link>
+        </div>
         <div className="grid lg:grid-cols-3 gap-8 items-start">
           {/* Left Column: Billing/Shipping & Payment Information */}
           <div className="lg:col-span-2 space-y-6">
@@ -891,135 +910,7 @@ export default function CheckoutPage() {
               </div>
             </div>
 
-            {/* Payment Method Selector */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 md:p-8">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2.5">
-                <CreditCard className="h-6 w-6 text-purple-600" />
-                Choose Payment Method
-              </h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                {/* Paystack Option */}
-                {paymentVisibility.paystack && (
-                  <button
-                    onClick={() => setPaymentMethod('paystack')}
-                    className={`flex flex-col p-4 rounded-xl border-2 transition text-left relative overflow-hidden ${paymentMethod === 'paystack'
-                      ? 'border-purple-600 bg-purple-50'
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className={`p-2 rounded-lg ${paymentMethod === 'paystack' ? 'bg-purple-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                        <CreditCard className="h-5 w-5" />
-                      </div>
-                      {paymentMethod === 'paystack' && (
-                        <CheckCircle2 className="h-5 w-5 text-purple-600" />
-                      )}
-                    </div>
-                    <p className="font-bold text-gray-900">Pay Online</p>
-                    <p className="text-xs text-gray-600 mt-1">Instant confirmation via Flutterwave (Cards, Transfer, USSD)</p>
-                  </button>
-                )}
 
-                {/* Manual Transfer Option */}
-                {paymentVisibility.manual && (
-                  <button
-                    onClick={() => setPaymentMethod('manual')}
-                    className={`flex flex-col p-4 rounded-xl border-2 transition text-left relative overflow-hidden ${paymentMethod === 'manual'
-                      ? 'border-lime-600 bg-lime-50'
-                      : 'border-gray-200 hover:border-gray-300 bg-white'
-                      }`}
-                  >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className={`p-2 rounded-lg ${paymentMethod === 'manual' ? 'bg-lime-600 text-white' : 'bg-gray-100 text-gray-500'}`}>
-                        <Landmark className="h-5 w-5" />
-                      </div>
-                      {paymentMethod === 'manual' && (
-                        <CheckCircle2 className="h-5 w-5 text-lime-600" />
-                      )}
-                    </div>
-                    <p className="font-bold text-gray-900">Bank Transfer</p>
-                    <p className="text-xs text-gray-600 mt-1">Direct transfer to our bank account. Requires confirmation.</p>
-                  </button>
-                )}
-              </div>
-
-              {/* Manual Payment Instructions */}
-              {paymentMethod === 'manual' && (
-                <div className="bg-lime-50 border border-lime-200 rounded-xl p-6 animate-in fade-in slide-in-from-top-4 duration-300">
-                  <h3 className="text-lg font-bold text-lime-900 mb-4 flex items-center gap-2">
-                    <Landmark className="h-5 w-5" />
-                    How to Pay via Bank Transfer
-                  </h3>
-
-                  {bankDetails ? (
-                    <div className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="bg-white p-3 rounded-lg border border-lime-100">
-                          <p className="text-xs text-gray-500 uppercase font-semibold">Bank Name</p>
-                          <p className="font-bold text-gray-900">{bankDetails.bankName}</p>
-                        </div>
-                        <div className="bg-white p-3 rounded-lg border border-lime-100">
-                          <p className="text-xs text-gray-500 uppercase font-semibold">Account Number</p>
-                          <p className="font-bold text-gray-900 text-lg tracking-wider">{bankDetails.accountNumber}</p>
-                        </div>
-                        <div className="bg-white p-3 rounded-lg border border-lime-100 sm:col-span-2">
-                          <p className="text-xs text-gray-500 uppercase font-semibold">Account Name</p>
-                          <p className="font-bold text-gray-900">{bankDetails.accountName}</p>
-                        </div>
-                      </div>
-
-                      <div className="pt-4 border-t border-lime-200">
-                        <p className="text-sm font-bold text-lime-900 mb-3">Step 2: Upload Proof of Payment</p>
-                        <p className="text-xs text-lime-800 mb-4">Please upload a screenshot of your transfer confirmation or receipt.</p>
-
-                        <div className="relative">
-                          {!paymentProofUrl ? (
-                            <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition ${isUploadingProof ? 'bg-gray-50 border-gray-300' : 'bg-white border-lime-300 hover:bg-lime-50 hover:border-lime-400'
-                              }`}>
-                              <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                                {isUploadingProof ? (
-                                  <div className="flex flex-col items-center gap-2">
-                                    <div className="w-10 h-10 border-4 border-lime-600 border-t-transparent rounded-full animate-spin"></div>
-                                    <p className="text-xs font-semibold text-gray-600">Uploading {uploadProgress}%...</p>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <Camera className="w-10 h-10 text-lime-600 mb-2" />
-                                    <p className="text-sm text-gray-700 font-semibold">Click to upload receipt</p>
-                                    <p className="text-xs text-gray-500 mt-1">JPG, PNG or PDF (max 5MB)</p>
-                                  </>
-                                )}
-                              </div>
-                              <input type="file" className="hidden" onChange={handleFileUpload} disabled={isUploadingProof} accept="image/*" />
-                            </label>
-                          ) : (
-                            <div className="relative rounded-xl overflow-hidden border-2 border-lime-500 shadow-md">
-                              <img src={paymentProofUrl} alt="Payment Proof" className="w-full h-48 object-cover" />
-                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-                                <button
-                                  onClick={() => setPaymentProofUrl('')}
-                                  className="bg-white text-red-600 px-4 py-2 rounded-lg font-bold flex items-center gap-2"
-                                >
-                                  <Upload className="h-4 w-4" /> Change Receipt
-                                </button>
-                              </div>
-                              <div className="absolute top-2 right-2 bg-green-500 text-white p-1.5 rounded-full shadow-lg">
-                                <CheckCircle2 className="h-5 w-5" />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="text-center py-6">
-                      <div className="w-8 h-8 border-4 border-lime-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-                      <p className="text-sm text-lime-800">Loading bank details...</p>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Right Column: Order Summary & Actions */}
@@ -1287,13 +1178,6 @@ export default function CheckoutPage() {
                   `Pay ₦${displayTotal.toLocaleString()}`
                 )}
               </button>
-              
-              <Link
-                href="/cart"
-                className="w-full inline-block text-center border border-gray-300 bg-white hover:bg-gray-50 text-gray-700 font-semibold py-3 px-6 rounded-xl transition"
-              >
-                ← Back to Cart
-              </Link>
             </div>
 
             {/* Secured by Flutterwave Badge */}
