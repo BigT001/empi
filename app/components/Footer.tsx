@@ -119,7 +119,9 @@ export function Footer() {
           <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-white/5 text-[11px] lg:text-xs">
             <span className="font-bold text-slate-400 uppercase tracking-widest">Built with passion by</span>
             <a
-              href="mailto:info.samuelstanley@gmail.com"
+              href="https://www.samuelstanley.com"
+              target="_blank"
+              rel="noopener noreferrer"
               className="font-black text-slate-900 dark:text-white hover:text-lime-500 transition-all flex items-center gap-1.5 group"
             >
               Samuel Stanley
