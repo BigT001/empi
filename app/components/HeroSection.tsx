@@ -8,16 +8,16 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { KineticScroll } from "./KineticScroll";
 
-export function HeroSection() {
+export function HeroSection({ images = [] }: { images?: string[] }) {
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const heroImages = [
-    "/empiimages/IMG_1217.JPG",
-    "/empiimages/IMG_0793.JPG",
-    "/empiimages/IMG_1216.JPG",
-    "/empiimages/IMG_9345.JPG",
-    "/empiimages/IMG_0732.JPG"
+  const heroImages = images.length > 0 ? images.slice(0, 10) : [
+    "/costumeshow/Image 11-07-2026 at 13.07.png",
+    "/costumeshow/Image 11-07-2026 at 13.10.png",
+    "/costumeshow/Image 11-07-2026 at 13.10 (1).png",
+    "/costumeshow/Image 11-07-2026 at 13.11.png",
+    "/costumeshow/Image 11-07-2026 at 13.11 (1).png"
   ];
 
   useEffect(() => {
@@ -25,10 +25,10 @@ export function HeroSection() {
 
     const interval = setInterval(() => {
       setCurrentImageIndex((prev) => (prev + 1) % heroImages.length);
-    }, 5 * 60 * 1000); // 5 minutes
+    }, 6000); // 6 seconds
 
     return () => clearInterval(interval);
-  }, []);
+  }, [heroImages.length]);
 
   const { scrollY } = useScroll();
   const yBg = useTransform(scrollY, [0, 800], [0, 200]);

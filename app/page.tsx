@@ -23,6 +23,129 @@ import { FloatingDecor } from "./components/FloatingDecor";
 import { KineticScroll } from "./components/KineticScroll";
 
 
+const magazineImages = [
+  "/costumeshow/Image 11-07-2026 at 13.07.png",
+  "/costumeshow/Image 11-07-2026 at 13.10.png",
+  "/costumeshow/Image 11-07-2026 at 13.10 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.11.png",
+  "/costumeshow/Image 11-07-2026 at 13.11 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.12.png",
+  "/costumeshow/Image 11-07-2026 at 13.12 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.12 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.13.png",
+  "/costumeshow/Image 11-07-2026 at 13.13 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.13 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.14.png",
+  "/costumeshow/Image 11-07-2026 at 13.14 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.14 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.40.png",
+  "/costumeshow/Image 11-07-2026 at 13.41.png",
+  "/costumeshow/Image 11-07-2026 at 13.41 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.42.png",
+  "/costumeshow/Image 11-07-2026 at 13.42 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.42 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.43.png",
+  "/costumeshow/Image 11-07-2026 at 13.43 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.43 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.44.png",
+  "/costumeshow/Image 11-07-2026 at 13.44 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.44 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.45.png",
+  "/costumeshow/Image 11-07-2026 at 13.45 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.46.png",
+  "/costumeshow/Image 11-07-2026 at 13.46 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.46 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.47.png",
+  "/costumeshow/Image 11-07-2026 at 13.47 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.47 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.48.png",
+  "/costumeshow/Image 11-07-2026 at 13.48 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.51.png",
+  "/costumeshow/Image 11-07-2026 at 13.51 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.52.png",
+  "/costumeshow/Image 11-07-2026 at 13.52 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.52 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.53.png",
+  "/costumeshow/Image 11-07-2026 at 13.53 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.53 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.54.png",
+  "/costumeshow/Image 11-07-2026 at 13.54 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.54 (2).png",
+  "/costumeshow/Image 11-07-2026 at 13.55.png",
+  "/costumeshow/Image 11-07-2026 at 13.55 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.56.png",
+  "/costumeshow/Image 11-07-2026 at 13.57.png",
+  "/costumeshow/Image 11-07-2026 at 13.57 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.58.png",
+  "/costumeshow/Image 11-07-2026 at 13.58 (1).png",
+  "/costumeshow/Image 11-07-2026 at 13.59.png",
+  "/costumeshow/Image 11-07-2026 at 13.59 (1).png",
+  "/costumeshow/Image 11-07-2026 at 14.00.png",
+  "/costumeshow/Image 11-07-2026 at 14.01.png",
+  "/costumeshow/Image 11-07-2026 at 14.02.png",
+  "/costumeshow/Image 11-07-2026 at 14.02 (1).png",
+  "/costumeshow/Image 11-07-2026 at 14.04.png",
+  "/costumeshow/Image 11-07-2026 at 14.04 (1).png",
+  "/costumeshow/Image 11-07-2026 at 14.04 (2).png",
+  "/costumeshow/Image 11-07-2026 at 14.05.png",
+  "/costumeshow/Image 11-07-2026 at 14.05 (1).png",
+  "/costumeshow/Image 11-07-2026 at 14.05 (2).png",
+  "/costumeshow/Image 11-07-2026 at 14.06.png",
+  "/costumeshow/Image 11-07-2026 at 14.06 (1).png",
+  "/costumeshow/Image 11-07-2026 at 14.06 (2).png",
+  "/costumeshow/Image 11-07-2026 at 14.08.png",
+  "/costumeshow/Image 11-07-2026 at 14.08 (1).png",
+  "/costumeshow/Image 11-07-2026 at 14.09.png",
+  "/costumeshow/Image 11-07-2026 at 14.09 (1).png",
+  "/costumeshow/Image 11-07-2026 at 14.09 (2).png",
+  "/costumeshow/Image 11-07-2026 at 14.10.png",
+  "/costumeshow/Image 11-07-2026 at 14.10 (1).png",
+  "/costumeshow/Image 11-07-2026 at 14.11.png",
+  "/costumeshow/Image 11-07-2026 at 14.11 (1).png",
+  "/costumeshow/Image 11-07-2026 at 14.11 (2).png",
+  "/costumeshow/Image 11-07-2026 at 14.11 (3).png",
+  "/costumeshow/Image 11-07-2026 at 14.12.png"
+];
+
+const dimensions = [
+  {
+    title: "Stage and theatrical costumes",
+    bgImage: magazineImages[0], // Page 1
+    span: "lg:col-span-8 h-[500px]",
+    index: "01"
+  },
+  {
+    title: "Film and television costume design",
+    bgImage: magazineImages[1], // Page 2
+    span: "lg:col-span-4 h-[500px]",
+    index: "02"
+  },
+  {
+    title: "Cultural and heritage-inspired costumes",
+    bgImage: magazineImages[2], // Page 3
+    span: "lg:col-span-4 h-[600px]",
+    index: "03"
+  },
+  {
+    title: "Avant-garde and futuristic costume concepts",
+    bgImage: magazineImages[3], // Page 4
+    span: "lg:col-span-8 h-[600px]",
+    index: "04"
+  },
+  {
+    title: "Fantasy, mythological, and character-based creations",
+    bgImage: magazineImages[4], // Page 5
+    span: "lg:col-span-6 h-[420px]",
+    index: "05"
+  },
+  {
+    title: "Contemporary performance and entertainment costumes",
+    bgImage: magazineImages[5], // Page 6
+    span: "lg:col-span-6 h-[420px]",
+    index: "06"
+  }
+];
+
 const futurePlans = [
   { title: "Annual Showcases", desc: "Annual costume showcases and live productions" },
   { title: "Masterclasses", desc: "Creative workshops and masterclasses for young designers" },
@@ -94,7 +217,7 @@ export default function Home() {
     {
       title: "Adult Collection",
       desc: "Premium historical, themed, and party costumes.",
-      image: "/empiimages/IMG_1217.JPG",
+      image: magazineImages[8],
       link: "/shop?category=adults",
       icon: <Sparkles className="w-5 h-5" />,
       color: "from-slate-900 to-slate-800"
@@ -102,7 +225,7 @@ export default function Home() {
     {
       title: "Kids Fantasy",
       desc: "Magical outfits for the little ones.",
-      image: "/empiimages/IMG_9906.JPG",
+      image: magazineImages[9],
       link: "/shop?category=kids",
       icon: <Wand2 className="w-5 h-5" />,
       color: "from-lime-600 to-lime-500"
@@ -110,7 +233,7 @@ export default function Home() {
     {
       title: "Bespoke Design",
       desc: "Custom made to your exact specifications.",
-      image: "/empiimages/IMG_0732.JPG",
+      image: magazineImages[10],
       link: "/custom-costumes",
       icon: <ShoppingBag className="w-5 h-5" />,
       color: "from-amber-600 to-amber-500"
@@ -138,7 +261,7 @@ export default function Home() {
         onModeChange={setMode}
       />
 
-      <HeroSection />
+      <HeroSection images={magazineImages} />
 
       <div className="relative overflow-hidden">
         <FloatingDecor />
@@ -211,9 +334,33 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Editorial Magazine Viewer */}
-              <div className="max-w-4xl mx-auto px-4 md:px-0">
-                <MagazineReader />
+              {/* Editorial Magazine Grid Layout */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-0 md:gap-8">
+                {dimensions.map((dim, idx) => (
+                  <div
+                    key={idx}
+                    className={`group relative rounded-none md:rounded-2xl overflow-hidden border-0 md:border transition-all duration-500 flex flex-col justify-end p-8 ${dim.span} border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5`}
+                  >
+                    <div className="absolute inset-0 z-0 opacity-[0.88] group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-700 ease-out">
+                      <img
+                        src={dim.bgImage}
+                        alt={dim.title}
+                        className="w-full h-full object-cover object-top"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    </div>
+
+                    <div className="relative z-10 text-white text-left font-outfit">
+                      <span className="text-xs font-mono text-lime-400 tracking-widest block mb-1">
+                        {dim.index} // COLLECTION
+                      </span>
+                      <h3 className="text-xl md:text-2xl font-black font-playfair uppercase tracking-tight">
+                        {dim.title}
+                      </h3>
+                    </div>
+                  </div>
+                ))}
               </div>
 
               <div className="mt-16 p-6 rounded-2xl border max-w-4xl mx-auto text-center backdrop-blur-sm bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5">
@@ -323,7 +470,7 @@ export default function Home() {
                   <div className="absolute -inset-4 bg-lime-500/10 rounded-3xl blur-2xl opacity-50 group-hover:opacity-75 transition-opacity" />
                   <div className="relative p-3 bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
                     <img
-                      src="/empiimages/IMG_9345.JPG"
+                      src={magazineImages[6]}
                       alt="Evolution of Costume design"
                       className="w-full h-[400px] object-cover rounded-2xl group-hover:scale-105 transition-transform duration-700"
                     />
@@ -342,7 +489,7 @@ export default function Home() {
                     <div className="absolute -inset-4 bg-lime-500/10 rounded-3xl blur-2xl opacity-50" />
                     <div className="relative p-3 bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
                       <img
-                        src="/empiimages/IMG_0732.JPG"
+                        src={magazineImages[7]}
                         alt="Debut Show Character"
                         className="w-full h-[400px] object-cover rounded-2xl"
                       />
