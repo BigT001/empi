@@ -261,7 +261,7 @@ export default function Home() {
         onModeChange={setMode}
       />
 
-      <HeroSection images={magazineImages} />
+      <HeroSection />
 
       <div className="relative overflow-hidden">
         <FloatingDecor />

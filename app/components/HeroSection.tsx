@@ -8,16 +8,24 @@ import Link from "next/link";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { KineticScroll } from "./KineticScroll";
 
-export function HeroSection({ images = [] }: { images?: string[] }) {
+export function HeroSection() {
   const [isLoaded, setIsLoaded] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
-  const heroImages = images.length > 0 ? images.slice(0, 10) : [
-    "/costumeshow/Image 11-07-2026 at 13.07.png",
-    "/costumeshow/Image 11-07-2026 at 13.10.png",
-    "/costumeshow/Image 11-07-2026 at 13.10 (1).png",
-    "/costumeshow/Image 11-07-2026 at 13.11.png",
-    "/costumeshow/Image 11-07-2026 at 13.11 (1).png"
+  const heroImages = [
+    "/costumeshow/Image 11-07-2026 at 13.13 (2).png",
+    "/costumeshow/Image 11-07-2026 at 13.13.png",
+    "/costumeshow/Image 11-07-2026 at 13.14 (2).png",
+    "/costumeshow/Image 11-07-2026 at 13.41 (1).png",
+    "/costumeshow/Image 11-07-2026 at 13.41.png",
+    "/costumeshow/Image 11-07-2026 at 13.43 (1).png",
+    "/costumeshow/Image 11-07-2026 at 13.45 (1).png",
+    "/costumeshow/Image 11-07-2026 at 13.48.png",
+    "/costumeshow/Image 11-07-2026 at 13.53.png",
+    "/costumeshow/Image 11-07-2026 at 13.54.png",
+    "/costumeshow/Image 11-07-2026 at 14.02 (1).png",
+    "/costumeshow/Image 11-07-2026 at 13.12 (1).png",
+    "/costumeshow/Image 11-07-2026 at 13.12.png"
   ];
 
   useEffect(() => {
@@ -61,61 +69,20 @@ export function HeroSection({ images = [] }: { images?: string[] }) {
       {/* Main Content Container - Centered and Minimal */}
       <div className="relative z-30 container mx-auto px-6 text-center pt-8 md:pt-0">
         <KineticScroll>
-          <div className="max-w-4xl mx-auto">
-            {/* Accent Label - Visible on all devices */}
+          <div className="max-w-4xl mx-auto flex flex-col items-center justify-center min-h-[400px]">
+            {/* Minimalist CTA Button Only */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 30 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="inline-flex items-center gap-2 px-6 py-2 rounded-full bg-white/5 backdrop-blur-md border border-white/10 text-lime-400 text-[10px] md:text-xs font-black uppercase tracking-[0.3em] mb-6 md:mb-10"
-            >
-              <Sparkles className="w-3 h-3 md:w-4 md:h-4 animate-pulse text-lime-500" />
-              EMPI Presents
-            </motion.div>
-
-            {/* Title - Playfair for Elegance */}
-            <motion.h1
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 1, delay: 0.2 }}
-              className="text-5xl md:text-8xl lg:text-[8.5rem] font-black text-white leading-[0.95] mb-8 md:mb-12 font-playfair uppercase tracking-tight"
-            >
-              The Costume <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-lime-400 to-lime-600 italic font-black">
-                Show
-              </span>
-            </motion.h1>
-
-            {/* Description - Hidden on mobile for minimalism */}
-            <motion.p
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
               transition={{ duration: 1, delay: 0.4 }}
-              className="hidden md:block text-xl md:text-3xl text-gray-300 max-w-2xl mx-auto mb-16 leading-relaxed font-bold tracking-widest uppercase text-transparent bg-clip-text bg-gradient-to-r from-gray-100 to-gray-400"
-            >
-              Where Imagination Wears Form!
-            </motion.p>
-
-            {/* Actions */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4 md:gap-6"
+              className="flex items-center justify-center"
             >
               <Link
                 href="/costume-show-shop"
-                className="w-full sm:w-auto group relative px-8 md:px-12 py-4 md:py-6 bg-lime-500 hover:bg-lime-400 text-slate-950 font-black rounded-2xl overflow-hidden transition-all duration-500 shadow-[0_20px_40px_rgba(132,204,22,0.3)] hover:shadow-[0_30px_60px_rgba(132,204,22,0.4)] flex items-center justify-center gap-3 active:scale-95"
+                className="group relative px-8 md:px-14 py-5 md:py-7 bg-lime-500 hover:bg-lime-400 text-slate-950 font-black rounded-2xl overflow-hidden transition-all duration-500 shadow-[0_20px_50px_rgba(132,204,22,0.4)] hover:shadow-[0_30px_70px_rgba(132,204,22,0.6)] flex items-center justify-center gap-3 active:scale-95"
               >
-                <span className="relative z-10 text-xs md:text-base">Explore 2026 Collection</span>
+                <span className="relative z-10 text-xs md:text-base tracking-widest uppercase">Shop 2026 Costume Collections</span>
                 <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-2 transition-transform" />
-              </Link>
-
-              <Link
-                href="/custom-costumes"
-                className="w-full sm:w-auto px-8 md:px-12 py-4 md:py-6 bg-white/5 hover:bg-white/10 border border-white/10 text-white font-black rounded-2xl backdrop-blur-xl transition-all duration-500 flex items-center justify-center gap-3 active:scale-95 text-xs md:text-base"
-              >
-                Custom Design
               </Link>
             </motion.div>
           </div>
