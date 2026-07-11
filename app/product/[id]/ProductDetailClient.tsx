@@ -326,17 +326,17 @@ export default function ProductDetailClient({ product, allProducts, currency = "
       </header>
 
       {/* Main Content */}
-      <main className="mx-auto max-w-7xl px-4 md:px-6 py-8 md:py-16">
+      <main className="mx-auto max-w-7xl px-0 md:px-6 py-0 md:py-16">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 md:gap-16">
           {/* Image Gallery */}
           <div className="flex flex-col gap-6">
             {/* Main Image */}
-            <div className="relative rounded-3xl overflow-hidden aspect-[4/5] transition-all duration-500">
+            <div className="relative rounded-none md:rounded-3xl overflow-hidden aspect-[4/5] transition-all duration-500">
               <Image
                 src={mainImage}
                 alt={product.name}
                 fill
-                className="object-contain"
+                className="object-cover"
                 priority
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 quality={90}
@@ -370,7 +370,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
             {/* Thumbnail Gallery */}
             {product.imageUrls && product.imageUrls.length > 1 && (
-              <div className="grid grid-cols-5 gap-2">
+              <div className="grid grid-cols-5 gap-2 px-4 md:px-0">
                 {product.imageUrls.map((img: string, idx: number) => (
                   <button
                     key={idx}
@@ -395,7 +395,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
           </div>
 
           {/* Product Details */}
-          <div className="flex flex-col justify-start gap-8">
+          <div className="flex flex-col justify-start gap-8 px-4 md:px-0">
             {/* Header: Category + Title + Price */}
             <div>
               <div className="mb-4 flex items-center gap-2">
@@ -408,12 +408,12 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                   </span>
                 )}
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-x-4 gap-y-2 flex-wrap">
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white leading-tight font-playfair tracking-tight">
+              <div className="flex items-baseline justify-between gap-4 flex-wrap">
+                <h1 className="text-xl md:text-3xl lg:text-4xl font-bold text-gray-900 dark:text-white leading-tight font-playfair tracking-tight">
                   {product.name}
                 </h1>
                 <div className="flex items-baseline gap-1.5 shrink-0">
-                  <span className="text-3xl md:text-4xl font-black text-lime-600 font-outfit tracking-tight">
+                  <span className="text-xl md:text-3xl font-black text-lime-600 font-outfit tracking-tight">
                     {displayPrice}
                   </span>
                   {mode === 'rent' && (
