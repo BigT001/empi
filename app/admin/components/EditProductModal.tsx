@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { X, AlertCircle, Plus, Check, ChevronRight, Palette, Ruler } from 'lucide-react';
 
@@ -137,6 +137,23 @@ export default function EditProductModal({
   });
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [isPriceOptional, setIsPriceOptional] = useState(false);
+
+  // Fetch settings to check if product prices are optional
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/admin/homepage-settings");
+        if (res.ok) {
+          const data = await res.json();
+          setIsPriceOptional(data.isPriceOptional || false);
+        }
+      } catch (err) {
+        console.error("Error fetching homepage settings:", err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   // ── Color Group Modal State ──
   const [isColorModalOpen, setIsColorModalOpen] = useState(false);
@@ -222,7 +239,7 @@ export default function EditProductModal({
     setSuccessMessage('');
     if (!formData.name?.trim()) return setError('Product name is required');
     if (!formData.description?.trim()) return setError('Description is required');
-    if ((formData.sellPrice ?? 0) <= 0) return setError('Sell price must be greater than 0');
+    if (!isPriceOptional && (formData.sellPrice ?? 0) <= 0) return setError('Sell price must be greater than 0');
     try {
       await onSave(formData);
       setSuccessMessage('✅ Product updated successfully!');
@@ -333,7 +350,7 @@ export default function EditProductModal({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide mb-1.5">
-                    Sell Price (₦) *
+                    Sell Price (₦) {isPriceOptional ? <span className="text-gray-400 font-normal lowercase">(optional)</span> : '*'}
                   </label>
                   <input
                     type="number"

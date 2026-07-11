@@ -67,7 +67,10 @@ export default function SearchResults() {
   const [headerVisible, setHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | undefined | null) => {
+    if (price === undefined || price === null || price <= 0) {
+      return "Price on Request";
+    }
     const converted = price * (CURRENCY_RATES[currency]?.rate || 1);
     const symbol = CURRENCY_RATES[currency]?.symbol || "₦";
     

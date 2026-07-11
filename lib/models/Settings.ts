@@ -29,6 +29,7 @@ export interface ISettings extends Document {
   };
 
   activeHomePage?: "default" | "costume-show";
+  isPriceOptional?: boolean;
 
   updatedAt: Date;
   createdAt: Date;
@@ -65,6 +66,7 @@ const settingsSchema = new Schema<ISettings>(
       paystack: { type: Boolean, default: true }
     },
     activeHomePage: { type: String, default: "default" },
+    isPriceOptional: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

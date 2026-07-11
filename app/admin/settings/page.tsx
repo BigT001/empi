@@ -32,6 +32,7 @@ export default function SettingsPage() {
 
   // Homepage Settings State
   const [activeHomePageSetting, setActiveHomePageSetting] = useState<"default" | "costume-show">("default");
+  const [isPriceOptionalSetting, setIsPriceOptionalSetting] = useState(false);
   const [loadingHomepage, setLoadingHomepage] = useState(false);
 
   // Sub-Admins State
@@ -125,6 +126,9 @@ export default function SettingsPage() {
         if (data.activeHomePage) {
           setActiveHomePageSetting(data.activeHomePage);
         }
+        if (data.isPriceOptional !== undefined) {
+          setIsPriceOptionalSetting(data.isPriceOptional);
+        }
       }
     } catch (err) {
       console.error("Error fetching homepage settings:", err);
@@ -152,6 +156,31 @@ export default function SettingsPage() {
       }
     } catch (err) {
       setMessage({ type: "error", text: "Error saving homepage settings" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleTogglePriceOptional = async (enabled: boolean) => {
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/homepage-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPriceOptional: enabled }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsPriceOptionalSetting(data.isPriceOptional);
+        setMessage({ type: "success", text: "Product price setting updated successfully!" });
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        const error = await res.json();
+        setMessage({ type: "error", text: error.error || "Failed to update settings" });
+      }
+    } catch (err) {
+      setMessage({ type: "error", text: "Error saving settings" });
     } finally {
       setIsSaving(false);
     }
@@ -429,7 +458,7 @@ export default function SettingsPage() {
               }`}
           >
             <Sliders className="h-5 w-5" />
-            Homepage Selection
+            General Settings
           </button>
         </div>
       </div>
@@ -873,8 +902,8 @@ export default function SettingsPage() {
         {activeTab === 'homepage' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-gray-900">Homepage Configuration</h2>
-              <p className="text-gray-600 mt-1">Select which landing page you want to show to your visitors.</p>
+              <h2 className="text-2xl font-bold text-gray-900">General & Homepage Settings</h2>
+              <p className="text-gray-600 mt-1">Configure general store behaviors and select which landing page to show.</p>
             </div>
 
             {loadingHomepage ? (
@@ -883,48 +912,51 @@ export default function SettingsPage() {
               </div>
             ) : (
               <div className="space-y-6 max-w-2xl">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {/* Option 1: Default Homepage */}
-                  <div
-                    onClick={() => handleSaveHomepageSetting('default')}
-                    className={`cursor-pointer p-6 rounded-2xl border-2 transition-all flex flex-col justify-between h-48 ${
-                      activeHomePageSetting === 'default'
-                        ? 'border-lime-500 bg-lime-50/20 shadow-md shadow-lime-500/5'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-lg font-bold text-gray-900">Default Homepage</span>
-                        {activeHomePageSetting === 'default' && (
-                          <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-lime-700 bg-lime-100 rounded-full">Active</span>
-                        )}
+                <div>
+                  <h3 className="text-lg font-bold text-gray-900 mb-3">Homepage Selection</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Option 1: Default Homepage */}
+                    <div
+                      onClick={() => handleSaveHomepageSetting('default')}
+                      className={`cursor-pointer p-6 rounded-2xl border-2 transition-all flex flex-col justify-between h-48 ${
+                        activeHomePageSetting === 'default'
+                          ? 'border-lime-500 bg-lime-50/20 shadow-md shadow-lime-500/5'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-lg font-bold text-gray-900">Default Homepage</span>
+                          {activeHomePageSetting === 'default' && (
+                            <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-lime-700 bg-lime-100 rounded-full">Active</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          The standard e-commerce layout featuring the hero section slideshow, trust bar badges, and product categories collection grid.
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-500 leading-relaxed">
-                        The standard e-commerce layout featuring the hero section slideshow, trust bar badges, and product categories collection grid.
-                      </p>
                     </div>
-                  </div>
 
-                  {/* Option 2: The Costume Show Homepage */}
-                  <div
-                    onClick={() => handleSaveHomepageSetting('costume-show')}
-                    className={`cursor-pointer p-6 rounded-2xl border-2 transition-all flex flex-col justify-between h-48 ${
-                      activeHomePageSetting === 'costume-show'
-                        ? 'border-lime-500 bg-lime-50/20 shadow-md shadow-lime-500/5'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-lg font-bold text-gray-950 flex items-center gap-1.5"><Sparkles className="h-4.5 w-4.5 text-lime-500" /> THE COSTUME SHOW</span>
-                        {activeHomePageSetting === 'costume-show' && (
-                          <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-lime-700 bg-lime-100 rounded-full">Active</span>
-                        )}
+                    {/* Option 2: The Costume Show Homepage */}
+                    <div
+                      onClick={() => handleSaveHomepageSetting('costume-show')}
+                      className={`cursor-pointer p-6 rounded-2xl border-2 transition-all flex flex-col justify-between h-48 ${
+                        activeHomePageSetting === 'costume-show'
+                          ? 'border-lime-500 bg-lime-50/20 shadow-md shadow-lime-500/5'
+                          : 'border-gray-200 hover:border-gray-300 bg-white'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-lg font-bold text-gray-950 flex items-center gap-1.5"><Sparkles className="h-4.5 w-4.5 text-lime-500" /> THE COSTUME SHOW</span>
+                          {activeHomePageSetting === 'costume-show' && (
+                            <span className="px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-lime-700 bg-lime-100 rounded-full">Active</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          A dynamic interactive promotion page specifically for the upcoming Costume Show. Ideal for marketing the movement and show-only shop collections.
+                        </p>
                       </div>
-                      <p className="text-xs text-gray-500 leading-relaxed">
-                        A dynamic interactive promotion page specifically for the upcoming Costume Show. Ideal for marketing the movement and show-only shop collections.
-                      </p>
                     </div>
                   </div>
                 </div>
@@ -936,6 +968,41 @@ export default function SettingsPage() {
                     <p className="text-xs text-amber-800 leading-relaxed">
                       Updating this choice takes effect instantly for all visitors. Make sure you have checked and marked appropriate products as <strong>Featured in THE COSTUME SHOW 2026</strong> so that the dedicated costumes show shop page displays content correctly.
                     </p>
+                  </div>
+                </div>
+
+                <hr className="border-gray-200 my-8" />
+
+                <div className="space-y-6">
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Product Settings</h3>
+                    <p className="text-gray-600 mt-1">Configure options for product uploads and details.</p>
+                  </div>
+
+                  <div className={`p-6 rounded-2xl border-2 transition ${isPriceOptionalSetting ? 'border-lime-500 bg-lime-50/20 shadow-md shadow-lime-500/5' : 'border-gray-200 bg-white'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1 pr-4">
+                        <h4 className="text-sm font-bold text-gray-900 flex items-center gap-1.5">
+                          Optional Product Prices
+                        </h4>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          When enabled, you can upload or edit products without specifying a Sell Price or Rent Price. Products without prices will display as "Price on Request" on the storefront and won't be purchasable online.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleTogglePriceOptional(!isPriceOptionalSetting)}
+                        disabled={isSaving}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          isPriceOptionalSetting ? 'bg-lime-600' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            isPriceOptionalSetting ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

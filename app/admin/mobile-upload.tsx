@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Upload, X, CheckCircle2, Bell, Clock, Zap, Plus, Check } from "lucide-react";
 
@@ -103,6 +103,23 @@ interface FormErrors {
 
 export default function MobileAdminUpload() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isPriceOptional, setIsPriceOptional] = useState(false);
+
+  // Fetch settings to check if product prices are optional
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch("/api/admin/homepage-settings");
+        if (res.ok) {
+          const data = await res.json();
+          setIsPriceOptional(data.isPriceOptional || false);
+        }
+      } catch (err) {
+        console.error("Error fetching homepage settings:", err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const [form, setForm] = useState<ProductForm>({
     name: "",
@@ -115,7 +132,7 @@ export default function MobileAdminUpload() {
     badge: "",
     variants: [],
     material: "",
-    condition: "new",
+    condition: "",
     careInstructions: "",
     availableForBuy: true,
     availableForRent: true,
@@ -349,18 +366,16 @@ export default function MobileAdminUpload() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const hasRequiredPrice = isPriceOptional || (form.sellPrice && form.rentPrice);
+
     if (
       !form.name ||
       !form.description ||
-      !form.sellPrice ||
-      !form.rentPrice ||
+      !hasRequiredPrice ||
       form.variants.length === 0 ||
-      !form.material ||
-      !form.condition ||
-      !form.careInstructions ||
       form.imageFiles.length === 0
     ) {
-      setSubmitMessage("❌ Fill all fields and upload at least 1 image");
+      setSubmitMessage("❌ Fill all required fields and upload at least 1 image");
       return;
     }
 
@@ -415,8 +430,8 @@ export default function MobileAdminUpload() {
       const payload = {
         name: form.name,
         description: form.description,
-        sellPrice: parseFloat(form.sellPrice),
-        rentPrice: parseFloat(form.rentPrice),
+        sellPrice: form.sellPrice ? parseFloat(form.sellPrice) : undefined,
+        rentPrice: form.rentPrice ? parseFloat(form.rentPrice) : undefined,
         category: form.category,
         costumeType: form.costumeType,
         ...(form.country && { country: form.country }),
@@ -738,7 +753,7 @@ export default function MobileAdminUpload() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-2">
-                  Sell Price (₦) <span className="text-red-500">*</span>
+                  Sell Price (₦) {isPriceOptional ? <span className="text-gray-400 font-normal">(Optional)</span> : <span className="text-red-500">*</span>}
                 </label>
                 <input
                   type="number"
@@ -752,7 +767,7 @@ export default function MobileAdminUpload() {
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 mb-2">
-                  Rent Price (₦) <span className="text-red-500">*</span>
+                  Rent Price (₦) {isPriceOptional ? <span className="text-gray-400 font-normal">(Optional)</span> : <span className="text-red-500">*</span>}
                 </label>
                 <input
                   type="number"
@@ -953,7 +968,7 @@ export default function MobileAdminUpload() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-2">
-                    Material <span className="text-red-500">*</span>
+                    Material <span className="text-gray-400 font-normal lowercase">(optional)</span>
                   </label>
                   <input
                     type="text"
@@ -967,7 +982,7 @@ export default function MobileAdminUpload() {
                 </div>
                 <div>
                   <label className="block text-xs font-semibold text-gray-700 mb-2">
-                    Condition <span className="text-red-500">*</span>
+                    Condition <span className="text-gray-400 font-normal lowercase">(optional)</span>
                   </label>
                   <select
                     name="condition"
@@ -976,6 +991,7 @@ export default function MobileAdminUpload() {
                     className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm placeholder-gray-500 transition hover:border-gray-400 !text-black !bg-white"
                     disabled={isSubmitting}
                   >
+                    <option value="">Select Condition (Optional)</option>
                     <option value="new">✨ New</option>
                     <option value="like-new">⭐ Like New</option>
                     <option value="good">👍 Good</option>
@@ -989,7 +1005,7 @@ export default function MobileAdminUpload() {
           {/* Care Instructions */}
           <div>
             <label className="block text-sm font-bold text-gray-900 mb-2">
-              Care Instructions <span className="text-red-500">*</span>
+              Care Instructions <span className="text-gray-400 font-normal text-xs lowercase">(optional)</span>
             </label>
             <textarea
               name="careInstructions"

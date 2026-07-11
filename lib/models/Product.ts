@@ -15,8 +15,8 @@ export interface IColorVariant {
 export interface IProduct extends Document {
   name: string;
   description: string;
-  sellPrice: number;
-  rentPrice: number;
+  sellPrice?: number;
+  rentPrice?: number;
   category: string;
   costumeType?: string; // Sub-category: Angel, Carnival, Western, Traditional Africa, Cosplay, etc.
   country?: string; // For Traditional Africa costumes: Nigeria, Ghana, South Africa, Egypt, Algeria, Congo, Kenya
@@ -67,8 +67,8 @@ const productSchema = new Schema<IProduct>(
   {
     name: { type: String, required: true },
     description: { type: String, required: true },
-    sellPrice: { type: Number, required: true },
-    rentPrice: { type: Number, default: 0 },
+    sellPrice: { type: Number, required: false },
+    rentPrice: { type: Number, default: 0, required: false },
     category: { type: String, required: true },
     costumeType: { 
       type: String, 

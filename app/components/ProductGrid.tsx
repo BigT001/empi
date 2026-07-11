@@ -74,7 +74,10 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
     }
   }, [error]);
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | undefined | null) => {
+    if (price === undefined || price === null || price <= 0) {
+      return "Price on Request";
+    }
     const converted = price * CURRENCY_RATES[currency].rate;
     const symbol = CURRENCY_RATES[currency].symbol;
 

@@ -138,7 +138,10 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const [showRentalPolicy, setShowRentalPolicy] = useState(false);
   const [cartConflict, setCartConflict] = useState<{ hasConflict: boolean; message: string }>({ hasConflict: false, message: "" });
 
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | undefined | null) => {
+    if (price === undefined || price === null || price <= 0) {
+      return "Price on Request";
+    }
     const converted = price * CURRENCY_RATES[currency].rate;
     const symbol = CURRENCY_RATES[currency].symbol;
     if (currency === "INR" || currency === "NGN") {
@@ -230,6 +233,11 @@ export default function ProductDetailClient({ product, allProducts, currency = "
     }
 
     const price = mode === "rent" ? product.rentPrice : product.sellPrice;
+    if (!price || price <= 0) {
+      setCartConflict({ hasConflict: true, message: "This item cannot be added to cart without a price" });
+      setTimeout(() => setCartConflict({ hasConflict: false, message: "" }), 4000);
+      return;
+    }
     const productImage = product.imageUrl || (product.imageUrls && product.imageUrls[0]) || '';
 
     // If sizes are available, add each selected size
@@ -603,7 +611,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 
                 {/* Add to Cart Button */}
                 <div className="flex-1">
-                  {(mode === 'buy' && product.availableForBuy !== false) || (mode === 'rent' && product.availableForRent !== false) ? (
+                  {(mode === 'buy' && product.availableForBuy !== false && product.sellPrice && product.sellPrice > 0) || (mode === 'rent' && product.availableForRent !== false && product.rentPrice && product.rentPrice > 0) ? (
                     <button
                       onClick={handleAddToCart}
                       className={`w-full py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-95 ${

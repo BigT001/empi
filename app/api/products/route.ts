@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/lib/models/Product';
+import Settings from '@/lib/models/Settings';
 import { serializeDoc, serializeDocs } from '@/lib/serializer';
 import { revalidatePath } from 'next/cache';
 
@@ -145,9 +146,15 @@ export async function POST(request: NextRequest) {
     await connectDB();
     const body = await request.json();
     console.log("📋 Request body keys:", Object.keys(body));
+    const settings = await Settings.findOne({});
+    const isPriceOptional = settings?.isPriceOptional === true;
 
-    const requiredFields = ['name', 'description', 'sellPrice', 'rentPrice', 'category', 'imageUrl'];
-    const missingFields = requiredFields.filter(field => !body[field]);
+    const requiredFields = ['name', 'description', 'category', 'imageUrl'];
+    if (!isPriceOptional) {
+      requiredFields.push('sellPrice', 'rentPrice');
+    }
+
+    const missingFields = requiredFields.filter(field => body[field] === undefined || body[field] === null || (typeof body[field] === 'string' && !body[field].trim()));
     
     if (missingFields.length > 0) {
       console.error("❌ Missing required fields:", missingFields);
@@ -159,14 +166,16 @@ export async function POST(request: NextRequest) {
 
     console.log("✅ All required fields present");
 
-    if (typeof body.sellPrice !== 'number' || typeof body.rentPrice !== 'number') {
+    if (
+      (body.sellPrice !== undefined && typeof body.sellPrice !== 'number') || 
+      (body.rentPrice !== undefined && typeof body.rentPrice !== 'number')
+    ) {
       console.error("❌ Invalid price types");
       return NextResponse.json(
         { error: "Prices must be numbers" },
         { status: 400 }
       );
     }
-
     console.log("✅ Field validation passed");
     console.log("🗄️ Creating product in database...");
 

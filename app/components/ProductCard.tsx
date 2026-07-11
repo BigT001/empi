@@ -99,7 +99,10 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
   const mainImage = allImages[mainImageIndex] || product.imageUrl;
 
   // Format price based on currency
-  const formatPrice = (price: number) => {
+  const formatPrice = (price: number | undefined | null) => {
+    if (price === undefined || price === null || price <= 0) {
+      return "Price on Request";
+    }
     const converted = price * CURRENCY_RATES[currency].rate;
     const symbol = CURRENCY_RATES[currency].symbol;
 

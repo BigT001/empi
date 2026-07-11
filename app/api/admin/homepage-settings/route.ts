@@ -24,7 +24,8 @@ export async function GET(request: NextRequest) {
 
     const settings = await Settings.findOne({});
     return NextResponse.json({
-      activeHomePage: settings?.activeHomePage || 'default'
+      activeHomePage: settings?.activeHomePage || 'default',
+      isPriceOptional: settings?.isPriceOptional || false
     });
   } catch (error) {
     console.error('[Admin Homepage Settings GET] Error:', error);
@@ -54,14 +55,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
     }
 
-    const { activeHomePage } = await request.json();
-
-    if (!activeHomePage || !['default', 'costume-show'].includes(activeHomePage)) {
-      return NextResponse.json(
-        { error: 'Invalid activeHomePage value. Must be "default" or "costume-show"' },
-        { status: 400 }
-      );
-    }
+    const { activeHomePage, isPriceOptional } = await request.json();
 
     let settings = await Settings.findOne({});
     if (!settings) {
@@ -70,16 +64,33 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    settings.activeHomePage = activeHomePage;
-    await settings.save();
+    if (activeHomePage !== undefined) {
+      if (!['default', 'costume-show'].includes(activeHomePage)) {
+        return NextResponse.json(
+          { error: 'Invalid activeHomePage value. Must be "default" or "costume-show"' },
+          { status: 400 }
+        );
+      }
+      settings.activeHomePage = activeHomePage;
+      
+      // Update public homepage settings memory cache
+      const globalWithSettings = global as any;
+      globalWithSettings.cachedHomepageSettings = { 
+        ...globalWithSettings.cachedHomepageSettings,
+        activeHomePage 
+      };
+    }
 
-    // Update public homepage settings memory cache
-    const globalWithSettings = global as any;
-    globalWithSettings.cachedHomepageSettings = { activeHomePage };
+    if (isPriceOptional !== undefined) {
+      settings.isPriceOptional = isPriceOptional === true;
+    }
+
+    await settings.save();
 
     return NextResponse.json({
       success: true,
-      activeHomePage: settings.activeHomePage
+      activeHomePage: settings.activeHomePage,
+      isPriceOptional: settings.isPriceOptional
     });
   } catch (error) {
     console.error('[Admin Homepage Settings POST] Error:', error);

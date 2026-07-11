@@ -63,7 +63,7 @@ export function DiscountPopup({ intervalMinutes = 7 }: DiscountPopupProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900 text-sm">3-5 Sets</p>
-                <p className="text-xs text-gray-600">5% discount on entire order</p>
+                <p className="text-xs text-gray-600">5% discount on purchased items (excludes rentals)</p>
               </div>
             </div>
 
@@ -76,7 +76,7 @@ export function DiscountPopup({ intervalMinutes = 7 }: DiscountPopupProps) {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900 text-sm">6-9 Sets</p>
-                <p className="text-xs text-gray-600">7% discount on entire order</p>
+                <p className="text-xs text-gray-600">7% discount on purchased items (excludes rentals)</p>
               </div>
             </div>
 
@@ -90,7 +90,7 @@ export function DiscountPopup({ intervalMinutes = 7 }: DiscountPopupProps) {
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-gray-900 text-sm">10+ Sets</p>
                 <p className="text-xs text-gray-600">
-                  🏆 10% discount on entire order
+                  🏆 10% discount on purchased items (excludes rentals)
                 </p>
               </div>
             </div>
