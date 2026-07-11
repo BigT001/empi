@@ -110,7 +110,7 @@ const magazineImages = [
 const dimensions = [
   {
     title: "Stage and theatrical costumes",
-    bgImage: magazineImages[0], // Page 1
+    bgImage: magazineImages[11], // Page 12
     span: "lg:col-span-8 h-[500px]",
     index: "01"
   },
