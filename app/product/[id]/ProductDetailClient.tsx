@@ -126,11 +126,15 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
   // Load mode from URL params only on initial mount
   useEffect(() => {
-    const urlMode = searchParams.get('mode') as 'buy' | 'rent';
-    if (urlMode && isHydrated) {
-      setMode(urlMode);
+    if (product.category === 'costume-show') {
+      setMode("buy");
+    } else {
+      const urlMode = searchParams.get('mode') as 'buy' | 'rent';
+      if (urlMode && isHydrated) {
+        setMode(urlMode);
+      }
     }
-  }, [productId, isHydrated]);
+  }, [productId, isHydrated, product.category]);
 
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -139,10 +143,11 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const [cartConflict, setCartConflict] = useState<{ hasConflict: boolean; message: string }>({ hasConflict: false, message: "" });
 
   const formatPrice = (price: number | undefined | null) => {
-    if (price === undefined || price === null || price <= 0) {
+    const displayVal = (price === undefined || price === null || price <= 0) ? 0 : price;
+    if (displayVal === 0 && product.category !== "costume-show") {
       return "Price on Request";
     }
-    const converted = price * CURRENCY_RATES[currency].rate;
+    const converted = displayVal * CURRENCY_RATES[currency].rate;
     const symbol = CURRENCY_RATES[currency].symbol;
     if (currency === "INR" || currency === "NGN") {
       return `${symbol}${converted.toFixed(0)}`;
@@ -408,30 +413,32 @@ export default function ProductDetailClient({ product, allProducts, currency = "
             {/* Buy/Rent Mode Toggle & Pricing Panel */}
             <div className="bg-gray-50 dark:bg-white/5 rounded-3xl p-6 border border-gray-100 dark:border-white/5 space-y-6">
               {/* Tabs */}
-              <div className="flex bg-white dark:bg-black/40 p-1.5 rounded-2xl border border-gray-100 dark:border-white/5">
-                {product.availableForBuy !== false && (
-                  <button
-                    onClick={() => setMode("buy")}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${mode === "buy"
-                      ? "bg-lime-600 text-white shadow-lg shadow-lime-600/20"
-                      : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                      }`}
-                  >
-                    <span>🛒</span> Purchase
-                  </button>
-                )}
-                {product.availableForRent !== false && product.rentPrice > 0 && (
-                  <button
-                    onClick={() => setMode("rent")}
-                    className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${mode === "rent"
-                      ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                      : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                      }`}
-                  >
-                    <span>🔑</span> Rental
-                  </button>
-                )}
-              </div>
+              {product.category !== 'costume-show' && (
+                <div className="flex bg-white dark:bg-black/40 p-1.5 rounded-2xl border border-gray-100 dark:border-white/5">
+                  {product.availableForBuy !== false && (
+                    <button
+                      onClick={() => setMode("buy")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${mode === "buy"
+                        ? "bg-lime-600 text-white shadow-lg shadow-lime-600/20"
+                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                        }`}
+                    >
+                      <span>🛒</span> Purchase
+                    </button>
+                  )}
+                  {product.availableForRent !== false && product.rentPrice > 0 && (
+                    <button
+                      onClick={() => setMode("rent")}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${mode === "rent"
+                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                        }`}
+                    >
+                      <span>🔑</span> Rental
+                    </button>
+                  )}
+                </div>
+              )}
 
               {/* Price Display */}
               <div className="flex items-baseline justify-between">
@@ -611,7 +618,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 
                 {/* Add to Cart Button */}
                 <div className="flex-1">
-                  {(mode === 'buy' && product.availableForBuy !== false && product.sellPrice && product.sellPrice > 0) || (mode === 'rent' && product.availableForRent !== false && product.rentPrice && product.rentPrice > 0) ? (
+                  {(product.category === 'costume-show' && mode === 'buy') || (mode === 'buy' && product.availableForBuy !== false && product.sellPrice && product.sellPrice > 0) || (mode === 'rent' && product.availableForRent !== false && product.rentPrice && product.rentPrice > 0) ? (
                     <button
                       onClick={handleAddToCart}
                       className={`w-full py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-95 ${
