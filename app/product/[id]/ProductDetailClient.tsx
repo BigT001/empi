@@ -142,6 +142,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const [addedToCart, setAddedToCart] = useState(false);
   const [showRentalPolicy, setShowRentalPolicy] = useState(false);
   const [cartConflict, setCartConflict] = useState<{ hasConflict: boolean; message: string }>({ hasConflict: false, message: "" });
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
 
   const formatPrice = (price: number | undefined | null) => {
     const displayVal = (price === undefined || price === null || price <= 0) ? 0 : price;
@@ -395,7 +396,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
           {/* Product Details */}
           <div className="flex flex-col justify-start gap-8">
-            {/* Header: Category + Title */}
+            {/* Header: Category + Title + Price */}
             <div>
               <div className="mb-4 flex items-center gap-2">
                 <span className="inline-block text-[10px] font-black uppercase tracking-[0.2em] px-4 py-1.5 bg-lime-50 dark:bg-lime-950/30 text-lime-700 dark:text-lime-400 rounded-full border border-lime-100 dark:border-lime-900/30">
@@ -407,72 +408,64 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                   </span>
                 )}
               </div>
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white leading-tight font-playfair tracking-tight">
-                {product.name}
-              </h1>
-            </div>
-
-            {/* Buy/Rent Mode Toggle & Pricing Panel */}
-            <div className="bg-gray-50 dark:bg-white/5 rounded-3xl p-6 border border-gray-100 dark:border-white/5 space-y-6">
-              {/* Tabs */}
-              {!isCostumeShow && (
-                <div className="flex bg-white dark:bg-black/40 p-1.5 rounded-2xl border border-gray-100 dark:border-white/5">
-                  {product.availableForBuy !== false && (
-                    <button
-                      onClick={() => setMode("buy")}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${mode === "buy"
-                        ? "bg-lime-600 text-white shadow-lg shadow-lime-600/20"
-                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                        }`}
-                    >
-                      <span>🛒</span> Purchase
-                    </button>
-                  )}
-                  {product.availableForRent !== false && product.rentPrice > 0 && (
-                    <button
-                      onClick={() => setMode("rent")}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${mode === "rent"
-                        ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
-                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                        }`}
-                    >
-                      <span>🔑</span> Rental
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* Price Display */}
-              <div className="flex items-baseline justify-between">
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl md:text-5xl font-black text-gray-900 dark:text-white tracking-tight">
+              <div className="flex flex-col sm:flex-row sm:items-baseline sm:justify-between gap-x-4 gap-y-2 flex-wrap">
+                <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white leading-tight font-playfair tracking-tight">
+                  {product.name}
+                </h1>
+                <div className="flex items-baseline gap-1.5 shrink-0">
+                  <span className="text-3xl md:text-4xl font-black text-lime-600 font-outfit tracking-tight">
                     {displayPrice}
                   </span>
                   {mode === 'rent' && (
                     <span className="text-xs font-bold uppercase tracking-wider text-gray-400">/ day</span>
                   )}
                 </div>
-                {mode === 'buy' && product.rentPrice > 0 && (
+              </div>
+            </div>
+
+            {/* Buy/Rent Mode Toggle & Pricing Panel (Only rendered if toggle tabs or rental policy needs to be displayed) */}
+            {(!isCostumeShow || (mode === 'rent' && product.rentPrice > 0)) && (
+              <div className="bg-gray-50 dark:bg-white/5 rounded-3xl p-6 border border-gray-100 dark:border-white/5 space-y-6">
+                {/* Tabs */}
+                {!isCostumeShow && (
+                  <div className="flex bg-white dark:bg-black/40 p-1.5 rounded-2xl border border-gray-100 dark:border-white/5">
+                    {product.availableForBuy !== false && (
+                      <button
+                        onClick={() => setMode("buy")}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${mode === "buy"
+                          ? "bg-lime-600 text-white shadow-lg shadow-lime-600/20"
+                          : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                          }`}
+                      >
+                        <span>🛒</span> Purchase
+                      </button>
+                    )}
+                    {product.availableForRent !== false && product.rentPrice > 0 && (
+                      <button
+                        onClick={() => setMode("rent")}
+                        className={`flex-1 flex items-center justify-center gap-2 py-3.5 rounded-xl font-bold text-xs uppercase tracking-widest transition-all ${mode === "rent"
+                          ? "bg-blue-600 text-white shadow-lg shadow-blue-600/20"
+                          : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                          }`}
+                      >
+                        <span>🔑</span> Rental
+                      </button>
+                    )}
+                  </div>
+                )}
+
+                {/* Rental Policy Alert */}
+                {mode === 'rent' && product.rentPrice > 0 && (
                   <button
-                    onClick={() => setMode("rent")}
-                    className="text-xs font-bold text-lime-600 dark:text-lime-400 hover:underline flex items-center gap-1"
+                    onClick={() => setShowRentalPolicy(true)}
+                    className="w-full flex items-center justify-between p-3.5 bg-blue-600/5 dark:bg-blue-500/5 border border-blue-500/10 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-600/10 transition"
                   >
-                    Rent for {formatPrice(product.rentPrice)}/day →
+                    <span className="flex items-center gap-2">📋 View Rental Policy</span>
+                    <span>Read Rules →</span>
                   </button>
                 )}
               </div>
-
-              {/* Rental Policy Alert */}
-              {mode === 'rent' && product.rentPrice > 0 && (
-                <button
-                  onClick={() => setShowRentalPolicy(true)}
-                  className="w-full flex items-center justify-between p-3.5 bg-blue-600/5 dark:bg-blue-500/5 border border-blue-500/10 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-600/10 transition"
-                >
-                  <span className="flex items-center gap-2">📋 View Rental Policy</span>
-                  <span>Read Rules →</span>
-                </button>
-              )}
-            </div>
+            )}
 
             {/* Colors & Sizes Selector */}
             {variants.length > 0 && (
@@ -645,45 +638,22 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
             {/* Description */}
             {product.description && (
-              <div className="pt-4 border-t border-gray-100 dark:border-white/5">
-                <p className="text-gray-600 dark:text-gray-400 text-sm md:text-base leading-relaxed font-medium">
+              <div className="pt-4 border-t border-gray-100 dark:border-white/5 space-y-3">
+                <p className={`text-gray-600 dark:text-gray-400 text-sm md:text-base leading-relaxed font-medium transition-all ${isDescExpanded ? '' : 'line-clamp-3'}`}>
                   {product.description}
                 </p>
-              </div>
-            )}
-
-            {/* Boutique Specifications Card */}
-            {(product.costumeType || product.country || product.material || product.condition) && (
-              <div className="bg-gray-50 dark:bg-white/5 rounded-3xl border border-gray-100 dark:border-white/5 p-6 space-y-4">
-                <h3 className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.3em] flex items-center gap-2">
-                  <span>📐</span> Specifications
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {product.costumeType && (
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Style Variant</span>
-                      <span className="text-gray-800 dark:text-white font-black text-xs mt-0.5">{product.costumeType}</span>
-                    </div>
-                  )}
-                  {product.country && product.costumeType === 'Traditional Africa' && (
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Heritage Source</span>
-                      <span className="text-gray-800 dark:text-white font-black text-xs mt-0.5">{product.country}</span>
-                    </div>
-                  )}
-                  {product.material && (
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Textile</span>
-                      <span className="text-gray-800 dark:text-white font-black text-xs mt-0.5">{product.material}</span>
-                    </div>
-                  )}
-                  {product.condition && (
-                    <div className="flex flex-col">
-                      <span className="text-[9px] font-bold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Status</span>
-                      <span className="text-gray-800 dark:text-white font-black text-xs mt-0.5">{product.condition}</span>
-                    </div>
-                  )}
-                </div>
+                {product.description.length > 150 && (
+                  <button
+                    onClick={() => setIsDescExpanded(!isDescExpanded)}
+                    className="text-xs font-black text-lime-600 dark:text-lime-400 hover:text-lime-700 dark:hover:text-lime-300 transition flex items-center gap-1 uppercase tracking-wider"
+                  >
+                    {isDescExpanded ? (
+                      <>Show Less ▴</>
+                    ) : (
+                      <>Read Full Description ▾</>
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </div>
