@@ -23,7 +23,7 @@ export function HeroSection() {
     "/costumeshow/Image 11-07-2026 at 13.48.png",
     "/costumeshow/Image 11-07-2026 at 13.53.png",
     "/costumeshow/Image 11-07-2026 at 13.54.png",
-    "/costumeshow/Image 11-07-2026 at 14.02 (1).png",
+    "/costumeshow/Image 11-07-2026 at 14.02.png",
     "/costumeshow/Image 11-07-2026 at 13.12 (1).png",
     "/costumeshow/Image 11-07-2026 at 13.12.png"
   ];
