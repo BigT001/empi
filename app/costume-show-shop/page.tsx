@@ -51,19 +51,39 @@ export default function CostumeShowShopPage() {
       />
 
       {/* Main Content - Dynamic Costume Show 2026 header and product list */}
-      <div className="pt-28 md:pt-40 max-w-7xl mx-auto px-4 md:px-6 w-full flex-grow">
+      <div className="pt-16 md:pt-28 max-w-7xl mx-auto px-4 md:px-6 w-full flex-grow">
         <DiscountPopup intervalMinutes={7} />
         
         {/* Banner Section */}
-        <div className="mb-12 text-center py-6">
-          <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-[0.25em] mb-4 ${
-            isDark ? 'bg-white/5 border-white/10 text-lime-400' : 'bg-black/5 border-black/10 text-lime-600'
+        <div className="mb-8 text-center py-6">
+          <style dangerouslySetInnerHTML={{__html: `
+            @keyframes fadeInUpScale {
+              0% {
+                opacity: 0;
+                transform: translateY(20px) scale(0.98);
+              }
+              100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+              }
+            }
+            .animate-artistic-reveal {
+              animation: fadeInUpScale 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+            }
+          `}} />
+          
+          <div className={`inline-flex items-center text-[10px] font-black uppercase tracking-[0.25em] mb-4 ${
+            isDark ? 'text-lime-400' : 'text-lime-600'
           }`}>
-            <Sparkles className="w-3.5 h-3.5" />
             Limited Special Edition
           </div>
-          <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight mb-3 font-playfair">
-            THE COSTUME SHOW 2026
+          <h1 className="text-3xl md:text-5xl font-black uppercase tracking-tight mb-3 font-playfair leading-none animate-artistic-reveal">
+            <span className="block sm:inline bg-gradient-to-r from-lime-600 to-emerald-600 dark:from-lime-400 dark:to-emerald-400 bg-clip-text text-transparent">
+              THE COSTUME SHOW
+            </span>
+            <span className="block sm:inline sm:ml-3 text-neutral-800 dark:text-neutral-100">
+              2026
+            </span>
           </h1>
           <p className={`text-xs md:text-sm max-w-xl mx-auto leading-relaxed ${
             isDark ? 'text-gray-400' : 'text-neutral-600'
