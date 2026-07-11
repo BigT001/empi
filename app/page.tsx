@@ -12,6 +12,7 @@ import { useHomeMode } from "./context/HomeModeContext";
 import { useCurrency } from "./context/CurrencyContext";
 import CustomCostumesPage from "./custom-costumes/page";
 import { useTheme } from "./context/ThemeContext";
+import { MagazineReader } from "./components/MagazineReader";
 
 
 import { motion } from "framer-motion";
@@ -21,44 +22,6 @@ import { ScrollReveal } from "./components/ScrollReveal";
 import { FloatingDecor } from "./components/FloatingDecor";
 import { KineticScroll } from "./components/KineticScroll";
 
-const dimensions = [
-  {
-    title: "Stage and theatrical costumes",
-    bgImage: "/empiimages/IMG_1217.JPG",
-    span: "lg:col-span-8 h-[500px]",
-    index: "01"
-  },
-  {
-    title: "Film and television costume design",
-    bgImage: "/empiimages/IMG_0793.JPG",
-    span: "lg:col-span-4 h-[500px]",
-    index: "02"
-  },
-  {
-    title: "Cultural and heritage-inspired costumes",
-    bgImage: "/empiimages/IMG_1216.JPG",
-    span: "lg:col-span-4 h-[600px]",
-    index: "03"
-  },
-  {
-    title: "Avant-garde and futuristic costume concepts",
-    bgImage: "/empiimages/IMG_9345.JPG",
-    span: "lg:col-span-8 h-[600px]",
-    index: "04"
-  },
-  {
-    title: "Fantasy, mythological, and character-based creations",
-    bgImage: "/empiimages/IMG_0732.JPG",
-    span: "lg:col-span-6 h-[420px]",
-    index: "05"
-  },
-  {
-    title: "Contemporary performance and entertainment costumes",
-    bgImage: "/empiimages/IMG_0794.JPG",
-    span: "lg:col-span-6 h-[420px]",
-    index: "06"
-  }
-];
 
 const futurePlans = [
   { title: "Annual Showcases", desc: "Annual costume showcases and live productions" },
@@ -248,33 +211,9 @@ export default function Home() {
                 </p>
               </div>
 
-              {/* Editorial Magazine Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-0 md:gap-8">
-                {dimensions.map((dim, idx) => (
-                  <div
-                    key={idx}
-                    className={`group relative rounded-none md:rounded-2xl overflow-hidden border-0 md:border transition-all duration-500 flex flex-col justify-end p-8 ${dim.span} border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5`}
-                  >
-                    <div className="absolute inset-0 z-0 opacity-[0.88] group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-700 ease-out">
-                      <img
-                        src={dim.bgImage}
-                        alt={dim.title}
-                        className="w-full h-full object-cover object-top"
-                        loading="lazy"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-                    </div>
-
-                    <div className="relative z-10 text-white text-left font-outfit">
-                      <span className="text-xs font-mono text-lime-400 tracking-widest block mb-1">
-                        {dim.index} // COLLECTION
-                      </span>
-                      <h3 className="text-xl md:text-2xl font-black font-playfair uppercase tracking-tight">
-                        {dim.title}
-                      </h3>
-                    </div>
-                  </div>
-                ))}
+              {/* Editorial Magazine Viewer */}
+              <div className="max-w-4xl mx-auto px-4 md:px-0">
+                <MagazineReader />
               </div>
 
               <div className="mt-16 p-6 rounded-2xl border max-w-4xl mx-auto text-center backdrop-blur-sm bg-black/5 dark:bg-white/5 border-black/5 dark:border-white/5">
