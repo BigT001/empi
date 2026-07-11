@@ -55,12 +55,7 @@ export default function CostumeShowShopPage() {
         <DiscountPopup intervalMinutes={7} />
         
         {/* Banner Section */}
-        <div className={`mb-12 text-center border rounded-3xl p-8 backdrop-blur-sm relative overflow-hidden shadow-2xl ${
-          isDark 
-            ? 'bg-gradient-to-r from-lime-950/20 via-emerald-950/20 to-lime-950/20 border-lime-500/10' 
-            : 'bg-gradient-to-r from-lime-100/10 via-emerald-100/10 to-lime-100/10 border-lime-600/10'
-        }`}>
-          <div className="absolute top-0 left-1/4 w-32 h-32 bg-lime-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="mb-12 text-center py-6">
           <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-[0.25em] mb-4 ${
             isDark ? 'bg-white/5 border-white/10 text-lime-400' : 'bg-black/5 border-black/10 text-lime-600'
           }`}>
