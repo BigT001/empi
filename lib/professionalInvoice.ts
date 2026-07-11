@@ -45,741 +45,288 @@ export function generateProfessionalInvoiceHTML(
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
   <title>Invoice ${invoice.invoiceNumber}</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html { font-size: 16px; }
-    body { 
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; 
-      line-height: 1.6; 
-      color: #1f2937; 
-      background: white; 
+    body {
+      margin: 0;
       padding: 0;
-      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background-color: #f3f4f6;
+      color: #1f2937;
+      -webkit-font-smoothing: antialiased;
     }
-    .invoice-container { 
-      max-width: 900px; 
-      margin: 0 auto; 
-      background: white; 
-      border-radius: 12px; 
-      overflow: hidden; 
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
-    }
-    
-    /* HEADER */
-    .invoice-header { 
-      background: white; 
-      color: #111827; 
-      padding: 14px 12px; 
-      border-bottom: 2px solid #10b981;
-    }
-    .header-content { 
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-    .header-top { 
-      display: flex; 
-      align-items: center; 
-      justify-content: space-between;
-      gap: 12px;
-    }
-    .logo-section { 
-      display: flex; 
-      align-items: center; 
-      gap: 8px;
-    }
-    .logo-img { 
-      width: 40px; 
-      height: 40px; 
-      object-fit: contain;
-    }
-    .company-name { 
-      font-size: 18px; 
-      font-weight: 900; 
-      color: #111827;
-    }
-    .status-badge { 
-      background: #10b981; 
-      color: white; 
-      padding: 4px 10px; 
-      border-radius: 16px; 
-      font-size: 9px; 
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      white-space: nowrap;
-    }
-    .header-info { 
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 8px;
-    }
-    .info-item { 
-      min-width: 0;
-    }
-    .info-label { 
-      font-size: 8px; 
-      font-weight: 600; 
-      text-transform: uppercase; 
-      color: #6b7280; 
-      letter-spacing: 0.5px;
-      margin-bottom: 1px;
-    }
-    .info-value { 
-      font-size: 12px; 
-      font-weight: 700; 
-      color: #111827;
-      word-break: break-word;
-    }
-    
-    /* CONTENT */
-    .invoice-content { 
-      padding: 12px;
-    }
-    .section-title { 
-      font-size: 11px; 
-      font-weight: 800; 
-      text-transform: uppercase; 
-      color: #374151; 
-      letter-spacing: 0.8px;
-      margin: 10px 0 8px 0;
-      display: flex;
-      align-items: center;
-    }
-    .section-title::before { 
-      content: '';
-      width: 3px;
-      height: 14px;
-      background: #10b981;
-      border-radius: 2px;
-      margin-right: 8px;
-    }
-    
-    /* CUSTOMER INFO CARDS */
-    .info-grid { 
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 12px;
-      margin-bottom: 20px;
-    }
-    .info-box { 
-      background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 12px;
-    }
-    .info-box h4 { 
-      font-size: 10px; 
-      font-weight: 700; 
-      color: #6b7280; 
-      text-transform: uppercase; 
-      letter-spacing: 0.5px;
-      margin-bottom: 8px;
-    }
-    .info-box strong { 
-      display: block; 
-      color: #111827; 
-      font-weight: 700; 
-      font-size: 14px;
-      margin-bottom: 4px;
-      word-break: break-word;
-    }
-    .info-box p { 
-      font-size: 12px; 
-      color: #6b7280; 
-      margin-bottom: 3px;
-      word-break: break-word;
-    }
-    
-    /* ITEMS TABLE - SCROLLABLE ROWS */
-    .items-section { 
-      margin-bottom: 20px;
-    }
-    .items-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-    }
-    .scroll-indicator {
-      font-size: 10px;
-      color: #10b981;
-      font-weight: 700;
-      padding: 2px 6px;
-      border-radius: 4px;
-      animation: pulse 1.5s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.5; }
-    }
-    .items-wrapper {
-      position: relative;
-      overflow-x: auto;
-      -webkit-overflow-scrolling: touch;
-      border: 1px solid #e5e7eb;
-      border-radius: 12px;
-      background: white;
-    }
-    .items-table { 
-      width: 100%;
-      min-width: 600px;
-      border-collapse: collapse;
-      margin: 0;
-    }
-    .items-table thead { 
-      background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 100%);
-      border-bottom: 2px solid #10b981;
-      display: table-header-group;
-    }
-    .items-table thead th { 
-      padding: 12px 16px;
-      text-align: left;
-      font-size: 11px;
-      font-weight: 700;
-      text-transform: uppercase;
-      color: #374151;
-      letter-spacing: 0.5px;
-      white-space: nowrap;
-      border-right: 1px solid #d1d5db;
-    }
-    .items-table thead th:last-child {
-      border-right: none;
-    }
-    .items-table tbody { 
-      display: table-row-group;
-    }
-    .items-table tbody tr { 
-      border-bottom: 1px solid #f0f0f0;
-      display: table-row;
-      background: none;
-      border: none;
-      margin-bottom: 0;
-    }
-    .items-table tbody tr:hover { 
-      background: linear-gradient(90deg, #f9fafb 0%, #ffffff 100%);
-    }
-    .items-table td { 
-      padding: 10px 12px;
-      border-bottom: 1px solid #f0f0f0;
-      display: table-cell;
-      font-size: 12px;
-      color: #374151;
-      font-weight: 500;
-      border-right: 1px solid #f0f0f0;
-      white-space: nowrap;
-    }
-    .items-table td:last-child {
-      border-right: none;
-    }
-    .item-name { 
-      font-weight: 700; 
-      color: #111827;
-      font-size: 13px;
-    }
-      background: white;
-    }
-    .items-table tbody tr:hover {
-      background: linear-gradient(90deg, #f9fafb 0%, #ffffff 100%);
-    }
-    .items-table td { 
-      padding: 14px 16px;
-      font-size: 13px;
-      color: #374151;
-      border-right: 1px solid #e5e7eb;
-      display: table-cell;
-      white-space: nowrap;
-    }
-    .items-table td:last-child {
-      border-right: none;
-    }
-    .item-name { 
-      font-weight: 700; 
-      color: #111827;
-      white-space: normal;
-    }
-    .item-qty {
-      font-weight: 700;
-      color: #10b981;
-      text-align: center;
-    }
-    .item-price {
-      font-weight: 600;
-      color: #6b7280;
-      text-align: right;
-    }
-    .item-total {
-      font-weight: 800;
-      color: #10b981;
-      text-align: right;
-    }
-    
-    /* TOTALS */
-    .summary-section { 
-      margin-bottom: 20px;
-    }
-    .bank-details-box {
-      grid-column: 1 / -1;
-      margin-top: 16px;
-      padding: 14px;
-      border: 1.5px dashed #10b981;
-      border-radius: 12px;
-      background-color: #f0fdf4;
-      font-family: inherit;
-    }
-    .payment-note { 
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.08), rgba(16, 185, 129, 0.03));
-      border-left: 4px solid #10b981;
-      padding: 12px;
-      border-radius: 8px;
-      font-size: 12px;
-      color: #047857;
-      font-weight: 500;
-      margin-bottom: 12px;
-      line-height: 1.6;
-    }
-    .payment-note strong {
-      color: #047857;
-      font-weight: 700;
-    }
-    .totals-box { 
-      background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-      border: 2px solid #10b981;
-      border-radius: 12px;
-      padding: 16px;
-      box-shadow: 0 4px 16px rgba(16, 185, 129, 0.1);
-    }
-    .totals-row { 
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 10px;
-      font-size: 13px;
-      padding-bottom: 8px;
-      border-bottom: 1px solid rgba(255,255,255,0.6);
-    }
-    .totals-row.total-row { 
-      font-size: 18px;
-      font-weight: 900;
-      color: #10b981;
-      border-top: 3px solid #10b981;
-      border-bottom: none;
-      padding-top: 12px;
-      margin-top: 12px;
-      padding-bottom: 0;
-    }
-    .totals-row span:first-child { 
-      color: #047857; 
-      font-weight: 600;
-    }
-    .totals-row span:last-child { 
-      font-weight: 700; 
-      color: #047857;
-    }
-    
-    /* FOOTER */
-    .invoice-footer { 
-      background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
-      border-top: 2px solid #e5e7eb;
-      padding: 16px;
-      font-size: 10px;
-      color: #6b7280;
-      text-align: center;
-    }
-    .footer-divider { 
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 6px;
-      margin-bottom: 8px;
-    }
-    .footer-divider span { 
-      border-right: none;
-      padding-right: 0;
-      font-weight: 500;
-      color: #374151;
-      word-break: break-all;
-    }
-    .footer-divider span:last-child { 
-      padding-right: 0;
-    }
-    .footer-text {
-      font-size: 11px;
-      color: #6b7280;
-      line-height: 1.4;
-    }
-    .footer-contact {
-      margin-top: 8px;
-      padding-top: 8px;
-      border-top: 1px solid #e5e7eb;
-      font-size: 9px;
-    }
-    .footer-contact p {
-      margin: 2px 0;
-    }
-    
-    /* PDF & PRINTING OPTIMIZATIONS */
-    @media (prefers-color-scheme: light) {
-      body { background: white; }
-    }
-    
-    @page {
-      size: A4;
-      margin: 10mm;
-    }
-    
-    /* MEDIA QUERIES */
-    @media (min-width: 640px) {
-      body { padding: 0; margin: 0; }
-      .invoice-container { border-radius: 24px; }
-      .invoice-header { padding: 32px; }
-      .header-info { grid-template-columns: 1fr 1fr 1fr; }
-      .invoice-content { padding: 32px; }
-      .info-grid { grid-template-columns: 1fr 1fr 1fr; }
-      .items-table thead { display: table-header-group; }
-      .items-table thead th { 
-        padding: 12px; 
-        text-align: left;
-        font-size: 11px;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: #374151;
-        background: linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 100%);
-        border-bottom: 2px solid #10b981;
+    @media only screen and (max-width: 600px) {
+      .responsive-table {
+        width: 100% !important;
       }
-      .items-table tbody tr { 
-        display: table-row;
-        background: none;
-        border: none;
-        border-bottom: 1px solid #f0f0f0;
-        margin-bottom: 0;
+      .col-stack {
+        display: block !important;
+        width: 100% !important;
+        box-sizing: border-box;
       }
-      .items-table tbody tr:hover { 
-        background: linear-gradient(90deg, #f9fafb 0%, #ffffff 100%);
+      .col-space {
+        height: 16px !important;
+        width: 100% !important;
       }
-      .items-table td { 
-        padding: 14px 12px;
-        border-bottom: 1px solid #f0f0f0;
-        display: table-cell;
+      .padding-mobile {
+        padding: 16px !important;
       }
-      .scroll-indicator { display: none; }
-      .item-name { 
-        padding: 0;
-        font-size: 13px;
-      }
-      .item-qty,
-      .item-price,
-      .item-total {
-        font-size: 13px;
-      }
-      .item-total { 
-        border-top: none;
-        margin-top: 0;
-        padding-top: 14px;
-      }
-      .summary-section { 
-        display: grid;
-        grid-template-columns: 2fr 1fr;
-        gap: 24px;
-      }
-      .footer-divider { grid-template-columns: auto auto auto; gap: 24px; }
-      .footer-divider span { border-right: 1px solid #d1d5db; padding-right: 24px; }
-      .footer-divider span:last-child { border-right: none; padding-right: 0; }
-    }
-    
-    @media print { 
-      * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-        color-adjust: exact !important;
-      }
-      @page {
-        size: A4;
-        margin: 10mm;
-      }
-      html, body { 
-        background: white !important; 
-        padding: 0 !important;
-        margin: 0 !important;
-        width: 210mm;
-        height: 297mm;
-      }
-      .invoice-container { 
-        box-shadow: none !important; 
-        border-radius: 0 !important;
-        margin: 0 !important;
-        padding: 0 !important;
-        width: 210mm;
-        height: auto;
-      }
-      .invoice-header { 
-        page-break-after: avoid;
-        padding: 10mm !important;
-      }
-      .invoice-content { 
-        page-break-inside: avoid;
-        padding: 10mm !important;
-      }
-      .items-section { 
-        page-break-inside: avoid;
-      }
-      .items-wrapper {
-        overflow-x: visible;
-      }
-      .items-wrapper::after { display: none !important; }
-      .summary-section {
-        page-break-inside: avoid;
-      }
-      .invoice-footer {
-        page-break-before: auto;
-        margin-top: 10mm;
-      }
-      body { 
-        font-size: 9pt !important;
-      }
-      table { 
-        border-collapse: collapse !important;
-      }
-      .info-grid {
-        background: white !important;
-        border: none !important;
-      }
-      .info-box{
-        background: white !important;
-        border: 1px solid #ccc !important;
-        page-break-inside: avoid;
-      }
-    }
-    
-    /* MOBILE-SPECIFIC ADJUSTMENTS */
-    @media (max-width: 500px) {
-      body { padding: 0; margin: 0; font-size: 14px; }
-      .invoice-header { padding: 12px; }
-      .invoice-content { padding: 12px; }
-      .header-info { grid-template-columns: 1fr; gap: 8px; }
-      .info-grid { 
-        gap: 8px; 
-        margin-bottom: 12px;
-        grid-template-columns: 1fr 1fr;
-      }
-      .info-grid .info-box:nth-child(1) {
-        grid-column: 1 / -1;
-      }
-      .info-grid .info-box:nth-child(3) {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        border: 2px solid #047857;
-        box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
-      }
-      .info-grid .info-box:nth-child(3) h4 {
-        color: rgba(255, 255, 255, 0.8);
-      }
-      .info-grid .info-box:nth-child(3) strong {
-        color: white;
-        font-size: 18px;
-      }
-      .info-grid .info-box:nth-child(3) p {
-        color: rgba(255, 255, 255, 0.8);
-      }
-      .info-box { padding: 10px; }
-      .totals-box { padding: 12px; }
-      .summary-section { 
-        gap: 12px; 
-        display: flex;
-        flex-direction: column;
-      }
-      .payment-note {
-        order: 3;
-        margin-bottom: 0;
-      }
-      .totals-box {
-        order: 1;
-      }
-      .bank-details-box {
-        order: 2;
-        margin-top: 12px;
-      }
-      .footer-divider { gap: 4px; }
-      .info-label { font-size: 8px; }
-      .info-value { font-size: 12px; }
-      .items-table { min-width: 600px; }
     }
   </style>
 </head>
-<body>
-  <div class="invoice-container">
-    <!-- HEADER -->
-    <div class="invoice-header">
-      <div class="header-content">
-        <div class="header-top">
-          <div class="logo-section">
-            <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADIAAAAyCAYAAAAeP4ixAAAACXBIWXMAACE4AAAhOAFmwQcnAAABpElEQVR4nO3YwUrDMBCG4ZA7iJ5EsV7Fi4gHQRBFPYiCB0Hx4tGTZ09e9OpBeAzBiyBqb56k15O0pGmTZJrZzPwwH8wBGfj2m2Q3SSccx3H+JXmelzUajRwAiKIoRZZlMZ1OR4vFYrJcLhfr9foyiiKMbMux7RskSRK0Wi0Wy+VyQ6GUyj7PY1mWlCRJNJ1OJ4vFYkWhVKrVajGbzcZCoRBIkmShkIlEIikSHo+n1mq1OBxUyhT9fp/pdBqPx+NRqVSSJEnkcrkMc9sKhUIg/X6faTabdF1HUZSEvt/PyeXyxnWBfD4fyuOYzWbmdR0gn89HvV6PXq+HLMuKxqWnpmJbFi6Xi2azycjj8RBFUb/f1wVyPp85HA7Z5/OhKAq6rj/v0Ov18jAY/VvdbleXiJZlKZZlKZZlxRRK6RP/EB0iO4RGsCOQHUIjWBAzsgNoBGoH5BSoHUAjUDsgKyBTdwBoB9AOyAoIs3cAaAfQDsgKIHsBaAfQDsgKwJIaAvwNvz+gHZAVEGbvANAOoB2QFRBm7wDQDqAdkBUAaAdkBQDaAVkBQDuAdiAL+AVm/w7RpmOC5gAAAABJRU5ErkJggg==" alt="EMPI Logo" class="logo-img">
-            <div class="company-name">EMPI</div>
-          </div>
-          ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? '<div class="status-badge">PAID</div>' : ''}
-        </div>
-        
-        <div class="header-info">
-          <div class="info-item">
-            <div class="info-label">Invoice #</div>
-            <div class="info-value">${invoice.invoiceNumber}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">Date</div>
-            <div class="info-value">${dateStr}</div>
-          </div>
-          <div class="info-item">
-            <div class="info-label">Amount</div>
-            <div class="info-value">${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</div>
-          </div>
-        </div>
-      </div>
-    </div>
-    
-    <!-- CONTENT -->
-    <div class="invoice-content">
-      <!-- CUSTOMER INFO -->
-      <div class="section-title">Order Details</div>
-      <div class="info-grid">
-        <div class="info-box">
-          <h4>👤 Customer</h4>
-          <strong>${invoice.customerName}</strong>
-          <p>${invoice.customerEmail}</p>
-          <p>${invoice.customerPhone}</p>
-          ${invoice.customerAddress ? `<p style="font-size: 11px; color: #666; margin-top: 4px;">${invoice.customerAddress}${invoice.customerCity ? ', ' + invoice.customerCity : ''}${invoice.customerState ? ', ' + invoice.customerState : ''}${invoice.customerPostalCode ? ' ' + invoice.customerPostalCode : ''}</p>` : ''}
-        </div>
-        <div class="info-box">
-          <h4>📦 Order</h4>
-          <strong>Order #${invoice.orderNumber}</strong>
-          <p>${invoice.items.length} ${invoice.items.length === 1 ? 'Item' : 'Items'}</p>
-          <p>Status: ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? 'Paid ✓' : (invoice.status || 'Draft').charAt(0).toUpperCase() + (invoice.status || 'Draft').slice(1)}</p>
-          <p style="font-size: 11px; color: #666; margin-top: 4px;">${dateStr}</p>
-        </div>
-        <div class="info-box">
-          <h4>💰 Total Amount</h4>
-          <strong style="font-size: 18px;">${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</strong>
-          <p style="font-size: 11px; color: ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? '#047857' : '#6b7280'};\">${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? '✓ Paid & Verified' : invoice.status === 'sent' ? '📤 Sent' : '📋 Draft'}</p>
-        </div>
-      </div>
-      
-      <!-- ITEMS -->
-      <div class="items-section">
-        <div class="items-header">
-          <div class="section-title">Items Ordered</div>
-          <div class="scroll-indicator">→ Scroll right</div>
-        </div>
-        <div class="items-wrapper">
-          <table class="items-table">
-            <thead>
-              <tr>
-                <th>Product</th>
-                <th>Type</th>
-                <th>Qty</th>
-                <th>Price</th>
-                <th>Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${invoice.items.map((item) => `
-                <tr>
-                  <td>
-                    <span class="item-name">${item.name}</span>
-                    ${item.selectedColor || item.selectedSize || (item.mode === 'rent' && item.rentalDays) ? `
-                      <div style="font-size: 10px; color: #6b7280; margin-top: 4px; line-height: 1.2;">
-                        ${item.selectedColor ? `<span>Color: <strong>${item.selectedColor}</strong></span>` : ''}
-                        ${item.selectedSize ? `${item.selectedColor ? ' • ' : ''}<span>Size: <strong>${item.selectedSize}</strong></span>` : ''}
-                        ${(item.mode === 'rent' && item.rentalDays) ? `${(item.selectedColor || item.selectedSize) ? ' • ' : ''}<span>Duration: <strong>${item.rentalDays} days</strong></span>` : ''}
-                      </div>
-                    ` : ''}
-                  </td>
-                  <td><span class="item-mode" style="font-weight: 600; ${(item.mode || 'buy') === 'rent' ? 'color: #a855f7;' : 'color: #059669;'}">${(item.mode || 'buy') === 'rent' ? '🔄 Rental' : '🛍️ Buy'}</span></td>
-                  <td><span class="item-qty">${item.quantity}</span></td>
-                  <td><span class="item-price">${invoice.currencySymbol}${((item.price || 0)).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
-                  <td><span class="item-total">${invoice.currencySymbol}${((item.quantity || 1) * (item.price || 0)).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span></td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      
-      <!-- SUMMARY -->
-      <div class="summary-section">
-        <div class="totals-box">
-          <!-- SUBTOTAL -->
-          <div class="totals-row">
-            <span>Subtotal</span>
-            <span>${invoice.currencySymbol}${invoice.subtotal.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
-          </div>
-          
-          <!-- BULK DISCOUNT (if applicable) -->
-          ${invoice.bulkDiscountPercentage && invoice.bulkDiscountPercentage > 0 ? `
-          <div class="totals-row" style="background-color: #f0fdf4; border-radius: 6px; padding: 8px; margin: 4px 0; border: 1px solid #dcfce7;">
-            <span style="color: #15803d; font-weight: 600;">🎉 Bulk Discount Applied (${invoice.bulkDiscountPercentage}%)</span>
-            <span style="color: #15803d; font-weight: 600;">-${invoice.currencySymbol}${(invoice.bulkDiscountAmount || 0).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
-          </div>
-          <div class="totals-row">
-            <span style="color: #666;">Subtotal After Discount</span>
-            <span style="color: #666; font-weight: 600;">${invoice.currencySymbol}${(invoice.subtotalAfterDiscount || invoice.subtotal).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
-          </div>` : ''}
-          
-          <!-- CAUTION FEE (if applicable) -->
-          ${invoice.cautionFee && invoice.cautionFee > 0 ? `
-          <div class="totals-row" style="background-color: #fef3c7; border-radius: 6px; padding: 8px; margin: 4px 0; border: 1px solid #fde68a;">
-            <span style="color: #92400e; font-weight: 600;">🔒 Caution Fee (Rental - 50%, Refundable)</span>
-            <span style="color: #92400e; font-weight: 600;">${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
-          </div>
-          <div class="totals-row">
-            <span style="color: #666;">Subtotal + Caution</span>
-            <span style="color: #666; font-weight: 600;">${invoice.currencySymbol}${(invoice.subtotalWithCaution || (invoice.subtotalAfterDiscount || invoice.subtotal) + invoice.cautionFee).toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
-          </div>` : ''}
-          
-          <!-- VAT/TAX -->
-          ${invoice.taxAmount > 0 ? `
-          <div class="totals-row">
-            <span>VAT (7.5%)</span>
-            <span>${invoice.currencySymbol}${invoice.taxAmount.toLocaleString('en-NG', { maximumFractionDigits: 2 })}</span>
-          </div>` : ''}
-          
-          <!-- FINAL TOTAL -->
-          <div class="totals-row total-row">
-            <span>💳 Total Amount Due</span>
-            <span>${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</span>
-          </div>
-        </div>
+<body style="margin: 0; padding: 20px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f3f4f6; color: #1f2937;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" class="responsive-table" style="max-width: 750px; margin: 0 auto; background-color: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-collapse: collapse;">
+    <!-- Top Accent Bar -->
+    <tr>
+      <td height="6" style="background-color: #84cc16; font-size: 1px; line-height: 6px;">&nbsp;</td>
+    </tr>
 
-        <!-- BANK PAYMENT DETAILS -->
-        ${(activeBank && !isOnlineOrPaid(invoice)) ? `
-        <div class="bank-details-box">
-          <h4 style="font-size: 11px; font-weight: 800; text-transform: uppercase; color: #065f46; letter-spacing: 0.5px; margin-bottom: 6px; display: flex; align-items: center; gap: 4px;">
-            🏛️ Bank Transfer Details
-          </h4>
-          <div style="font-size: 12.5px; line-height: 1.5; color: #047857;">
-            <p style="margin-bottom: 4px;"><strong>Bank Name:</strong> ${activeBank.bankName}</p>
-            <p style="margin-bottom: 4px;"><strong>Account Name:</strong> ${activeBank.accountName}</p>
-            <p style="margin-bottom: 4px;"><strong>Account Number:</strong> <span style="font-family: monospace; font-size: 13.5px; font-weight: 700; background: #d1fae5; padding: 2px 6px; border-radius: 4px; border: 1px solid #a7f3d0; letter-spacing: 0.5px;">${activeBank.accountNumber}</span></p>
-            <p style="margin-top: 6px; font-size: 10px; color: #065f46; font-style: italic; opacity: 0.9;">Kindly make payments directly into this account and share your proof of payment.</p>
-          </div>
+    <!-- HEADER / BRANDING -->
+    <tr>
+      <td class="padding-mobile" style="padding: 32px; border-bottom: 1px solid #f1f5f9;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td valign="middle">
+              <span style="font-size: 24px; font-weight: 900; color: #111827; letter-spacing: 0.5px; text-transform: uppercase;">
+                EMPI <span style="color: #84cc16; font-style: italic;">COSTUMES</span>
+              </span>
+            </td>
+            <td align="right" valign="middle">
+              ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true)
+                ? `<span style="background-color: #dcfce7; color: #15803d; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #bbf7d0; display: inline-block;">PAID</span>`
+                : `<span style="background-color: #fef3c7; color: #d97706; padding: 6px 14px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #fde68a; display: inline-block;">UNPAID</span>`
+              }
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- METADATA BOX -->
+    <tr>
+      <td class="padding-mobile" style="padding: 24px 32px; background-color: #fafafa; border-bottom: 1px solid #f1f5f9;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <td width="33%" valign="top" class="col-stack">
+              <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.8px; margin-bottom: 4px;">Invoice Number</div>
+              <div style="font-size: 13px; font-weight: 800; color: #1f2937; word-break: break-all;">${invoice.invoiceNumber}</div>
+            </td>
+            <td width="33%" valign="top" class="col-stack padding-mobile" style="padding-left: 16px;">
+              <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.8px; margin-bottom: 4px;">Date Issued</div>
+              <div style="font-size: 13px; font-weight: 800; color: #1f2937;">${dateStr}</div>
+            </td>
+            <td width="33%" valign="top" class="col-stack padding-mobile" style="padding-left: 16px;">
+              <div style="font-size: 10px; font-weight: 700; text-transform: uppercase; color: #9ca3af; letter-spacing: 0.8px; margin-bottom: 4px;">Grand Total</div>
+              <div style="font-size: 15px; font-weight: 900; color: #84cc16;">${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- BILLING / CLIENT / ORDER HIGHLIGHTS -->
+    <tr>
+      <td class="padding-mobile" style="padding: 32px 32px 16px 32px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <!-- Customer Card -->
+            <td width="48%" valign="top" class="col-stack" style="background-color: #fafafa; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px;">
+              <div style="font-size: 10px; font-weight: 800; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px;">👤 Customer Details</div>
+              <strong style="font-size: 15px; color: #111827; display: block; margin-bottom: 6px;">${invoice.customerName}</strong>
+              <div style="font-size: 13px; color: #4b5563; margin-bottom: 3px; word-break: break-all;">${invoice.customerEmail}</div>
+              <div style="font-size: 13px; color: #4b5563; margin-bottom: 3px;">${invoice.customerPhone}</div>
+              ${invoice.customerAddress ? `
+                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280; line-height: 1.4;">
+                  ${invoice.customerAddress}${invoice.customerCity ? ', ' + invoice.customerCity : ''}${invoice.customerState ? ', ' + invoice.customerState : ''}${invoice.customerPostalCode ? ' ' + invoice.customerPostalCode : ''}
+                </div>
+              ` : ''}
+            </td>
+
+            <!-- Spacer -->
+            <td width="4%" class="col-space" style="font-size: 1px; line-height: 1px;">&nbsp;</td>
+
+            <!-- Order Card -->
+            <td width="48%" valign="top" class="col-stack" style="background-color: #fafafa; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px;">
+              <div style="font-size: 10px; font-weight: 800; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 12px;">📦 Order Information</div>
+              <strong style="font-size: 15px; color: #111827; display: block; margin-bottom: 6px;">Order #${invoice.orderNumber}</strong>
+              <div style="font-size: 13px; color: #4b5563; margin-bottom: 3px;">${invoice.items.length} ${invoice.items.length === 1 ? 'Item' : 'Items'}</div>
+              <div style="font-size: 13px; color: #4b5563; margin-bottom: 3px;">
+                Payment: 
+                ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true)
+                  ? `<span style="color: #16a34a; font-weight: 700;">Paid ✓</span>`
+                  : `<span style="color: #d97706; font-weight: 700;">Pending Verification</span>`
+                }
+              </div>
+              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #6b7280;">
+                Transaction Date: ${dateStr}
+              </div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- ITEMS ORDERED -->
+    <tr>
+      <td class="padding-mobile" style="padding: 16px 32px 24px 32px;">
+        <div style="font-size: 13px; font-weight: 800; text-transform: uppercase; color: #1f2937; letter-spacing: 0.5px; margin-bottom: 12px;">Items Ordered</div>
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border: 1px solid #e5e7eb; border-radius: 8px; border-collapse: collapse; overflow: hidden;">
+          <thead>
+            <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+              <th align="left" style="padding: 12px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #475569; border-right: 1px solid #e2e8f0;">Item</th>
+              <th align="center" style="padding: 12px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #475569; border-right: 1px solid #e2e8f0; width: 80px;">Type</th>
+              <th align="center" style="padding: 12px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #475569; border-right: 1px solid #e2e8f0; width: 60px;">Qty</th>
+              <th align="right" style="padding: 12px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #475569; border-right: 1px solid #e2e8f0; width: 100px;">Price</th>
+              <th align="right" style="padding: 12px 16px; font-size: 10px; font-weight: 700; text-transform: uppercase; color: #475569; width: 100px;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${invoice.items.map((item, idx) => `
+              <tr style="border-bottom: 1px solid #e2e8f0; background-color: ${idx % 2 === 0 ? '#ffffff' : '#f8fafc'};">
+                <td style="padding: 14px 16px; font-size: 13px; color: #1e293b; border-right: 1px solid #e2e8f0; vertical-align: top;">
+                  <strong style="color: #0f172a;">${item.name}</strong>
+                  ${item.selectedColor || item.selectedSize || (item.mode === 'rent' && item.rentalDays) ? `
+                    <div style="font-size: 11px; color: #64748b; margin-top: 4px; line-height: 1.4;">
+                      ${item.selectedColor ? `Color: <strong>${item.selectedColor}</strong>` : ''}
+                      ${item.selectedSize ? `${item.selectedColor ? ' &bull; ' : ''}Size: <strong>${item.selectedSize}</strong>` : ''}
+                      ${(item.mode === 'rent' && item.rentalDays) ? `${(item.selectedColor || item.selectedSize) ? ' &bull; ' : ''}Duration: <strong>${item.rentalDays} days</strong>` : ''}
+                    </div>
+                  ` : ''}
+                </td>
+                <td align="center" style="padding: 14px 16px; border-right: 1px solid #e2e8f0; vertical-align: top; white-space: nowrap;">
+                  <span style="font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.3px; padding: 3px 8px; border-radius: 4px; ${(item.mode || 'buy') === 'rent' ? 'background-color: #faf5ff; color: #6b21a8; border: 1px solid #f3e8ff;' : 'background-color: #f0fdf4; color: #166534; border: 1px solid #dcfce7;' }">
+                    ${(item.mode || 'buy') === 'rent' ? 'Rental' : 'Buy'}
+                  </span>
+                </td>
+                <td align="center" style="padding: 14px 16px; font-size: 13px; font-weight: 700; color: #0f172a; border-right: 1px solid #e2e8f0; vertical-align: top;">
+                  ${item.quantity}
+                </td>
+                <td align="right" style="padding: 14px 16px; font-size: 13px; color: #475569; border-right: 1px solid #e2e8f0; vertical-align: top; white-space: nowrap;">
+                  ${invoice.currencySymbol}${((item.price || 0)).toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                </td>
+                <td align="right" style="padding: 14px 16px; font-size: 13px; font-weight: 700; color: #0f172a; vertical-align: top; white-space: nowrap;">
+                  ${invoice.currencySymbol}${((item.quantity || 1) * (item.price || 0)).toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </td>
+    </tr>
+
+    <!-- SUMMARY SECTION (Left Bank Info, Right Totals Box) -->
+    <tr>
+      <td class="padding-mobile" style="padding: 8px 32px 32px 32px;">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%">
+          <tr>
+            <!-- Left Info Area -->
+            <td width="54%" valign="top" class="col-stack">
+              ${(activeBank && !isOnlineOrPaid(invoice)) ? `
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0fdf4; border: 1.5px dashed #84cc16; border-radius: 12px; padding: 18px;">
+                  <tr>
+                    <td>
+                      <div style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;">🏛️ Bank Transfer Details</div>
+                      <div style="font-size: 13px; color: #166534; margin-bottom: 6px;"><strong>Bank Name:</strong> ${activeBank.bankName}</div>
+                      <div style="font-size: 13px; color: #166534; margin-bottom: 6px;"><strong>Account Name:</strong> ${activeBank.accountName}</div>
+                      <div style="font-size: 13px; color: #166534; margin-bottom: 10px;">
+                        <strong>Account Number:</strong> 
+                        <span style="font-family: monospace; font-size: 14px; font-weight: 800; background-color: #d1fae5; padding: 3px 8px; border-radius: 4px; border: 1px solid #a7f3d0; letter-spacing: 0.5px; display: inline-block;">${activeBank.accountNumber}</span>
+                      </div>
+                      <div style="font-size: 11px; color: #166534; font-style: italic; line-height: 1.4;">
+                        Kindly make your bank transfer payment to this account and upload proof of payment inside your order profile.
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              ` : `
+                <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 12px; padding: 18px;">
+                  <tr>
+                    <td>
+                      <div style="font-size: 13px; color: #166534; font-weight: 700; margin-bottom: 4px;">✓ Verified Paid Transaction</div>
+                      <div style="font-size: 12px; color: #166534; line-height: 1.5; opacity: 0.95;">
+                        Your payment has been successfully completed and confirmed. We are preparing your order details now. Thank you for choosing EMPI!
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              `}
+              ${invoice.cautionFee && invoice.cautionFee > 0 ? `
+                <div style="margin-top: 16px; background-color: #fef3c7; border: 1px solid #fde68a; border-radius: 12px; padding: 14px; font-size: 11.5px; color: #92400e; line-height: 1.5;">
+                  📌 <strong>Refundable Caution Fee Applied:</strong> The caution fee of ${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 0 })} is a deposit for rental products, which will be refunded back to you once items are returned in good condition.
+                </div>
+              ` : ''}
+            </td>
+
+            <!-- Divider Spacer -->
+            <td width="6%" class="col-space" style="font-size: 1px; line-height: 1px;">&nbsp;</td>
+
+            <!-- Right Totals Area -->
+            <td width="40%" valign="top" class="col-stack">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 18px;">
+                <tr>
+                  <td style="padding: 5px 0; font-size: 13px; color: #64748b;">Subtotal</td>
+                  <td align="right" style="padding: 5px 0; font-size: 13px; font-weight: 700; color: #1e293b;">
+                    ${invoice.currencySymbol}${invoice.subtotal.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                  </td>
+                </tr>
+
+                ${invoice.bulkDiscountPercentage && invoice.bulkDiscountPercentage > 0 ? `
+                  <tr>
+                    <td style="padding: 5px 0; font-size: 13px; color: #16a34a;">Discount (${invoice.bulkDiscountPercentage}%)</td>
+                    <td align="right" style="padding: 5px 0; font-size: 13px; font-weight: 700; color: #16a34a;">
+                      -${invoice.currencySymbol}${(invoice.bulkDiscountAmount || 0).toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                ` : ''}
+
+                ${invoice.cautionFee && invoice.cautionFee > 0 ? `
+                  <tr>
+                    <td style="padding: 5px 0; font-size: 13px; color: #d97706;">Caution Fee</td>
+                    <td align="right" style="padding: 5px 0; font-size: 13px; font-weight: 700; color: #d97706;">
+                      ${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                ` : ''}
+
+                ${invoice.taxAmount > 0 ? `
+                  <tr>
+                    <td style="padding: 5px 0; font-size: 13px; color: #64748b;">VAT (${invoice.taxRate || 7.5}%)</td>
+                    <td align="right" style="padding: 5px 0; font-size: 13px; font-weight: 700; color: #1e293b;">
+                      ${invoice.currencySymbol}${invoice.taxAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                ` : ''}
+
+                <tr>
+                  <td colspan="2" style="padding: 10px 0 0 0; border-top: 1px solid #e2e8f0; margin-top: 10px;"></td>
+                </tr>
+
+                <tr>
+                  <td style="padding: 6px 0 0 0; font-size: 13px; font-weight: 800; color: #0f172a;">Total Amount</td>
+                  <td align="right" style="padding: 6px 0 0 0; font-size: 18px; font-weight: 900; color: #84cc16;">
+                    ${invoice.currencySymbol}${invoice.totalAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+
+    <!-- FOOTER / CONTACT INFO -->
+    <tr>
+      <td style="background-color: #fafafa; border-top: 1px solid #f1f5f9; padding: 28px 32px; border-radius: 0 0 16px 16px; text-align: center;">
+        <div style="font-size: 12px; font-weight: 800; color: #475569; letter-spacing: 1px; text-transform: uppercase;">
+          EMPI COSTUMES
         </div>
-        ` : ''}
-        
-        <div class="payment-note">
-          ${(invoice.type === 'automatic' || invoice.status === 'paid' || invoice.paymentVerified === true) ? `✓ Your payment has been received and processed. Thank you for your purchase!` : `📋 Invoice generated and ready. Awaiting payment.`}
-          ${invoice.cautionFee && invoice.cautionFee > 0 ? `<br><br>📌 <strong>Caution Fee Note:</strong> The caution fee of ${invoice.currencySymbol}${invoice.cautionFee.toLocaleString('en-NG', { maximumFractionDigits: 2 })} is a refundable deposit for rental items. It will be refunded upon successful return in good condition.` : ''}
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 6px;">
+          📧 info@empicostumes.com &nbsp;&bull;&nbsp; 📍 Lagos, Nigeria
         </div>
-      </div>
-    </div>
-    
-    <!-- FOOTER -->
-    <div class="invoice-footer">
-      <div class="footer-divider">
-        <span><strong>EMPI © 2024</strong></span>
-        <span><strong>#${invoice.invoiceNumber}</strong></span>
-      </div>
-      <div class="footer-contact">
-        <p>📧 info@empi.com</p>
-        <p>📍 Lagos, Nigeria</p>
-        <p style="margin-top: 6px; font-size: 9px;">Thank you for choosing EMPI!</p>
-      </div>
-    </div>
-  </div>
+        <div style="font-size: 10px; color: #cbd5e1; margin-top: 16px; padding-top: 12px; border-top: 1px solid #f1f5f9;">
+          This is an automated notification. Thank you for your business.
+        </div>
+      </td>
+    </tr>
+  </table>
 </body>
   
   <script>
@@ -795,7 +342,6 @@ export function generateProfessionalInvoiceHTML(
       document.body.removeChild(link);
     }
   </script>
-</body>
 </html>`;
 
   return html;
