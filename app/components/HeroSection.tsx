@@ -49,12 +49,12 @@ export function HeroSection() {
         <div className="block lg:hidden absolute inset-0">
           <motion.div
             key={`mobile-${currentImageIndex}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{ opacity: 0, scale: 1.08 }}
+            animate={{ opacity: 1, scale: 1.03 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 2 }}
+            transition={{ duration: 2.4, ease: "easeInOut" }}
             style={{ y: yBg }}
-            className="absolute inset-0 scale-110"
+            className="absolute inset-0"
           >
             <img
               src={heroImages[currentImageIndex]}
@@ -70,12 +70,12 @@ export function HeroSection() {
           <div className="relative overflow-hidden w-full h-full border-r border-white/5">
             <motion.div
               key={`desktop-left-${currentImageIndex}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, scale: 1.08 }}
+              animate={{ opacity: 1, scale: 1.03 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 2 }}
+              transition={{ duration: 2.4, ease: "easeInOut" }}
               style={{ y: yBg }}
-              className="absolute inset-0 scale-110"
+              className="absolute inset-0"
             >
               <img
                 src={heroImages[currentImageIndex]}
@@ -89,12 +89,12 @@ export function HeroSection() {
           <div className="relative overflow-hidden w-full h-full">
             <motion.div
               key={`desktop-right-${currentImageIndex}`}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
+              initial={{ opacity: 0, scale: 1.08 }}
+              animate={{ opacity: 1, scale: 1.03 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 2 }}
+              transition={{ duration: 2.4, ease: "easeInOut" }}
               style={{ y: yBg }}
-              className="absolute inset-0 scale-110"
+              className="absolute inset-0"
             >
               <img
                 src={heroImages[(currentImageIndex + 1) % heroImages.length]}

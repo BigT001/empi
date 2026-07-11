@@ -146,16 +146,6 @@ const dimensions = [
   }
 ];
 
-const futurePlans = [
-  { title: "Annual Showcases", desc: "Annual costume showcases and live productions" },
-  { title: "Masterclasses", desc: "Creative workshops and masterclasses for young designers" },
-  { title: "Collaborations", desc: "Industry collaborations across film, theatre, fashion, and entertainment" },
-  { title: "Exhibitions", desc: "Costume exhibitions and interactive installations" },
-  { title: "Talent Discovery", desc: "Talent discovery platforms for emerging creators" },
-  { title: "Partnerships", desc: "National and international partnerships" },
-  { title: "Storytelling", desc: "Digital content, documentaries, and behind-the-scenes storytelling" },
-  { title: "Awards & Recognitions", desc: "Awards and recognition programs for excellence in costume design" }
-];
 
 export default function Home() {
   const { currency, setCurrency } = useCurrency();
@@ -414,40 +404,7 @@ export default function Home() {
 
 
 
-          {/* Beyond the Debut & Future Plans */}
-          <ScrollReveal y={30} delay={0.15}>
-            <section className="py-24 relative z-10 max-w-7xl mx-auto px-6 border-t border-slate-100 dark:border-white/5">
-              <div className="text-center max-w-3xl mx-auto mb-16">
-                <h2 className="text-3xl md:text-4xl font-black font-playfair uppercase">
-                  Beyond The <span className="text-lime-500 italic">Debut</span>
-                </h2>
-                <p className="mt-4 text-gray-500 dark:text-gray-400 font-medium">
-                  The first show is only the beginning. We aim to expand into a larger creative movement with future plans focused on cultural growth.
-                </p>
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 text-left">
-                {futurePlans.map((plan, idx) => (
-                  <div
-                    key={idx}
-                    className="p-6 rounded-2xl border backdrop-blur-sm space-y-4 transition-all duration-300 transform hover:-translate-y-1 border-black/5 dark:border-white/5 bg-black/5 dark:bg-white/5 hover:border-lime-500/20 dark:hover:border-lime-500/20 shadow-sm"
-                  >
-                    <div className="w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs bg-lime-100 dark:bg-lime-950/40 text-lime-600 dark:text-lime-400">
-                      {idx + 1}
-                    </div>
-                    <h3 className="text-lg font-bold uppercase tracking-tight text-neutral-800 dark:text-white">{plan.title}</h3>
-                    <p className="text-xs leading-relaxed text-neutral-500 dark:text-gray-400">{plan.desc}</p>
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-16 p-8 border rounded-3xl max-w-5xl mx-auto bg-gradient-to-r from-lime-100/20 to-emerald-100/20 dark:from-lime-950/20 dark:to-emerald-950/20 border-lime-600/10 dark:border-lime-500/10">
-                <p className="text-sm md:text-base leading-relaxed font-semibold text-center text-neutral-700 dark:text-gray-300">
-                  The long-term vision is to establish THE COSTUME SHOW as a leading creative institution; one that influences culture, empowers artists, and places costume design on the global stage. As the creative industry continues to evolve, the demand for originality, storytelling, and visual excellence becomes stronger than ever.
-                </p>
-              </div>
-            </section>
-          </ScrollReveal>
 
           {/* The Evolution of Costume Creativity */}
           <ScrollReveal y={40} delay={0.2}>
