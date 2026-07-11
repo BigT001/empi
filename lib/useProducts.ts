@@ -19,6 +19,7 @@ export interface Product {
   careInstructions?: string;
   availableForBuy?: boolean;
   availableForRent?: boolean;
+  isCostumeShow?: boolean;
   createdAt?: string;
   updatedAt?: string;
 }

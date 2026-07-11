@@ -23,6 +23,7 @@ interface Product {
   category: string;
   availableForBuy?: boolean;
   availableForRent?: boolean;
+  isCostumeShow?: boolean;
 }
 
 interface ProductCardProps {
@@ -41,7 +42,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
   const productId = product.id || (product as any)._id || '';
 
   // Determine availability
-  const isCostumeShow = product.category === 'costume-show';
+  const isCostumeShow = product.isCostumeShow === true || product.category === 'costume-show';
   const availableForBuy = product.availableForBuy !== false; // Default true
   const availableForRent = isCostumeShow ? false : (product.availableForRent !== false); // Default true
   const isRentalOnly = availableForRent && !availableForBuy;

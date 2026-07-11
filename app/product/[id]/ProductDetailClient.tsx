@@ -123,10 +123,11 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
   // Now use the productId with useMode
   const { mode, setMode, isHydrated } = useMode(productId);
+  const isCostumeShow = product.isCostumeShow === true || product.category === 'costume-show';
 
   // Load mode from URL params only on initial mount
   useEffect(() => {
-    if (product.category === 'costume-show') {
+    if (isCostumeShow) {
       setMode("buy");
     } else {
       const urlMode = searchParams.get('mode') as 'buy' | 'rent';
@@ -134,7 +135,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
         setMode(urlMode);
       }
     }
-  }, [productId, isHydrated, product.category]);
+  }, [productId, isHydrated, isCostumeShow]);
 
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -144,7 +145,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
   const formatPrice = (price: number | undefined | null) => {
     const displayVal = (price === undefined || price === null || price <= 0) ? 0 : price;
-    if (displayVal === 0 && product.category !== "costume-show") {
+    if (displayVal === 0 && !isCostumeShow) {
       return "Price on Request";
     }
     const converted = displayVal * CURRENCY_RATES[currency].rate;
@@ -413,7 +414,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
             {/* Buy/Rent Mode Toggle & Pricing Panel */}
             <div className="bg-gray-50 dark:bg-white/5 rounded-3xl p-6 border border-gray-100 dark:border-white/5 space-y-6">
               {/* Tabs */}
-              {product.category !== 'costume-show' && (
+              {!isCostumeShow && (
                 <div className="flex bg-white dark:bg-black/40 p-1.5 rounded-2xl border border-gray-100 dark:border-white/5">
                   {product.availableForBuy !== false && (
                     <button
@@ -618,7 +619,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 
                 {/* Add to Cart Button */}
                 <div className="flex-1">
-                  {(product.category === 'costume-show' && mode === 'buy') || (mode === 'buy' && product.availableForBuy !== false && product.sellPrice && product.sellPrice > 0) || (mode === 'rent' && product.availableForRent !== false && product.rentPrice && product.rentPrice > 0) ? (
+                  {(isCostumeShow && mode === 'buy') || (mode === 'buy' && product.availableForBuy !== false && product.sellPrice && product.sellPrice > 0) || (mode === 'rent' && product.availableForRent !== false && product.rentPrice && product.rentPrice > 0) ? (
                     <button
                       onClick={handleAddToCart}
                       className={`w-full py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-95 ${
