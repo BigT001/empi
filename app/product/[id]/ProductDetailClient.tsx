@@ -194,6 +194,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
   const [selectedColorName, setSelectedColorName] = useState(variants.length > 0 ? variants[0].colorName : "");
   
   const activeVariant = variants.find((v: any) => v.colorName === selectedColorName);
+  const hasAnySizesForColor = activeVariant?.sizes && activeVariant.sizes.length > 0;
   const displayedSizes = activeVariant?.sizes?.filter((s: any) => 
     mode === 'buy' ? s.displayForSale !== false : s.displayForRent !== false
   ) || [];
@@ -329,12 +330,12 @@ export default function ProductDetailClient({ product, allProducts, currency = "
           {/* Image Gallery */}
           <div className="flex flex-col gap-6">
             {/* Main Image */}
-            <div className="relative bg-gray-50 dark:bg-white/5 rounded-3xl overflow-hidden aspect-[4/5] border border-gray-100 dark:border-white/5 shadow-2xl transition-all duration-500 overflow-hidden">
+            <div className="relative rounded-3xl overflow-hidden aspect-[4/5] transition-all duration-500">
               <Image
                 src={mainImage}
                 alt={product.name}
                 fill
-                className="object-contain p-4"
+                className="object-contain"
                 priority
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 quality={90}
@@ -406,7 +407,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                   </span>
                 )}
               </div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 dark:text-white leading-tight font-playfair tracking-tight">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-black text-gray-900 dark:text-white leading-tight font-playfair tracking-tight">
                 {product.name}
               </h1>
             </div>
@@ -515,80 +516,82 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 </div>
 
                 {/* Size Section */}
-                {displayedSizes.length > 0 ? (
-                  <div className="space-y-4">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <span className="text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white">
-                          Sizes
-                        </span>
-                        <span className="text-xs font-bold text-gray-400">
-                          {Object.keys(selectedSizes).length > 0
-                            ? `Selected: ${Object.keys(selectedSizes).join(", ")}`
-                            : "Choose sizes (you can select multiple)"}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2.5">
-                        {displayedSizes.map((sz: any, idx: number) => {
-                          const isSelected = selectedSizes[sz.size] !== undefined;
-                          return (
-                            <button
-                              key={idx}
-                              onClick={() => handleSizeClick(sz.size)}
-                              className={`min-w-[3.5rem] px-5 py-3 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-wider text-center ${
-                                isSelected
-                                  ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-black shadow-md shadow-black/10'
-                                  : 'border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20'
-                              }`}
-                            >
-                              {sz.size}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Quantity selectors per selected size */}
-                    {Object.keys(selectedSizes).length > 0 && (
-                      <div className="space-y-3 bg-gray-50 dark:bg-white/5 rounded-3xl p-5 border border-gray-100 dark:border-white/5 animate-in fade-in duration-300">
-                        <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.25em] block mb-2">
-                          Quantities per Size
-                        </span>
-                        <div className="space-y-2">
-                          {Object.entries(selectedSizes).map(([size, qty]) => (
-                            <div key={size} className="flex items-center justify-between bg-white dark:bg-[#151515] p-3 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
-                              <span className="font-bold text-gray-800 dark:text-gray-200 text-xs">
-                                Size <strong className="text-lime-600 dark:text-lime-400 text-sm ml-1">{size}</strong>
-                              </span>
-                              <div className="flex items-center bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 p-0.5">
-                                <button
-                                  onClick={() => handleSizeQtyChange(size, qty - 1)}
-                                  disabled={qty <= 1}
-                                  className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-white dark:hover:bg-white/5 rounded-lg transition font-bold disabled:opacity-30 disabled:cursor-not-allowed"
-                                >
-                                  −
-                                </button>
-                                <span className="w-8 text-center font-black text-gray-900 dark:text-white text-xs">
-                                  {qty}
-                                </span>
-                                <button
-                                  onClick={() => handleSizeQtyChange(size, qty + 1)}
-                                  className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-white dark:hover:bg-white/5 rounded-lg transition font-bold"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                {hasAnySizesForColor && (
+                  displayedSizes.length > 0 ? (
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <span className="text-xs font-black uppercase tracking-widest text-gray-900 dark:text-white">
+                            Sizes
+                          </span>
+                          <span className="text-xs font-bold text-gray-400">
+                            {Object.keys(selectedSizes).length > 0
+                              ? `Selected: ${Object.keys(selectedSizes).join(", ")}`
+                              : "Choose sizes (you can select multiple)"}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap gap-2.5">
+                          {displayedSizes.map((sz: any, idx: number) => {
+                            const isSelected = selectedSizes[sz.size] !== undefined;
+                            return (
+                              <button
+                                key={idx}
+                                onClick={() => handleSizeClick(sz.size)}
+                                className={`min-w-[3.5rem] px-5 py-3 rounded-2xl border-2 transition-all font-black text-xs uppercase tracking-wider text-center ${
+                                  isSelected
+                                    ? 'border-gray-900 dark:border-white bg-gray-900 dark:bg-white text-white dark:text-black shadow-md shadow-black/10'
+                                    : 'border-gray-200 dark:border-white/10 bg-white dark:bg-[#1a1a1a] text-gray-600 dark:text-gray-300 hover:border-gray-300 dark:hover:border-white/20'
+                                }`}
+                              >
+                                {sz.size}
+                              </button>
+                            );
+                          })}
                         </div>
                       </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="p-4 rounded-2xl bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold flex items-center gap-2">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    No sizes available for {selectedColorName} in {mode} mode.
-                  </div>
+
+                      {/* Quantity selectors per selected size */}
+                      {Object.keys(selectedSizes).length > 0 && (
+                        <div className="space-y-3 bg-gray-50 dark:bg-white/5 rounded-3xl p-5 border border-gray-100 dark:border-white/5 animate-in fade-in duration-300">
+                          <span className="text-[10px] font-black text-gray-400 dark:text-gray-500 uppercase tracking-[0.25em] block mb-2">
+                            Quantities per Size
+                          </span>
+                          <div className="space-y-2">
+                            {Object.entries(selectedSizes).map(([size, qty]) => (
+                              <div key={size} className="flex items-center justify-between bg-white dark:bg-[#151515] p-3 rounded-2xl border border-gray-100 dark:border-white/5 shadow-sm">
+                                <span className="font-bold text-gray-800 dark:text-gray-200 text-xs">
+                                  Size <strong className="text-lime-600 dark:text-lime-400 text-sm ml-1">{size}</strong>
+                                </span>
+                                <div className="flex items-center bg-gray-50 dark:bg-white/5 rounded-xl border border-gray-100 dark:border-white/5 p-0.5">
+                                  <button
+                                    onClick={() => handleSizeQtyChange(size, qty - 1)}
+                                    disabled={qty <= 1}
+                                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-white dark:hover:bg-white/5 rounded-lg transition font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+                                  >
+                                    −
+                                  </button>
+                                  <span className="w-8 text-center font-black text-gray-900 dark:text-white text-xs">
+                                    {qty}
+                                  </span>
+                                  <button
+                                    onClick={() => handleSizeQtyChange(size, qty + 1)}
+                                    className="w-8 h-8 flex items-center justify-center text-gray-500 hover:bg-white dark:hover:bg-white/5 rounded-lg transition font-bold"
+                                  >
+                                    +
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-2xl bg-orange-50 dark:bg-orange-950/20 border border-orange-100 dark:border-orange-900/30 text-orange-700 dark:text-orange-400 text-xs font-bold flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                      No sizes available for {selectedColorName} in {mode} mode.
+                    </div>
+                  )
                 )}
               </div>
             )}
