@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Navigation } from "./components/Navigation";
 import { MobileHeader } from "./components/MobileHeader";
 import { ProductGrid } from "./components/ProductGrid";
@@ -283,6 +284,20 @@ export default function Home() {
           </div>
         </ScrollReveal>
 
+        {/* Mobile-only Costume Show Highlight Page - Full Width */}
+        <div className="block lg:hidden pb-12 w-full">
+          <div className="relative overflow-hidden shadow-2xl border-y border-white/5 w-full">
+            <Image 
+              src="/costumeshow/Image 11-07-2026 at 13.10 (1).png" 
+              alt="Costume Show Highlight"
+              width={750}
+              height={1000}
+              className="w-full h-auto object-cover"
+              loading="lazy"
+            />
+          </div>
+        </div>
+
         {/* The Movement Section */}
         <ScrollReveal y={30} delay={0.15}>
           <section className="py-24 relative max-w-7xl mx-auto px-6 border-b border-gray-100 dark:border-white/5">
@@ -332,11 +347,12 @@ export default function Home() {
                     className={`group relative rounded-none md:rounded-2xl overflow-hidden border-0 md:border transition-all duration-500 flex flex-col justify-end p-8 ${dim.span} border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5`}
                   >
                     <div className="absolute inset-0 z-0 opacity-[0.88] group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-700 ease-out">
-                      <img
+                      <Image
                         src={dim.bgImage}
                         alt={dim.title}
-                        className="w-full h-full object-cover object-top"
-                        loading="lazy"
+                        fill
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                        className="object-cover object-top"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
                     </div>
@@ -426,11 +442,15 @@ export default function Home() {
                 <div className="lg:col-span-5 relative group">
                   <div className="absolute -inset-4 bg-lime-500/10 rounded-3xl blur-2xl opacity-50 group-hover:opacity-75 transition-opacity" />
                   <div className="relative p-3 bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                    <img
-                      src={magazineImages[6]}
-                      alt="Evolution of Costume design"
-                      className="w-full h-[400px] object-cover rounded-2xl group-hover:scale-105 transition-transform duration-700"
-                    />
+                    <div className="relative w-full h-[400px]">
+                      <Image
+                        src={magazineImages[6]}
+                        alt="Evolution of Costume design"
+                        fill
+                        sizes="(max-width: 1024px) 100vw, 40vw"
+                        className="object-cover rounded-2xl group-hover:scale-105 transition-transform duration-700"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -445,11 +465,15 @@ export default function Home() {
                   <div className="lg:col-span-5 relative order-2 lg:order-1 group">
                     <div className="absolute -inset-4 bg-lime-500/10 rounded-3xl blur-2xl opacity-50" />
                     <div className="relative p-3 bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
-                      <img
-                        src={magazineImages[7]}
-                        alt="Debut Show Character"
-                        className="w-full h-[400px] object-cover rounded-2xl"
-                      />
+                      <div className="relative w-full h-[400px]">
+                        <Image
+                          src={magazineImages[7]}
+                          alt="Debut Show Character"
+                          fill
+                          sizes="(max-width: 1024px) 100vw, 40vw"
+                          className="object-cover rounded-2xl"
+                        />
+                      </div>
                     </div>
                   </div>
                   <div className="lg:col-span-7 order-1 lg:order-2 space-y-6">

@@ -56,11 +56,13 @@ export function HeroSection() {
             style={{ y: yBg }}
             className="absolute inset-0"
           >
-            <img
+            <Image
               src={heroImages[currentImageIndex]}
               alt="Hero background mobile"
-              className="w-full h-full object-cover object-top opacity-60"
-              loading="eager"
+              fill
+              priority
+              sizes="100vw"
+              className="object-cover object-top opacity-60"
             />
           </motion.div>
         </div>
@@ -77,11 +79,13 @@ export function HeroSection() {
               style={{ y: yBg }}
               className="absolute inset-0"
             >
-              <img
+              <Image
                 src={heroImages[currentImageIndex]}
                 alt="Hero background left"
-                className="w-full h-full object-cover object-top opacity-60"
-                loading="eager"
+                fill
+                priority
+                sizes="50vw"
+                className="object-cover object-top opacity-60"
               />
             </motion.div>
           </div>
@@ -96,11 +100,13 @@ export function HeroSection() {
               style={{ y: yBg }}
               className="absolute inset-0"
             >
-              <img
+              <Image
                 src={heroImages[(currentImageIndex + 1) % heroImages.length]}
                 alt="Hero background right"
-                className="w-full h-full object-cover object-top opacity-60"
-                loading="eager"
+                fill
+                priority
+                sizes="50vw"
+                className="object-cover object-top opacity-60"
               />
             </motion.div>
           </div>
