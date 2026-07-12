@@ -18,7 +18,7 @@ import { MagazineReader } from "./components/MagazineReader";
 
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { ArrowRight, Sparkles, Wand2, ShoppingBag, Clock, ShieldCheck, Truck, BookOpen } from "lucide-react";
+import { ArrowRight, Sparkles, Wand2, ShoppingBag, Clock, ShieldCheck, Truck, BookOpen, X, Maximize2 } from "lucide-react";
 import { ScrollReveal } from "./components/ScrollReveal";
 import { FloatingDecor } from "./components/FloatingDecor";
 import { KineticScroll } from "./components/KineticScroll";
@@ -157,6 +157,18 @@ export default function Home() {
   const { theme } = useTheme();
   const [isClient, setIsClient] = useState(false);
   const isInitialized = useRef(false);
+  const [activeLightboxImage, setActiveLightboxImage] = useState<string | null>(null);
+
+  // Listen for Escape key to close Lightbox
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setActiveLightboxImage(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   useEffect(() => {
     if (!isInitialized.current) {
@@ -286,15 +298,22 @@ export default function Home() {
 
         {/* Mobile-only Costume Show Highlight Page - Full Width */}
         <div className="block lg:hidden pb-12 w-full">
-          <div className="relative overflow-hidden shadow-2xl border-y border-white/5 w-full">
+          <div 
+            onClick={() => setActiveLightboxImage("/costumeshow/Image 11-07-2026 at 13.10 (1).png")}
+            className="relative overflow-hidden shadow-2xl border-y border-white/5 w-full cursor-pointer hover:opacity-90 transition-all duration-300 group"
+          >
             <Image 
               src="/costumeshow/Image 11-07-2026 at 13.10 (1).png" 
               alt="Costume Show Highlight"
               width={750}
               height={1000}
-              className="w-full h-auto object-cover"
+              className="w-full h-auto object-cover transition-transform duration-700 group-hover:scale-105"
               loading="lazy"
             />
+            {/* Visual zoom indicator */}
+            <div className="absolute top-4 right-4 p-2 bg-black/60 backdrop-blur-md rounded-full text-white/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              <Maximize2 className="w-4 h-4" />
+            </div>
           </div>
         </div>
 
@@ -344,7 +363,8 @@ export default function Home() {
                 {dimensions.map((dim, idx) => (
                   <div
                     key={idx}
-                    className={`group relative rounded-none md:rounded-2xl overflow-hidden border-0 md:border transition-all duration-500 flex flex-col justify-end p-8 ${dim.span} border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5`}
+                    onClick={() => setActiveLightboxImage(dim.bgImage)}
+                    className={`group relative rounded-none md:rounded-2xl overflow-hidden border-0 md:border transition-all duration-500 flex flex-col justify-end p-8 ${dim.span} border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 cursor-pointer hover:shadow-2xl`}
                   >
                     <div className="absolute inset-0 z-0 opacity-[0.88] group-hover:opacity-100 group-hover:scale-[1.03] transition-all duration-700 ease-out">
                       <Image
@@ -355,6 +375,11 @@ export default function Home() {
                         className="object-cover object-top"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+                    </div>
+
+                    {/* Visual zoom indicator */}
+                    <div className="absolute top-6 right-6 p-2.5 bg-black/40 backdrop-blur-md border border-white/10 rounded-full text-white/90 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+                      <Maximize2 className="w-4 h-4" />
                     </div>
 
                     <div className="relative z-10 text-white text-left font-outfit">
@@ -439,7 +464,7 @@ export default function Home() {
                     Across global entertainment industries from Broadway productions to Nollywood films, fashion editorials, live performances, and cultural festivals, costume has become an essential storytelling language. In Nigeria especially, costume artistry continues to grow as creatives merge indigenous heritage with contemporary design, creating pieces that speak both locally and globally. THE COSTUME SHOW embraces this evolution by becoming a stage where history, technology, craftsmanship, culture, and imagination coexist.
                   </p>
                 </div>
-                <div className="lg:col-span-5 relative group">
+                <div className="lg:col-span-5 relative group cursor-pointer" onClick={() => setActiveLightboxImage(magazineImages[6])}>
                   <div className="absolute -inset-4 bg-lime-500/10 rounded-3xl blur-2xl opacity-50 group-hover:opacity-75 transition-opacity" />
                   <div className="relative p-3 bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
                     <div className="relative w-full h-[400px]">
@@ -450,6 +475,10 @@ export default function Home() {
                         sizes="(max-width: 1024px) 100vw, 40vw"
                         className="object-cover rounded-2xl group-hover:scale-105 transition-transform duration-700"
                       />
+                      {/* Visual zoom indicator */}
+                      <div className="absolute top-4 right-4 p-2 bg-black/60 backdrop-blur-md rounded-full text-white/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                        <Maximize2 className="w-4 h-4" />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -462,7 +491,10 @@ export default function Home() {
             <section className="py-24 relative border-t border-white/5 bg-black/20">
               <div className="max-w-7xl mx-auto px-6">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center text-left">
-                  <div className="lg:col-span-5 relative order-2 lg:order-1 group">
+                  <div 
+                    className="lg:col-span-5 relative order-2 lg:order-1 group cursor-pointer"
+                    onClick={() => setActiveLightboxImage(magazineImages[7])}
+                  >
                     <div className="absolute -inset-4 bg-lime-500/10 rounded-3xl blur-2xl opacity-50" />
                     <div className="relative p-3 bg-white/5 border border-white/10 rounded-3xl overflow-hidden shadow-2xl">
                       <div className="relative w-full h-[400px]">
@@ -471,8 +503,12 @@ export default function Home() {
                           alt="Debut Show Character"
                           fill
                           sizes="(max-width: 1024px) 100vw, 40vw"
-                          className="object-cover rounded-2xl"
+                          className="object-cover rounded-2xl group-hover:scale-105 transition-transform duration-700"
                         />
+                        {/* Visual zoom indicator */}
+                        <div className="absolute top-4 right-4 p-2 bg-black/60 backdrop-blur-md rounded-full text-white/80 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-10">
+                          <Maximize2 className="w-4 h-4" />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -572,6 +608,39 @@ export default function Home() {
           </ScrollReveal>
         </main>
       </div>
+
+      {/* Lightbox / Image Zoom Modal */}
+      {activeLightboxImage && (
+        <div
+          className="fixed inset-0 bg-black/95 backdrop-blur-xl z-50 flex items-center justify-center p-4 md:p-8 cursor-zoom-out animate-in fade-in duration-300"
+          onClick={() => setActiveLightboxImage(null)}
+        >
+          {/* Close button */}
+          <button
+            onClick={() => setActiveLightboxImage(null)}
+            className="absolute top-6 right-6 p-3 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all duration-300 z-50 hover:rotate-90"
+            aria-label="Close modal"
+          >
+            <X className="w-6 h-6" />
+          </button>
+
+          {/* Zoom hint overlay */}
+          <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-black/50 backdrop-blur-md border border-white/10 rounded-full text-white/70 text-xs font-medium tracking-wide pointer-events-none select-none">
+            Click anywhere to close
+          </div>
+
+          <div
+            className="relative max-w-full max-h-full flex items-center justify-center animate-in zoom-in-95 duration-300"
+            onClick={(e) => e.stopPropagation()} // Prevent closing when clicking the image
+          >
+            <img
+              src={activeLightboxImage}
+              alt="Expanded view"
+              className="max-w-[95vw] max-h-[90vh] object-contain rounded-2xl shadow-[0_25px_60px_rgba(0,0,0,0.8)] border border-white/10"
+            />
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>
