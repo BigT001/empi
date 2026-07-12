@@ -345,6 +345,43 @@ export default function Home() {
           </section>
         </ScrollReveal>
 
+        <ScrollReveal y={60}>
+          {/* The Runway Collection Section */}
+          <KineticScroll>
+            <section className={`py-6 md:py-24 ${theme === 'dark' ? 'bg-black/40' : 'bg-slate-50'}`}>
+              <div className="max-w-7xl mx-auto px-6">
+                <div className="flex items-end justify-between mb-8 md:mb-12">
+                  <div>
+                    <h2 className="text-3xl md:text-5xl font-black mb-2 md:mb-4 font-playfair tracking-tight">The Runway Collection</h2>
+                    <p className="text-gray-500 dark:text-gray-400 font-medium text-xs md:text-base">Exclusive hand-crafted showpieces designed for the runway.</p>
+                  </div>
+                  <Link href="/costume-show-shop" className="hidden md:flex items-center gap-2 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 px-8 py-4 rounded-2xl font-bold hover:shadow-xl transition-all active:scale-95">
+                    View All <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+
+                <div id="product-grid">
+                  <ProductGrid
+                    currency={currency}
+                    category="costume-show"
+                    mode={mode}
+                    onModeChange={setMode}
+                    limit={8}
+                    hideHeader={true}
+                    hideFilters={true}
+                  />
+                </div>
+
+                <div className="mt-12 text-center md:hidden">
+                  <Link href="/costume-show-shop" className="inline-flex items-center gap-2 bg-slate-900 dark:bg-lime-600 text-white px-10 py-5 rounded-2xl font-black shadow-xl">
+                    Shop the Show <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            </section>
+          </KineticScroll>
+        </ScrollReveal>
+
         {/* Celebration & Magazine Gallery Section */}
         <ScrollReveal y={40} delay={0.2}>
           <section className="py-24 relative z-10">
@@ -404,44 +441,6 @@ export default function Home() {
         </ScrollReveal>
 
         <main className="flex-grow">
-
-
-          <ScrollReveal y={60}>
-            {/* The Runway Collection Section */}
-            <KineticScroll>
-              <section className={`py-6 md:py-24 ${theme === 'dark' ? 'bg-black/40' : 'bg-slate-50'}`}>
-                <div className="max-w-7xl mx-auto px-6">
-                  <div className="flex items-end justify-between mb-8 md:mb-12">
-                    <div>
-                      <h2 className="text-3xl md:text-5xl font-black mb-2 md:mb-4 font-playfair tracking-tight">The Runway Collection</h2>
-                      <p className="text-gray-500 dark:text-gray-400 font-medium text-xs md:text-base">Exclusive hand-crafted showpieces designed for the runway.</p>
-                    </div>
-                    <Link href="/costume-show-shop" className="hidden md:flex items-center gap-2 bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 px-8 py-4 rounded-2xl font-bold hover:shadow-xl transition-all active:scale-95">
-                      View All <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </div>
-
-                  <div id="product-grid">
-                    <ProductGrid
-                      currency={currency}
-                      category="costume-show"
-                      mode={mode}
-                      onModeChange={setMode}
-                      limit={8}
-                      hideHeader={true}
-                      hideFilters={true}
-                    />
-                  </div>
-
-                  <div className="mt-12 text-center md:hidden">
-                    <Link href="/costume-show-shop" className="inline-flex items-center gap-2 bg-slate-900 dark:bg-lime-600 text-white px-10 py-5 rounded-2xl font-black shadow-xl">
-                      Shop the Show <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </div>
-                </div>
-              </section>
-            </KineticScroll>
-          </ScrollReveal>
 
 
 
