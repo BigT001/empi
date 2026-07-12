@@ -111,19 +111,19 @@ const magazineImages = [
 const dimensions = [
   {
     title: "Stage and theatrical costumes",
-    bgImage: magazineImages[11], // Page 12
+    bgImage: magazineImages[1], // Page 2 (Image 13.10.png)
     span: "lg:col-span-8 h-[500px]",
     index: "01"
   },
   {
     title: "Film and television costume design",
-    bgImage: magazineImages[1], // Page 2
+    bgImage: magazineImages[11], // Page 12 (Image 13.14.png)
     span: "lg:col-span-4 h-[500px]",
     index: "02"
   },
   {
     title: "Cultural and heritage-inspired costumes",
-    bgImage: magazineImages[2], // Page 3
+    bgImage: magazineImages[69], // Page 70 (Image 13.53 (1).png)
     span: "lg:col-span-4 h-[600px]",
     index: "03"
   },
