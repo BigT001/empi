@@ -44,15 +44,17 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
   // Determine availability
   const isCostumeShow = product.isCostumeShow === true || product.category === 'costume-show';
   const availableForBuy = product.availableForBuy !== false; // Default true
-  const availableForRent = isCostumeShow ? false : (product.availableForRent !== false); // Default true
+  const availableForRent = product.availableForRent !== false && (product.rentPrice !== undefined && product.rentPrice > 0);
   const isRentalOnly = availableForRent && !availableForBuy;
   const isSaleOnly = availableForBuy && !availableForRent;
 
   // Set initial mode based on availability
-  const initialMode = isCostumeShow ? "buy" : (!availableForBuy ? "rent" : !availableForRent ? "buy" : "buy");
+  const initialMode = !availableForBuy ? "rent" : !availableForRent ? "buy" : "buy";
   const { mode: cardMode, setMode: setCardMode, isHydrated } = useMode(productId, initialMode as any);
-  const activeMode = isCostumeShow ? "buy" : cardMode;
+  const activeMode = cardMode;
   const [mainImageIndex, setMainImageIndex] = useState(0);
+
+  const showContent = !isCostumeShow || (availableForBuy && availableForRent);
 
   const handleAddToCart = () => {
     // Validate cart mode compatibility
@@ -121,7 +123,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
   return (
     <>
       <article
-        className={`group relative flex flex-col rounded-2xl md:rounded-[2.5rem] overflow-hidden transition-all duration-700 md:hover:-translate-y-2 ${isCostumeShow ? 'bg-transparent shadow-none' : 'bg-white dark:bg-[#0a0a0a]'}`}
+        className={`group relative flex flex-col rounded-2xl md:rounded-[2.5rem] overflow-hidden transition-all duration-700 md:hover:-translate-y-2 ${!showContent ? 'bg-transparent shadow-none' : 'bg-white dark:bg-[#0a0a0a]'}`}
       >
         {/* Main Image Section */}
         <div className="relative w-full aspect-[4/5] overflow-hidden bg-gray-50 dark:bg-zinc-900/50">
@@ -136,9 +138,9 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
             {/* Soft Gradient Overlay for Readability */}
             <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           </Link>
-
+ 
           {/* Premium Costume Show Top Title Overlay */}
-          {isCostumeShow && (
+          {isCostumeShow && !showContent && (
             <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/80 via-black/40 to-transparent p-4 pb-12 text-white z-10 pointer-events-none">
               <h3 className="text-sm md:text-base font-bold font-playfair leading-tight text-white line-clamp-1 mb-0.5">
                 {product.name}
@@ -148,7 +150,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
               </p>
             </div>
           )}
-
+ 
           {/* Quick Info Overlay - Appears on Hover on desktop, always partially visible or accessible on mobile */}
           <div className="absolute inset-x-2 bottom-2 md:inset-x-5 md:bottom-5 z-20 flex items-center justify-between opacity-100 md:opacity-0 md:group-hover:opacity-100 translate-y-0 md:translate-y-4 md:group-hover:translate-y-0 transition-all duration-500">
             <div className="flex gap-2">
@@ -169,9 +171,9 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
             </button>
           </div>
         </div>
-
+ 
         {/* Content Section */}
-        {!isCostumeShow && (
+        {showContent && (
           <div className="p-4 md:p-8 flex flex-col flex-grow">
             <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-1 md:gap-4 mb-4">
               <div className="flex-grow">
@@ -185,7 +187,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
                 {displayPrice}
               </p>
             </div>
-
+ 
             {/* Buy/Rent Toggle - Refined Pill Design */}
             <div className="mt-auto pt-4 md:pt-6 border-t border-slate-100 dark:border-white/5 flex flex-col gap-3 md:gap-4">
               <div className="flex items-center justify-between">
@@ -213,7 +215,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
                   </button>
                 </div>
               </div>
-
+ 
               {/* Availability Messaging with subtle icons */}
               {(!availableForBuy || !availableForRent) && (
                 <p className="flex items-center gap-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 italic">
@@ -224,9 +226,9 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
             </div>
           </div>
         )}
-
+ 
         {/* Hover Highlight Border */}
-        {!isCostumeShow && (
+        {showContent && (
           <div className="absolute inset-0 border-2 border-lime-500/0 md:group-hover:border-lime-500/10 pointer-events-none rounded-2xl md:rounded-[2.5rem] transition-colors duration-500" />
         )}
       </article>

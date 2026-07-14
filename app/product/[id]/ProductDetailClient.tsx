@@ -127,15 +127,14 @@ export default function ProductDetailClient({ product, allProducts, currency = "
 
   // Load mode from URL params only on initial mount
   useEffect(() => {
-    if (isCostumeShow) {
-      setMode("buy");
-    } else {
-      const urlMode = searchParams.get('mode') as 'buy' | 'rent';
-      if (urlMode && isHydrated) {
-        setMode(urlMode);
-      }
+    const urlMode = searchParams.get('mode') as 'buy' | 'rent';
+    if (urlMode && isHydrated) {
+      setMode(urlMode);
+    } else if (isHydrated) {
+      const defaultMode = product.availableForBuy !== false ? "buy" : "rent";
+      setMode(defaultMode);
     }
-  }, [productId, isHydrated, isCostumeShow]);
+  }, [productId, isHydrated, product.availableForBuy]);
 
   const [quantity, setQuantity] = useState(1);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -424,10 +423,10 @@ export default function ProductDetailClient({ product, allProducts, currency = "
             </div>
 
             {/* Buy/Rent Mode Toggle & Pricing Panel (Only rendered if toggle tabs or rental policy needs to be displayed) */}
-            {(!isCostumeShow || (mode === 'rent' && product.rentPrice > 0)) && (
+            {((product.availableForBuy !== false && product.availableForRent !== false && product.rentPrice > 0) || (mode === 'rent' && product.rentPrice > 0)) && (
               <div className="bg-gray-50 dark:bg-white/5 rounded-3xl p-6 border border-gray-100 dark:border-white/5 space-y-6">
                 {/* Tabs */}
-                {!isCostumeShow && (
+                {product.availableForBuy !== false && product.availableForRent !== false && product.rentPrice > 0 && (
                   <div className="flex bg-white dark:bg-black/40 p-1.5 rounded-2xl border border-gray-100 dark:border-white/5">
                     {product.availableForBuy !== false && (
                       <button
@@ -615,7 +614,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                 
                 {/* Add to Cart Button */}
                 <div className="flex-1">
-                  {(isCostumeShow && mode === 'buy') || (mode === 'buy' && product.availableForBuy !== false && product.sellPrice && product.sellPrice > 0) || (mode === 'rent' && product.availableForRent !== false && product.rentPrice && product.rentPrice > 0) ? (
+                  {(mode === 'buy' && (isCostumeShow || (product.availableForBuy !== false && product.sellPrice && product.sellPrice > 0))) || (mode === 'rent' && product.availableForRent !== false && product.rentPrice && product.rentPrice > 0) ? (
                     <button
                       onClick={handleAddToCart}
                       className={`w-full py-4 px-6 rounded-2xl font-black text-xs uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl hover:scale-[1.02] active:scale-95 ${

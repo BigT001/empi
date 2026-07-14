@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import { X, AlertCircle, Plus, Check, ChevronRight, Palette, Ruler } from 'lucide-react';
+import { X, AlertCircle, Plus, Check, ChevronRight, Palette, Ruler, Trash2, Star, Eye, ChevronLeft, Loader2 } from 'lucide-react';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface NestedSizeEntry {
@@ -127,9 +127,17 @@ export default function EditProductModal({
     }
   }
 
+  const initialImageUrls = Array.isArray(product?.imageUrls) && product.imageUrls.length > 0
+    ? product.imageUrls
+    : product?.imageUrl
+      ? [product.imageUrl]
+      : [];
+
   // ── Form State ──
   const [formData, setFormData] = useState<any>({
     ...product,
+    imageUrls: initialImageUrls,
+    imageUrl: product?.imageUrl || '',
     variants: initialVariants,
     availableForBuy: product.availableForBuy ?? true,
     availableForRent: product.availableForRent ?? true,
@@ -138,6 +146,13 @@ export default function EditProductModal({
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [isPriceOptional, setIsPriceOptional] = useState(false);
+
+  // ── Image Upload/Manager State ──
+  const [localUploading, setLocalUploading] = useState(false);
+  const [uploadProgressStatus, setUploadProgressStatus] = useState('');
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Fetch settings to check if product prices are optional
   useEffect(() => {
@@ -154,6 +169,183 @@ export default function EditProductModal({
     };
     fetchSettings();
   }, []);
+
+  // ── Image Processing and Helpers ──
+  const compressImage = async (base64: string, mimeType: string): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const img = new (window as any).Image();
+        img.onload = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            let width = img.width;
+            let height = img.height;
+
+            const maxWidth = 1920;
+            const maxHeight = 1920;
+
+            if (width > height) {
+              if (width > maxWidth) {
+                height = Math.round((height * maxWidth) / width);
+                width = maxWidth;
+              }
+            } else {
+              if (height > maxHeight) {
+                width = Math.round((width * maxHeight) / height);
+                height = maxHeight;
+              }
+            }
+
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) {
+              throw new Error('Could not get canvas context');
+            }
+
+            ctx.drawImage(img, 0, 0, width, height);
+
+            let quality = 0.9;
+            let compressedBase64 = '';
+
+            while (quality > 0.1) {
+              compressedBase64 = canvas.toDataURL(mimeType, quality);
+              if ((compressedBase64.length * 0.75) / 1024 / 1024 < 1) {
+                break;
+              }
+              quality -= 0.1;
+            }
+
+            console.log(`✅ Image compressed: ${(base64.length / 1024 / 1024).toFixed(2)}MB → ${(compressedBase64.length / 1024 / 1024).toFixed(2)}MB`);
+            resolve(compressedBase64);
+          } catch (err) {
+            reject(err);
+          }
+        };
+
+        img.onerror = () => {
+          reject(new Error('Failed to load image'));
+        };
+
+        img.src = base64;
+      } catch (err) {
+        reject(err);
+      }
+    });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files ? Array.from(e.target.files) : [];
+    if (files.length === 0) return;
+
+    const currentCount = formData.imageUrls?.length || 0;
+    const availableSlots = 8 - currentCount;
+
+    if (availableSlots <= 0) {
+      setError("❌ Maximum 8 images limit reached");
+      return;
+    }
+
+    const filesToProcess = files.slice(0, availableSlots);
+    setLocalUploading(true);
+    setError('');
+
+    try {
+      const processedBase64s: string[] = [];
+      for (let i = 0; i < filesToProcess.length; i++) {
+        const file = filesToProcess[i];
+        if (!file.type.startsWith("image/")) {
+          throw new Error(`File ${i + 1} is not a valid image`);
+        }
+
+        setUploadProgressStatus(`Processing ${i + 1}/${filesToProcess.length}...`);
+
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onerror = () => reject(new Error("Failed to read file"));
+          reader.onload = () => {
+            const result = reader.result;
+            if (typeof result !== "string" || !result.startsWith("data:")) {
+              reject(new Error("Invalid image format"));
+              return;
+            }
+            resolve(result);
+          };
+          reader.readAsDataURL(file);
+        });
+
+        let finalBase64 = base64;
+        if (file.size > 500 * 1024) {
+          setUploadProgressStatus(`Compressing ${i + 1}/${filesToProcess.length}...`);
+          finalBase64 = await compressImage(base64, file.type);
+        }
+
+        processedBase64s.push(finalBase64);
+      }
+
+      setFormData((prev: any) => ({
+        ...prev,
+        imageUrls: [...(prev.imageUrls || []), ...processedBase64s]
+      }));
+    } catch (err) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Error processing image files');
+    } finally {
+      setLocalUploading(false);
+      setUploadProgressStatus('');
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const removeImage = (indexToRemove: number) => {
+    setFormData((prev: any) => {
+      const filtered = (prev.imageUrls || []).filter((_: any, i: number) => i !== indexToRemove);
+      return {
+        ...prev,
+        imageUrls: filtered,
+        imageUrl: filtered[0] || ''
+      };
+    });
+  };
+
+  const makePrimary = (indexToMakePrimary: number) => {
+    setFormData((prev: any) => {
+      const list = [...(prev.imageUrls || [])];
+      if (indexToMakePrimary <= 0 || indexToMakePrimary >= list.length) return prev;
+      
+      const [target] = list.splice(indexToMakePrimary, 1);
+      list.unshift(target);
+
+      return {
+        ...prev,
+        imageUrls: list,
+        imageUrl: list[0]
+      };
+    });
+  };
+
+  // Lightbox keyboard navigation
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setLightboxIndex(null);
+      } else if (e.key === 'ArrowRight') {
+        setLightboxIndex((prev) => {
+          if (prev === null) return null;
+          return prev < (formData.imageUrls?.length || 1) - 1 ? prev + 1 : 0;
+        });
+      } else if (e.key === 'ArrowLeft') {
+        setLightboxIndex((prev) => {
+          if (prev === null) return null;
+          return prev > 0 ? prev - 1 : (formData.imageUrls?.length || 1) - 1;
+        });
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [lightboxIndex, formData.imageUrls]);
 
   // ── Color Group Modal State ──
   const [isColorModalOpen, setIsColorModalOpen] = useState(false);
@@ -240,12 +432,69 @@ export default function EditProductModal({
     if (!formData.name?.trim()) return setError('Product name is required');
     if (!formData.description?.trim()) return setError('Description is required');
     if (!isPriceOptional && (formData.sellPrice ?? 0) <= 0) return setError('Sell price must be greater than 0');
+    if (!formData.imageUrls || formData.imageUrls.length === 0) return setError('At least one image is required');
+
+    setLocalUploading(true);
+    let updatedImageUrls = [...(formData.imageUrls || [])];
+    const localImageIndices = updatedImageUrls.reduce((acc: number[], url: string, idx: number) => {
+      if (url.startsWith('data:image/')) {
+        acc.push(idx);
+      }
+      return acc;
+    }, []);
+
     try {
-      await onSave(formData);
+      if (localImageIndices.length > 0) {
+        for (let i = 0; i < localImageIndices.length; i++) {
+          const idx = localImageIndices[i];
+          const base64Data = updatedImageUrls[idx];
+          
+          setUploadProgressStatus(`Uploading image ${i + 1} of ${localImageIndices.length}...`);
+          
+          const uploadController = new AbortController();
+          const uploadTimeoutId = setTimeout(() => uploadController.abort(), 120000);
+          
+          const uploadResponse = await fetch("/api/cloudinary/upload", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              imageData: base64Data,
+              fileName: `product-edit-${Date.now()}-${i}.jpg`
+            }),
+            signal: uploadController.signal,
+          });
+          
+          clearTimeout(uploadTimeoutId);
+          
+          if (!uploadResponse.ok) {
+            const errData = await uploadResponse.json();
+            throw new Error(errData.error || "Failed to upload image to Cloudinary");
+          }
+          
+          const uploadData = await uploadResponse.json();
+          if (!uploadData.url) {
+            throw new Error("No URL returned from Cloudinary upload");
+          }
+          
+          updatedImageUrls[idx] = uploadData.url;
+        }
+      }
+      
+      const finalProduct = {
+        ...formData,
+        imageUrls: updatedImageUrls,
+        imageUrl: updatedImageUrls[0] || '', // guarantee main image is first
+      };
+
+      setUploadProgressStatus('Saving product changes...');
+      await onSave(finalProduct);
       setSuccessMessage('✅ Product updated successfully!');
       setTimeout(() => onClose(), 1500);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save product');
+    } finally {
+      setLocalUploading(false);
+      setUploadProgressStatus('');
     }
   };
 
@@ -290,22 +539,111 @@ export default function EditProductModal({
                 <p className="text-sm text-green-700 font-medium">{successMessage}</p>
               </div>
             )}
+            {uploadProgressStatus && (
+              <div className="flex gap-3 p-4 bg-blue-50 border border-blue-200 rounded-xl animate-pulse">
+                <Loader2 className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5 animate-spin" />
+                <p className="text-sm text-blue-700 font-medium">{uploadProgressStatus}</p>
+              </div>
+            )}
 
-            {/* Image Preview */}
-            <div>
-              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">
-                Product Image
-              </label>
-              <div className="relative w-full h-56 bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
-                <Image src={formData.imageUrl} alt={formData.name} fill className="object-cover" />
-                {formData.imageUrls && formData.imageUrls.length > 1 && (
-                  <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs font-bold px-2 py-1 rounded-full">
-                    📸 {formData.imageUrls.length} photos
-                  </div>
+            {/* Image Manager Section */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">
+                  Product Images
+                </label>
+                {formData.imageUrls && formData.imageUrls.length > 0 && (
+                  <span className="text-xs bg-lime-100 text-lime-700 px-3 py-0.5 rounded-full font-bold">
+                    {formData.imageUrls.length} photo{formData.imageUrls.length > 1 ? 's' : ''}
+                  </span>
                 )}
               </div>
-              <p className="text-[11px] text-gray-400 mt-1.5">
-                ℹ️ To change photos, delete this product and re-upload with new images.
+
+              {/* Thumbnails Grid */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50 rounded-2xl border border-gray-200 p-4">
+                {formData.imageUrls && formData.imageUrls.map((imgUrl: string, idx: number) => {
+                  const isMain = idx === 0;
+                  return (
+                    <div
+                      key={idx}
+                      className="relative group aspect-square rounded-xl overflow-hidden bg-gray-100 border-2 border-gray-200 hover:border-lime-400 transition shadow-sm"
+                    >
+                      {/* Image Thumbnail */}
+                      <Image
+                        src={imgUrl}
+                        alt={`Product Image ${idx + 1}`}
+                        fill
+                        className="object-cover cursor-pointer group-hover:scale-105 transition duration-300"
+                        onClick={() => setLightboxIndex(idx)}
+                      />
+
+                      {/* Main Image Badge */}
+                      {isMain ? (
+                        <div className="absolute top-2 left-2 bg-lime-600 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow">
+                          Main
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => makePrimary(idx)}
+                          className="absolute top-2 left-2 bg-black/60 hover:bg-black/80 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded shadow opacity-0 group-hover:opacity-100 transition flex items-center gap-0.5"
+                          title="Set as main image"
+                        >
+                          <Star className="w-2.5 h-2.5 fill-yellow-400 text-yellow-400" />
+                          Set Main
+                        </button>
+                      )}
+
+                      {/* Hover Overlay with Delete & Zoom Button */}
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setLightboxIndex(idx)}
+                          className="p-1.5 bg-white/20 hover:bg-white/40 text-white rounded-full transition"
+                          title="View Full Size"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeImage(idx)}
+                          className="p-1.5 bg-red-600/80 hover:bg-red-600 text-white rounded-full transition"
+                          title="Delete Image"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Add Photo Button Card */}
+                {(!formData.imageUrls || formData.imageUrls.length < 8) && (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={localUploading}
+                    className="flex flex-col items-center justify-center aspect-square bg-white border-2 border-dashed border-gray-300 rounded-xl cursor-pointer hover:bg-lime-50/50 hover:border-lime-400 transition"
+                  >
+                    <Plus className="h-5 w-5 text-lime-600 mb-1" />
+                    <span className="text-[10px] font-bold text-gray-500">Add Photo</span>
+                    <span className="text-[8px] text-gray-400">({8 - (formData.imageUrls?.length || 0)} left)</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="image/*"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+
+              <p className="text-[11px] text-gray-400">
+                ✨ Click any photo to view full size. The first photo is the main product image.
               </p>
             </div>
 
@@ -620,13 +958,13 @@ export default function EditProductModal({
             <div className="flex gap-3 pt-2 border-t border-gray-100 sticky bottom-0 bg-white py-4">
               <button
                 type="submit"
-                disabled={isSaving}
+                disabled={isSaving || localUploading}
                 className="flex-1 py-3 px-4 bg-lime-600 hover:bg-lime-700 text-white rounded-xl font-bold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-lime-500/20 active:scale-95"
               >
-                {isSaving ? (
+                {isSaving || localUploading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="inline-block animate-spin">⏳</span>
-                    Saving...
+                    {uploadProgressStatus || 'Saving...'}
                   </span>
                 ) : (
                   '✅ Save Changes'
@@ -635,7 +973,7 @@ export default function EditProductModal({
               <button
                 type="button"
                 onClick={onClose}
-                disabled={isSaving}
+                disabled={isSaving || localUploading}
                 className="flex-1 py-3 px-4 bg-gray-100 hover:bg-gray-200 text-gray-900 rounded-xl font-bold transition disabled:opacity-50 active:scale-95"
               >
                 Cancel
@@ -644,6 +982,91 @@ export default function EditProductModal({
           </form>
         </div>
       </div>
+
+      {/* ── Lightbox Gallery Modal ── */}
+      {lightboxIndex !== null && formData.imageUrls && formData.imageUrls[lightboxIndex] && (
+        <div className="fixed inset-0 z-[300] bg-black/95 flex flex-col justify-between p-4 md:p-8 backdrop-blur-md">
+          {/* Lightbox Header */}
+          <div className="flex items-center justify-between text-white z-10">
+            <div>
+              <h4 className="text-sm font-bold truncate max-w-xs sm:max-w-md">{formData.name}</h4>
+              <p className="text-xs text-gray-400">
+                Image {lightboxIndex + 1} of {formData.imageUrls.length}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setLightboxIndex(null)}
+              className="p-2 bg-white/10 hover:bg-white/20 rounded-full transition text-white"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {/* Lightbox Main Image Container */}
+          <div className="relative flex-1 w-full flex items-center justify-center mt-4 mb-4 select-none">
+            {/* Left Nav Arrow */}
+            <button
+              type="button"
+              onClick={() =>
+                setLightboxIndex((prev) => {
+                  if (prev === null) return null;
+                  return prev > 0 ? prev - 1 : formData.imageUrls.length - 1;
+                })
+              }
+              className="absolute left-2 md:left-4 z-10 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full backdrop-blur-sm transition duration-200"
+            >
+              <ChevronLeft className="h-6 w-6" />
+            </button>
+
+            {/* Main Image */}
+            <div className="relative w-full h-[70vh] max-h-[70vh]">
+              <Image
+                src={formData.imageUrls[lightboxIndex]}
+                alt={`Full-size Product Image ${lightboxIndex + 1}`}
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+
+            {/* Right Nav Arrow */}
+            <button
+              type="button"
+              onClick={() =>
+                setLightboxIndex((prev) => {
+                  if (prev === null) return null;
+                  return prev < formData.imageUrls.length - 1 ? prev + 1 : 0;
+                })
+              }
+              className="absolute right-2 md:right-4 z-10 bg-white/10 hover:bg-white/20 text-white p-3 rounded-full backdrop-blur-sm transition duration-200"
+            >
+              <ChevronRight className="h-6 w-6" />
+            </button>
+          </div>
+
+          {/* Lightbox Footer / Thumbnails List */}
+          <div className="flex flex-col items-center gap-4 z-10">
+            <div className="flex gap-2 overflow-x-auto max-w-full py-2 px-4 bg-white/5 rounded-2xl backdrop-blur-sm">
+              {formData.imageUrls.map((thumbUrl: string, idx: number) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setLightboxIndex(idx)}
+                  className={`relative w-12 h-12 rounded-lg overflow-hidden border-2 transition-all ${
+                    idx === lightboxIndex ? 'border-lime-500 scale-105' : 'border-transparent opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  <Image src={thumbUrl} alt={`Thumbnail ${idx + 1}`} fill className="object-cover" />
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-gray-500 hidden sm:block">
+              Tip: Use Left/Right Arrow keys to navigate, Esc to close.
+            </p>
+          </div>
+        </div>
+      )}
 
       {/* ── Color Group Sub-Modal ── */}
       {isColorModalOpen && (
