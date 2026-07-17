@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Search, Menu, X, User, ShoppingCart, LogOut, Sun, Moon } from "lucide-react";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCart } from "./CartContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useBuyer } from "../context/BuyerContext";
@@ -32,9 +32,16 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
   const { currency } = useCurrency();
   const { buyer, logout } = useBuyer();
   const { theme, toggleTheme } = useTheme();
+  const searchParams = useSearchParams();
 
   const currentCurrency = propCurrency || currency;
   const isTransparent = pathname === "/" && category !== "custom" && !scrolled;
+
+  // Sync search query state with search param 'q'
+  useEffect(() => {
+    const q = searchParams?.get("q") || "";
+    setSearchQuery(q);
+  }, [searchParams]);
 
   useEffect(() => {
     if (showMobileMenu) {
@@ -110,12 +117,8 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
     if (searchQuery.trim()) {
       const params = new URLSearchParams();
       params.append('q', searchQuery);
-      if (category && category !== 'all') {
-        params.append('category', category);
-      }
       params.append('currency', currentCurrency);
-      router.push(`/?${params.toString()}`);
-      setSearchQuery("");
+      router.push(`/search?${params.toString()}`);
       setShowMobileMenu(false);
     }
   };
@@ -158,16 +161,14 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className={`w-full rounded-full px-4 py-1.5 pl-8 text-[10px] font-bold outline-none transition-all shadow-sm ${
                   isTransparent
-                    ? theme === 'dark'
-                      ? 'bg-white/10 border border-white/15 text-white placeholder:text-white/60 focus:ring-2 focus:ring-lime-500/20 focus:bg-white/20'
-                      : 'bg-black/5 border border-black/10 text-neutral-800 placeholder:text-slate-500 focus:ring-2 focus:ring-lime-500/20 focus:bg-black/5'
-                    : 'bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-white/10 dark:text-white placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-lime-500/20 focus:bg-white dark:focus:bg-black'
+                    ? 'bg-white/10 border border-white/15 text-white placeholder:text-white/60 focus:ring-2 focus:ring-lime-500/20 focus:bg-white/20'
+                    : 'bg-slate-100 dark:bg-zinc-900 border border-slate-200 dark:border-white/10 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 outline-none focus:ring-2 focus:ring-lime-500/20 focus:bg-white dark:focus:bg-black'
                 }`}
               />
               <Search className={`absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 transition-colors ${
                 isTransparent 
-                  ? theme === 'dark' ? 'text-white/60' : 'text-slate-600' 
-                  : 'text-slate-400 group-focus-within:text-lime-500'
+                  ? 'text-white/60' 
+                  : 'text-slate-400 dark:text-slate-500 group-focus-within:text-lime-500 dark:group-focus-within:text-lime-400'
               }`} />
             </form>
           </div>
@@ -190,9 +191,7 @@ export function MobileHeader({ category = "adults", onCategoryChange, currency: 
               onClick={() => setShowMobileMenu(!showMobileMenu)}
               className={`p-2 transition-all active:scale-95 ${
                 isTransparent
-                  ? theme === 'dark'
-                    ? 'text-white hover:text-lime-400'
-                    : 'text-neutral-800 hover:text-lime-600'
+                  ? 'text-white hover:text-lime-400'
                   : 'text-slate-700 dark:text-gray-300 hover:text-lime-600 dark:hover:text-lime-400'
               }`}
               aria-label="Toggle Menu"

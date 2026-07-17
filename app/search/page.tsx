@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Search, AlertCircle, ChevronDown } from "lucide-react";
 import { ProductCard } from "@/app/components/ProductCard";
@@ -38,11 +38,29 @@ const TRADITIONAL_AFRICA_COUNTRIES = ['Nigeria', 'Ghana', 'South Africa', 'Egypt
 const COLORS = ['Red', 'Blue', 'Black', 'White', 'Gold', 'Silver', 'Purple', 'Green', 'Pink', 'Yellow', 'Orange', 'Brown'];
 const MATERIALS = ['Cotton', 'Polyester', 'Satin', 'Silk', 'Velvet', 'Leather', 'Synthetic'];
 
-export default function SearchResults() {
+function SearchResultsContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const query = searchParams.get("q") || "";
   const category = searchParams.get("category") || "";
   const currency = searchParams.get("currency") || "NGN";
+
+  const [localQuery, setLocalQuery] = useState(query);
+
+  // Sync local query when URL query changes
+  useEffect(() => {
+    setLocalQuery(query);
+  }, [query]);
+
+  const handleLocalSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (localQuery.trim()) {
+      const params = new URLSearchParams(window.location.search);
+      params.set('q', localQuery.trim());
+      params.set('page', '1'); // reset page
+      router.push(`/search?${params.toString()}`);
+    }
+  };
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -140,9 +158,9 @@ export default function SearchResults() {
   }, [lastScrollY]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-[#0a0a0a] dark:to-zinc-950 text-slate-900 dark:text-white transition-colors duration-300">
       {/* Header with Search and Filters */}
-      <div className={`fixed md:sticky top-16 md:top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 shadow-md transition-all duration-300 ${
+      <div className={`fixed md:sticky top-0 left-0 right-0 z-30 bg-white dark:bg-black border-b border-gray-200 dark:border-white/5 shadow-md transition-all duration-300 ${
         headerVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
       }`}>
         <div className="max-w-7xl mx-auto px-4 py-3">
@@ -150,18 +168,22 @@ export default function SearchResults() {
           <div className="flex items-center gap-2 mb-3">
             <Link
               href="/"
-              className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 hover:bg-gray-200 transition text-gray-700 flex-shrink-0"
+              className="flex items-center justify-center w-9 h-9 rounded-lg bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 transition text-gray-700 dark:text-gray-300 flex-shrink-0"
             >
               <ArrowLeft className="h-4 w-4" />
             </Link>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 bg-gray-50 border border-gray-300 rounded-lg px-3 py-2">
-                <Search className="h-4 w-4 text-gray-400" />
-                <span className="text-base font-semibold text-gray-900 flex-1 truncate">
-                  {query || "Search costumes..."}
-                </span>
+            <form onSubmit={handleLocalSearchSubmit} className="flex-1">
+              <div className="flex items-center gap-2 bg-gray-50 dark:bg-zinc-900 border border-gray-300 dark:border-white/10 rounded-lg px-3 py-1.5 focus-within:ring-2 focus-within:ring-lime-500/20">
+                <Search className="h-4 w-4 text-gray-400 dark:text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search costumes..."
+                  value={localQuery}
+                  onChange={(e) => setLocalQuery(e.target.value)}
+                  className="text-sm font-semibold text-gray-900 dark:text-white bg-transparent outline-none flex-1 placeholder:text-gray-400 dark:placeholder:text-gray-500"
+                />
               </div>
-            </div>
+            </form>
           </div>
 
           {/* Results Info and Horizontal Filters */}
@@ -169,10 +191,10 @@ export default function SearchResults() {
             {/* Info */}
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-sm font-bold text-gray-900">
+                <p className="text-sm font-bold text-gray-900 dark:text-white">
                   {pagination.total} result{pagination.total !== 1 ? "s" : ""} found
                 </p>
-                {query && <p className="text-xs text-gray-600">for <span className="font-semibold">&quot;{query}&quot;</span></p>}
+                {query && <p className="text-xs text-gray-600 dark:text-gray-300">for <span className="font-semibold text-gray-900 dark:text-white">&quot;{query}&quot;</span></p>}
               </div>
               {(selectedType || selectedCountry || selectedColor || selectedMaterial) && (
                 <button
@@ -183,7 +205,7 @@ export default function SearchResults() {
                     setSelectedMaterial("");
                     setCurrentPage(1);
                   }}
-                  className="px-3 py-1 bg-red-100 text-red-700 rounded-lg font-semibold hover:bg-red-200 transition text-xs ml-2 flex-shrink-0"
+                  className="px-3 py-1 bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400 rounded-lg font-semibold hover:bg-red-200 dark:hover:bg-red-950/50 transition text-xs ml-2 flex-shrink-0"
                 >
                   Clear
                 </button>
@@ -194,7 +216,7 @@ export default function SearchResults() {
             <div className="flex flex-wrap gap-2 pb-1">
               {/* Costume Type Filter */}
               <div className="flex items-center gap-1.5">
-                <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">TYPE:</label>
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">TYPE:</label>
                 <select
                   value={selectedType}
                   onChange={(e) => {
@@ -202,7 +224,7 @@ export default function SearchResults() {
                     setSelectedCountry(""); // Reset country when type changes
                     setCurrentPage(1);
                   }}
-                  className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white hover:border-lime-400 transition cursor-pointer"
+                  className="px-2 py-1 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white dark:bg-zinc-900 text-gray-900 dark:text-white hover:border-lime-400 transition cursor-pointer"
                 >
                   <option value="">All</option>
                   {COSTUME_TYPES.map(type => (
@@ -214,14 +236,14 @@ export default function SearchResults() {
               {/* Country Filter - Only show if Traditional Africa is selected */}
               {selectedType === "Traditional Africa" && (
                 <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">COUNTRY:</label>
+                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">COUNTRY:</label>
                   <select
                     value={selectedCountry}
                     onChange={(e) => {
                       setSelectedCountry(e.target.value);
                       setCurrentPage(1);
                     }}
-                    className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white hover:border-lime-400 transition cursor-pointer"
+                    className="px-2 py-1 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white dark:bg-zinc-900 text-gray-900 dark:text-white hover:border-lime-400 transition cursor-pointer"
                   >
                     <option value="">All Countries</option>
                     {TRADITIONAL_AFRICA_COUNTRIES.map(country => (
@@ -233,14 +255,14 @@ export default function SearchResults() {
 
               {/* Color Filter */}
               <div className="flex items-center gap-1.5">
-                <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">COLOR:</label>
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">COLOR:</label>
                 <select
                   value={selectedColor}
                   onChange={(e) => {
                     setSelectedColor(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white hover:border-lime-400 transition cursor-pointer"
+                  className="px-2 py-1 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white dark:bg-zinc-900 text-gray-900 dark:text-white hover:border-lime-400 transition cursor-pointer"
                 >
                   <option value="">All</option>
                   {COLORS.map(color => (
@@ -251,14 +273,14 @@ export default function SearchResults() {
 
               {/* Material Filter */}
               <div className="flex items-center gap-1.5">
-                <label className="text-xs font-semibold text-gray-600 whitespace-nowrap">MATERIAL:</label>
+                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">MATERIAL:</label>
                 <select
                   value={selectedMaterial}
                   onChange={(e) => {
                     setSelectedMaterial(e.target.value);
                     setCurrentPage(1);
                   }}
-                  className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white hover:border-lime-400 transition cursor-pointer"
+                  className="px-2 py-1 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white dark:bg-zinc-900 text-gray-900 dark:text-white hover:border-lime-400 transition cursor-pointer"
                 >
                   <option value="">All</option>
                   {MATERIALS.map(material => (
@@ -272,7 +294,7 @@ export default function SearchResults() {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-4 pt-44 md:pt-4">
+      <div className="max-w-7xl mx-auto px-4 py-4 pt-32 md:pt-4">
         {/* Error State */}
         {error && !loading && (
           <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 mb-6">
@@ -285,7 +307,7 @@ export default function SearchResults() {
         {loading && (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-600"></div>
-            <p className="mt-4 text-gray-600">Searching for products...</p>
+            <p className="mt-4 text-gray-600 dark:text-gray-400">Searching for products...</p>
           </div>
         )}
 
@@ -293,10 +315,10 @@ export default function SearchResults() {
         {!loading && !error && products.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="text-6xl mb-4">🔍</div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               No products found
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Try adjusting your search terms or filters
             </p>
             <Link
@@ -336,7 +358,7 @@ export default function SearchResults() {
                 <button
                   onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
                   disabled={currentPage === 1}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
                   ← Previous
                 </button>
@@ -351,8 +373,8 @@ export default function SearchResults() {
                         onClick={() => setCurrentPage(pageNum)}
                         className={`w-10 h-10 rounded-lg font-semibold transition ${
                           isActive
-                            ? "bg-lime-600 text-white shadow-lg"
-                            : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+                            ? "bg-lime-600 text-white shadow-lg shadow-lime-600/20"
+                            : "border border-gray-300 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
                         }`}
                       >
                         {pageNum}
@@ -364,7 +386,7 @@ export default function SearchResults() {
                 <button
                   onClick={() => setCurrentPage((prev) => Math.min(pagination.totalPages, prev + 1))}
                   disabled={!pagination.hasMore}
-                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
+                  className="px-4 py-2 rounded-lg border border-gray-300 dark:border-white/10 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5 disabled:opacity-50 disabled:cursor-not-allowed transition font-semibold"
                 >
                   Next →
                 </button>
@@ -374,5 +396,18 @@ export default function SearchResults() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function SearchResults() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] flex flex-col items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-600"></div>
+        <p className="mt-4 text-gray-600 dark:text-gray-400 font-bold uppercase tracking-wider text-xs">Loading Search...</p>
+      </div>
+    }>
+      <SearchResultsContent />
+    </Suspense>
   );
 }
