@@ -111,6 +111,35 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
         const productCountry = (product.country || product.region || "").toLowerCase();
         return isTraditional && productCountry === country.toLowerCase();
       });
+    } else if (selectedCostumeType.startsWith("Angel - ")) {
+      const fantasyStyle =
+        selectedCostumeType.split(" - ").slice(1).join(" - ").toLowerCase();
+      const fantasyKeywords: Record<string, string[]> = {
+        "white wings": ["white", "ethereal", "greeter", "heavenly"],
+        "black wings": ["black", "dark", "fallen", "grim"],
+        fairies: ["fairy", "fairies", "faerie", "pixie"],
+        "night life": ["night", "nightlife", "club", "party", "rave"],
+      };
+      const keywords = fantasyKeywords[fantasyStyle] ?? [fantasyStyle];
+
+      filteredProducts = filteredProducts.filter((product) => {
+        const isFantasy =
+          (product.costumeType || "").toLowerCase() === "angel";
+        const searchableText = [
+          product.name,
+          product.description,
+          product.color,
+          product.material,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return (
+          isFantasy &&
+          keywords.some((keyword) => searchableText.includes(keyword))
+        );
+      });
     } else {
       filteredProducts = filteredProducts.filter((product) =>
         (product.costumeType || "").toLowerCase() === (selectedCostumeType || "").toLowerCase()
@@ -157,11 +186,6 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
     filteredProducts = filteredProducts.slice(0, limit);
   }
 
-  // Get unique costume types for the filter
-  // Always show all costume types, regardless of whether products exist
-  const COSTUME_TYPES = ["Angel", "Carnival", "Western", "Traditional Africa", "Cosplay", "Other"];
-  const availableCostumeTypes = COSTUME_TYPES;
-
   return (
     <section ref={productGridRef} className="flex-grow mx-auto w-full max-w-7xl px-2 md:px-6 py-12 animate-in fade-in duration-500" data-products-section>
       {/* Products Grid Header */}
@@ -194,7 +218,6 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
         <CostumeTypeFilter
           category={category}
           onTypeChange={setSelectedCostumeType}
-          availableTypes={availableCostumeTypes.length > 0 ? availableCostumeTypes : undefined}
           initialType={initialCostumeType}
         />
       )}

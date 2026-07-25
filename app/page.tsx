@@ -33,31 +33,37 @@ import CustomCostumesPage from "./custom-costumes/page";
 const collections = [
   {
     title: "Carnival",
+    filterValue: "Carnival",
     image: "/empiimages/IMG_9906.JPG",
     icon: PartyPopper,
   },
   {
-    title: "Angel",
+    title: "Fantasy Costume",
+    filterValue: "Angel",
     image: "/empiimages/IMG_0794.JPG",
     icon: Feather,
   },
   {
     title: "Western",
+    filterValue: "Western",
     image: "/empiimages/IMG_9345.JPG",
     icon: HatGlasses,
   },
   {
     title: "Traditional Africa",
+    filterValue: "Traditional Africa",
     image: "/empiimages/d7376ba7-6379-410e-bd4a-627a6e521ffc.JPG",
     icon: Globe2,
   },
   {
     title: "Cosplay",
+    filterValue: "Cosplay",
     image: "https://res.cloudinary.com/dtxbk2uid/image/upload/v1770802824/empi/kssxgbjqzymeqbcdvjzl.jpg",
     icon: Swords,
   },
   {
     title: "Other",
+    filterValue: "Other",
     image: "https://res.cloudinary.com/dtxbk2uid/image/upload/v1784721550/empi/hgd2cukqt5psbw29tcd4.jpg",
     icon: Shapes,
   },
@@ -215,7 +221,7 @@ export default function Home() {
                     return (
                       <Link
                         key={collection.title}
-                        href={`/shop?costumeType=${encodeURIComponent(collection.title)}`}
+                        href={`/shop?costumeType=${encodeURIComponent(collection.filterValue ?? collection.title)}`}
                         className="group relative h-[132px] overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04] text-left transition duration-300 hover:-translate-y-1 hover:border-lime-500/60 active:scale-95 md:h-[170px] md:rounded-3xl"
                       >
                         <Image
