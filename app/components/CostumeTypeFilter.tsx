@@ -7,16 +7,17 @@ interface CostumeTypeFilterProps {
   category: string; // "adults" or "kids"
   onTypeChange: (type: string | null) => void;
   availableTypes?: string[];
+  initialType?: string | null;
 }
 
 const COSTUME_TYPE_OPTIONS = ["Angel", "Carnival", "Western", "Traditional Africa", "Cosplay", "Other"];
 
 const TRADITIONAL_AFRICA_SUBFILTERS = ["Nigeria", "Ghana", "South Africa", "Egypt", "Algeria", "Congo", "Kenya"];
 
-export function CostumeTypeFilter({ category, onTypeChange, availableTypes }: CostumeTypeFilterProps) {
-  const [selectedType, setSelectedType] = useState<string | null>(null);
+export function CostumeTypeFilter({ category, onTypeChange, availableTypes, initialType = null }: CostumeTypeFilterProps) {
+  const [selectedType, setSelectedType] = useState<string | null>(initialType);
   const [selectedSubfilter, setSelectedSubfilter] = useState<string | null>(null);
-  const [showSubfilters, setShowSubfilters] = useState(false);
+  const [showSubfilters, setShowSubfilters] = useState(initialType === "Traditional Africa");
 
   // Only show filter for adult, kids and all categories
   if (category !== "adults" && category !== "kids" && category !== "all") {

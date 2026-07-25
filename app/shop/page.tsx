@@ -8,11 +8,14 @@ import { DiscountPopup } from "../components/DiscountPopup";
 import { useHomeMode } from "../context/HomeModeContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { MobileHeader } from "../components/MobileHeader";
+import { useSearchParams } from "next/navigation";
 
 export default function ShopPage() {
   const { currency, setCurrency } = useCurrency();
   const { mode, setMode, isHydrated } = useHomeMode();
   const [isClient, setIsClient] = useState(false);
+  const searchParams = useSearchParams();
+  const costumeType = searchParams.get("costumeType");
 
   useEffect(() => {
     setIsClient(true);
@@ -53,6 +56,7 @@ export default function ShopPage() {
           mode={mode}
           onModeChange={setMode}
           hideHeader={true}
+          initialCostumeType={costumeType}
         />
       </div>
 

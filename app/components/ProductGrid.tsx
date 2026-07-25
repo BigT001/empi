@@ -43,13 +43,15 @@ interface ProductGridProps {
   limit?: number;
   hideHeader?: boolean;
   hideFilters?: boolean;
+  initialCostumeType?: string | null;
+  mixCostumeShowProducts?: boolean;
 }
 
-export function ProductGrid({ currency, category, initialProducts, mode, onModeChange, searchQuery = "", limit, hideHeader = false, hideFilters = false }: ProductGridProps) {
+export function ProductGrid({ currency, category, initialProducts, mode, onModeChange, searchQuery = "", limit, hideHeader = false, hideFilters = false, initialCostumeType = null, mixCostumeShowProducts = false }: ProductGridProps) {
   const { products: cachedProducts, loading, error, pagination, loadMore } = useProducts(category);
   const [dbProducts, setDbProducts] = useState<Product[]>(initialProducts ?? (cachedProducts as Product[]));
   const [showError, setShowError] = useState(false);
-  const [selectedCostumeType, setSelectedCostumeType] = useState<string | null>(null);
+  const [selectedCostumeType, setSelectedCostumeType] = useState<string | null>(initialCostumeType);
   const productGridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -133,6 +135,24 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
     (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
   );
 
+  if (mixCostumeShowProducts) {
+    const costumeShowProducts = filteredProducts.filter(
+      (product) => product.isCostumeShow === true || product.category === "costume-show"
+    );
+    const shopProducts = filteredProducts.filter(
+      (product) => product.isCostumeShow !== true && product.category !== "costume-show"
+    );
+    const mixedProducts: typeof filteredProducts = [];
+    const longestGroup = Math.max(costumeShowProducts.length, shopProducts.length);
+
+    for (let index = 0; index < longestGroup; index += 1) {
+      if (shopProducts[index]) mixedProducts.push(shopProducts[index]);
+      if (costumeShowProducts[index]) mixedProducts.push(costumeShowProducts[index]);
+    }
+
+    filteredProducts = mixedProducts;
+  }
+
   if (limit) {
     filteredProducts = filteredProducts.slice(0, limit);
   }
@@ -175,6 +195,7 @@ export function ProductGrid({ currency, category, initialProducts, mode, onModeC
           category={category}
           onTypeChange={setSelectedCostumeType}
           availableTypes={availableCostumeTypes.length > 0 ? availableCostumeTypes : undefined}
+          initialType={initialCostumeType}
         />
       )}
 
@@ -275,4 +296,3 @@ function ProductGridItem({ product, idx, formatPrice, currency }: {
     </motion.div>
   );
 }
-
