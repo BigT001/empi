@@ -3,13 +3,14 @@
  * Manages role-based access control (RBAC) for different admin types
  */
 
-export type AdminRole = 'super_admin' | 'admin' | 'finance_admin' | 'logistics_admin';
+export type AdminRole = 'super_admin' | 'admin' | 'finance_admin' | 'logistics_admin' | 'sales_admin';
 
 export type Permission = 
   | 'view_dashboard'
   | 'view_products'
   | 'view_orders'
   | 'view_finance'
+  | 'manage_payroll'
   | 'view_invoices'
   | 'view_settings'
   | 'view_logistics'
@@ -28,6 +29,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'view_products',
     'view_orders',
     'view_finance',
+    'manage_payroll',
     'view_invoices',
     'view_settings',
     'view_logistics',
@@ -42,6 +44,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'view_products',
     'view_orders',
     'view_finance',
+    'manage_payroll',
     'view_invoices',
     'view_settings',
     'view_mail_room',
@@ -50,6 +53,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   finance_admin: [
     'view_dashboard',
     'view_finance',
+    'manage_payroll',
     'view_invoices',
     'view_orders',
     'view_mail_room',
@@ -58,6 +62,13 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
     'view_dashboard',
     'view_logistics',
     'view_orders',
+    'view_mail_room',
+  ],
+  sales_admin: [
+    'view_dashboard',
+    'view_products',
+    'view_orders',
+    'view_invoices',
     'view_mail_room',
   ],
 };
@@ -71,6 +82,7 @@ export const ROUTE_PERMISSIONS: Record<string, Permission[]> = {
   '/admin/products': ['view_products'],
   '/admin/orders': ['view_orders'],
   '/admin/finance': ['view_finance'],
+  '/admin/payroll': ['manage_payroll'],
   '/admin/invoices': ['view_invoices'],
   '/admin/settings': ['view_settings'],
   '/admin/logistics': ['view_logistics'],
@@ -139,6 +151,7 @@ export function getRoleDisplayName(role: AdminRole): string {
     admin: 'Admin',
     finance_admin: 'Finance Admin',
     logistics_admin: 'Logistics Admin',
+    sales_admin: 'Sales Admin',
   };
   return names[role] || role;
 }
@@ -152,6 +165,7 @@ export function getRoleDescription(role: AdminRole): string {
     admin: 'Full access to products, orders, finance, and invoices',
     finance_admin: 'Access to finance, invoices, and order information',
     logistics_admin: 'Access to logistics and order management',
+    sales_admin: 'Access to products, sales orders, invoices, and customer communication',
   };
   return descriptions[role] || '';
 }

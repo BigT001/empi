@@ -71,6 +71,48 @@
   animation: fadeIn 0.3s ease-in;
 }
 
+@keyframes floatingCartArrive {
+  0% {
+    opacity: 0;
+    transform: translate3d(1.5rem, 1.5rem, 0) scale(0.65) rotate(8deg);
+  }
+  65% {
+    transform: translate3d(-0.2rem, -0.15rem, 0) scale(1.08) rotate(-2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1) rotate(0);
+  }
+}
+
+@keyframes floatingCartPulse {
+  0%, 100% {
+    box-shadow: 0 18px 50px rgb(0 0 0 / 0.34);
+  }
+  50% {
+    box-shadow: 0 18px 55px rgb(132 204 22 / 0.42);
+  }
+}
+
+.floating-cart {
+  animation: floatingCartArrive 520ms cubic-bezier(.2, .9, .25, 1.25) both;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.floating-cart--celebrating {
+  animation:
+    floatingCartArrive 520ms cubic-bezier(.2, .9, .25, 1.25) both,
+    floatingCartPulse 900ms ease-in-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .floating-cart,
+  .floating-cart--celebrating {
+    animation: none;
+    transition-duration: 1ms;
+  }
+}
+
 :root {
   --radius: 0.625rem;
   --background: oklch(1 0 0);

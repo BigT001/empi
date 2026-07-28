@@ -11,8 +11,8 @@ interface SubAdmin {
   _id: string;
   fullName: string;
   email: string;
-  role: 'admin' | 'finance_admin' | 'logistics_admin';
-  department: 'general' | 'finance' | 'logistics';
+  role: 'admin' | 'finance_admin' | 'logistics_admin' | 'sales_admin';
+  department: 'general' | 'finance' | 'logistics' | 'sales';
   isActive: boolean;
   lastLogin?: Date;
   createdAt: Date;
@@ -43,9 +43,9 @@ export default function SettingsPage() {
   const [newAdminForm, setNewAdminForm] = useState<{
     fullName: string;
     email: string;
-    role: 'admin' | 'finance_admin' | 'logistics_admin';
+    role: 'admin' | 'finance_admin' | 'logistics_admin' | 'sales_admin';
     password: string;
-    department: 'general' | 'finance' | 'logistics';
+    department: 'general' | 'finance' | 'logistics' | 'sales';
   }>({
     fullName: '',
     email: '',
@@ -201,8 +201,13 @@ export default function SettingsPage() {
   }, [activeTab, admin?.role]);
 
   const handleAddAdmin = async () => {
-    if (!newAdminForm.fullName || !newAdminForm.email || !newAdminForm.password) {
+    setMessage(null);
+    if (!newAdminForm.fullName.trim() || !newAdminForm.email.trim() || !newAdminForm.password) {
       setMessage({ type: 'error', text: 'Please fill all required fields' });
+      return;
+    }
+    if (newAdminForm.password.length < 8) {
+      setMessage({ type: 'error', text: 'Initial password must be at least 8 characters' });
       return;
     }
 
@@ -210,21 +215,29 @@ export default function SettingsPage() {
     try {
       const response = await fetch('/api/admin/users', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newAdminForm),
+        body: JSON.stringify({
+          ...newAdminForm,
+          fullName: newAdminForm.fullName.trim(),
+          email: newAdminForm.email.trim().toLowerCase(),
+        }),
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Sub-admin created successfully' });
+        const createdAdmin = await response.json();
+        if (!createdAdmin?._id) throw new Error('The database did not confirm the new admin account');
+        setSubAdmins((current) => [...current.filter((item) => item._id !== createdAdmin._id), createdAdmin]);
+        setMessage({ type: 'success', text: `${createdAdmin.fullName} was created and saved successfully` });
         setNewAdminForm({ fullName: '', email: '', role: 'admin', password: '', department: 'general' });
         setShowAddAdmin(false);
-        loadSubAdmins();
+        void loadSubAdmins();
       } else {
-        const error = await response.json();
-        setMessage({ type: 'error', text: error.message || 'Failed to create sub-admin' });
+        const error = await response.json().catch(() => ({}));
+        setMessage({ type: 'error', text: error.error || error.message || `Failed to create sub-admin (${response.status})` });
       }
     } catch (error) {
-      setMessage({ type: 'error', text: 'Error creating sub-admin' });
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Error creating sub-admin' });
     } finally {
       setIsSaving(false);
     }
@@ -244,6 +257,7 @@ export default function SettingsPage() {
     try {
       const response = await fetch('/api/admin/change-password', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentPassword: passwordForm.currentPassword,
@@ -257,7 +271,7 @@ export default function SettingsPage() {
         setTimeout(() => setChangePassMessage(null), 5000);
       } else {
         const error = await response.json();
-        setChangePassMessage({ type: 'error', text: error.message || 'Failed to change password' });
+        setChangePassMessage({ type: 'error', text: error.error || error.message || 'Failed to change password' });
       }
     } catch (error) {
       setChangePassMessage({ type: 'error', text: 'Error changing password' });
@@ -317,7 +331,7 @@ export default function SettingsPage() {
     setNewAdminForm({
       fullName: admin.fullName,
       email: admin.email,
-      role: (admin.role as 'admin' | 'finance_admin' | 'logistics_admin'),
+      role: (admin.role as 'admin' | 'finance_admin' | 'logistics_admin' | 'sales_admin'),
       password: '',
       department: admin.department || 'general',
     });
@@ -531,6 +545,7 @@ export default function SettingsPage() {
                       <option value="admin">General Admin</option>
                       <option value="finance_admin">Finance Admin</option>
                       <option value="logistics_admin">Logistics Admin</option>
+                      <option value="sales_admin">Sales Admin</option>
                     </select>
                   </div>
                   <div>
@@ -543,6 +558,7 @@ export default function SettingsPage() {
                       <option value="general">General</option>
                       <option value="finance">Finance</option>
                       <option value="logistics">Logistics</option>
+                      <option value="sales">Sales</option>
                     </select>
                   </div>
                   <div className="md:col-span-2">
@@ -609,6 +625,7 @@ export default function SettingsPage() {
                       <option value="admin">General Admin</option>
                       <option value="finance_admin">Finance Admin</option>
                       <option value="logistics_admin">Logistics Admin</option>
+                      <option value="sales_admin">Sales Admin</option>
                     </select>
                   </div>
                   <div>
@@ -621,6 +638,7 @@ export default function SettingsPage() {
                       <option value="general">General</option>
                       <option value="finance">Finance</option>
                       <option value="logistics">Logistics</option>
+                      <option value="sales">Sales</option>
                     </select>
                   </div>
                 </div>
@@ -679,7 +697,7 @@ export default function SettingsPage() {
                           <td className="px-8 py-4 text-sm text-gray-600">{subAdmin.email}</td>
                           <td className="px-8 py-4 text-sm">
                             <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
-                              {subAdmin.role === 'finance_admin' ? 'Finance' : subAdmin.role === 'logistics_admin' ? 'Logistics' : 'General'}
+                              {subAdmin.role === 'finance_admin' ? 'Finance' : subAdmin.role === 'logistics_admin' ? 'Logistics' : subAdmin.role === 'sales_admin' ? 'Sales' : 'General'}
                             </span>
                           </td>
                           <td className="px-8 py-4 text-sm text-gray-600">

@@ -7,9 +7,9 @@ export interface AdminProfile {
   id: string;
   email: string;
   fullName: string;
-  role: 'super_admin' | 'admin' | 'finance_admin' | 'logistics_admin';
+  role: 'super_admin' | 'admin' | 'finance_admin' | 'logistics_admin' | 'sales_admin';
   permissions: string[];
-  department?: 'general' | 'finance' | 'logistics';
+  department?: 'general' | 'finance' | 'logistics' | 'sales';
   lastLogin?: Date;
 }
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useAdmin } from '@/app/context/AdminContext';
-import { Lock, Eye, EyeOff, ArrowLeft } from 'lucide-react';
+import { Eye, EyeOff, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function ChangePasswordPage() {
@@ -67,11 +67,11 @@ export default function ChangePasswordPage() {
         {/* Header */}
         <div className="mb-8">
           <Link
-            href="/admin/settings"
+            href={admin?.role === 'super_admin' ? "/admin/settings" : "/admin/dashboard"}
             className="inline-flex items-center gap-2 text-lime-600 hover:text-lime-700 font-semibold mb-4"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Settings
+            {admin?.role === 'super_admin' ? "Back to Settings" : "Back to Dashboard"}
           </Link>
           <h1 className="text-3xl font-bold text-gray-900">Change Password</h1>
           <p className="text-gray-600 mt-2">Update your admin account password</p>
@@ -132,7 +132,7 @@ export default function ChangePasswordPage() {
                   type={showNewPassword ? 'text' : 'password'}
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Enter new password (minimum 6 characters)"
+                  placeholder="Enter new password (minimum 8 characters)"
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500 transition pr-10"
                   disabled={loading}
                 />

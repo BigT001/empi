@@ -12,10 +12,10 @@ export interface IAdmin extends Document {
   email: string;
   password: string;
   fullName: string;
-  role: 'super_admin' | 'admin' | 'finance_admin' | 'logistics_admin';
+  role: 'super_admin' | 'admin' | 'finance_admin' | 'logistics_admin' | 'sales_admin';
   permissions: string[];
   isActive: boolean;
-  department?: 'general' | 'finance' | 'logistics';
+  department?: 'general' | 'finance' | 'logistics' | 'sales';
   lastLogin?: Date;
   lastLogout?: Date;
   sessions: IAdminSession[];  // Multiple concurrent sessions
@@ -31,7 +31,7 @@ const adminSchema = new Schema<IAdmin>(
     fullName: { type: String, required: true },
     role: { 
       type: String, 
-      enum: ['super_admin', 'admin', 'finance_admin', 'logistics_admin'], 
+      enum: ['super_admin', 'admin', 'finance_admin', 'logistics_admin', 'sales_admin'],
       default: 'admin',
       required: true,
     },
@@ -42,7 +42,7 @@ const adminSchema = new Schema<IAdmin>(
     isActive: { type: Boolean, default: true },
     department: { 
       type: String, 
-      enum: ['general', 'finance', 'logistics'], 
+      enum: ['general', 'finance', 'logistics', 'sales'],
       default: 'general' 
     },
     lastLogin: Date,

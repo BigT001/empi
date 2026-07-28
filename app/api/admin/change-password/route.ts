@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
-import bcrypt from 'bcryptjs';
 
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
 
     // Get admin_session cookie
-    const adminId = request.cookies.get('admin_session')?.value;
+    const sessionToken = request.cookies.get('admin_session')?.value;
 
-    if (!adminId) {
+    if (!sessionToken) {
       return NextResponse.json(
         { error: 'Not authenticated' },
         { status: 401 }
@@ -28,9 +27,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (newPassword.length < 6) {
+    if (newPassword.length < 8) {
       return NextResponse.json(
-        { error: 'New password must be at least 6 characters' },
+        { error: 'New password must be at least 8 characters' },
         { status: 400 }
       );
     }
@@ -49,8 +48,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Find admin
-    const admin = await Admin.findById(adminId);
+    // The cookie stores a session token, not an admin document ID.
+    const admin = await Admin.findOne({
+      isActive: true,
+      'sessions.token': sessionToken,
+    });
 
     if (!admin) {
       return NextResponse.json(
@@ -79,10 +81,10 @@ export async function POST(request: NextRequest) {
       { message: 'Password changed successfully' },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Change password error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to change password' },
+      { error: error instanceof Error ? error.message : 'Failed to change password' },
       { status: 500 }
     );
   }

@@ -1450,13 +1450,14 @@ export default function MailRoomPage() {
                       Select which user roles can access this mailbox. Leave empty to allow access for all roles.
                     </p>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {['super_admin', 'admin', 'finance_admin', 'logistics_admin'].map((role) => {
+                      {['super_admin', 'admin', 'finance_admin', 'logistics_admin', 'sales_admin'].map((role) => {
                         const isChecked = allowedRolesTemp.includes(role);
                         const displayNames: Record<string, string> = {
                           super_admin: 'Super Admin',
                           admin: 'General Admin',
                           finance_admin: 'Finance Team Admin',
                           logistics_admin: 'Logistics Team Admin',
+                          sales_admin: 'Sales Team Admin',
                         };
                         return (
                           <label

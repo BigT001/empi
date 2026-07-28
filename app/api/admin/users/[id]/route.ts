@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
+import { getRolePermissions, type AdminRole } from '@/lib/permissions';
 
 export async function PUT(
   request: NextRequest,
@@ -43,7 +44,7 @@ export async function PUT(
       );
     }
 
-    const { isActive, permissions } = await request.json();
+    const { isActive, permissions, fullName, role, department } = await request.json();
 
     // Prevent deactivating self
     if (adminIdParam === requestingAdmin._id.toString() && isActive === false) {
@@ -69,6 +70,23 @@ export async function PUT(
     if (permissions && Array.isArray(permissions)) {
       admin.permissions = permissions;
     }
+    if (typeof fullName === 'string' && fullName.trim()) {
+      admin.fullName = fullName.trim();
+    }
+    if (role !== undefined) {
+      const allowedRoles: AdminRole[] = ['admin', 'finance_admin', 'logistics_admin', 'sales_admin'];
+      if (!allowedRoles.includes(role as AdminRole)) {
+        return NextResponse.json({ error: 'Invalid sub-admin role' }, { status: 400 });
+      }
+      admin.role = role;
+      if (!permissions) admin.permissions = getRolePermissions(role as AdminRole);
+    }
+    if (department !== undefined) {
+      if (!['general', 'finance', 'logistics', 'sales'].includes(department)) {
+        return NextResponse.json({ error: 'Invalid department' }, { status: 400 });
+      }
+      admin.department = department;
+    }
 
     await admin.save();
 
@@ -81,14 +99,15 @@ export async function PUT(
       fullName: admin.fullName,
       role: admin.role,
       permissions: admin.permissions,
+      department: admin.department,
       isActive: admin.isActive,
       createdAt: admin.createdAt,
       updatedAt: admin.updatedAt,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update admin error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to update admin' },
+      { error: error instanceof Error ? error.message : 'Failed to update admin' },
       { status: 500 }
     );
   }
@@ -159,10 +178,10 @@ export async function DELETE(
       message: 'Admin deleted successfully',
       deletedAdmin: admin.email,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Delete admin error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to delete admin' },
+      { error: error instanceof Error ? error.message : 'Failed to delete admin' },
       { status: 500 }
     );
   }

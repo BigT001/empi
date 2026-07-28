@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
+import { getRolePermissions, type AdminRole } from '@/lib/permissions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,8 +17,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Verify requesting admin is super_admin
-    const requestingAdmin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
+    // Current admin sessions are stored in the sessions array. Keep the legacy
+    // lookup temporarily so older authenticated installations can still migrate.
+    const requestingAdmin = await Admin.findOne({
+      isActive: true,
+      $or: [
+        {
+          sessions: {
+            $elemMatch: {
+              token: sessionToken,
+              expiresAt: { $gt: new Date() },
+            },
+          },
+        },
+        { sessionToken, sessionExpiry: { $gt: new Date() } },
+      ],
+    });
 
     if (!requestingAdmin || requestingAdmin.role !== 'super_admin') {
       return NextResponse.json(
@@ -27,7 +42,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { email, fullName, password, role, permissions } = body;
+    const { email, fullName, password, role, permissions, department } = body;
 
     // Validation
     if (!email || !fullName || !password || !role) {
@@ -37,22 +52,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!['admin', 'super_admin'].includes(role)) {
+    const allowedRoles: AdminRole[] = ['admin', 'finance_admin', 'logistics_admin', 'sales_admin'];
+    if (!allowedRoles.includes(role as AdminRole)) {
       return NextResponse.json(
-        { error: 'Invalid role. Must be admin or super_admin' },
+        { error: 'Choose a valid General, Finance, or Logistics admin role' },
         { status: 400 }
       );
     }
 
-    if (password.length < 6) {
+    if (String(password).length < 8) {
       return NextResponse.json(
-        { error: 'Password must be at least 6 characters' },
+        { error: 'Password must be at least 8 characters' },
         { status: 400 }
       );
+    }
+
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedName = String(fullName).trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 });
     }
 
     // Check if admin already exists
-    const existingAdmin = await Admin.findOne({ email: email.toLowerCase() });
+    const existingAdmin = await Admin.findOne({ email: normalizedEmail });
 
     if (existingAdmin) {
       return NextResponse.json(
@@ -61,33 +83,18 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get all admins to check count (max 5)
-    const adminCount = await Admin.countDocuments();
-
-    if (adminCount >= 5 && role === 'admin') {
-      return NextResponse.json(
-        { error: 'Maximum of 5 admin accounts reached. You can only create super admins now.' },
-        { status: 400 }
-      );
-    }
-
-    // Set default permissions
-    const defaultPermissions = [
-      'view_dashboard',
-      'view_products',
-      'view_orders',
-      'view_finance',
-      'view_invoices',
-      'view_settings',
-    ];
+    const defaultPermissions = getRolePermissions(role as AdminRole);
+    const validDepartments = ['general', 'finance', 'logistics', 'sales'];
+    const resolvedDepartment = validDepartments.includes(department) ? department : 'general';
 
     // Create new admin
     const newAdmin = new Admin({
-      email: email.toLowerCase(),
-      fullName,
+      email: normalizedEmail,
+      fullName: normalizedName,
       password,
       role,
-      permissions: permissions || defaultPermissions,
+      permissions: Array.isArray(permissions) && permissions.length ? permissions : defaultPermissions,
+      department: resolvedDepartment,
       isActive: true,
     });
 
@@ -103,15 +110,19 @@ export async function POST(request: NextRequest) {
         fullName: newAdmin.fullName,
         role: newAdmin.role,
         permissions: newAdmin.permissions,
+        department: newAdmin.department,
         isActive: newAdmin.isActive,
         createdAt: newAdmin.createdAt,
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Add admin error:', error);
+    if (typeof error === 'object' && error !== null && 'code' in error && error.code === 11000) {
+      return NextResponse.json({ error: 'An admin with this email already exists' }, { status: 409 });
+    }
     return NextResponse.json(
-      { error: error.message || 'Failed to add admin' },
+      { error: error instanceof Error ? error.message : 'Failed to add admin' },
       { status: 500 }
     );
   }
@@ -183,14 +194,17 @@ export async function GET(request: NextRequest) {
     }
 
     // Get admins (exclude passwords)
-    const admins = await Admin.find(query, '-password').lean();
+    const admins = await Admin.find(
+      query,
+      '-password -sessions -sessionToken -sessionExpiry'
+    ).lean();
     console.log(`✅ Returning ${admins.length} admins`);
 
     return NextResponse.json(admins);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Get admins error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch admins' },
+      { error: error instanceof Error ? error.message : 'Failed to fetch admins' },
       { status: 500 }
     );
   }

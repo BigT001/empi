@@ -12,6 +12,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { SmoothScroll } from "./components/SmoothScroll";
 import { ScrollProgressBar } from "./components/ScrollProgressBar";
+import { FloatingCart } from "./components/FloatingCart";
 
 import Script from "next/script";
 
@@ -104,6 +105,7 @@ export default function RootLayout({
                       <AdminProvider>
                         <ScrollToTop />
                         <ScrollProgressBar />
+                        <FloatingCart />
                         <SmoothScroll>
                           {children}
                         </SmoothScroll>
