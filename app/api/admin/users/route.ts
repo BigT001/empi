@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
-import { getRolePermissions, type AdminRole } from '@/lib/permissions';
+import { ALL_PERMISSIONS, getRolePermissions, type AdminRole, type Permission } from '@/lib/permissions';
 
 export async function POST(request: NextRequest) {
   try {
@@ -84,6 +84,11 @@ export async function POST(request: NextRequest) {
     }
 
     const defaultPermissions = getRolePermissions(role as AdminRole);
+    const resolvedPermissions: Permission[] = Array.isArray(permissions)
+      ? permissions.filter((permission): permission is Permission =>
+          typeof permission === 'string' && ALL_PERMISSIONS.includes(permission as Permission)
+        )
+      : defaultPermissions;
     const validDepartments = ['general', 'finance', 'logistics', 'sales'];
     const resolvedDepartment = validDepartments.includes(department) ? department : 'general';
 
@@ -93,7 +98,7 @@ export async function POST(request: NextRequest) {
       fullName: normalizedName,
       password,
       role,
-      permissions: Array.isArray(permissions) && permissions.length ? permissions : defaultPermissions,
+      permissions: resolvedPermissions,
       department: resolvedDepartment,
       isActive: true,
     });

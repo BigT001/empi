@@ -1,21 +1,24 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAdmin } from "@/app/context/AdminContext";
 import { useResponsive } from "@/app/hooks/useResponsive";
-import { Save, Lock, Users, DollarSign, Plus, Edit2, Trash2, Eye, EyeOff, LogOut, Clock, CheckCircle2, AlertCircle, Sliders, Sparkles } from "lucide-react";
+import { Lock, Users, DollarSign, Plus, Edit2, Trash2, Eye, EyeOff, LogOut, Clock, CheckCircle2, AlertCircle, Sliders, Sparkles } from "lucide-react";
+import { PERMISSION_CATALOG, ROLE_PERMISSIONS, type AdminRole, type Permission } from "@/lib/permissions";
+
+type SubAdminRole = Exclude<AdminRole, 'super_admin'>;
 
 interface SubAdmin {
   _id: string;
   fullName: string;
   email: string;
-  role: 'admin' | 'finance_admin' | 'logistics_admin' | 'sales_admin';
+  role: SubAdminRole;
   department: 'general' | 'finance' | 'logistics' | 'sales';
   isActive: boolean;
   lastLogin?: Date;
   createdAt: Date;
+  permissions: Permission[];
 }
 
 interface PasswordForm {
@@ -24,9 +27,14 @@ interface PasswordForm {
   confirmPassword: string;
 }
 
+interface AdminSessionDisplay {
+  token: string;
+  createdAt: string;
+  expiresAt: string;
+}
+
 export default function SettingsPage() {
   const { admin } = useAdmin();
-  const router = useRouter();
   const { mounted } = useResponsive();
   const [activeTab, setActiveTab] = useState<"sub-admins" | "security" | "bank" | "homepage">("sub-admins");
 
@@ -43,7 +51,7 @@ export default function SettingsPage() {
   const [newAdminForm, setNewAdminForm] = useState<{
     fullName: string;
     email: string;
-    role: 'admin' | 'finance_admin' | 'logistics_admin' | 'sales_admin';
+    role: SubAdminRole;
     password: string;
     department: 'general' | 'finance' | 'logistics' | 'sales';
   }>({
@@ -53,6 +61,7 @@ export default function SettingsPage() {
     password: '',
     department: 'general',
   });
+  const [selectedPermissions, setSelectedPermissions] = useState<Permission[]>(ROLE_PERMISSIONS.admin);
 
   // Security State
   const [passwordForm, setPasswordForm] = useState<PasswordForm>({
@@ -62,15 +71,19 @@ export default function SettingsPage() {
   });
   const [showPasswords, setShowPasswords] = useState({ current: false, new: false, confirm: false });
   const [changePassMessage, setChangePassMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-  const [sessions, setSessions] = useState<any[]>([]);
+  const [sessions, setSessions] = useState<AdminSessionDisplay[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
 
   // UI State
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-  // Settings page access control - only Super Administrators
-  const hasAccess = admin?.role === 'super_admin';
+  const hasAccess = admin?.role === 'super_admin' ||
+    admin?.permissions?.includes('access_all_features') ||
+    admin?.permissions?.includes('view_settings');
+  const canManageStore = admin?.role === 'super_admin' ||
+    admin?.permissions?.includes('access_all_features') ||
+    admin?.permissions?.includes('manage_store_settings');
 
   // Function Definitions (must be before useEffect that uses them)
   const loadSubAdmins = async () => {
@@ -154,7 +167,7 @@ export default function SettingsPage() {
         const error = await res.json();
         setMessage({ type: "error", text: error.error || "Failed to update homepage settings" });
       }
-    } catch (err) {
+    } catch {
       setMessage({ type: "error", text: "Error saving homepage settings" });
     } finally {
       setIsSaving(false);
@@ -187,17 +200,16 @@ export default function SettingsPage() {
   };
 
   useEffect(() => {
-    if (activeTab === 'sub-admins' && admin?.role === 'super_admin') {
-      console.log('👤 Admin context:', admin);
-      console.log('🔓 Admin role is super_admin - loading sub-admins');
-      loadSubAdmins();
-    }
-    if (activeTab === 'security') {
-      loadSessions();
-    }
-    if (activeTab === 'homepage') {
-      fetchHomepageSettings();
-    }
+    const timer = window.setTimeout(() => {
+      if (activeTab === 'sub-admins' && admin?.role !== 'super_admin') {
+        setActiveTab('security');
+        return;
+      }
+      if (activeTab === 'sub-admins' && admin?.role === 'super_admin') void loadSubAdmins();
+      if (activeTab === 'security') void loadSessions();
+      if (activeTab === 'homepage') void fetchHomepageSettings();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [activeTab, admin?.role]);
 
   const handleAddAdmin = async () => {
@@ -219,6 +231,7 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...newAdminForm,
+          permissions: selectedPermissions,
           fullName: newAdminForm.fullName.trim(),
           email: newAdminForm.email.trim().toLowerCase(),
         }),
@@ -230,6 +243,7 @@ export default function SettingsPage() {
         setSubAdmins((current) => [...current.filter((item) => item._id !== createdAdmin._id), createdAdmin]);
         setMessage({ type: 'success', text: `${createdAdmin.fullName} was created and saved successfully` });
         setNewAdminForm({ fullName: '', email: '', role: 'admin', password: '', department: 'general' });
+        setSelectedPermissions(ROLE_PERMISSIONS.admin);
         setShowAddAdmin(false);
         void loadSubAdmins();
       } else {
@@ -262,6 +276,7 @@ export default function SettingsPage() {
         body: JSON.stringify({
           currentPassword: passwordForm.currentPassword,
           newPassword: passwordForm.newPassword,
+          confirmPassword: passwordForm.confirmPassword,
         }),
       });
 
@@ -273,7 +288,7 @@ export default function SettingsPage() {
         const error = await response.json();
         setChangePassMessage({ type: 'error', text: error.error || error.message || 'Failed to change password' });
       }
-    } catch (error) {
+    } catch {
       setChangePassMessage({ type: 'error', text: 'Error changing password' });
     } finally {
       setIsSaving(false);
@@ -281,6 +296,9 @@ export default function SettingsPage() {
   };
 
   const handleToggleAdminStatus = async (adminId: string, isActive: boolean) => {
+    const action = isActive ? 'suspend' : 'reactivate';
+    if (!window.confirm(`Are you sure you want to ${action} this admin?${isActive ? ' They will be signed out immediately on every device.' : ''}`)) return;
+    setIsSaving(true);
     try {
       const response = await fetch(`/api/admin/users/${adminId}`, {
         method: 'PUT',
@@ -290,11 +308,17 @@ export default function SettingsPage() {
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: `Sub-admin ${!isActive ? 'activated' : 'deactivated'}` });
-        loadSubAdmins();
+        const updatedAdmin = await response.json();
+        setSubAdmins((current) => current.map((item) => item._id === updatedAdmin._id ? updatedAdmin : item));
+        setMessage({ type: 'success', text: `Sub-admin ${!isActive ? 'reactivated' : 'suspended'} successfully` });
+      } else {
+        const responseError = await response.json().catch(() => ({}));
+        setMessage({ type: 'error', text: responseError.error || `Failed to ${action} admin` });
       }
-    } catch (error) {
+    } catch {
       setMessage({ type: 'error', text: 'Failed to update admin status' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -331,10 +355,12 @@ export default function SettingsPage() {
     setNewAdminForm({
       fullName: admin.fullName,
       email: admin.email,
-      role: (admin.role as 'admin' | 'finance_admin' | 'logistics_admin' | 'sales_admin'),
+      role: admin.role,
       password: '',
       department: admin.department || 'general',
     });
+    setSelectedPermissions(admin.permissions || []);
+    window.scrollTo({ top: 300, behavior: 'smooth' });
   };
 
   const handleSaveEdit = async () => {
@@ -350,17 +376,19 @@ export default function SettingsPage() {
           fullName: newAdminForm.fullName,
           role: newAdminForm.role,
           department: newAdminForm.department,
+          permissions: selectedPermissions,
         }),
       });
 
       if (response.ok) {
-        setMessage({ type: 'success', text: 'Sub-admin updated successfully' });
+        setMessage({ type: 'success', text: 'Sub-admin access updated. Their existing sessions were closed so the new permissions apply immediately.' });
         setEditingAdmin(null);
         setNewAdminForm({ fullName: '', email: '', role: 'admin', password: '', department: 'general' });
+        setSelectedPermissions(ROLE_PERMISSIONS.admin);
         loadSubAdmins();
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.message || 'Failed to update admin' });
+        setMessage({ type: 'error', text: error.error || error.message || 'Failed to update admin' });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'Error updating admin' });
@@ -370,8 +398,7 @@ export default function SettingsPage() {
   };
 
   const handleManagePermissions = (admin: SubAdmin) => {
-    // Open permissions modal
-    alert(`Manage permissions for ${admin.fullName}\n\nCurrent role: ${admin.role}\n\nThis feature allows you to customize the admin's permissions. Coming soon!`);
+    handleEditAdmin(admin);
   };
 
   const handleLogoutSession = async (sessionToken: string) => {
@@ -406,7 +433,7 @@ export default function SettingsPage() {
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
           <p className="text-gray-600 mb-6">
-            Settings are only available to Super Administrators. You do not have permission to access this page.
+            You do not have permission to access Settings. Ask the Super Admin to grant Settings access.
           </p>
           <Link
             href="/admin/dashboard"
@@ -444,7 +471,7 @@ export default function SettingsPage() {
               Sub-Admin Management
             </button>
           )}
-          <button
+          {canManageStore && <button
             onClick={() => setActiveTab("security")}
             className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === "security"
                 ? "border-lime-600 text-lime-600"
@@ -453,8 +480,8 @@ export default function SettingsPage() {
           >
             <Lock className="h-5 w-5" />
             Security
-          </button>
-          <button
+          </button>}
+          {canManageStore && <button
             onClick={() => setActiveTab("bank")}
             className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === "bank"
                 ? "border-lime-600 text-lime-600"
@@ -463,7 +490,7 @@ export default function SettingsPage() {
           >
             <DollarSign className="h-5 w-5" />
             Bank Details
-          </button>
+          </button>}
           <button
             onClick={() => setActiveTab("homepage")}
             className={`px-4 py-4 font-semibold transition-colors border-b-2 whitespace-nowrap flex items-center gap-2 ${activeTab === "homepage"
@@ -502,7 +529,14 @@ export default function SettingsPage() {
             {/* Add Sub-Admin Button */}
             <div className="flex justify-end">
               <button
-                onClick={() => setShowAddAdmin(!showAddAdmin)}
+                onClick={() => {
+                  const nextOpen = !showAddAdmin;
+                  setShowAddAdmin(nextOpen);
+                  if (nextOpen) {
+                    setEditingAdmin(null);
+                    setSelectedPermissions(ROLE_PERMISSIONS.admin);
+                  }
+                }}
                 className="px-6 py-3 bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 text-white font-semibold rounded-lg flex items-center gap-2 transition"
               >
                 <Plus className="h-5 w-5" />
@@ -539,7 +573,11 @@ export default function SettingsPage() {
                     <label className="block text-sm font-semibold text-gray-900 mb-2">Role *</label>
                     <select
                       value={newAdminForm.role}
-                      onChange={(e) => setNewAdminForm({ ...newAdminForm, role: e.target.value as any })}
+                      onChange={(e) => {
+                        const role = e.target.value as SubAdminRole;
+                        setNewAdminForm({ ...newAdminForm, role });
+                        setSelectedPermissions([...ROLE_PERMISSIONS[role]]);
+                      }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
                     >
                       <option value="admin">General Admin</option>
@@ -552,7 +590,7 @@ export default function SettingsPage() {
                     <label className="block text-sm font-semibold text-gray-900 mb-2">Department</label>
                     <select
                       value={newAdminForm.department}
-                      onChange={(e) => setNewAdminForm({ ...newAdminForm, department: e.target.value as any })}
+                      onChange={(e) => setNewAdminForm({ ...newAdminForm, department: e.target.value as SubAdmin['department'] })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
                     >
                       <option value="general">General</option>
@@ -572,9 +610,17 @@ export default function SettingsPage() {
                     />
                   </div>
                 </div>
+                <PermissionSelector
+                  selected={selectedPermissions}
+                  onChange={setSelectedPermissions}
+                  role={newAdminForm.role}
+                />
                 <div className="flex gap-3 mt-6">
                   <button
-                    onClick={() => setShowAddAdmin(false)}
+                    onClick={() => {
+                      setShowAddAdmin(false);
+                      setSelectedPermissions(ROLE_PERMISSIONS.admin);
+                    }}
                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-900 font-semibold hover:bg-gray-50"
                   >
                     Cancel
@@ -619,7 +665,11 @@ export default function SettingsPage() {
                     <label className="block text-sm font-semibold text-gray-900 mb-2">Role *</label>
                     <select
                       value={newAdminForm.role}
-                      onChange={(e) => setNewAdminForm({ ...newAdminForm, role: e.target.value as any })}
+                      onChange={(e) => {
+                        const role = e.target.value as SubAdminRole;
+                        setNewAdminForm({ ...newAdminForm, role });
+                        setSelectedPermissions([...ROLE_PERMISSIONS[role]]);
+                      }}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
                     >
                       <option value="admin">General Admin</option>
@@ -632,7 +682,7 @@ export default function SettingsPage() {
                     <label className="block text-sm font-semibold text-gray-900 mb-2">Department</label>
                     <select
                       value={newAdminForm.department}
-                      onChange={(e) => setNewAdminForm({ ...newAdminForm, department: e.target.value as any })}
+                      onChange={(e) => setNewAdminForm({ ...newAdminForm, department: e.target.value as SubAdmin['department'] })}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
                     >
                       <option value="general">General</option>
@@ -642,11 +692,17 @@ export default function SettingsPage() {
                     </select>
                   </div>
                 </div>
+                <PermissionSelector
+                  selected={selectedPermissions}
+                  onChange={setSelectedPermissions}
+                  role={newAdminForm.role}
+                />
                 <div className="flex gap-3 mt-6">
                   <button
                     onClick={() => {
                       setEditingAdmin(null);
                       setNewAdminForm({ fullName: '', email: '', role: 'admin', password: '', department: 'general' });
+                      setSelectedPermissions(ROLE_PERMISSIONS.admin);
                     }}
                     className="flex-1 px-4 py-3 border border-gray-300 rounded-lg text-gray-900 font-semibold hover:bg-gray-50"
                   >
@@ -711,7 +767,7 @@ export default function SettingsPage() {
                                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                                 }`}
                             >
-                              {subAdmin.isActive ? 'Active' : 'Inactive'}
+                              {subAdmin.isActive ? 'Active' : 'Suspended'}
                             </button>
                           </td>
                           <td className="px-8 py-4 text-sm flex gap-2">
@@ -892,7 +948,7 @@ export default function SettingsPage() {
         )}
 
         {/* Bank Details Tab */}
-        {activeTab === 'bank' && (
+        {activeTab === 'bank' && canManageStore && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="flex items-center justify-between mb-8">
               <div>
@@ -910,14 +966,14 @@ export default function SettingsPage() {
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-sm text-blue-800">
-                <span className="font-semibold">💡 Tip:</span> Click "Manage Bank Accounts" to add, edit, or switch between your payment accounts. Only the active account will be displayed to customers.
+                <span className="font-semibold">💡 Tip:</span> Click &quot;Manage Bank Accounts&quot; to add, edit, or switch between your payment accounts. Only the active account will be displayed to customers.
               </p>
             </div>
           </div>
         )}
 
         {/* Homepage Selection Tab */}
-        {activeTab === 'homepage' && (
+        {activeTab === 'homepage' && canManageStore && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-gray-900">General & Homepage Settings</h2>
@@ -1004,7 +1060,7 @@ export default function SettingsPage() {
                           Optional Product Prices
                         </h4>
                         <p className="text-xs text-gray-500 leading-relaxed">
-                          When enabled, you can upload or edit products without specifying a Sell Price or Rent Price. Products without prices will display as "Price on Request" on the storefront and won't be purchasable online.
+                          When enabled, you can upload or edit products without specifying a Sell Price or Rent Price. Products without prices will display as &quot;Price on Request&quot; on the storefront and won&apos;t be purchasable online.
                         </p>
                       </div>
                       <button
@@ -1029,5 +1085,93 @@ export default function SettingsPage() {
         )}
       </main>
     </div>
+  );
+}
+
+function PermissionSelector({
+  selected,
+  onChange,
+  role,
+}: {
+  selected: Permission[];
+  onChange: (permissions: Permission[]) => void;
+  role: SubAdminRole;
+}) {
+  const groups = ['Core', 'Commerce', 'Operations', 'Administration'] as const;
+  const togglePermission = (permission: Permission) => {
+    onChange(
+      selected.includes(permission)
+        ? selected.filter((item) => item !== permission)
+        : [...selected, permission]
+    );
+  };
+
+  return (
+    <section className="mt-7 rounded-2xl border border-gray-200 bg-gray-50/70 p-4 sm:p-6">
+      <div className="flex flex-col gap-3 border-b border-gray-200 pb-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h3 className="flex items-center gap-2 text-lg font-black text-gray-900">
+            <Lock className="h-5 w-5 text-lime-600" />
+            Roles and permissions
+          </h3>
+          <p className="mt-1 text-xs text-gray-500">
+            The role provides a starting template. Every permission below can be customized.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => onChange([...ROLE_PERMISSIONS[role]])}
+            className="rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-gray-700"
+          >
+            Reset to role
+          </button>
+          <button
+            type="button"
+            onClick={() => onChange(
+              selected.length === PERMISSION_CATALOG.length
+                ? []
+                : PERMISSION_CATALOG.map((permission) => permission.id)
+            )}
+            className="rounded-lg bg-[#142319] px-3 py-2 text-xs font-bold text-white"
+          >
+            {selected.length === PERMISSION_CATALOG.length ? 'Clear all' : 'Select all'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-5 space-y-5">
+        {groups.map((group) => (
+          <div key={group}>
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[.18em] text-gray-400">{group}</p>
+            <div className="grid gap-2 md:grid-cols-2">
+              {PERMISSION_CATALOG.filter((permission) => permission.group === group).map((permission) => {
+                const checked = selected.includes(permission.id);
+                return (
+                  <label
+                    key={permission.id}
+                    className={`flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition ${
+                      checked ? 'border-lime-400 bg-lime-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      onChange={() => togglePermission(permission.id)}
+                      className="mt-0.5 h-5 w-5 shrink-0 accent-lime-600"
+                    />
+                    <span>
+                      <span className="block text-sm font-black text-gray-900">{permission.label}</span>
+                      <span className="mt-0.5 block text-xs leading-relaxed text-gray-500">{permission.description}</span>
+                    </span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="mt-4 text-xs font-semibold text-gray-500">{selected.length} of {PERMISSION_CATALOG.length} permissions selected</p>
+    </section>
   );
 }

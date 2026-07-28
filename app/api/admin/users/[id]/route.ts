@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
-import { getRolePermissions, type AdminRole } from '@/lib/permissions';
+import { ALL_PERMISSIONS, getRolePermissions, type AdminRole, type Permission } from '@/lib/permissions';
 
 export async function PUT(
   request: NextRequest,
@@ -62,13 +62,25 @@ export async function PUT(
         { status: 404 }
       );
     }
+    if (admin.role === 'super_admin') {
+      return NextResponse.json(
+        { error: 'The Super Admin account cannot be modified through sub-admin management' },
+        { status: 403 }
+      );
+    }
 
     // Update admin
-    if (isActive !== undefined) {
+    let accessChanged = false;
+    if (typeof isActive === 'boolean') {
       admin.isActive = isActive;
+      // Suspension takes effect immediately on every browser/device.
+      if (!isActive) admin.sessions = [];
     }
-    if (permissions && Array.isArray(permissions)) {
-      admin.permissions = permissions;
+    if (Array.isArray(permissions)) {
+      admin.permissions = permissions.filter((permission): permission is Permission =>
+        typeof permission === 'string' && ALL_PERMISSIONS.includes(permission as Permission)
+      );
+      accessChanged = true;
     }
     if (typeof fullName === 'string' && fullName.trim()) {
       admin.fullName = fullName.trim();
@@ -79,13 +91,18 @@ export async function PUT(
         return NextResponse.json({ error: 'Invalid sub-admin role' }, { status: 400 });
       }
       admin.role = role;
-      if (!permissions) admin.permissions = getRolePermissions(role as AdminRole);
+      accessChanged = true;
+      if (!Array.isArray(permissions)) admin.permissions = getRolePermissions(role as AdminRole);
     }
     if (department !== undefined) {
       if (!['general', 'finance', 'logistics', 'sales'].includes(department)) {
         return NextResponse.json({ error: 'Invalid department' }, { status: 400 });
       }
       admin.department = department;
+    }
+    if (accessChanged) {
+      // New access rules take effect immediately on every active device.
+      admin.sessions = [];
     }
 
     await admin.save();

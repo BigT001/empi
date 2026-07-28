@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { EnhancedDashboard } from "../components/EnhancedDashboard";
 import { UsersPanel } from "./UsersPanel";
 import { PendingPanel } from "./PendingPanel";
@@ -38,17 +38,33 @@ export default function AdminDashboardPage() {
   // Active dashboard tab (dashboard | users | pending | products)
   // Default to 'dashboard' on each load - no localStorage persistence
   const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'pending' | 'products'>('dashboard');
+  const canViewTab = useCallback((tab: 'dashboard' | 'users' | 'pending' | 'products') => {
+    if (admin?.permissions?.includes('access_all_features')) return true;
+    const permissionByTab = {
+      dashboard: 'view_dashboard',
+      users: 'view_users',
+      pending: 'view_orders',
+      products: 'view_products',
+    } as const;
+    return Boolean(admin?.permissions?.includes(permissionByTab[tab]));
+  }, [admin?.permissions]);
   
   // Adjust default tab based on admin permissions
   useEffect(() => {
-    if (admin) {
-      const canViewDashboard = admin.permissions?.includes('all') || admin.permissions?.includes('view_dashboard');
-      if (!canViewDashboard) {
-        setActiveTab('pending');
-        window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: 'pending' } }));
+    const timer = window.setTimeout(() => {
+      if (admin) {
+        const canViewDashboard = canViewTab('dashboard');
+        if (!canViewDashboard) {
+          const fallback = (['pending', 'products', 'users'] as const).find(canViewTab);
+          if (fallback) {
+            setActiveTab(fallback);
+            window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: fallback } }));
+          }
+        }
       }
-    }
-  }, [admin]);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [admin, canViewTab]);
 
   // Use session expiry hook to detect logout
   const { sessionError } = useSessionExpiry();
@@ -64,21 +80,33 @@ export default function AdminDashboardPage() {
         if (detail && detail.tab) {
             const t = detail.tab;
             if (t === 'dashboard' || t === 'users' || t === 'pending' || t === 'products') {
-              setActiveTab(t);
+              if (canViewTab(t)) setActiveTab(t);
             }
         }
-      } catch (err) {
+      } catch {
         // ignore
       }
     };
 
     window.addEventListener('adminTabChange', onAdminTabChange as EventListener);
     return () => window.removeEventListener('adminTabChange', onAdminTabChange as EventListener);
-  }, []);
+  }, [canViewTab]);
 
   // Early returns AFTER all hooks are called
   if (!mounted || authLoading) {
     return null;
+  }
+
+  if (!(['dashboard', 'users', 'pending', 'products'] as const).some(canViewTab)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md rounded-2xl border bg-white p-8 text-center shadow-sm">
+          <AlertTriangle className="mx-auto h-10 w-10 text-amber-500" />
+          <h1 className="mt-4 text-xl font-black text-gray-900">No dashboard access assigned</h1>
+          <p className="mt-2 text-sm text-gray-600">Ask the Super Admin to assign at least one dashboard, customer, order, or product permission.</p>
+        </div>
+      </div>
+    );
   }
 
   // Show session error banner if present
@@ -105,25 +133,25 @@ export default function AdminDashboardPage() {
       {/* Content Area - ⚡ Lazy loaded panels only render when needed */}
       <main className="px-4 sm:px-6 lg:px-8 py-6 md:py-8 w-full pb-6 md:pb-0">
         {/* Enhanced Analytics Dashboard */}
-        {activeTab === 'dashboard' && (
+        {activeTab === 'dashboard' && canViewTab('dashboard') && (
           <div className="animate-fadeIn">
             <EnhancedDashboard />
           </div>
         )}
 
-        {activeTab === 'users' && (
+        {activeTab === 'users' && canViewTab('users') && (
           <div className="animate-fadeIn">
             <UsersPanel />
           </div>
         )}
 
-        {activeTab === 'pending' && (
+        {activeTab === 'pending' && canViewTab('pending') && (
           <div className="animate-fadeIn">
             <PendingPanel />
           </div>
         )}
 
-        {activeTab === 'products' && (
+        {activeTab === 'products' && canViewTab('products') && (
           <div className="animate-fadeIn">
             <ProductsPanel />
           </div>

@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
+import type { IAdminSession } from '@/lib/models/Admin';
 import crypto from 'crypto';
 import { isRateLimited, recordFailedAttempt, clearRateLimit, getRemainingAttempts, getLockoutRemainingTime } from '@/lib/rate-limit';
-import { getRolePermissions, AdminRole } from '@/lib/permissions';
 
 // Session expires only on manual logout - set to 30 days (very long)
 const SESSION_EXPIRY = 30 * 24 * 60 * 60 * 1000; // 30 days
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find admin by email
-    let admin = await Admin.findOne({ email: email.toLowerCase() });
+    const admin = await Admin.findOne({ email: email.toLowerCase() });
 
     if (!admin) {
       recordFailedAttempt(clientIP);
@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       recordFailedAttempt(clientIP);
       console.log(`[Admin Login] ❌ Admin account disabled: ${email}`);
       return NextResponse.json(
-        { error: 'This admin account has been disabled' },
+        { error: 'This admin account has been suspended by the Super Admin' },
         { status: 403 }
       );
     }
@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
 
     // VERIFY the session was saved
     const verifyAdmin = await Admin.findOne({ _id: admin._id });
-    const savedSession = verifyAdmin?.sessions?.find((s: any) => s.token === sessionToken);
+    const savedSession = verifyAdmin?.sessions?.find((session: IAdminSession) => session.token === sessionToken);
     if (!savedSession) {
       console.error(`[Admin Login] ❌ Session not found after save - verification failed`);
       return NextResponse.json(
@@ -164,9 +164,6 @@ export async function POST(request: NextRequest) {
     console.log(`✅ Admin logged in successfully: ${email} from IP: ${clientIP}`);
     console.log(`[Admin Login] Session verified in database - token: ${sessionToken.substring(0, 8)}...`);
 
-    const rolePermissions = getRolePermissions(admin.role as AdminRole);
-    const mergedPermissions = Array.from(new Set([...(admin.permissions || []), ...rolePermissions]));
-
     // Create response with admin data
     const response = NextResponse.json(
       {
@@ -175,7 +172,7 @@ export async function POST(request: NextRequest) {
         email: admin.email,
         fullName: admin.fullName,
         role: admin.role,
-        permissions: mergedPermissions,
+        permissions: admin.permissions || [],
         lastLogin: admin.lastLogin,
       },
       { status: 200 }
@@ -195,10 +192,10 @@ export async function POST(request: NextRequest) {
     console.log(`[Admin Login] ✅ Session cookie set for: ${admin.email}, expires in ${SESSION_EXPIRY / (1000 * 60 * 60 * 24)} days`);
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Admin login error:', error);
     return NextResponse.json(
-      { error: error.message || 'Login failed' },
+      { error: error instanceof Error ? error.message : 'Login failed' },
       { status: 500 }
     );
   }

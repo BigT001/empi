@@ -43,8 +43,7 @@ const sidebarItems: SidebarItem[] = [
     href: "/admin/dashboard",
     icon: <Users className="h-5 w-5" />,
     tab: 'users',
-    permission: 'view_dashboard',
-    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
+    permission: 'view_users',
   },
   {
     name: "Orders",
@@ -146,18 +145,13 @@ export function AdminSidebar() {
     return false;
   };
 
-  // Check if item should be visible based on permissions and role
+  // Feature visibility is permission-driven. Role templates only provide
+  // defaults; the Super Admin can override individual permissions.
   const isItemVisible = (item: SidebarItem): boolean => {
     // Check if admin has the required permission
     if (item.permission) {
       if (!admin?.permissions) return false;
       if (!hasPermission(admin.permissions, item.permission as Permission)) return false;
-    }
-
-    // Check if admin's role is allowed for this item
-    if (item.roles && item.roles.length > 0) {
-      if (!admin?.role) return false;
-      if (!item.roles.includes(admin.role)) return false;
     }
 
     return true;

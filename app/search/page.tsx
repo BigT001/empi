@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Search, AlertCircle, ChevronDown } from "lucide-react";
+import { ArrowLeft, Search, AlertCircle } from "lucide-react";
 import { ProductCard } from "@/app/components/ProductCard";
 import { CURRENCY_RATES } from "@/app/components/constants";
 
@@ -33,11 +33,6 @@ interface PaginationData {
   hasMore: boolean; 
 }
 
-const COSTUME_TYPES = ['Angel', 'Carnival', 'Western', 'Traditional Africa', 'Cosplay', 'Other'];
-const TRADITIONAL_AFRICA_COUNTRIES = ['Nigeria', 'Ghana', 'South Africa', 'Egypt', 'Algeria', 'Congo', 'Kenya'];
-const COLORS = ['Red', 'Blue', 'Black', 'White', 'Gold', 'Silver', 'Purple', 'Green', 'Pink', 'Yellow', 'Orange', 'Brown'];
-const MATERIALS = ['Cotton', 'Polyester', 'Satin', 'Silk', 'Velvet', 'Leather', 'Synthetic'];
-
 function SearchResultsContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -49,6 +44,8 @@ function SearchResultsContent() {
 
   // Sync local query when URL query changes
   useEffect(() => {
+    // The URL is the source of truth when users navigate with browser history.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setLocalQuery(query);
   }, [query]);
 
@@ -74,13 +71,6 @@ function SearchResultsContent() {
   });
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Filter states
-  const [selectedType, setSelectedType] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("");
-  const [selectedColor, setSelectedColor] = useState("");
-  const [selectedMaterial, setSelectedMaterial] = useState("");
-  const [showFilters, setShowFilters] = useState(false);
-  
   // Header visibility state
   const [headerVisible, setHeaderVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -113,10 +103,6 @@ function SearchResultsContent() {
         const params = new URLSearchParams();
         params.append("search", query);
         if (category) params.append("category", category);
-        if (selectedType) params.append("costumeType", selectedType);
-        if (selectedCountry) params.append("country", selectedCountry);
-        if (selectedColor) params.append("color", selectedColor);
-        if (selectedMaterial) params.append("material", selectedMaterial);
         params.append("page", currentPage.toString());
         params.append("limit", "12");
 
@@ -135,7 +121,7 @@ function SearchResultsContent() {
     };
 
     fetchSearchResults();
-  }, [query, category, selectedType, selectedCountry, selectedColor, selectedMaterial, currentPage]);
+  }, [query, category, currentPage]);
 
   // Handle scroll to hide/show header
   useEffect(() => {
@@ -159,7 +145,7 @@ function SearchResultsContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white dark:from-[#0a0a0a] dark:to-zinc-950 text-slate-900 dark:text-white transition-colors duration-300">
-      {/* Header with Search and Filters */}
+      {/* Header with search and result count */}
       <div className={`fixed md:sticky top-0 left-0 right-0 z-30 bg-white dark:bg-black border-b border-gray-200 dark:border-white/5 shadow-md transition-all duration-300 ${
         headerVisible ? "translate-y-0 opacity-100" : "-translate-y-full opacity-0 pointer-events-none"
       }`}>
@@ -186,115 +172,17 @@ function SearchResultsContent() {
             </form>
           </div>
 
-          {/* Results Info and Horizontal Filters */}
-          <div className="space-y-2">
-            {/* Info */}
-            <div className="flex items-center justify-between">
-              <div className="flex-1">
-                <p className="text-sm font-bold text-gray-900 dark:text-white">
-                  {pagination.total} result{pagination.total !== 1 ? "s" : ""} found
-                </p>
-                {query && <p className="text-xs text-gray-600 dark:text-gray-300">for <span className="font-semibold text-gray-900 dark:text-white">&quot;{query}&quot;</span></p>}
-              </div>
-              {(selectedType || selectedCountry || selectedColor || selectedMaterial) && (
-                <button
-                  onClick={() => {
-                    setSelectedType("");
-                    setSelectedCountry("");
-                    setSelectedColor("");
-                    setSelectedMaterial("");
-                    setCurrentPage(1);
-                  }}
-                  className="px-3 py-1 bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400 rounded-lg font-semibold hover:bg-red-200 dark:hover:bg-red-950/50 transition text-xs ml-2 flex-shrink-0"
-                >
-                  Clear
-                </button>
-              )}
-            </div>
-
-            {/* Horizontal Filters */}
-            <div className="flex flex-wrap gap-2 pb-1">
-              {/* Costume Type Filter */}
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">TYPE:</label>
-                <select
-                  value={selectedType}
-                  onChange={(e) => {
-                    setSelectedType(e.target.value);
-                    setSelectedCountry(""); // Reset country when type changes
-                    setCurrentPage(1);
-                  }}
-                  className="px-2 py-1 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white dark:bg-zinc-900 text-gray-900 dark:text-white hover:border-lime-400 transition cursor-pointer"
-                >
-                  <option value="">All</option>
-                  {COSTUME_TYPES.map(type => (
-                    <option key={type} value={type}>{type}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Country Filter - Only show if Traditional Africa is selected */}
-              {selectedType === "Traditional Africa" && (
-                <div className="flex items-center gap-1.5">
-                  <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">COUNTRY:</label>
-                  <select
-                    value={selectedCountry}
-                    onChange={(e) => {
-                      setSelectedCountry(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                    className="px-2 py-1 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white dark:bg-zinc-900 text-gray-900 dark:text-white hover:border-lime-400 transition cursor-pointer"
-                  >
-                    <option value="">All Countries</option>
-                    {TRADITIONAL_AFRICA_COUNTRIES.map(country => (
-                      <option key={country} value={country}>{country}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              {/* Color Filter */}
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">COLOR:</label>
-                <select
-                  value={selectedColor}
-                  onChange={(e) => {
-                    setSelectedColor(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="px-2 py-1 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white dark:bg-zinc-900 text-gray-900 dark:text-white hover:border-lime-400 transition cursor-pointer"
-                >
-                  <option value="">All</option>
-                  {COLORS.map(color => (
-                    <option key={color} value={color}>{color}</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Material Filter */}
-              <div className="flex items-center gap-1.5">
-                <label className="text-xs font-semibold text-gray-600 dark:text-gray-300 whitespace-nowrap">MATERIAL:</label>
-                <select
-                  value={selectedMaterial}
-                  onChange={(e) => {
-                    setSelectedMaterial(e.target.value);
-                    setCurrentPage(1);
-                  }}
-                  className="px-2 py-1 border border-gray-300 dark:border-white/10 rounded-md focus:outline-none focus:ring-2 focus:ring-lime-500 text-xs bg-white dark:bg-zinc-900 text-gray-900 dark:text-white hover:border-lime-400 transition cursor-pointer"
-                >
-                  <option value="">All</option>
-                  {MATERIALS.map(material => (
-                    <option key={material} value={material}>{material}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
+          <div>
+            <p className="text-sm font-bold text-gray-900 dark:text-white">
+              {pagination.total} result{pagination.total !== 1 ? "s" : ""} found
+            </p>
+            {query && <p className="text-xs text-gray-600 dark:text-gray-300">for <span className="font-semibold text-gray-900 dark:text-white">&quot;{query}&quot;</span></p>}
           </div>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-4 pt-32 md:pt-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-4 pt-28 md:pt-4">
         {/* Error State */}
         {error && !loading && (
           <div className="flex items-center gap-3 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 mb-6">
@@ -319,7 +207,7 @@ function SearchResultsContent() {
               No products found
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Try adjusting your search terms or filters
+              Try adjusting your search term
             </p>
             <Link
               href="/"
@@ -334,7 +222,7 @@ function SearchResultsContent() {
         {!loading && !error && products.length > 0 && (
           <>
             {/* Products Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4 mb-8">
               {products.map((product) => {
                 const productId = product.id || product._id || '';
                 return (
@@ -347,6 +235,7 @@ function SearchResultsContent() {
                     }}
                     formattedPrice={formatPrice(product.sellPrice)}
                     currency={currency}
+                    compactOnMobile
                   />
                 );
               })}

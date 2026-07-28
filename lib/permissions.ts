@@ -7,6 +7,7 @@ export type AdminRole = 'super_admin' | 'admin' | 'finance_admin' | 'logistics_a
 
 export type Permission = 
   | 'view_dashboard'
+  | 'view_users'
   | 'view_products'
   | 'view_orders'
   | 'view_finance'
@@ -20,12 +21,35 @@ export type Permission =
   | 'view_mail_room'
   | 'manage_mail_room';
 
+export const PERMISSION_CATALOG: Array<{
+  id: Permission;
+  label: string;
+  description: string;
+  group: 'Core' | 'Commerce' | 'Operations' | 'Administration';
+}> = [
+  { id: 'view_dashboard', label: 'Dashboard', description: 'View business overview and performance cards.', group: 'Core' },
+  { id: 'view_users', label: 'Customers', description: 'View registered customers and their information.', group: 'Core' },
+  { id: 'view_products', label: 'Products', description: 'View and manage the product catalogue.', group: 'Commerce' },
+  { id: 'view_orders', label: 'Orders', description: 'View and process customer orders.', group: 'Commerce' },
+  { id: 'view_finance', label: 'Finance', description: 'View sales, revenue, expenses, and finance reporting.', group: 'Commerce' },
+  { id: 'manage_payroll', label: 'Payroll', description: 'Manage staff payroll, adjustments, and payment records.', group: 'Commerce' },
+  { id: 'view_invoices', label: 'Invoices', description: 'View and manage customer invoices.', group: 'Commerce' },
+  { id: 'view_logistics', label: 'Logistics', description: 'Manage delivery and pickup operations.', group: 'Operations' },
+  { id: 'view_mail_room', label: 'Mail Room', description: 'View support mailboxes and conversations.', group: 'Operations' },
+  { id: 'manage_mail_room', label: 'Manage Mail Room', description: 'Configure mailboxes, services, and mail permissions.', group: 'Operations' },
+  { id: 'view_settings', label: 'Settings', description: 'View permitted system settings.', group: 'Administration' },
+  { id: 'manage_store_settings', label: 'Store Settings', description: 'Change storefront, bank, and system configuration.', group: 'Administration' },
+];
+
+export const ALL_PERMISSIONS = PERMISSION_CATALOG.map((permission) => permission.id);
+
 /**
  * Define permissions for each role
  */
 export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   super_admin: [
     'view_dashboard',
+    'view_users',
     'view_products',
     'view_orders',
     'view_finance',
@@ -41,6 +65,7 @@ export const ROLE_PERMISSIONS: Record<AdminRole, Permission[]> = {
   ],
   admin: [
     'view_dashboard',
+    'view_users',
     'view_products',
     'view_orders',
     'view_finance',
@@ -98,7 +123,7 @@ export function hasPermission(
   requiredPermission: Permission
 ): boolean {
   if (!adminPermissions) return false;
-  return adminPermissions.includes(requiredPermission);
+  return adminPermissions.includes('access_all_features') || adminPermissions.includes(requiredPermission);
 }
 
 /**
@@ -109,7 +134,8 @@ export function hasAnyPermission(
   requiredPermissions: Permission[]
 ): boolean {
   if (!adminPermissions) return false;
-  return requiredPermissions.some(permission => adminPermissions.includes(permission));
+  return adminPermissions.includes('access_all_features') ||
+    requiredPermissions.some(permission => adminPermissions.includes(permission));
 }
 
 /**
@@ -120,7 +146,8 @@ export function hasAllPermissions(
   requiredPermissions: Permission[]
 ): boolean {
   if (!adminPermissions) return false;
-  return requiredPermissions.every(permission => adminPermissions.includes(permission));
+  return adminPermissions.includes('access_all_features') ||
+    requiredPermissions.every(permission => adminPermissions.includes(permission));
 }
 
 /**

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
-import { getRolePermissions, AdminRole } from '@/lib/permissions';
+import type { IAdminSession } from '@/lib/models/Admin';
 
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes
 
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     if (!admin.isActive) {
       console.log('[Admin/Me API] ❌ Admin account inactive');
       return NextResponse.json(
-        { error: 'Admin account has been disabled' },
+        { error: 'This admin account has been suspended by the Super Admin' },
         { status: 403 }
       );
     }
@@ -66,10 +66,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const session = admin.sessions.find((s: any) => s.token === sessionToken);
+    const session = admin.sessions.find((item: IAdminSession) => item.token === sessionToken);
     if (!session) {
       console.log('[Admin/Me API] ❌ Session token not found in sessions array');
-      console.log('[Admin/Me API] Sessions in document:', admin.sessions.map((s: any) => ({ token: s.token?.substring(0, 8) + '...', createdAt: s.createdAt })));
+      console.log('[Admin/Me API] Sessions in document:', admin.sessions.map((item: IAdminSession) => ({ token: item.token?.substring(0, 8) + '...', createdAt: item.createdAt })));
       return NextResponse.json(
         { error: 'Session not found' },
         { status: 401 }
@@ -114,24 +114,21 @@ export async function GET(request: NextRequest) {
     const inactivityMinutes = Math.round(inactivityDuration / 1000 / 60);
     console.log(`[Admin/Me API] ✅ Admin authenticated: ${admin.email} (inactive for ${inactivityMinutes} mins - session valid, timer reset)`);
 
-    const rolePermissions = getRolePermissions(admin.role as AdminRole);
-    const mergedPermissions = Array.from(new Set([...(admin.permissions || []), ...rolePermissions]));
-
     const response = NextResponse.json({
       _id: admin._id,
       id: admin._id,
       email: admin.email,
       fullName: admin.fullName,
       role: admin.role,
-      permissions: mergedPermissions,
+      permissions: admin.permissions || [],
       lastLogin: admin.lastLogin,
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Admin/Me API] Auth check error:', error);
     return NextResponse.json(
-      { error: error.message || 'Auth check failed' },
+      { error: error instanceof Error ? error.message : 'Auth check failed' },
       { status: 500 }
     );
   }

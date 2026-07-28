@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
+import type { IAdminSession } from '@/lib/models/Admin';
 
 const INACTIVITY_TIMEOUT = 30 * 60 * 1000; // 30 minutes in milliseconds
 
@@ -44,8 +45,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!admin.isActive) {
+      await Admin.updateOne({ _id: admin._id }, { $set: { sessions: [] } });
+      return NextResponse.json(
+        { valid: false, error: 'This admin account has been suspended' },
+        { status: 403 }
+      );
+    }
+
     // Find the specific session
-    const session = admin.sessions.find((s: any) => s.token === sessionToken);
+    const session = admin.sessions.find((item: IAdminSession) => item.token === sessionToken);
 
     if (!session) {
       return NextResponse.json(
@@ -128,10 +137,10 @@ export async function POST(request: NextRequest) {
       },
       { status: 200 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Session Check] Error:', error);
     return NextResponse.json(
-      { valid: false, error: error.message || 'Session check failed' },
+      { valid: false, error: error instanceof Error ? error.message : 'Session check failed' },
       { status: 500 }
     );
   }

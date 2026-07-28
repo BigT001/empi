@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
+const ACTIVITY_CHECK_INTERVAL = 60 * 1000;
+
 /**
  * Hook to track user activity and reset session inactivity timeout
  * Monitors: mouse, keyboard, scroll, touch, focus
@@ -9,12 +11,10 @@ import { useEffect, useRef } from 'react';
  */
 export function useActivityTracker() {
   const activityTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  const lastActivityRef = useRef<number>(Date.now());
-  const isActiveRef = useRef<boolean>(true);
 
-  // Activity check interval: check every 5 minutes to see if we need to validate
+  // Validate frequently so suspension and permission changes revoke an active
+  // dashboard session promptly across every device.
   // This ensures the session stays alive as long as there's been activity
-  const ACTIVITY_CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
   useEffect(() => {
     let lastEventTime = 0;
@@ -24,9 +24,6 @@ export function useActivityTracker() {
         return;
       }
       lastEventTime = now;
-
-      lastActivityRef.current = now;
-      isActiveRef.current = true;
 
       // Clear any existing timeout
       if (activityTimeoutRef.current) {
@@ -62,6 +59,9 @@ export function useActivityTracker() {
           }, ACTIVITY_CHECK_INTERVAL);
         } else {
           console.log('[ActivityTracker] ❌ Session validation failed:', response.status);
+          if (response.status === 401 || response.status === 403) {
+            window.location.assign('/admin/login?access_revoked=true');
+          }
         }
       } catch (error) {
         console.error('[ActivityTracker] Error validating session:', error);
@@ -92,8 +92,4 @@ export function useActivityTracker() {
     };
   }, []);
 
-  return {
-    isActive: isActiveRef.current,
-    lastActivity: new Date(lastActivityRef.current),
-  };
 }

@@ -486,7 +486,10 @@ export default function MailRoomPage() {
     return Object.values(departmentCounts).reduce((sum, item) => sum + item.open, 0);
   };
 
-  const isSuperOrAdmin = currentAdmin?.role === 'super_admin' || currentAdmin?.role === 'admin';
+  const isSuperOrAdmin =
+    currentAdmin?.role === 'super_admin' ||
+    currentAdmin?.permissions?.includes('access_all_features') ||
+    currentAdmin?.permissions?.includes('manage_mail_room');
 
   return (
     <div className="h-screen bg-gray-50 flex flex-col font-sans overflow-hidden pb-16 md:pb-0">

@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ShoppingCart, Info } from "lucide-react";
+import { Info } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { CURRENCY_RATES } from "./constants";
@@ -30,29 +30,27 @@ interface ProductCardProps {
   product: Product;
   formattedPrice: string;
   currency?: string;
+  compactOnMobile?: boolean;
 }
 
-export function ProductCard({ product, formattedPrice: initialFormattedPrice, currency = "NGN" }: ProductCardProps) {
-  const { addItem, canAddItem, getCartMode } = useCart();
+export function ProductCard({ product, currency = "NGN", compactOnMobile = false }: ProductCardProps) {
+  const { addItem, canAddItem } = useCart();
   const [showNotification, setShowNotification] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   // Get safe product ID (handle both id and _id from MongoDB)
-  const productId = product.id || (product as any)._id || '';
+  const productId = product.id || product._id || '';
 
   // Determine availability
   const isCostumeShow = product.isCostumeShow === true || product.category === 'costume-show';
   const availableForBuy = product.availableForBuy !== false; // Default true
   const availableForRent = product.availableForRent !== false && (product.rentPrice !== undefined && product.rentPrice > 0);
   const isRentalOnly = availableForRent && !availableForBuy;
-  const isSaleOnly = availableForBuy && !availableForRent;
-
   // Set initial mode based on availability
   const initialMode = !availableForBuy ? "rent" : !availableForRent ? "buy" : "buy";
-  const { mode: cardMode, setMode: setCardMode, isHydrated } = useMode(productId, initialMode as any);
+  const { mode: cardMode, setMode: setCardMode } = useMode(productId, initialMode);
   const activeMode = cardMode;
-  const [mainImageIndex, setMainImageIndex] = useState(0);
 
   const showContent = !isCostumeShow || (availableForBuy && availableForRent);
 
@@ -101,7 +99,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
     ? product.imageUrls
     : [product.imageUrl];
 
-  const mainImage = allImages[mainImageIndex] || product.imageUrl;
+  const mainImage = allImages[0] || product.imageUrl;
 
   // Format price based on currency
   const formatPrice = (price: number | undefined | null) => {
@@ -174,29 +172,29 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
  
         {/* Content Section */}
         {showContent && (
-          <div className="p-4 md:p-8 flex flex-col flex-grow">
-            <div className="flex flex-col md:flex-row md:justify-between md:items-start gap-1 md:gap-4 mb-4">
+          <div className={`${compactOnMobile ? "p-2.5 sm:p-4" : "p-4"} md:p-8 flex flex-col flex-grow`}>
+            <div className={`flex flex-col md:flex-row md:justify-between md:items-start gap-1 md:gap-4 ${compactOnMobile ? "mb-2.5 sm:mb-4" : "mb-4"}`}>
               <div className="flex-grow">
                 <Link href={`/product/${productId}?mode=${activeMode}`}>
-                  <h3 className="text-lg md:text-2xl font-black text-slate-900 dark:text-white font-playfair leading-tight hover:text-lime-600 transition-colors line-clamp-2 md:line-clamp-1">
+                  <h3 className={`${compactOnMobile ? "text-xs sm:text-lg" : "text-lg"} md:text-2xl font-black text-slate-900 dark:text-white font-playfair leading-tight hover:text-lime-600 transition-colors line-clamp-2 md:line-clamp-1`}>
                     {product.name}
                   </h3>
                 </Link>
               </div>
-              <p className="text-lg md:text-lg font-black text-lime-600 font-outfit shrink-0">
+              <p className={`${compactOnMobile ? "text-sm sm:text-lg" : "text-lg"} md:text-lg font-black text-lime-600 font-outfit shrink-0`}>
                 {displayPrice}
               </p>
             </div>
  
             {/* Buy/Rent Toggle - Refined Pill Design */}
-            <div className="mt-auto pt-4 md:pt-6 border-t border-slate-100 dark:border-white/5 flex flex-col gap-3 md:gap-4">
-              <div className="flex items-center justify-between">
-                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">Service Option</span>
-                <div className="flex p-1 bg-slate-100 dark:bg-white/5 rounded-full border border-slate-200 dark:border-white/10">
+            <div className={`mt-auto ${compactOnMobile ? "pt-2.5" : "pt-4"} md:pt-6 border-t border-slate-100 dark:border-white/5 flex flex-col gap-3 md:gap-4`}>
+              <div className={`${compactOnMobile ? "flex flex-col items-stretch gap-1.5 sm:flex-row sm:items-center" : "flex items-center"} justify-between`}>
+                <span className={`${compactOnMobile ? "hidden sm:inline" : ""} text-[9px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500`}>Service Option</span>
+                <div className="flex justify-center p-1 bg-slate-100 dark:bg-white/5 rounded-full border border-slate-200 dark:border-white/10">
                   <button
                     onClick={() => availableForBuy && setCardMode("buy")}
                     disabled={!availableForBuy}
-                    className={`px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all ${cardMode === "buy"
+                    className={`${compactOnMobile ? "flex-1 px-2" : "px-3"} md:px-4 py-1 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all ${cardMode === "buy"
                       ? "bg-slate-900 text-white shadow-md"
                       : "text-slate-500 hover:text-slate-900 opacity-60"
                       }`}
@@ -206,7 +204,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
                   <button
                     onClick={() => availableForRent && setCardMode("rent")}
                     disabled={!availableForRent}
-                    className={`px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all ${cardMode === "rent"
+                    className={`${compactOnMobile ? "flex-1 px-2" : "px-3"} md:px-4 py-1 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest transition-all ${cardMode === "rent"
                       ? "bg-slate-900 text-white shadow-md"
                       : "text-slate-500 hover:text-slate-900 opacity-60"
                       }`}
@@ -218,7 +216,7 @@ export function ProductCard({ product, formattedPrice: initialFormattedPrice, cu
  
               {/* Availability Messaging with subtle icons */}
               {(!availableForBuy || !availableForRent) && (
-                <p className="flex items-center gap-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 italic">
+                <p className={`${compactOnMobile ? "hidden sm:flex" : "flex"} items-center gap-2 text-[10px] font-bold text-slate-500 dark:text-slate-400 italic`}>
                   <span className="w-1 h-1 rounded-full bg-lime-500" />
                   {isRentalOnly ? "This exclusive piece is reserved for rental only." : "This limited edition is available for sale only."}
                 </p>
