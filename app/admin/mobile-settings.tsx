@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Save, LogOut, AlertCircle, CheckCircle } from "lucide-react";
 
@@ -11,9 +11,45 @@ export default function MobileSettingsPage() {
   const [storeName, setStoreName] = useState("EMPI");
   const [storeEmail, setStoreEmail] = useState("store@empi.com");
   const [storePhone, setStorePhone] = useState("+234 (0) 123 456 7890");
+  const [isVatDisabled, setIsVatDisabled] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"profile" | "store" | "security">("profile");
+
+  useEffect(() => {
+    fetch("/api/vat-settings")
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.isVatDisabled === "boolean") {
+          setIsVatDisabled(data.isVatDisabled);
+        }
+      })
+      .catch(err => console.error("Failed to fetch VAT settings:", err));
+  }, []);
+
+  const handleToggleVat = async (disabled: boolean) => {
+    setIsLoading(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/vat-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isVatDisabled: disabled }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsVatDisabled(data.isVatDisabled);
+        setMessage(`✅ VAT ${data.isVatDisabled ? 'Disabled' : 'Enabled'} successfully`);
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage("❌ Failed to update VAT settings");
+      }
+    } catch {
+      setMessage("❌ Error updating VAT settings");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -210,6 +246,24 @@ export default function MobileSettingsPage() {
                 className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-lime-500 focus:border-transparent text-sm"
                 disabled={isLoading}
               />
+            </div>
+
+            {/* Global VAT Toggle */}
+            <div className={`p-4 rounded-xl border ${isVatDisabled ? 'bg-amber-50 border-amber-300' : 'bg-emerald-50 border-emerald-300'}`}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Disable VAT (0% Tax)</p>
+                  <p className="text-xs text-gray-600 mt-0.5">Turns off VAT globally across store checkouts & invoices.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleToggleVat(!isVatDisabled)}
+                  disabled={isLoading}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isVatDisabled ? 'bg-amber-600' : 'bg-gray-300'}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isVatDisabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
             </div>
 
             {/* Save Button */}

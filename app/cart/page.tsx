@@ -24,6 +24,7 @@ export default function CartPage() {
   const router = useRouter();
 
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isVatDisabled, setIsVatDisabled] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showRentalPolicy, setShowRentalPolicy] = useState(false);
   const [showDeliveryModal, setShowDeliveryModal] = useState(false);
@@ -42,6 +43,16 @@ export default function CartPage() {
     setIsHydrated(true);
     const saved = localStorage.getItem("empi_shipping_option");
     if (saved) setShippingOption(saved as "empi" | "self");
+
+    // Fetch dynamic VAT settings
+    fetch("/api/vat-settings")
+      .then((res) => res.json())
+      .then((data) => {
+        if (typeof data.isVatDisabled === "boolean") {
+          setIsVatDisabled(data.isVatDisabled);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch VAT settings in cart:", err));
   }, []);
 
   const handleShippingChange = (option: "empi" | "self") => {
@@ -144,7 +155,8 @@ export default function CartPage() {
 
   const shippingCost = shippingOption === "empi" && deliveryQuote ? deliveryQuote.fee : 0;
   // VAT is only on goods/services (NOT on caution fee)
-  const taxEstimate = subtotalForVAT > 0 ? (subtotalForVAT * 0.075).toFixed(2) : "0.00";
+  const vatRate = isVatDisabled ? 0 : 0.075;
+  const taxEstimate = subtotalForVAT > 0 ? (subtotalForVAT * vatRate).toFixed(2) : "0.00";
   const totalAmount = subtotalWithDiscount + shippingCost + parseFloat(taxEstimate);
   const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -521,7 +533,7 @@ export default function CartPage() {
                   {/* Delivery row intentionally hidden; delivery handled separately */}
 
                   {/* VAT */}
-                  <div className="flex justify-between text-sm"><span className="text-gray-600">VAT (7.5%)</span><span>{formatPrice(parseFloat(taxEstimate))}</span></div>
+                  <div className="flex justify-between text-sm"><span className="text-gray-600">VAT ({isVatDisabled ? "0%" : "7.5%"})</span><span>{formatPrice(parseFloat(taxEstimate))}</span></div>
                 </div>
                 <div className="flex justify-between items-center mb-6 text-xl">
                   <span className="font-semibold">Total</span><span className="font-bold text-lime-600">{formatPrice(totalAmount)}</span>

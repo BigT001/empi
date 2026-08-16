@@ -37,6 +37,7 @@ export default function CheckoutPage() {
   }
 
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isVatDisabled, setIsVatDisabled] = useState(false);
   const shippingOption = "empi"; // Fixed to EMPI Delivery only
   const [successReference, setSuccessReference] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -70,6 +71,17 @@ export default function CheckoutPage() {
       }));
     }
   }, [buyer]);
+
+  useEffect(() => {
+    fetch("/api/vat-settings")
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.isVatDisabled === "boolean") {
+          setIsVatDisabled(data.isVatDisabled);
+        }
+      })
+      .catch(err => console.error("Failed to fetch VAT settings in checkout:", err));
+  }, []);
 
   // Payment Method States
   const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'manual'>('paystack');
@@ -372,7 +384,8 @@ export default function CheckoutPage() {
 
         // Total goods = buy after discount + rental (no discount)
         const goodsSubtotal = buySubtotalAfterDiscount + rentalSubtotal;
-        const taxAmount = Number((goodsSubtotal * VAT_RATE).toFixed(2));
+        const activeVatRate = isVatDisabled ? 0 : VAT_RATE;
+        const taxAmount = Number((goodsSubtotal * activeVatRate).toFixed(2));
         const totalAmount = goodsSubtotal + (cautionFee || 0) + shippingCost + taxAmount;
 
         // Log the subtotal breakdown for debugging
@@ -766,7 +779,8 @@ export default function CheckoutPage() {
     const goodsSubtotal = buySubtotalAfterDiscount + rentalSubtotal;
 
     // Tax calculated on goods only (not caution fee)
-    taxEstimate = goodsSubtotal * VAT_RATE;
+    const activeVatRate = isVatDisabled ? 0 : VAT_RATE;
+    taxEstimate = goodsSubtotal * activeVatRate;
 
     // Include caution fee in displayed subtotal and in final total
     displaySubtotal = buySubtotal + rentalSubtotal + (cautionFee || 0);
@@ -999,7 +1013,7 @@ export default function CheckoutPage() {
                 )}
                 
                 <div className="flex justify-between">
-                  <span>Tax (7.5%)</span>
+                  <span>Tax ({isVatDisabled ? "0%" : "7.5%"})</span>
                   <span className="font-semibold text-gray-900">₦{Math.round(taxEstimate).toLocaleString()}</span>
                 </div>
                 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import UnifiedOrder from '@/lib/models/UnifiedOrder';
+import Settings from '@/lib/models/Settings';
 import { createInvoiceFromOrder } from '@/lib/createInvoiceFromOrder';
 import { logOrderModeDiagnostics } from '@/lib/utils/orderDiagnostics';
 import { v2 as cloudinary } from 'cloudinary';
@@ -277,14 +278,19 @@ export async function POST(request: NextRequest) {
     // Auto-detect orderType if not provided
     const orderType = body.orderType || (body.designImages ? 'custom' : 'regular');
 
+    // Fetch store settings for VAT configuration
+    const storeSettings = await Settings.findOne({});
+    const isVatDisabled = Boolean(storeSettings?.isVatDisabled);
+    const vatRate = isVatDisabled ? 0 : 0.075;
+
     // For custom orders, ensure subtotal and total are provided or set defaults
     if (orderType === 'custom') {
       // If custom order doesn't have pricing, set placeholder values
       if (!body.subtotal) body.subtotal = 0;
-      // Calculate VAT (7.5%)
-      const vat = (body.subtotal as number) * 0.075;
-      if (!body.vat) body.vat = vat;
-      if (!body.total) body.total = (body.subtotal as number) + vat;
+      // Calculate VAT (7.5% or 0% if disabled)
+      const vat = (body.subtotal as number) * vatRate;
+      if (body.vat === undefined || body.vat === null) body.vat = vat;
+      if (!body.total) body.total = (body.subtotal as number) + (body.vat as number);
       console.log('[Unified Orders API] 💰 Custom order pricing:', {
         subtotal: body.subtotal,
         vat: body.vat,

@@ -41,6 +41,7 @@ export default function SettingsPage() {
   // Homepage Settings State
   const [activeHomePageSetting, setActiveHomePageSetting] = useState<"default" | "costume-show">("default");
   const [isPriceOptionalSetting, setIsPriceOptionalSetting] = useState(false);
+  const [isVatDisabledSetting, setIsVatDisabledSetting] = useState(false);
   const [loadingHomepage, setLoadingHomepage] = useState(false);
 
   // Sub-Admins State
@@ -133,7 +134,10 @@ export default function SettingsPage() {
   const fetchHomepageSettings = async () => {
     try {
       setLoadingHomepage(true);
-      const res = await fetch("/api/admin/homepage-settings");
+      const [res, vatRes] = await Promise.all([
+        fetch("/api/admin/homepage-settings"),
+        fetch("/api/admin/vat-settings")
+      ]);
       if (res.ok) {
         const data = await res.json();
         if (data.activeHomePage) {
@@ -143,8 +147,14 @@ export default function SettingsPage() {
           setIsPriceOptionalSetting(data.isPriceOptional);
         }
       }
+      if (vatRes.ok) {
+        const vatData = await vatRes.json();
+        if (typeof vatData.isVatDisabled === "boolean") {
+          setIsVatDisabledSetting(vatData.isVatDisabled);
+        }
+      }
     } catch (err) {
-      console.error("Error fetching homepage settings:", err);
+      console.error("Error fetching homepage/vat settings:", err);
     } finally {
       setLoadingHomepage(false);
     }
@@ -194,6 +204,31 @@ export default function SettingsPage() {
       }
     } catch (err) {
       setMessage({ type: "error", text: "Error saving settings" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleToggleVatDisabled = async (disabled: boolean) => {
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/vat-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isVatDisabled: disabled }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsVatDisabledSetting(data.isVatDisabled);
+        setMessage({ type: "success", text: `VAT has been ${data.isVatDisabled ? 'disabled' : 'enabled'} globally!` });
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        const error = await res.json();
+        setMessage({ type: "error", text: error.error || "Failed to update VAT settings" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error saving VAT settings" });
     } finally {
       setIsSaving(false);
     }
@@ -1073,6 +1108,44 @@ export default function SettingsPage() {
                         <span
                           className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                             isPriceOptionalSetting ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* VAT Tax Toggle Card */}
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900 mt-8 mb-2">VAT & Tax Configuration</h3>
+                    <p className="text-gray-600 text-sm mb-4">Globally enable or disable VAT calculations across all purchases and invoices.</p>
+                  </div>
+
+                  <div className={`p-6 rounded-2xl border-2 transition ${isVatDisabledSetting ? 'border-amber-500 bg-amber-50/20 shadow-md shadow-amber-500/5' : 'border-emerald-500 bg-emerald-50/20 shadow-md shadow-emerald-500/5'}`}>
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-1 pr-4">
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-sm font-bold text-gray-900">
+                            Disable Store VAT (0% Tax)
+                          </h4>
+                          <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full ${isVatDisabledSetting ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
+                            {isVatDisabledSetting ? 'Disabled' : 'Standard 7.5% Active'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          When toggled ON (disabled), VAT is set to 0% across all store checkouts, custom quotes, invoices, and cart summaries. Toggle OFF to re-enable standard 7.5% VAT.
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleToggleVatDisabled(!isVatDisabledSetting)}
+                        disabled={isSaving}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                          isVatDisabledSetting ? 'bg-amber-600' : 'bg-gray-300'
+                        }`}
+                        title={isVatDisabledSetting ? 'VAT is Disabled' : 'VAT is Active'}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            isVatDisabledSetting ? 'translate-x-6' : 'translate-x-1'
                           }`}
                         />
                       </button>

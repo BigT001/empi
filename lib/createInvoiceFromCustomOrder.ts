@@ -3,6 +3,7 @@ import { ICustomOrder } from '@/lib/models/CustomOrder';
 import { sendInvoiceEmail } from '@/lib/email';
 import { generateProfessionalInvoiceHTML } from '@/lib/professionalInvoice';
 import connectDB from '@/lib/mongodb';
+import Settings from '@/lib/models/Settings';
 import { getActiveBankAccount } from '@/lib/utils/bank';
 
 /**
@@ -26,14 +27,17 @@ export async function createInvoiceFromCustomOrder(customOrder: ICustomOrder): P
     await connectDB();
     console.log(`📡 Database connected for custom order invoice creation`);
 
+    const settings = await Settings.findOne({});
+    const isVatDisabled = Boolean(settings?.isVatDisabled);
+
     // Generate invoice number
     const invoiceNumber = generateInvoiceNumber();
     const invoiceDate = new Date();
     const dueDate = new Date();
     dueDate.setDate(dueDate.getDate() + 30); // 30 days payment term
 
-    // Calculate VAT (7.5%)
-    const VAT_RATE = 0.075;
+    // Calculate VAT (7.5% or 0% if disabled)
+    const VAT_RATE = isVatDisabled ? 0 : 0.075;
     const subtotal = customOrder.quotedPrice || 0;
     const vat = subtotal * VAT_RATE;
     const totalAmount = subtotal + vat;
@@ -80,7 +84,7 @@ export async function createInvoiceFromCustomOrder(customOrder: ICustomOrder): P
       dueDate,
       currency: 'NGN',
       currencySymbol: '₦',
-      taxRate: 7.5,
+      taxRate: isVatDisabled ? 0 : 7.5,
       type: (customOrder as any).paymentMethod === 'manual' ? 'manual' : 'automatic',
       status: customOrder.paymentVerified ? 'paid' : 'sent',
       paymentVerified: customOrder.paymentVerified || false,

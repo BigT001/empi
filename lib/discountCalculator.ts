@@ -42,12 +42,13 @@ export function getDiscountLabel(quantity: number): string {
  * @param quantity - Number of units
  * @returns Object with pricing breakdown
  */
-export function calculateQuote(basePrice: number, quantity: number) {
+export function calculateQuote(basePrice: number, quantity: number, isVatDisabled?: boolean) {
   const subtotal = basePrice * quantity;
   const discountPercentage = getDiscountPercentage(quantity);
   const discountAmount = subtotal * (discountPercentage / 100);
   const subtotalAfterDiscount = subtotal - discountAmount;
-  const vat = subtotalAfterDiscount * VAT_RATE;
+  const effectiveVatRate = isVatDisabled ? 0 : VAT_RATE;
+  const vat = subtotalAfterDiscount * effectiveVatRate;
   const total = subtotalAfterDiscount + vat;
 
   return {

@@ -13,6 +13,7 @@ import {
   ArrowDown,
   ShoppingCart,
   Search,
+  CheckCircle2,
 } from "lucide-react";
 import OfflineOrdersTable from "./offline-orders-table";
 import { getTotalOnlineVAT, getTotalOfflineVAT, getTotalInputVAT, getNetPayableVAT } from "@/lib/utils/vatCalculations.client";
@@ -86,12 +87,57 @@ export default function VATTab() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [vatPeriod, setVatPeriod] = useState<VATPeriod | null>(null);
 
+  // Global VAT Toggle State
+  const [isVatDisabled, setIsVatDisabled] = useState(false);
+  const [isSavingVat, setIsSavingVat] = useState(false);
+  const [vatToggleMessage, setVatToggleMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
+
   // VAT Summary Card Values
   const [totalOnlineVAT, setTotalOnlineVAT] = useState(0);
   const [totalOfflineVAT, setTotalOfflineVAT] = useState(0);
   const [totalInputVAT, setTotalInputVAT] = useState(0);
   const [netPayableVAT, setNetPayableVAT] = useState(0);
   const [loadingVAT, setLoadingVAT] = useState(true);
+
+  // Fetch VAT Toggle settings from admin API
+  useEffect(() => {
+    fetch('/api/admin/vat-settings')
+      .then(res => res.json())
+      .then(data => {
+        if (typeof data.isVatDisabled === 'boolean') {
+          setIsVatDisabled(data.isVatDisabled);
+        }
+      })
+      .catch(err => console.error('Error fetching admin VAT settings:', err));
+  }, []);
+
+  const handleToggleVatSetting = async (disableVat: boolean) => {
+    setIsSavingVat(true);
+    setVatToggleMessage(null);
+    try {
+      const res = await fetch('/api/admin/vat-settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isVatDisabled: disableVat }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setIsVatDisabled(Boolean(data.isVatDisabled));
+        setVatToggleMessage({
+          type: 'success',
+          text: `VAT has been ${data.isVatDisabled ? 'disabled' : 'enabled'} globally across all checkouts and invoices.`,
+        });
+        setTimeout(() => setVatToggleMessage(null), 4000);
+      } else {
+        const errData = await res.json();
+        setVatToggleMessage({ type: 'error', text: errData.error || 'Failed to update VAT settings' });
+      }
+    } catch {
+      setVatToggleMessage({ type: 'error', text: 'Error connecting to server' });
+    } finally {
+      setIsSavingVat(false);
+    }
+  };
 
   // Calculate current VAT period (21st to 20th of next month)
   const calculateVATPeriod = (): VATPeriod => {
@@ -323,6 +369,69 @@ export default function VATTab() {
 
   return (
     <div className="space-y-8">
+      {/* VAT Toggle Notification Banner */}
+      {vatToggleMessage && (
+        <div className={`p-4 rounded-xl flex items-center justify-between border ${
+          vatToggleMessage.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-900'
+        }`}>
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            {vatToggleMessage.type === 'success' ? (
+              <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            ) : (
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            )}
+            <span>{vatToggleMessage.text}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Global VAT Control Toggle Card */}
+      <div className={`rounded-2xl border-2 p-6 shadow-sm transition-all ${
+        isVatDisabled ? 'bg-amber-50/70 border-amber-300' : 'bg-gradient-to-r from-emerald-50 to-lime-50 border-emerald-300'
+      }`}>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-4">
+            <div className={`p-3.5 rounded-2xl shrink-0 ${isVatDisabled ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700'}`}>
+              <DollarSign className="h-7 w-7" />
+            </div>
+            <div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h2 className="text-xl font-bold text-gray-900">Global VAT Status</h2>
+                <span className={`px-3 py-1 text-xs font-black uppercase tracking-wider rounded-full ${
+                  isVatDisabled ? 'bg-amber-200 text-amber-900' : 'bg-emerald-200 text-emerald-900'
+                }`}>
+                  {isVatDisabled ? 'Disabled (0% VAT)' : 'Active (7.5% VAT)'}
+                </span>
+              </div>
+              <p className="text-sm text-gray-600 mt-1 max-w-xl">
+                {isVatDisabled 
+                  ? 'VAT payment is currently turned OFF across all store checkouts, custom order quotes, invoices, and cart calculations. No tax will be added to customer orders.'
+                  : 'Standard 7.5% VAT applies to all store checkouts, custom order quotes, invoices, and product checkouts.'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 self-end sm:self-center">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-700">
+              {isVatDisabled ? 'VAT Disabled' : 'VAT Enabled'}
+            </span>
+            <button
+              onClick={() => handleToggleVatSetting(!isVatDisabled)}
+              disabled={isSavingVat}
+              className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-lime-500 focus:ring-offset-2 ${
+                isVatDisabled ? 'bg-gray-400' : 'bg-emerald-600'
+              }`}
+              title={isVatDisabled ? 'Click to Enable VAT' : 'Click to Disable VAT'}
+            >
+              <span
+                className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform shadow-md ${
+                  isVatDisabled ? 'translate-x-1' : 'translate-x-8'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* VAT Deadline Alert */}
       <div className={`rounded-2xl border-2 p-6 ${daysToDeadline <= 7 ? "bg-red-50 border-red-200" : "bg-amber-50 border-amber-200"}`}>
         <div className="flex items-start gap-4">

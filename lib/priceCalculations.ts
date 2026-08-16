@@ -24,7 +24,7 @@ export interface PriceBreakdown {
  * This is the single source of truth for all price calculations
  * Includes discount tiers based on quantity
  */
-export function calculatePrice(unitPrice: number, quantity: number): PriceBreakdown {
+export function calculatePrice(unitPrice: number, quantity: number, isVatDisabled?: boolean): PriceBreakdown {
   const roundedUnitPrice = Math.round(unitPrice);
   const roundedQuantity = Math.round(quantity);
   
@@ -32,7 +32,8 @@ export function calculatePrice(unitPrice: number, quantity: number): PriceBreakd
   const discountPercentage = getDiscountPercentage(roundedQuantity);
   const discountAmount = Math.round(subtotal * (discountPercentage / 100));
   const subtotalAfterDiscount = Math.round(subtotal - discountAmount);
-  const vat = Math.round(subtotalAfterDiscount * VAT_RATE);
+  const effectiveVatRate = isVatDisabled ? 0 : VAT_RATE;
+  const vat = Math.round(subtotalAfterDiscount * effectiveVatRate);
   const total = Math.round(subtotalAfterDiscount + vat);
 
   return {
