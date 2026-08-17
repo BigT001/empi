@@ -39,11 +39,6 @@ const sidebarItems: SidebarItem[] = [
     tab: 'products',
   },
   {
-    name: "Add Product",
-    href: "/admin/upload",
-    icon: <Plus className="h-5 w-5" />,
-  },
-  {
     name: "Finance",
     href: "/admin/finance",
     icon: <BarChart3 className="h-5 w-5" />,

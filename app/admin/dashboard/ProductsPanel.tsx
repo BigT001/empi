@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Package, Search, AlertCircle, Trash2, Edit2, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Package, Search, AlertCircle, Trash2, Edit2, X, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import Image from "next/image";
 import EditProductModal from "../components/EditProductModal";
 
@@ -179,12 +179,21 @@ export function ProductsPanel() {
     <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-green-600 to-green-700 p-6 text-white">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
           <div>
             <h2 className="text-2xl font-bold">Products Catalog</h2>
             <p className="text-green-100 mt-1">{products.length} total products</p>
           </div>
-          <Package className="h-8 w-8 opacity-20" />
+          <div className="flex items-center gap-3">
+            <a
+              href="/admin/upload"
+              className="inline-flex items-center gap-2 px-4 py-2.5 bg-white text-green-750 hover:bg-green-50 font-bold text-sm rounded-xl shadow-sm hover:shadow-md transition active:scale-95 text-green-800"
+            >
+              <Plus className="h-4 w-4 stroke-[3]" />
+              <span>Add Product</span>
+            </a>
+            <Package className="h-8 w-8 opacity-30 hidden sm:block" />
+          </div>
         </div>
 
         {/* Search Bar */}

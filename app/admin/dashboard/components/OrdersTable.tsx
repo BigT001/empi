@@ -324,7 +324,7 @@ export function OrdersTable({
                             )}
                           </span>
                           <p className="text-[10px] font-bold text-gray-500 uppercase">
-                            {order.paymentMethod === 'manual' ? 'Bank Transfer' : 'Online (Paystack)'}
+                            {order.paymentMethod === 'manual' ? 'Bank Transfer' : 'Online Payment'}
                           </p>
                         </div>
                       </td>

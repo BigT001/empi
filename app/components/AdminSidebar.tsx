@@ -62,13 +62,6 @@ const sidebarItems: SidebarItem[] = [
     roles: ['super_admin', 'admin', 'sales_admin'],
   },
   {
-    name: "Add Product",
-    href: "/admin/upload",
-    icon: <Plus className="h-5 w-5" />,
-    permission: 'view_products',
-    roles: ['super_admin', 'admin'], // Finance and Logistics cannot access
-  },
-  {
     name: "Finance",
     href: "/admin/finance",
     icon: <BarChart3 className="h-5 w-5" />,
@@ -102,13 +95,6 @@ const sidebarItems: SidebarItem[] = [
     icon: <Mail className="h-5 w-5" />,
     permission: 'view_mail_room',
     roles: ['super_admin', 'admin', 'finance_admin', 'logistics_admin', 'sales_admin'],
-  },
-  {
-    name: "Change Password",
-    href: "/admin/settings/change-password",
-    icon: <KeyRound className="h-5 w-5" />,
-    permission: "view_dashboard",
-    roles: ["super_admin", "admin", "finance_admin", "logistics_admin", "sales_admin"],
   },
   {
     name: "Settings",
