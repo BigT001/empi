@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { Plus, BarChart3, Settings, LogOut, FileText, Database, Menu, Home, Truck, MessageCircle, Clock, Package, Users, Mail, WalletCards, KeyRound } from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
 import { hasPermission } from "@/lib/permissions";
@@ -33,21 +33,21 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   {
     name: "Dashboard",
-    href: "/admin/dashboard",
+    href: "/admin/dashboard?tab=dashboard",
     icon: <Home className="h-5 w-5" />,
     tab: 'dashboard',
     permission: 'view_dashboard',
   },
   {
     name: "Users",
-    href: "/admin/dashboard",
+    href: "/admin/dashboard?tab=users",
     icon: <Users className="h-5 w-5" />,
     tab: 'users',
     permission: 'view_users',
   },
   {
     name: "Orders",
-    href: "/admin/dashboard",
+    href: "/admin/dashboard?tab=pending",
     icon: <Clock className="h-5 w-5" />,
     tab: 'pending',
     permission: 'view_orders',
@@ -55,7 +55,7 @@ const sidebarItems: SidebarItem[] = [
   },
   {
     name: "Products",
-    href: "/admin/dashboard",
+    href: "/admin/dashboard?tab=products",
     icon: <Package className="h-5 w-5" />,
     tab: 'products',
     permission: 'view_products',
@@ -108,25 +108,34 @@ const sidebarItems: SidebarItem[] = [
 export function AdminSidebar() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { state, isMobile, setOpenMobile } = useSidebar();
   const { logout, admin } = useAdmin();
   const [stats, setStats] = useState({ pendingInvoices: 0, pendingOrders: 0, totalOrders: 0, totalProducts: 0, registeredCustomers: 0 });
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+
+  useEffect(() => {
+    if (pathname === "/admin/dashboard" || pathname === "/admin") {
+      const currentTab = searchParams?.get('tab') || 'dashboard';
+      setActiveTab(currentTab);
+    }
+  }, [pathname, searchParams]);
 
   const isActive = (href: string, tab?: string) => {
     // Determine if we're on dashboard
     const isOnDashboard = pathname === "/admin" || pathname === "/admin/dashboard";
     
     // If this menu item is for dashboard with a specific tab
-    if (href === "/admin/dashboard" && tab) {
-      // Only active if on dashboard AND this specific tab is the active tab
+    if (tab) {
       if (!isOnDashboard) return false;
-      return activeTab === tab;
+      const currentTab = searchParams?.get('tab') || activeTab || 'dashboard';
+      return currentTab === tab;
     }
     
     // For non-dashboard routes, only match exact pathname or nested paths
-    if (pathname === href) return true;
-    if (pathname.startsWith(href + "/")) return true;
+    const basePath = href.split('?')[0];
+    if (pathname === basePath) return true;
+    if (pathname.startsWith(basePath + "/")) return true;
     
     return false;
   };

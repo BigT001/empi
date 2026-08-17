@@ -1,8 +1,8 @@
 "use client";
 
-import { ReactNode, useState, useEffect } from "react";
+import { ReactNode, useState, useEffect, Suspense } from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { Menu, X, Home, Users, Clock, Package, Plus, BarChart3, FileText, MessageCircle, Truck, Settings, LogOut, Mail } from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
 
@@ -16,25 +16,25 @@ interface SidebarItem {
 const sidebarItems: SidebarItem[] = [
   {
     name: "Dashboard",
-    href: "/admin/dashboard",
+    href: "/admin/dashboard?tab=dashboard",
     icon: <Home className="h-5 w-5" />,
     tab: 'dashboard',
   },
   {
     name: "Users",
-    href: "/admin/dashboard",
+    href: "/admin/dashboard?tab=users",
     icon: <Users className="h-5 w-5" />,
     tab: 'users',
   },
   {
     name: "Orders",
-    href: "/admin/dashboard",
+    href: "/admin/dashboard?tab=pending",
     icon: <Clock className="h-5 w-5" />,
     tab: 'pending',
   },
   {
     name: "Products",
-    href: "/admin/dashboard",
+    href: "/admin/dashboard?tab=products",
     icon: <Package className="h-5 w-5" />,
     tab: 'products',
   },
@@ -80,6 +80,7 @@ export default function MobileAdminLayout({
   const [menuStats, setMenuStats] = useState({ pendingInvoices: 0, pendingOrders: 0 });
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { logout } = useAdmin();
 
   useEffect(() => {
@@ -107,6 +108,13 @@ export default function MobileAdminLayout({
 
   const [activeTab, setActiveTab] = useState<string>('dashboard');
 
+  useEffect(() => {
+    if (pathname === "/admin/dashboard" || pathname === "/admin") {
+      const currentTab = searchParams?.get('tab') || 'dashboard';
+      setActiveTab(currentTab);
+    }
+  }, [pathname, searchParams]);
+
   // Listen for tab changes from within the dashboard
   useEffect(() => {
     const handleTabChange = (event: Event) => {
@@ -120,16 +128,15 @@ export default function MobileAdminLayout({
   }, []);
 
   const isActive = (href: string, tab?: string) => {
-    if (href === "/admin/dashboard" || href === "/admin") {
-      if (!(pathname === '/admin' || pathname === '/admin/dashboard')) return false;
-      // Active if this specific tab is currently active
-      if (tab) {
-        return activeTab === tab;
-      }
-      return activeTab === 'dashboard';
+    const isOnDashboard = pathname === '/admin' || pathname === '/admin/dashboard';
+    if (tab) {
+      if (!isOnDashboard) return false;
+      const currentTab = searchParams?.get('tab') || activeTab || 'dashboard';
+      return currentTab === tab;
     }
     // For non-dashboard routes
-    return pathname === href || pathname.startsWith(href + '/');
+    const basePath = href.split('?')[0];
+    return pathname === basePath || pathname.startsWith(basePath + '/');
   };
 
   const handleMenuItemClick = (item: SidebarItem) => {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { EnhancedDashboard } from "../components/EnhancedDashboard";
 import { UsersPanel } from "./UsersPanel";
 import { PendingPanel } from "./PendingPanel";
@@ -10,34 +11,28 @@ import { useResponsive } from "@/app/hooks/useResponsive";
 import { useAdmin } from "@/app/context/AdminContext";
 import { BarChart3, AlertTriangle } from "lucide-react";
 
-// ⚡ LAZY LOAD panels with code splitting - dramatically reduces initial bundle size
-// Panels are intentionally minimal — dashboard now only shows Overview
-
-// ⚡ Skeleton loader for fast perceived performance
-function PanelSkeleton() {
-  return (
-    <div className="animate-pulse space-y-4">
-      <div className="h-40 bg-gray-200 rounded-lg"></div>
-      <div className="h-40 bg-gray-200 rounded-lg"></div>
-      <div className="h-40 bg-gray-200 rounded-lg"></div>
-    </div>
-  );
-}
-
-// Tab configuration: main dashboard + panels (rendered by activeTab)
-const TABS = [
-  { id: 'dashboard', label: 'Dashboard', icon: BarChart3, color: 'text-blue-600' },
-  { id: 'users', label: 'Users', icon: BarChart3, color: 'text-green-600' },
-  { id: 'pending', label: 'Pending', icon: BarChart3, color: 'text-orange-600' },
-  { id: 'products', label: 'Products', icon: BarChart3, color: 'text-purple-600' },
-] as const;
-
-export default function AdminDashboardPage() {
+function AdminDashboardContent() {
   const { mounted } = useResponsive();
   const { admin, isLoading: authLoading } = useAdmin();
+  const searchParams = useSearchParams();
+
+  const tabFromUrl = searchParams?.get('tab') as 'dashboard' | 'users' | 'pending' | 'products' | null;
+
   // Active dashboard tab (dashboard | users | pending | products)
-  // Default to 'dashboard' on each load - no localStorage persistence
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'pending' | 'products'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'pending' | 'products'>(() => {
+    if (tabFromUrl && ['dashboard', 'users', 'pending', 'products'].includes(tabFromUrl)) {
+      return tabFromUrl;
+    }
+    return 'dashboard';
+  });
+
+  // Sync activeTab whenever URL query param changes
+  useEffect(() => {
+    if (tabFromUrl && ['dashboard', 'users', 'pending', 'products'].includes(tabFromUrl)) {
+      setActiveTab(tabFromUrl);
+    }
+  }, [tabFromUrl]);
+
   const canViewTab = useCallback((tab: 'dashboard' | 'users' | 'pending' | 'products') => {
     if (admin?.permissions?.includes('access_all_features')) return true;
     const permissionByTab = {
@@ -48,7 +43,7 @@ export default function AdminDashboardPage() {
     } as const;
     return Boolean(admin?.permissions?.includes(permissionByTab[tab]));
   }, [admin?.permissions]);
-  
+
   // Adjust default tab based on admin permissions
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -69,19 +64,23 @@ export default function AdminDashboardPage() {
   // Use session expiry hook to detect logout
   const { sessionError } = useSessionExpiry();
 
-  // No localStorage persistence for tab preference
-  // Each session starts fresh with Dashboard view
-
   // Listen for same-window tab changes dispatched by the sidebar
   useEffect(() => {
     const onAdminTabChange = (e: Event) => {
       try {
         const detail = (e as CustomEvent).detail;
         if (detail && detail.tab) {
-            const t = detail.tab;
-            if (t === 'dashboard' || t === 'users' || t === 'pending' || t === 'products') {
-              if (canViewTab(t)) setActiveTab(t);
+          const t = detail.tab;
+          if (t === 'dashboard' || t === 'users' || t === 'pending' || t === 'products') {
+            if (canViewTab(t)) {
+              setActiveTab(t);
+              if (typeof window !== 'undefined') {
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', t);
+                window.history.replaceState({}, '', url.toString());
+              }
             }
+          }
         }
       } catch {
         // ignore
@@ -130,9 +129,7 @@ export default function AdminDashboardPage() {
 
   return (
     <div className="min-h-screen bg-linear-to-br from-gray-50 to-gray-100 pb-6 md:pb-0">
-      {/* Content Area - ⚡ Lazy loaded panels only render when needed */}
       <main className="px-4 sm:px-6 lg:px-8 py-6 md:py-8 w-full pb-6 md:pb-0">
-        {/* Enhanced Analytics Dashboard */}
         {activeTab === 'dashboard' && canViewTab('dashboard') && (
           <div className="animate-fadeIn">
             <EnhancedDashboard />
@@ -156,11 +153,22 @@ export default function AdminDashboardPage() {
             <ProductsPanel />
           </div>
         )}
-
-        {/* Only Overview content is shown */}
-
-
       </main>
     </div>
+  );
+}
+
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+        <div className="animate-pulse space-y-4 w-full max-w-4xl">
+          <div className="h-20 bg-gray-200 rounded-xl"></div>
+          <div className="h-64 bg-gray-200 rounded-xl"></div>
+        </div>
+      </div>
+    }>
+      <AdminDashboardContent />
+    </Suspense>
   );
 }
