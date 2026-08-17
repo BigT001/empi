@@ -2,8 +2,24 @@
 
 import { ReactNode, useState, useEffect, Suspense } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { Menu, X, Home, Users, Clock, Package, Plus, BarChart3, FileText, MessageCircle, Truck, Settings, LogOut, Mail } from "lucide-react";
+import {
+  Menu,
+  X,
+  LayoutDashboard,
+  Users,
+  ShoppingBag,
+  Package,
+  Truck,
+  TrendingUp,
+  WalletCards,
+  FileText,
+  Mail,
+  Settings,
+  LogOut,
+  ChevronRight
+} from "lucide-react";
 import { useAdmin } from "@/app/context/AdminContext";
 
 interface SidebarItem {
@@ -11,63 +27,91 @@ interface SidebarItem {
   href: string;
   icon: React.ReactNode;
   tab?: string;
+  badgeKey?: 'pendingOrders' | 'pendingInvoices';
 }
 
-const sidebarItems: SidebarItem[] = [
+interface SidebarGroup {
+  title: string;
+  items: SidebarItem[];
+}
+
+const sidebarGroups: SidebarGroup[] = [
   {
-    name: "Dashboard",
-    href: "/admin/dashboard?tab=dashboard",
-    icon: <Home className="h-5 w-5" />,
-    tab: 'dashboard',
+    title: "Overview",
+    items: [
+      {
+        name: "Dashboard",
+        href: "/admin/dashboard?tab=dashboard",
+        icon: <LayoutDashboard className="h-5 w-5" />,
+        tab: 'dashboard',
+      },
+      {
+        name: "Users",
+        href: "/admin/dashboard?tab=users",
+        icon: <Users className="h-5 w-5" />,
+        tab: 'users',
+      },
+    ]
   },
   {
-    name: "Users",
-    href: "/admin/dashboard?tab=users",
-    icon: <Users className="h-5 w-5" />,
-    tab: 'users',
+    title: "Commerce & Inventory",
+    items: [
+      {
+        name: "Orders",
+        href: "/admin/dashboard?tab=pending",
+        icon: <ShoppingBag className="h-5 w-5" />,
+        tab: 'pending',
+        badgeKey: 'pendingOrders',
+      },
+      {
+        name: "Products",
+        href: "/admin/dashboard?tab=products",
+        icon: <Package className="h-5 w-5" />,
+        tab: 'products',
+      },
+      {
+        name: "Logistics",
+        href: "/admin/logistics",
+        icon: <Truck className="h-5 w-5" />,
+      },
+    ]
   },
   {
-    name: "Orders",
-    href: "/admin/dashboard?tab=pending",
-    icon: <Clock className="h-5 w-5" />,
-    tab: 'pending',
+    title: "Finance & Payroll",
+    items: [
+      {
+        name: "Finance",
+        href: "/admin/finance",
+        icon: <TrendingUp className="h-5 w-5" />,
+      },
+      {
+        name: "Payroll",
+        href: "/admin/payroll",
+        icon: <WalletCards className="h-5 w-5" />,
+      },
+      {
+        name: "Invoices",
+        href: "/admin/invoices",
+        icon: <FileText className="h-5 w-5" />,
+        badgeKey: 'pendingInvoices',
+      },
+    ]
   },
   {
-    name: "Products",
-    href: "/admin/dashboard?tab=products",
-    icon: <Package className="h-5 w-5" />,
-    tab: 'products',
-  },
-  {
-    name: "Finance",
-    href: "/admin/finance",
-    icon: <BarChart3 className="h-5 w-5" />,
-  },
-  {
-    name: "Invoices",
-    href: "/admin/invoices",
-    icon: <FileText className="h-5 w-5" />,
-  },
-  {
-    name: "Reviews",
-    href: "/admin/reviews",
-    icon: <MessageCircle className="h-5 w-5" />,
-  },
-  {
-    name: "Logistics",
-    href: "/admin/logistics",
-    icon: <Truck className="h-5 w-5" />,
-  },
-  {
-    name: "Mail Room",
-    href: "/admin/mail-room",
-    icon: <Mail className="h-5 w-5" />,
-  },
-  {
-    name: "Settings",
-    href: "/admin/settings",
-    icon: <Settings className="h-5 w-5" />,
-  },
+    title: "System & Comms",
+    items: [
+      {
+        name: "Mail Room",
+        href: "/admin/mail-room",
+        icon: <Mail className="h-5 w-5" />,
+      },
+      {
+        name: "Settings",
+        href: "/admin/settings",
+        icon: <Settings className="h-5 w-5" />,
+      },
+    ]
+  }
 ];
 
 export default function MobileAdminLayout({
@@ -81,7 +125,7 @@ export default function MobileAdminLayout({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { logout } = useAdmin();
+  const { logout, admin } = useAdmin();
 
   useEffect(() => {
     setIsMounted(true);
@@ -115,7 +159,6 @@ export default function MobileAdminLayout({
     }
   }, [pathname, searchParams]);
 
-  // Listen for tab changes from within the dashboard
   useEffect(() => {
     const handleTabChange = (event: Event) => {
       if (event instanceof CustomEvent) {
@@ -134,30 +177,24 @@ export default function MobileAdminLayout({
       const currentTab = searchParams?.get('tab') || activeTab || 'dashboard';
       return currentTab === tab;
     }
-    // For non-dashboard routes
     const basePath = href.split('?')[0];
     return pathname === basePath || pathname.startsWith(basePath + '/');
   };
 
   const handleMenuItemClick = (item: SidebarItem) => {
     try {
-      if (typeof window !== 'undefined') {
-        if (item.tab) {
-          // For dashboard tabs, dispatch event and store in localStorage for persistence
-          window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: item.tab } }));
-        }
+      if (typeof window !== 'undefined' && item.tab) {
+        window.dispatchEvent(new CustomEvent('adminTabChange', { detail: { tab: item.tab } }));
       }
     } catch (e) {
       // ignore
     }
     setIsMenuOpen(false);
     
-    // If already on the admin page or dashboard, and this is a dashboard tab, don't navigate
     if (item.tab && (pathname === '/admin' || pathname === '/admin/dashboard')) {
       return;
     }
     
-    // Otherwise, navigate to the target href
     if (pathname !== item.href && !pathname.startsWith(item.href + '/')) {
       router.push(item.href);
     }
@@ -175,16 +212,13 @@ export default function MobileAdminLayout({
   const [lastScrollY, setLastScrollY] = useState(0);
 
   useEffect(() => {
-    let scrollTimeout: NodeJS.Timeout;
     const handleScroll = () => {
       const currentScrollY = window.scrollY;
-      
       if (currentScrollY < lastScrollY || currentScrollY < 50) {
         setIsHeaderVisible(true);
       } else if (currentScrollY > lastScrollY && currentScrollY > 100) {
         setIsHeaderVisible(false);
       }
-      
       setLastScrollY(currentScrollY);
     };
 
@@ -194,15 +228,27 @@ export default function MobileAdminLayout({
 
   return (
     <div className="md:hidden w-full relative">
-      {/* Header with Toggle Button */}
+      {/* Mobile Top Header Bar */}
       <header className={`fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 transition-transform duration-300 ease-in-out ${
         isHeaderVisible ? 'translate-y-0' : '-translate-y-full'
       }`}>
         <div className="flex items-center justify-between px-4 py-3 h-16">
-          <h1 className="text-lg font-bold text-gray-900">Admin Panel</h1>
+          <Link href="/admin/dashboard" className="flex items-center gap-2">
+            <Image
+              src="/logo/EMPI-2k24-LOGO-1.PNG"
+              alt="EMPI Logo"
+              width={90}
+              height={75}
+              className="h-8 w-auto object-contain"
+              priority
+            />
+            <span className="text-[10px] font-bold text-lime-700 bg-lime-50 px-1.5 py-0.5 rounded border border-lime-200 uppercase">
+              Admin
+            </span>
+          </Link>
           <button
             onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className="p-2.5 rounded-lg bg-lime-600 text-white hover:bg-lime-700 transition shadow-lg"
+            className="p-2 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition shadow"
             title={isMenuOpen ? "Close menu" : "Open menu"}
           >
             {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -210,86 +256,124 @@ export default function MobileAdminLayout({
         </div>
       </header>
 
-      {/* Sidebar Overlay */}
+      {/* Backdrop */}
       {isMenuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40"
+          className="fixed inset-0 bg-black/60 backdrop-blur-xs z-40"
           onClick={() => setIsMenuOpen(false)}
         />
       )}
 
-      {/* Sidebar Menu */}
+      {/* Slide-out Mobile Menu */}
       <div
-        className={`fixed top-0 left-0 h-screen w-64 bg-white shadow-xl z-40 transform transition-transform duration-300 ease-out overflow-y-auto ${
+        className={`fixed top-0 left-0 h-full w-72 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-out flex flex-col ${
           isMenuOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         {/* Menu Header */}
-        <div className="sticky top-0 bg-gradient-to-r from-lime-500 to-lime-600 text-white p-4 flex items-center justify-between shadow-md">
-          <h2 className="font-bold text-lg">Menu</h2>
+        <div className="bg-gray-900 text-white p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Image
+              src="/logo/EMPI-2k24-LOGO-1.PNG"
+              alt="EMPI Logo"
+              width={90}
+              height={75}
+              className="h-8 w-auto object-contain brightness-200"
+              priority
+            />
+            <span className="text-[10px] font-bold text-lime-400 uppercase tracking-widest">
+              Portal
+            </span>
+          </div>
           <button
             onClick={() => setIsMenuOpen(false)}
-            className="p-1 hover:bg-lime-400 rounded transition"
+            className="p-1.5 hover:bg-gray-800 text-gray-300 rounded-lg transition"
           >
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Menu Items */}
-        <div className="py-4 px-2 space-y-1">
-          {sidebarItems.map((item) => {
-            const active = isActive(item.href, item.tab);
-            return (
-              <button
-                key={item.tab ? `${item.href}-${item.tab}` : item.href}
-                onClick={() => handleMenuItemClick(item)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg font-medium transition-all text-left ${
-                  active
-                    ? "bg-gradient-to-r from-lime-500 to-lime-600 text-white shadow-md"
-                    : "text-gray-700 hover:bg-gray-100"
-                }`}
-              >
-                <div className="text-lg">{item.icon}</div>
-                <span>{item.name}</span>
-                {item.tab === 'pending' && menuStats.pendingOrders > 0 && (
-                  <span className="ml-auto inline-block w-2 h-2 rounded-full bg-amber-500" />
-                )}
-              </button>
-            );
-          })}
+        {/* Menu Items grouped */}
+        <div className="flex-1 overflow-y-auto p-3 space-y-4">
+          {sidebarGroups.map((group) => (
+            <div key={group.title} className="space-y-1">
+              <h3 className="px-3 text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                {group.title}
+              </h3>
+              <div className="space-y-0.5">
+                {group.items.map((item) => {
+                  const active = isActive(item.href, item.tab);
+                  const badgeVal = item.badgeKey ? menuStats[item.badgeKey] : 0;
+
+                  return (
+                    <button
+                      key={item.name}
+                      onClick={() => handleMenuItemClick(item)}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl font-semibold text-xs transition-all ${
+                        active
+                          ? "bg-gray-900 text-white shadow-md shadow-gray-900/10"
+                          : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={active ? "text-lime-400" : "text-gray-400"}>
+                          {item.icon}
+                        </div>
+                        <span>{item.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {badgeVal > 0 && (
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full border font-bold ${
+                            item.badgeKey === 'pendingOrders'
+                              ? 'bg-amber-500/15 text-amber-700 border-amber-500/30'
+                              : 'bg-blue-500/15 text-blue-700 border-blue-500/30'
+                          }`}>
+                            {badgeVal}
+                          </span>
+                        )}
+                        {active && (
+                          <ChevronRight className="h-3.5 w-3.5 text-lime-400 opacity-80" />
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Divider */}
-        <div className="border-t border-gray-200 my-4" />
-
-        {/* Logout Button */}
-        <div className="p-4">
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-4 py-3 text-red-600 hover:bg-red-50 rounded-lg font-medium transition-all border border-red-200 hover:border-red-300"
-          >
-            <LogOut className="h-5 w-5" />
-            <span>Logout</span>
-          </button>
+        {/* Footer Admin Profile */}
+        <div className="p-3 border-t border-gray-100 bg-gray-50/50">
+          <div className="flex items-center justify-between p-2 rounded-xl bg-white border border-gray-200">
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-lime-500 to-emerald-600 flex items-center justify-center text-black font-black text-xs shadow-xs shrink-0">
+                {(admin?.fullName || admin?.email || "A").substring(0, 2).toUpperCase()}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-bold text-gray-900 truncate">
+                  {admin?.fullName || admin?.email || "Admin"}
+                </span>
+                <span className="text-[9px] font-semibold text-lime-700 bg-lime-100 px-1.5 py-0.2 rounded w-max border border-lime-200 uppercase">
+                  {admin?.role?.replace('_', ' ') || "Super Admin"}
+                </span>
+              </div>
+            </div>
+            <button
+              onClick={handleLogout}
+              className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+              title="Logout"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-      </div>
-
-      {/* Fixed Toggle Button - Right Side */}
-      <div className="fixed top-4 right-4 z-50">
-        <button
-          onClick={() => setIsMenuOpen(!isMenuOpen)}
-          className="p-2.5 rounded-lg bg-lime-600 text-white hover:bg-lime-700 transition shadow-lg"
-          title={isMenuOpen ? "Close menu" : "Open menu"}
-        >
-          {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-        </button>
       </div>
 
       {/* Main Content */}
-      <main className="w-full min-h-screen bg-white pt-20">
+      <main className="w-full min-h-screen bg-gray-50/50 pt-16">
         {children}
       </main>
     </div>
   );
 }
-
