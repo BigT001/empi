@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import UnifiedOrder from '@/lib/models/UnifiedOrder';
-import { v4 as uuidv4 } from 'uuid';
+import crypto from 'crypto';
 import path from 'path';
 import fs from 'fs/promises';
 
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
     const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'payment-proofs');
     await fs.mkdir(uploadsDir, { recursive: true });
 
-    const fileName = `${uuidv4()}_${file.name}`;
+    const fileName = `${crypto.randomUUID()}_${file.name}`;
     const filePath = path.join(uploadsDir, fileName);
 
     const buffer = await file.arrayBuffer();
