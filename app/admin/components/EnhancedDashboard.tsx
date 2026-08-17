@@ -7,8 +7,27 @@ import {
   CumulativeRevenueChart,
   OrdersCountChart,
 } from './DashboardCharts';
-import { getTotalOnlineSales, getTotalOnlineRentals, getTotalOfflineSales, getTotalOfflineRentals, getTotalDailyExpenses } from '@/lib/utils/financeCalculations';
-import { getTotalOnlineVAT, getTotalOfflineVAT, getTotalInputVAT } from '@/lib/utils/vatCalculations.client';
+import {
+  TrendingUp,
+  DollarSign,
+  Wallet,
+  ShieldCheck,
+  ShoppingBag,
+  UserPlus,
+  Receipt,
+  Package,
+  Users,
+  RefreshCw,
+  Clock,
+  ArrowUpRight,
+  CheckCircle2,
+  AlertCircle,
+  Sparkles,
+  ChevronRight,
+  Activity,
+  Layers,
+  Award
+} from 'lucide-react';
 
 interface DailyMetrics {
   date: string;
@@ -18,6 +37,16 @@ interface DailyMetrics {
   ordersCount: number;
   rentalOrdersCount: number;
   salesOrdersCount: number;
+}
+
+interface StoreActivity {
+  id: string;
+  type: 'order' | 'user' | 'payment' | 'offline';
+  title: string;
+  subtitle: string;
+  timestamp: string;
+  badge: string;
+  badgeColor: string;
 }
 
 interface Analytics {
@@ -69,7 +98,8 @@ interface Analytics {
     offline: number;
   };
   dailyMetrics: DailyMetrics[];
-  topProducts: Array<{ name: string; unitsSold: number; revenue: number }>;
+  topProducts: Array<{ name: string; imageUrl?: string; unitsSold: number; revenue: number }>;
+  recentActivities: StoreActivity[];
   customerMetrics: {
     newCustomersThisMonth: number;
     returningCustomers: number;
@@ -77,28 +107,18 @@ interface Analytics {
   };
 }
 
-interface StatCard {
-  label: string;
-  value: string | number;
-  subtext?: string;
-  color: string;
-}
-
 // Function to calculate daily metrics from orders
 function calculateDailyMetrics(orders: any[]): DailyMetrics[] {
   const dailyMetricsMap = new Map<string, DailyMetrics>();
 
   orders.forEach((order: any) => {
-    // Only count verified online payments or any offline payments
     const isOnline = !order.isOffline;
     if (isOnline && order.paymentVerified !== true) return;
 
-    // Get order date
     const orderDate = order.createdAt || order.created_at || new Date();
     const dateObj = new Date(orderDate);
-    const dateStr = dateObj.toISOString().split('T')[0]; // Format: YYYY-MM-DD
+    const dateStr = dateObj.toISOString().split('T')[0];
 
-    // Initialize daily metric if not exists
     if (!dailyMetricsMap.has(dateStr)) {
       dailyMetricsMap.set(dateStr, {
         date: dateStr,
@@ -114,7 +134,6 @@ function calculateDailyMetrics(orders: any[]): DailyMetrics[] {
     const dailyMetric = dailyMetricsMap.get(dateStr)!;
     const items = order.items || [];
 
-    // Calculate revenue by item mode
     let orderSalesRevenue = 0;
     let orderRentalRevenue = 0;
     let hasRental = false;
@@ -132,7 +151,6 @@ function calculateDailyMetrics(orders: any[]): DailyMetrics[] {
         orderSalesRevenue += itemRevenue;
         hasSales = true;
       } else {
-        // If no mode specified, check if order has rentalDays to determine type
         if (item.rentalDays) {
           orderRentalRevenue += itemRevenue;
           hasRental = true;
@@ -143,7 +161,6 @@ function calculateDailyMetrics(orders: any[]): DailyMetrics[] {
       }
     });
 
-    // If no items or empty items, use order.total
     if (items.length === 0 && order.total) {
       orderSalesRevenue = order.total;
       hasSales = true;
@@ -154,296 +171,322 @@ function calculateDailyMetrics(orders: any[]): DailyMetrics[] {
     dailyMetric.totalRevenue += orderSalesRevenue + orderRentalRevenue;
     dailyMetric.ordersCount += 1;
 
-    if (hasRental) {
-      dailyMetric.rentalOrdersCount += 1;
-    }
-    if (hasSales) {
-      dailyMetric.salesOrdersCount += 1;
-    }
+    if (hasRental) dailyMetric.rentalOrdersCount += 1;
+    if (hasSales) dailyMetric.salesOrdersCount += 1;
   });
 
-  // Convert map to sorted array (by date, newest first)
-  return Array.from(dailyMetricsMap.values()).sort(
-    (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-  );
+  return Array.from(dailyMetricsMap.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export function EnhancedDashboard() {
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState<string>('Just now');
   const [error, setError] = useState<string | null>(null);
   const initialLoadRef = useRef(true);
 
-  useEffect(() => {
-    const fetchAnalytics = async () => {
-      try {
-        // Fetch all financial data using the same utilities as Finance Dashboard
-        const [onlineSales, onlineRentals, offlineSales, offlineRentals, expenses, onlineVAT, offlineVAT, inputVAT] = await Promise.all([
-          getTotalOnlineSales(),
-          getTotalOnlineRentals(),
-          getTotalOfflineSales(),
-          getTotalOfflineRentals(),
-          getTotalDailyExpenses(),
-          getTotalOnlineVAT(),
-          getTotalOfflineVAT(),
-          getTotalInputVAT()
-        ]);
+  const fetchAnalytics = async (isManual = false) => {
+    try {
+      if (isManual) setIsRefreshing(true);
+      setError(null);
 
-        const outputVAT = onlineVAT + offlineVAT;
-        const vatPayable = Math.max(outputVAT - inputVAT, 0);
+      const [ordersRes, offlineOrdersRes, productsRes, usersRes, expensesRes] = await Promise.all([
+        fetch("/api/orders/unified?limit=500&t=" + Date.now(), { cache: 'no-store' }),
+        fetch("/api/admin/offline-orders?t=" + Date.now(), { cache: 'no-store' }),
+        fetch("/api/products?t=" + Date.now(), { cache: 'no-store' }),
+        fetch("/api/admin/buyers?t=" + Date.now(), { cache: 'no-store' }),
+        fetch("/api/expenses?t=" + Date.now(), { cache: 'no-store' }),
+      ]);
 
-        // Fetch transaction counts and customer data with cache-busting
-        const ordersRes = await fetch("/api/orders/unified?t=" + Date.now(), {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          }
-        });
-        const offlineOrdersRes = await fetch("/api/admin/offline-orders?t=" + Date.now(), {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          }
-        });
-        const productsRes = await fetch("/api/products?t=" + Date.now(), {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          }
-        });
-        const usersRes = await fetch("/api/admin/buyers?t=" + Date.now(), {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0',
-          }
-        });
+      const ordersData = ordersRes.ok ? await ordersRes.json() : { orders: [], total: 0 };
+      const offlineOrdersData = offlineOrdersRes.ok ? await offlineOrdersRes.json() : { data: [], pagination: { total: 0 } };
+      const productsData = productsRes.ok ? await productsRes.json() : { data: [], pagination: { total: 0 } };
+      const usersData = usersRes.ok ? await usersRes.json() : { buyers: [], total: 0 };
+      const expensesData = expensesRes.ok ? await expensesRes.json() : { expenses: [] };
 
-        const ordersData = ordersRes.ok ? await ordersRes.json() : { orders: [], total: 0 };
-        const offlineOrdersData = offlineOrdersRes.ok ? await offlineOrdersRes.json() : { data: [], pagination: { total: 0 } };
-        const productsData = productsRes.ok ? await productsRes.json() : { data: [], pagination: { total: 0 } };
-        const usersData = usersRes.ok ? await usersRes.json() : { buyers: [], total: 0 };
+      const onlineOrders = ordersData.orders?.filter((o: any) => !o.isOffline) || [];
+      const offlineOrders = offlineOrdersData.data || [];
+      const allOrders = [...onlineOrders, ...offlineOrders];
+      const products = productsData.data || [];
+      const users = usersData.buyers || [];
+      const expensesList = expensesData.expenses || [];
 
-        const onlineOrders = ordersData.orders?.filter((o: any) => !o.isOffline) || [];
-        const offlineOrders = offlineOrdersData.data || [];
-        const allOrders = [...onlineOrders, ...offlineOrders];
-        const products = productsData.data || [];
-        const users = usersData.buyers || [];
-
-        const totalOrdersCount = ordersData.total || onlineOrders.length;
-        const totalOfflineOrdersCount = offlineOrdersData.pagination?.total || offlineOrders.length;
-        const totalProductsCount = productsData.pagination?.total || products.length;
-        const totalUsersCount = usersData.total || users.length;
-
-        const onlineCount = onlineOrders.length;
-        const offlineCount = offlineOrders.length;
-        const completedOrders = allOrders.filter((o: any) => o.status === 'completed' || o.status === 'delivered').length;
-        const pendingOrders = allOrders.filter((o: any) => o.status === 'pending' || o.status === 'processing').length;
-
-        // Count unique customers
-        const onlineCustomerEmails = new Set(onlineOrders.map((o: any) => o.email).filter(Boolean));
-        const offlineCustomerEmails = new Set(offlineOrders.map((o: any) => o.email).filter(Boolean));
-        const totalCustomerEmails = new Set([...onlineCustomerEmails, ...offlineCustomerEmails]);
-
-        const totalRevenue = onlineSales + onlineRentals + offlineSales + offlineRentals;
-        const grossProfit = totalRevenue - expenses;
-        const netProfit = grossProfit - vatPayable;
-        const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
-        const averageOrderValue = allOrders.length > 0 ? totalRevenue / allOrders.length : 0;
-        const completionRate = allOrders.length > 0 ? (completedOrders / allOrders.length) * 100 : 0;
-
-        const calculatedAnalytics: Analytics = {
-          summary: {
-            totalRevenue,
-            totalSalesRevenue: onlineSales + offlineSales,
-            totalRentalRevenue: onlineRentals + offlineRentals,
-            totalOrders: totalOrdersCount + totalOfflineOrdersCount,
-            completedOrders,
-            pendingOrders,
-            totalProducts: totalProductsCount,
-            totalCustomers: totalCustomerEmails.size,
-            registeredCustomers: totalUsersCount,
-            guestCustomers: Math.max(0, totalCustomerEmails.size - totalUsersCount),
-            averageOrderValue,
-            completionRate,
-          },
-          cautionFeeMetrics: {
-            totalCollected: 0,
-            totalRefunded: 0,
-            totalPartiallyRefunded: 0,
-            totalForfeited: 0,
-            pendingReturn: 0,
-            refundRate: 0,
-            averageRefundDays: 0,
-          },
-          expenseMetrics: {
-            count: 0,
-            totalAmount: expenses,
-            totalVAT: 0,
-          },
-          vatMetrics: {
-            totalVAT: outputVAT,
-            inputVAT,
-            outputVAT,
-            vatPayable,
-            vatExempt: 0,
-          },
-          revenueBreakdown: {
-            onlineSalesRevenue: onlineSales,
-            onlineRentalRevenue: onlineRentals,
-          },
-          offlineRevenueBreakdown: {
-            salesRevenue: offlineSales,
-            rentalRevenue: offlineRentals,
-          },
-          orderTypeBreakdown: {
-            online: onlineCount,
-            offline: offlineCount,
-          },
-          dailyMetrics: calculateDailyMetrics(allOrders),
-          topProducts: [],
-          customerMetrics: {
-            newCustomersThisMonth: users.filter((u: any) => {
-              if (!u.createdAt) return false;
-              const userDate = new Date(u.createdAt);
-              const now = new Date();
-              return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
-            }).length,
-            returningCustomers: totalCustomerEmails.size > 0 ? totalCustomerEmails.size - users.filter((u: any) => {
-              if (!u.createdAt) return false;
-              const userDate = new Date(u.createdAt);
-              const now = new Date();
-              return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
-            }).length : 0,
-            customerRetentionRate: totalCustomerEmails.size > 0 ? ((totalCustomerEmails.size - users.filter((u: any) => {
-              if (!u.createdAt) return false;
-              const userDate = new Date(u.createdAt);
-              const now = new Date();
-              return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
-            }).length) / totalCustomerEmails.size) * 100 : 0,
-          },
-        };
-
-        // Always update state immediately - React handles re-render optimization
-        if (initialLoadRef.current) {
-          setLoading(false);
-          initialLoadRef.current = false;
+      // Financial Calculation Inline Logic
+      let onlineSales = 0;
+      let onlineRentals = 0;
+      onlineOrders.forEach((order: any) => {
+        if (order.paymentVerified !== true) return;
+        const items = order.items || [];
+        if (items.length === 0) {
+          onlineSales += order.total || order.amount || 0;
+        } else {
+          items.forEach((item: any) => {
+            const itemRevenue = (item.price || 0) * (item.quantity || 1);
+            if (item.mode === 'rent' || item.rentalDays) {
+              onlineRentals += itemRevenue;
+            } else {
+              onlineSales += itemRevenue;
+            }
+          });
         }
-        setAnalytics(calculatedAnalytics);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching analytics:', err);
-        setError(err instanceof Error ? err.message : 'An error occurred');
+      });
+
+      let offlineSales = 0;
+      let offlineRentals = 0;
+      offlineOrders.forEach((order: any) => {
+        const items = order.items || [];
+        if (items.length === 0) {
+          offlineSales += order.total || order.amount || 0;
+        } else {
+          items.forEach((item: any) => {
+            const itemRevenue = (item.price || 0) * (item.quantity || 1);
+            if (item.mode === 'rent' || item.rentalDays) {
+              offlineRentals += itemRevenue;
+            } else {
+              offlineSales += itemRevenue;
+            }
+          });
+        }
+      });
+
+      const expenses = expensesList.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0);
+      const inputVAT = expensesList.reduce((sum: number, exp: any) => sum + (exp.vatAmount || 0), 0);
+      const outputVAT = (onlineSales + onlineRentals + offlineSales + offlineRentals) * 0.075;
+      const vatPayable = Math.max(0, outputVAT - inputVAT);
+
+      const totalOrdersCount = ordersData.total || onlineOrders.length;
+      const totalOfflineOrdersCount = offlineOrdersData.pagination?.total || offlineOrders.length;
+      const totalProductsCount = productsData.pagination?.total || products.length;
+      const totalUsersCount = usersData.total || users.length;
+
+      const onlineCount = onlineOrders.length;
+      const offlineCount = offlineOrders.length;
+      const completedOrders = allOrders.filter((o: any) => o.status === 'completed' || o.status === 'delivered').length;
+      const pendingOrders = allOrders.filter((o: any) => o.status === 'pending' || o.status === 'processing').length;
+
+      const onlineCustomerEmails = new Set(onlineOrders.map((o: any) => o.email).filter(Boolean));
+      const offlineCustomerEmails = new Set(offlineOrders.map((o: any) => o.email).filter(Boolean));
+      const totalCustomerEmails = new Set([...onlineCustomerEmails, ...offlineCustomerEmails]);
+
+      const totalRevenue = onlineSales + onlineRentals + offlineSales + offlineRentals;
+      const grossProfit = totalRevenue - expenses;
+      const netProfit = grossProfit - vatPayable;
+      const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
+      const averageOrderValue = allOrders.length > 0 ? totalRevenue / allOrders.length : 0;
+      const completionRate = allOrders.length > 0 ? (completedOrders / allOrders.length) * 100 : 0;
+
+      // Calculate Top Products/Costumes
+      const productSalesMap = new Map<string, { name: string; imageUrl?: string; unitsSold: number; revenue: number }>();
+      allOrders.forEach((o: any) => {
+        (o.items || []).forEach((item: any) => {
+          const name = item.name || item.title || 'Costume Item';
+          const price = item.price || 0;
+          const qty = item.quantity || 1;
+          const imageUrl = item.image || item.imageUrl || (Array.isArray(item.images) ? item.images[0] : undefined);
+
+          if (!productSalesMap.has(name)) {
+            productSalesMap.set(name, {
+              name,
+              imageUrl,
+              unitsSold: 0,
+              revenue: 0,
+            });
+          }
+          const current = productSalesMap.get(name)!;
+          current.unitsSold += qty;
+          current.revenue += price * qty;
+          if (!current.imageUrl && imageUrl) current.imageUrl = imageUrl;
+        });
+      });
+
+      const topProducts = Array.from(productSalesMap.values())
+        .sort((a, b) => b.revenue - a.revenue)
+        .slice(0, 6);
+
+      // Build Store Activity Stream
+      const recentActivities: StoreActivity[] = [];
+
+      allOrders.slice(0, 8).forEach((o: any) => {
+        const customerName = `${o.firstName || ''} ${o.lastName || ''}`.trim() || o.fullName || o.email || 'Guest Customer';
+        const orderNum = o.orderNumber || (o._id ? `#${o._id.slice(-6)}` : '#ORDER');
+        const isOffline = o.isOffline;
+
+        let badge = 'PENDING';
+        let badgeColor = 'bg-amber-100 text-amber-800 border-amber-200';
+        if (o.status === 'completed' || o.status === 'delivered') {
+          badge = 'COMPLETED';
+          badgeColor = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        } else if (o.status === 'approved' || o.paymentVerified) {
+          badge = 'VERIFIED';
+          badgeColor = 'bg-blue-100 text-blue-800 border-blue-200';
+        }
+
+        recentActivities.push({
+          id: `ord-${o._id || Math.random()}`,
+          type: isOffline ? 'offline' : 'order',
+          title: `${isOffline ? 'Offline Sale' : 'Online Order'} ${orderNum}`,
+          subtitle: `${customerName} • ₦${Number(o.total || 0).toLocaleString()}`,
+          timestamp: o.createdAt ? new Date(o.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Recently',
+          badge,
+          badgeColor,
+        });
+      });
+
+      users.slice(0, 4).forEach((u: any) => {
+        const name = `${u.firstName || ''} ${u.lastName || ''}`.trim() || u.name || u.email;
+        recentActivities.push({
+          id: `usr-${u._id || Math.random()}`,
+          type: 'user',
+          title: `New Customer Account`,
+          subtitle: `${name} (${u.email || ''})`,
+          timestamp: u.createdAt ? new Date(u.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Recently',
+          badge: 'USER',
+          badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+        });
+      });
+
+      const calculatedAnalytics: Analytics = {
+        summary: {
+          totalRevenue,
+          totalSalesRevenue: onlineSales + offlineSales,
+          totalRentalRevenue: onlineRentals + offlineRentals,
+          totalOrders: totalOrdersCount + totalOfflineOrdersCount,
+          completedOrders,
+          pendingOrders,
+          totalProducts: totalProductsCount,
+          totalCustomers: totalCustomerEmails.size,
+          registeredCustomers: totalUsersCount,
+          guestCustomers: Math.max(0, totalCustomerEmails.size - totalUsersCount),
+          averageOrderValue,
+          completionRate,
+        },
+        cautionFeeMetrics: {
+          totalCollected: 0,
+          totalRefunded: 0,
+          totalPartiallyRefunded: 0,
+          totalForfeited: 0,
+          pendingReturn: 0,
+          refundRate: 0,
+          averageRefundDays: 0,
+        },
+        expenseMetrics: {
+          count: expensesList.length,
+          totalAmount: expenses,
+          totalVAT: inputVAT,
+        },
+        vatMetrics: {
+          totalVAT: outputVAT,
+          inputVAT,
+          outputVAT,
+          vatPayable,
+          vatExempt: 0,
+        },
+        revenueBreakdown: {
+          onlineSalesRevenue: onlineSales,
+          onlineRentalRevenue: onlineRentals,
+        },
+        offlineRevenueBreakdown: {
+          salesRevenue: offlineSales,
+          rentalRevenue: offlineRentals,
+        },
+        orderTypeBreakdown: {
+          online: onlineCount,
+          offline: offlineCount,
+        },
+        dailyMetrics: calculateDailyMetrics(allOrders),
+        topProducts,
+        recentActivities,
+        customerMetrics: {
+          newCustomersThisMonth: users.filter((u: any) => {
+            if (!u.createdAt) return false;
+            const userDate = new Date(u.createdAt);
+            const now = new Date();
+            return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
+          }).length,
+          returningCustomers: totalCustomerEmails.size > 0 ? totalCustomerEmails.size - users.filter((u: any) => {
+            if (!u.createdAt) return false;
+            const userDate = new Date(u.createdAt);
+            const now = new Date();
+            return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
+          }).length : 0,
+          customerRetentionRate: totalCustomerEmails.size > 0 ? ((totalCustomerEmails.size - users.filter((u: any) => {
+            if (!u.createdAt) return false;
+            const userDate = new Date(u.createdAt);
+            const now = new Date();
+            return userDate.getMonth() === now.getMonth() && userDate.getFullYear() === now.getFullYear();
+          }).length) / totalCustomerEmails.size) * 100 : 0,
+        },
+      };
+
+      if (initialLoadRef.current) {
         setLoading(false);
+        initialLoadRef.current = false;
       }
-    };
+      setAnalytics(calculatedAnalytics);
+      setLastSyncTime(new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }));
+    } catch (err) {
+      console.error('Error fetching analytics:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred');
+      setLoading(false);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
-    // Initial fetch
+  useEffect(() => {
     fetchAnalytics();
-
-    // Refresh every 3 seconds for real-time updates
-    const interval = setInterval(fetchAnalytics, 3000);
+    const interval = setInterval(() => fetchAnalytics(false), 30000);
     return () => clearInterval(interval);
   }, []);
 
-  if (loading) {
+  if (loading && initialLoadRef.current) {
     return (
-      <div className="flex items-center justify-center h-screen bg-linear-to-br from-gray-50 to-gray-100">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-blue-100">
-            <svg
-              className="w-8 h-8 text-blue-600 animate-spin"
-              fill="none"
-              viewBox="0 0 24 24"
-            >
-              <circle
-                className="opacity-25"
-                cx="12"
-                cy="12"
-                r="10"
-                stroke="currentColor"
-                strokeWidth="4"
-              />
-              <path
-                className="opacity-75"
-                fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-              />
-            </svg>
-          </div>
-          <p className="text-gray-600">Loading dashboard...</p>
+      <div className="flex flex-col items-center justify-center min-h-[60vh]">
+        <div className="relative w-16 h-16 mb-4">
+          <div className="absolute inset-0 rounded-full border-4 border-blue-200 border-t-blue-600 animate-spin"></div>
+          <Sparkles className="absolute inset-0 m-auto w-6 h-6 text-blue-600 animate-pulse" />
         </div>
+        <p className="text-gray-600 font-medium">Loading store analytics & real-time metrics...</p>
       </div>
     );
   }
 
-  if (error) {
+  if (error && !analytics) {
     return (
-      <div className="flex items-center justify-center h-screen bg-linear-to-br from-gray-50 to-gray-100">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-red-100">
-            <svg className="w-8 h-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 8v4m0 4v.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
+      <div className="flex items-center justify-center min-h-[50vh] p-4">
+        <div className="text-center max-w-md bg-white rounded-2xl p-8 border border-red-100 shadow-xl">
+          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-red-50 text-red-600">
+            <AlertCircle className="w-8 h-8" />
           </div>
-          <p className="text-gray-600 mb-2">Error: {error}</p>
+          <h3 className="text-lg font-bold text-gray-900 mb-1">Failed to load Dashboard</h3>
+          <p className="text-gray-500 text-sm mb-6">{error}</p>
           <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+            onClick={() => fetchAnalytics(true)}
+            className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition shadow-md hover:shadow-blue-200 flex items-center justify-center gap-2 mx-auto"
           >
-            Retry
+            <RefreshCw className="w-4 h-4" /> Retry Loading
           </button>
         </div>
       </div>
     );
   }
 
-  if (!analytics) {
-    return null;
-  }
+  if (!analytics) return null;
 
-  const { summary, dailyMetrics, topProducts, customerMetrics, expenseMetrics, vatMetrics, revenueBreakdown, offlineRevenueBreakdown, orderTypeBreakdown } = analytics;
+  const {
+    summary,
+    dailyMetrics,
+    topProducts,
+    recentActivities,
+    customerMetrics,
+    expenseMetrics,
+    vatMetrics,
+    revenueBreakdown,
+    offlineRevenueBreakdown,
+    orderTypeBreakdown
+  } = analytics;
 
-  // Ensure summary exists before using it
-  if (!summary) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-linear-to-br from-gray-50 to-gray-100">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 mb-4 rounded-full bg-yellow-100">
-            <svg className="w-8 h-8 text-yellow-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <p className="text-gray-600 mb-2">Analytics data is loading...</p>
-          <button
-            onClick={() => window.location.reload()}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-          >
-            Refresh Page
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Calculate derived metrics - use cleaned Finance Dashboard calculations
   const totalRevenue = summary?.totalRevenue ?? 0;
   const totalExpenses = expenseMetrics?.totalAmount ?? 0;
   const vatPayable = vatMetrics?.vatPayable ?? 0;
@@ -451,7 +494,6 @@ export function EnhancedDashboard() {
   const netProfit = grossProfit - vatPayable;
   const profitMargin = totalRevenue > 0 ? ((netProfit / totalRevenue) * 100) : 0;
 
-  // Safe summary metrics
   const totalSalesRevenue = summary?.totalSalesRevenue ?? 0;
   const totalRentalRevenue = summary?.totalRentalRevenue ?? 0;
   const totalOrders = summary?.totalOrders ?? 0;
@@ -461,357 +503,354 @@ export function EnhancedDashboard() {
   const totalCustomers = summary?.totalCustomers ?? 0;
   const registeredCustomers = summary?.registeredCustomers ?? 0;
   const guestCustomers = summary?.guestCustomers ?? 0;
-  const averageOrderValue = summary?.averageOrderValue ?? 0;
-  const completionRate = summary?.completionRate ?? 0;
 
-  // Online/Offline breakdown - use actual values from Finance calculations
   const onlineSalesRevenue = revenueBreakdown?.onlineSalesRevenue ?? 0;
   const onlineRentalRevenue = revenueBreakdown?.onlineRentalRevenue ?? 0;
   const offlineSalesRevenue = offlineRevenueBreakdown?.salesRevenue ?? 0;
   const offlineRentalRevenue = offlineRevenueBreakdown?.rentalRevenue ?? 0;
-  const onlineTransactions = orderTypeBreakdown?.online ?? 0;
-  const offlineTransactions = orderTypeBreakdown?.offline ?? 0;
-
-  // PRIMARY FINANCIAL METRICS - REDESIGNED (Only 4 most important cards)
-  const primaryCards: StatCard[] = [
-    {
-      label: 'Total Revenue',
-      value: `₦${(totalRevenue ?? 0).toLocaleString()}`,
-      color: 'bg-blue-50 border-blue-200',
-    },
-    {
-      label: 'Net Profit',
-      value: `₦${(netProfit ?? 0).toLocaleString()}`,
-      subtext: `${(profitMargin ?? 0).toFixed(1)}% margin`,
-      color: 'bg-emerald-50 border-emerald-200',
-    },
-    {
-      label: 'Total Expenses',
-      value: `₦${(totalExpenses ?? 0).toLocaleString()}`,
-      color: 'bg-orange-50 border-orange-200',
-    },
-    {
-      label: 'VAT Payable',
-      value: `₦${(vatPayable ?? 0).toLocaleString()}`,
-      color: 'bg-purple-50 border-purple-200',
-    },
-  ];
-
-  // REVENUE BREAKDOWN - Secondary importance
-  const revenueCards: StatCard[] = [
-    {
-      label: 'Online Sales',
-      value: `₦${(onlineSalesRevenue ?? 0).toLocaleString()}`,
-      subtext: `${onlineTransactions} transactions`,
-      color: 'bg-green-50 border-green-200',
-    },
-    {
-      label: 'Online Rentals',
-      value: `₦${(onlineRentalRevenue ?? 0).toLocaleString()}`,
-      color: 'bg-teal-50 border-teal-200',
-    },
-    {
-      label: 'Offline Sales',
-      value: `₦${(offlineSalesRevenue ?? 0).toLocaleString()}`,
-      subtext: `${offlineTransactions} transactions`,
-      color: 'bg-yellow-50 border-yellow-200',
-    },
-    {
-      label: 'Offline Rentals',
-      value: `₦${(offlineRentalRevenue ?? 0).toLocaleString()}`,
-      color: 'bg-amber-50 border-amber-200',
-    },
-  ];
-
-  // SECONDARY METRICS (Compact cards for supporting data)
-  const secondaryCards: StatCard[] = [
-    {
-      label: 'Total Orders',
-      value: totalOrders,
-      subtext: `${completedOrders} completed`,
-      color: 'bg-indigo-50 border-indigo-200',
-    },
-    {
-      label: 'Total Products',
-      value: totalProducts,
-      subtext: `In catalog`,
-      color: 'bg-pink-50 border-pink-200',
-    },
-    {
-      label: 'Total Customers',
-      value: totalCustomers,
-      subtext: `${registeredCustomers} registered`,
-      color: 'bg-cyan-50 border-cyan-200',
-    },
-    {
-      label: 'New Customers',
-      value: customerMetrics?.newCustomersThisMonth ?? 0,
-      subtext: 'This month',
-      color: 'bg-sky-50 border-sky-200',
-    },
-  ];
-
-
-  const statColorMap: { [key: string]: string } = {
-    'bg-blue-50': 'text-blue-900',
-    'bg-green-50': 'text-green-900',
-    'bg-amber-50': 'text-amber-900',
-    'bg-purple-50': 'text-purple-900',
-    'bg-pink-50': 'text-pink-900',
-    'bg-teal-50': 'text-teal-900',
-    'bg-indigo-50': 'text-indigo-900',
-    'bg-cyan-50': 'text-cyan-900',
-    'bg-red-50': 'text-red-900',
-    'bg-yellow-50': 'text-yellow-900',
-    'bg-orange-50': 'text-orange-900',
-    'bg-emerald-50': 'text-emerald-900',
-  };
-
-  const borderColorMap: { [key: string]: string } = {
-    'border-blue-200': 'border-blue-200',
-    'border-green-200': 'border-green-200',
-    'border-amber-200': 'border-amber-200',
-    'border-purple-200': 'border-purple-200',
-    'border-pink-200': 'border-pink-200',
-    'border-teal-200': 'border-teal-200',
-    'border-indigo-200': 'border-indigo-200',
-    'border-cyan-200': 'border-cyan-200',
-    'border-red-200': 'border-red-200',
-    'border-yellow-200': 'border-yellow-200',
-    'border-orange-200': 'border-orange-200',
-    'border-emerald-200': 'border-emerald-200',
-  };
 
   return (
-    <div className="bg-linear-to-br from-gray-50 to-gray-100 min-h-screen p-4 md:p-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-          Dashboard Analytics
-        </h1>
-        <p className="text-gray-600">Real-time business metrics and performance data</p>
-      </div>
+    <div className="space-y-8 pb-10">
+      {/* 🟢 TOP CONTROL BAR */}
+      <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2.5 mb-1">
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Store Overview & Analytics</h1>
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live Sync
+            </span>
+          </div>
+          <p className="text-xs md:text-sm text-gray-500">
+            Real-time business performance, inventory sales, costume rentals, and customer updates.
+          </p>
+        </div>
 
-      {/* PRIMARY FINANCIAL METRICS - Large prominent cards */}
-      <div className="mb-8">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Key Financial Metrics</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {primaryCards.map((card, index) => {
-            const bgClass = card.color.split(' ')[0];
-            const borderClass = card.color.split(' ')[1];
-            const textColor = statColorMap[bgClass] || 'text-gray-900';
-            const borderColor = borderColorMap[borderClass] || 'border-gray-200';
+        <div className="flex items-center gap-3 self-end md:self-auto">
+          <div className="text-right text-xs text-gray-400 hidden sm:block">
+            <span>Last updated</span>
+            <p className="font-semibold text-gray-600">{lastSyncTime}</p>
+          </div>
 
-            return (
-              <div
-                key={index}
-                className={`${bgClass} ${borderColor} border-2 rounded-xl p-6 shadow-sm hover:shadow-lg transition duration-200`}
-              >
-                <p className="text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wide">{card.label}</p>
-                <p className={`text-3xl font-bold ${textColor} mb-1`}>
-                  {card.value}
-                </p>
-                {card.subtext && (
-                  <p className="text-xs text-gray-500 mt-2">{card.subtext}</p>
-                )}
-              </div>
-            );
-          })}
+          <button
+            onClick={() => fetchAnalytics(true)}
+            disabled={isRefreshing}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 text-sm font-semibold rounded-xl border border-gray-200 transition active:scale-95 disabled:opacity-50"
+            title="Refresh analytics data"
+          >
+            <RefreshCw className={`w-4 h-4 text-gray-500 ${isRefreshing ? 'animate-spin' : ''}`} />
+            <span>{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
+          </button>
         </div>
       </div>
 
-      {/* REVENUE BREAKDOWN - Secondary section */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Revenue Breakdown</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {revenueCards.map((card, index) => {
-            const bgClass = card.color.split(' ')[0];
-            const borderClass = card.color.split(' ')[1];
-            const textColor = statColorMap[bgClass] || 'text-gray-900';
-            const borderColor = borderColorMap[borderClass] || 'border-gray-200';
+      {/* 💎 4 PRIMARY FINANCIAL CARDS */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+        {/* Total Revenue */}
+        <div className="relative overflow-hidden bg-linear-to-br from-indigo-600 to-blue-700 text-white rounded-2xl p-6 shadow-lg shadow-indigo-100 group transition hover:-translate-y-1">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition duration-500"></div>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-indigo-100">Total Revenue</span>
+            <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-md">
+              <TrendingUp className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <p className="text-3xl font-extrabold text-white mb-2">₦{totalRevenue.toLocaleString()}</p>
+          <div className="flex items-center gap-2 text-xs text-indigo-100 font-medium">
+            <span className="bg-white/20 px-2 py-0.5 rounded-md">Sales: ₦{(totalSalesRevenue).toLocaleString()}</span>
+            <span className="bg-white/20 px-2 py-0.5 rounded-md">Rentals: ₦{(totalRentalRevenue).toLocaleString()}</span>
+          </div>
+        </div>
 
-            return (
-              <div
-                key={index}
-                className={`${bgClass} ${borderColor} border rounded-lg p-5 shadow-sm hover:shadow-md transition`}
-              >
-                <p className="text-sm font-medium text-gray-600 mb-2">{card.label}</p>
-                <p className={`text-2xl font-bold ${textColor}`}>
-                  {card.value}
-                </p>
-                {card.subtext && (
-                  <p className="text-xs text-gray-500 mt-2">{card.subtext}</p>
-                )}
-              </div>
-            );
-          })}
+        {/* Net Profit */}
+        <div className="relative overflow-hidden bg-linear-to-br from-emerald-600 to-teal-700 text-white rounded-2xl p-6 shadow-lg shadow-emerald-100 group transition hover:-translate-y-1">
+          <div className="absolute -right-4 -bottom-4 w-24 h-24 bg-white/10 rounded-full blur-xl group-hover:scale-150 transition duration-500"></div>
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-emerald-100">Net Profit</span>
+            <div className="p-2.5 bg-white/15 rounded-xl backdrop-blur-md">
+              <DollarSign className="w-5 h-5 text-white" />
+            </div>
+          </div>
+          <p className="text-3xl font-extrabold text-white mb-2">₦{netProfit.toLocaleString()}</p>
+          <div className="flex items-center gap-2 text-xs text-emerald-100 font-medium">
+            <span className="bg-emerald-400/30 text-white px-2.5 py-0.5 rounded-md font-bold">
+              {profitMargin.toFixed(1)}% Margin
+            </span>
+            <span>After expenses & VAT</span>
+          </div>
+        </div>
+
+        {/* Total Expenses */}
+        <div className="relative overflow-hidden bg-white border border-gray-100 rounded-2xl p-6 shadow-sm group transition hover:-translate-y-1 hover:border-amber-200">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">Total Expenses</span>
+            <div className="p-2.5 bg-amber-50 rounded-xl text-amber-600">
+              <Wallet className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-3xl font-extrabold text-gray-900 mb-2">₦{totalExpenses.toLocaleString()}</p>
+          <p className="text-xs text-gray-500">
+            {expenseMetrics?.count ?? 0} recorded store operating expenses
+          </p>
+        </div>
+
+        {/* VAT Payable */}
+        <div className="relative overflow-hidden bg-white border border-gray-100 rounded-2xl p-6 shadow-sm group transition hover:-translate-y-1 hover:border-purple-200">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-xs font-bold uppercase tracking-wider text-gray-500">VAT Payable</span>
+            <div className="p-2.5 bg-purple-50 rounded-xl text-purple-600">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+          </div>
+          <p className="text-3xl font-extrabold text-gray-900 mb-2">₦{vatPayable.toLocaleString()}</p>
+          <p className="text-xs text-gray-500">
+            Net Tax (Output: ₦{vatMetrics?.outputVAT?.toLocaleString() || 0})
+          </p>
         </div>
       </div>
 
-      {/* SECONDARY METRICS Grid - Compact & Minimal */}
-      <div className="mb-8">
-        <h2 className="text-xl font-bold text-gray-900 mb-4">Business Metrics</h2>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-          {secondaryCards.map((card, index) => {
-            const bgClass = card.color.split(' ')[0];
-            const borderClass = card.color.split(' ')[1];
-            const textColor = statColorMap[bgClass] || 'text-gray-900';
-            const borderColor = borderColorMap[borderClass] || 'border-gray-200';
+      {/* 🚀 QUICK ACCESS DASHBOARD SHORTCUTS */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <a
+          href="/admin/dashboard?tab=pending"
+          className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-xs hover:shadow-md hover:border-blue-200 transition group"
+        >
+          <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600 group-hover:scale-110 transition">
+            <ShoppingBag className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-900">Orders Hub</p>
+            <p className="text-[11px] text-gray-500">{totalOrders} total ({pendingOrders} pending)</p>
+          </div>
+        </a>
 
-            return (
-              <div
-                key={index}
-                className={`${bgClass} ${borderColor} border rounded-md p-3 shadow-xs hover:shadow-sm transition`}
-              >
-                <p className="text-xs font-semibold text-gray-600 mb-1 truncate">{card.label}</p>
-                <p className={`text-lg md:text-xl font-bold ${textColor}`}>
-                  {card.value}
-                </p>
-                {card.subtext && (
-                  <p className="text-xs text-gray-500 mt-1 truncate">{card.subtext}</p>
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <a
+          href="/admin/dashboard?tab=products"
+          className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-xs hover:shadow-md hover:border-emerald-200 transition group"
+        >
+          <div className="p-2.5 rounded-lg bg-emerald-50 text-emerald-600 group-hover:scale-110 transition">
+            <Package className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-900">Costume Catalog</p>
+            <p className="text-[11px] text-gray-500">{totalProducts} active products</p>
+          </div>
+        </a>
+
+        <a
+          href="/admin/dashboard?tab=users"
+          className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-xs hover:shadow-md hover:border-purple-200 transition group"
+        >
+          <div className="p-2.5 rounded-lg bg-purple-50 text-purple-600 group-hover:scale-110 transition">
+            <Users className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-900">Customer Base</p>
+            <p className="text-[11px] text-gray-500">{registeredCustomers} registered users</p>
+          </div>
+        </a>
+
+        <a
+          href="/invoices"
+          className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 shadow-xs hover:shadow-md hover:border-amber-200 transition group"
+        >
+          <div className="p-2.5 rounded-lg bg-amber-50 text-amber-600 group-hover:scale-110 transition">
+            <Receipt className="w-5 h-5" />
+          </div>
+          <div>
+            <p className="text-xs font-bold text-gray-900">Financial Invoices</p>
+            <p className="text-[11px] text-gray-500">VAT & payment receipts</p>
+          </div>
+        </a>
       </div>
 
-      {/* Revenue Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-        <SalesRentalsChart
-          data={dailyMetrics.map((m) => ({
-            name: m.date,
-            sales: m.salesRevenue,
-            rentals: m.rentalRevenue,
-            total: m.totalRevenue,
-          }))}
-          title="Sales vs Rental Revenue"
-        />
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Revenue Distribution</h3>
-          <div className="h-[300px] flex items-center justify-center">
-            <div className="text-center">
-              <p className="text-4xl font-bold text-blue-600 mb-2">
-                ₦{(totalSalesRevenue ?? 0).toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600 mb-4">Sales</p>
-              <p className="text-4xl font-bold text-amber-600 mb-2">
-                ₦{(totalRentalRevenue ?? 0).toLocaleString()}
-              </p>
-              <p className="text-sm text-gray-600">Rentals</p>
+      {/* 📊 REVENUE BREAKDOWN & STORE METRICS GRID */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* LEFT COLUMN: Revenue breakdown & Charts */}
+        <div className="lg:col-span-2 space-y-8">
+          {/* Revenue Source Cards */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs">
+            <h2 className="text-base font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <Layers className="w-4 h-4 text-blue-600" />
+              Revenue Channel Distribution
+            </h2>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-blue-50/60 p-4 rounded-xl border border-blue-100">
+                <span className="text-xs font-semibold text-blue-700">Online Sales</span>
+                <p className="text-lg font-bold text-blue-950 mt-1">₦{onlineSalesRevenue.toLocaleString()}</p>
+                <span className="text-[11px] text-blue-600">{orderTypeBreakdown?.online || 0} web orders</span>
+              </div>
+              <div className="bg-teal-50/60 p-4 rounded-xl border border-teal-100">
+                <span className="text-xs font-semibold text-teal-700">Online Rentals</span>
+                <p className="text-lg font-bold text-teal-950 mt-1">₦{onlineRentalRevenue.toLocaleString()}</p>
+                <span className="text-[11px] text-teal-600">Web costume rentals</span>
+              </div>
+              <div className="bg-amber-50/60 p-4 rounded-xl border border-amber-100">
+                <span className="text-xs font-semibold text-amber-700">Offline Sales</span>
+                <p className="text-lg font-bold text-amber-950 mt-1">₦{offlineSalesRevenue.toLocaleString()}</p>
+                <span className="text-[11px] text-amber-600">{orderTypeBreakdown?.offline || 0} walk-in/POS</span>
+              </div>
+              <div className="bg-orange-50/60 p-4 rounded-xl border border-orange-100">
+                <span className="text-xs font-semibold text-orange-700">Offline Rentals</span>
+                <p className="text-lg font-bold text-orange-950 mt-1">₦{offlineRentalRevenue.toLocaleString()}</p>
+                <span className="text-[11px] text-orange-600">In-store rentals</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Revenue Chart */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs">
+            <SalesRentalsChart
+              data={dailyMetrics.map((m) => ({
+                name: m.date,
+                sales: m.salesRevenue,
+                rentals: m.rentalRevenue,
+                total: m.totalRevenue,
+              }))}
+              title="Daily Sales vs Rental Revenue (30 Days)"
+            />
+          </div>
+
+          {/* Cumulative & Trend Charts */}
+          <div className="grid grid-cols-1 gap-6">
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs">
+              <RevenueTrendChart
+                data={dailyMetrics.map((m) => ({
+                  name: m.date,
+                  sales: m.salesRevenue,
+                  rentals: m.rentalRevenue,
+                  total: m.totalRevenue,
+                }))}
+                title="Revenue Trend & Dynamics"
+              />
+            </div>
+            <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs">
+              <OrdersCountChart
+                data={dailyMetrics.map((m) => ({
+                  name: m.date,
+                  sales: m.salesOrdersCount,
+                  rentals: m.rentalOrdersCount,
+                  total: m.ordersCount,
+                }))}
+                title="Daily Volume of Costume Orders & Rentals"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: Real-Time Activity & Top Costumes */}
+        <div className="space-y-8">
+          {/* ⚡ REAL-TIME STORE ACTIVITY FEED */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <Activity className="w-5 h-5 text-blue-600 animate-pulse" />
+                <h3 className="font-bold text-gray-900 text-base">Live Activity Feed</h3>
+              </div>
+              <span className="text-xs text-gray-400 font-medium">Real-time stream</span>
+            </div>
+
+            <div className="space-y-4 max-h-[460px] overflow-y-auto pr-1">
+              {recentActivities.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-6">No recent activities recorded</p>
+              ) : (
+                recentActivities.map((act) => (
+                  <div
+                    key={act.id}
+                    className="flex items-start gap-3 p-3 rounded-xl bg-gray-50/70 hover:bg-gray-100/80 transition border border-gray-100/80"
+                  >
+                    <div className="p-2 rounded-lg bg-white border border-gray-200 text-gray-700 shrink-0 mt-0.5">
+                      {act.type === 'user' ? (
+                        <UserPlus className="w-4 h-4 text-blue-600" />
+                      ) : act.type === 'offline' ? (
+                        <Receipt className="w-4 h-4 text-amber-600" />
+                      ) : (
+                        <ShoppingBag className="w-4 h-4 text-emerald-600" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-1 mb-0.5">
+                        <p className="text-xs font-bold text-gray-900 truncate">{act.title}</p>
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${act.badgeColor}`}>
+                          {act.badge}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-gray-500 truncate">{act.subtitle}</p>
+                      <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1">
+                        <Clock className="w-3 h-3 text-gray-400" />
+                        {act.timestamp}
+                      </p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* 👑 TOP PERFORMING PRODUCTS LEADERBOARD */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs">
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-500" />
+                <h3 className="font-bold text-gray-900 text-base">Top Performing Costumes</h3>
+              </div>
+              <span className="text-xs text-gray-400 font-medium">By Revenue</span>
+            </div>
+
+            <div className="space-y-3">
+              {topProducts.length === 0 ? (
+                <p className="text-xs text-gray-400 text-center py-6">No sales data available yet</p>
+              ) : (
+                topProducts.map((prod, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center gap-3 p-3 rounded-xl border border-gray-100 hover:border-gray-200 transition"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-gray-100 overflow-hidden shrink-0 flex items-center justify-center text-gray-400 font-bold text-xs border border-gray-200">
+                      {prod.imageUrl ? (
+                        <img src={prod.imageUrl} alt={prod.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span>#{idx + 1}</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-gray-900 truncate">{prod.name}</p>
+                      <p className="text-[11px] text-gray-500">{prod.unitsSold} unit(s) ordered</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-xs font-extrabold text-emerald-700">₦{prod.revenue.toLocaleString()}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* 👥 CUSTOMER OVERVIEW CARD */}
+          <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-xs">
+            <h3 className="font-bold text-gray-900 text-base mb-4 flex items-center gap-2">
+              <Users className="w-4 h-4 text-purple-600" />
+              Customer Demographics
+            </h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between p-3 rounded-xl bg-purple-50/60 border border-purple-100">
+                <span className="text-xs font-semibold text-purple-900">Total Buyers</span>
+                <span className="text-sm font-extrabold text-purple-950">{totalCustomers}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-blue-50/60 border border-blue-100">
+                <span className="text-xs font-semibold text-blue-900">Registered Accounts</span>
+                <span className="text-sm font-extrabold text-blue-950">{registeredCustomers}</span>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-xl bg-gray-50 border border-gray-200">
+                <span className="text-xs font-semibold text-gray-700">Guest Checkout</span>
+                <span className="text-sm font-extrabold text-gray-900">{guestCustomers}</span>
+              </div>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Trend Charts */}
-      <div className="grid grid-cols-1 gap-6 mb-6">
-        <RevenueTrendChart
-          data={dailyMetrics.map((m) => ({
-            name: m.date,
-            sales: m.salesRevenue,
-            rentals: m.rentalRevenue,
-            total: m.totalRevenue,
-          }))}
-          title="Revenue Trend (30 Days)"
-        />
-        <CumulativeRevenueChart
-          data={dailyMetrics.map((m) => ({
-            name: m.date,
-            sales: m.salesRevenue,
-            rentals: m.rentalRevenue,
-            total: m.totalRevenue,
-          }))}
-          title="Cumulative Revenue Growth"
-        />
-      </div>
-
-      {/* Order Charts */}
-      <div className="grid grid-cols-1 gap-6 mb-6">
-        <OrdersCountChart
-          data={dailyMetrics.map((m) => ({
-            name: m.date,
-            sales: m.salesOrdersCount,
-            rentals: m.rentalOrdersCount,
-            total: m.ordersCount,
-          }))}
-          title="Order Count Comparison"
-        />
-      </div>
-
-      {/* Customer Metrics */}
-      <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-6">Customer Metrics</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-linear-to-br from-blue-50 to-blue-100 p-6 rounded-lg">
-            <p className="text-sm font-medium text-blue-900 mb-2">New Customers</p>
-            <p className="text-3xl font-bold text-blue-900">
-              {customerMetrics.newCustomersThisMonth}
-            </p>
-            <p className="text-xs text-blue-600 mt-2">This month</p>
-          </div>
-          <div className="bg-linear-to-br from-green-50 to-green-100 p-6 rounded-lg">
-            <p className="text-sm font-medium text-green-900 mb-2">Returning Customers</p>
-            <p className="text-3xl font-bold text-green-900">
-              {customerMetrics.returningCustomers}
-            </p>
-            <p className="text-xs text-green-600 mt-2">
-              {customerMetrics.customerRetentionRate.toFixed(1)}% retention
-            </p>
-          </div>
-          <div className="bg-linear-to-br from-purple-50 to-purple-100 p-6 rounded-lg">
-            <p className="text-sm font-medium text-purple-900 mb-2">Guest Customers</p>
-            <p className="text-3xl font-bold text-purple-900">
-              {guestCustomers}
-            </p>
-            <p className="text-xs text-purple-600 mt-2">
-              {totalCustomers > 0
-                ? ((guestCustomers / totalCustomers) * 100).toFixed(1)
-                : 0}% of total
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Top Products */}
-      {topProducts.length > 0 && (
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Top Performing Products</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-semibold text-gray-700">
-                    Product Name
-                  </th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-700">
-                    Units Sold
-                  </th>
-                  <th className="text-right py-3 px-4 font-semibold text-gray-700">
-                    Revenue
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {topProducts.map((product, index) => (
-                  <tr
-                    key={index}
-                    className="border-b border-gray-100 hover:bg-gray-50 transition"
-                  >
-                    <td className="py-3 px-4 text-gray-900">{product.name}</td>
-                    <td className="text-right py-3 px-4 text-gray-900 font-medium">
-                      {product.unitsSold}
-                    </td>
-                    <td className="text-right py-3 px-4 text-gray-900 font-medium">
-                      ₦{product.revenue.toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
+
+export default EnhancedDashboard;
