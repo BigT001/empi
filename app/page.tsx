@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -92,7 +92,7 @@ const serviceHighlights = [
   },
 ];
 
-export default function Home() {
+function HomeContent() {
   const { currency, setCurrency } = useCurrency();
   const searchParams = useSearchParams();
   const initialCategory = searchParams.get("category");
@@ -344,5 +344,19 @@ export default function Home() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-12 w-12 border-4 border-lime-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }

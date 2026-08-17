@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import connectDB from "@/lib/mongodb";
 import Product from "@/lib/models/Product";
 import { notFound } from "next/navigation";
@@ -38,7 +39,15 @@ export default async function ProductPage({ params }: { params: Promise<{ id: st
       availableForRent: p.availableForRent !== false ? true : false,
     }));
 
-    return <ProductDetailClient product={product} allProducts={allProducts} />;
+    return (
+      <Suspense fallback={
+        <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-lime-600"></div>
+        </div>
+      }>
+        <ProductDetailClient product={product} allProducts={allProducts} />
+      </Suspense>
+    );
   } catch (error) {
     console.error("Error loading product:", error);
     return notFound();

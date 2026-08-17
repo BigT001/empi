@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AdminSidebar } from "@/app/components/AdminSidebar";
@@ -61,7 +61,9 @@ export default function AdminLayout({
     <SidebarProvider>
       <div className="flex w-full h-screen overflow-hidden">
         {/* Sidebar - visible on desktop, collapsible on mobile with hamburger menu */}
-        <AdminSidebar />
+        <Suspense fallback={null}>
+          <AdminSidebar />
+        </Suspense>
         <main className="flex-1 w-full overflow-auto bg-gray-50">
           <div className="w-full h-full">
             {children}

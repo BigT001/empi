@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { Navigation } from "../components/Navigation";
 import { ProductGrid } from "../components/ProductGrid";
 import { Footer } from "../components/Footer";
@@ -10,7 +10,7 @@ import { useCurrency } from "../context/CurrencyContext";
 import { MobileHeader } from "../components/MobileHeader";
 import { useSearchParams } from "next/navigation";
 
-export default function ShopPage() {
+function ShopContent() {
   const { currency, setCurrency } = useCurrency();
   const { mode, setMode, isHydrated } = useHomeMode();
   const [isClient, setIsClient] = useState(false);
@@ -63,5 +63,19 @@ export default function ShopPage() {
       {/* Footer */}
       <Footer />
     </div>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-white dark:bg-[#0a0a0a] flex items-center justify-center">
+        <div className="animate-pulse flex flex-col items-center">
+          <div className="h-12 w-12 border-4 border-lime-500 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      </div>
+    }>
+      <ShopContent />
+    </Suspense>
   );
 }
