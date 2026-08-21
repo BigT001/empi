@@ -39,8 +39,8 @@ export async function createInvoiceFromOrder(order: IOrder): Promise<any> {
     const taxAmount = pricing.tax ?? order.vat ?? 0;
     
     // Extract discount information from pricing
-    const discountPercentage = pricing.discountPercentage ?? 0;
-    const discountAmount = pricing.discount ?? 0;
+    const discountPercentage = pricing.discountPercentage ?? (order as any).discountPercentage ?? 0;
+    const discountAmount = pricing.discount ?? (order as any).discountAmount ?? 0;
     const subtotalAfterDiscount = pricing.subtotalAfterDiscount ?? goodsSubtotal;
 
     // Map order items to invoice items (include rentalDays, selectedSize, and selectedColor)

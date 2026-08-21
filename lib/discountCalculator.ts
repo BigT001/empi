@@ -4,10 +4,7 @@
  */
 
 export const DISCOUNT_TIERS = [
-  { minQuantity: 10, discountPercentage: 10, label: "10% off" },
-  { minQuantity: 6, discountPercentage: 7, label: "7% off" },
-  { minQuantity: 3, discountPercentage: 5, label: "5% off" },
-  { minQuantity: 1, discountPercentage: 0, label: "No discount" },
+  { minQuantity: 1, discountPercentage: 5, label: "5% off" },
 ];
 
 export const VAT_RATE = 0.075; // 7.5%

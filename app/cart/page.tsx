@@ -18,6 +18,8 @@ import { CartItemDelivery, DeliveryQuote } from "@/app/lib/deliveryCalculator";
 import { ItemSize } from "@/app/lib/deliverySystem";
 import { EnhancedDeliverySelector } from "../components/EnhancedDeliverySelectorNew";
 
+import { getDiscountPercentage } from "@/lib/discountCalculator";
+
 export default function CartPage() {
   const { items, removeItem, updateQuantity, clearCart, total, deliveryState, setDeliveryState, rentalSchedule, setRentalSchedule, deliveryQuote, setDeliveryQuote, cautionFee: contextCautionFee } = useCart();
   const { buyer, updateProfile } = useBuyer();
@@ -128,14 +130,7 @@ export default function CartPage() {
   const buyItems = items.filter(item => item.mode === 'buy');
   const totalBuyQuantity = buyItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  let discountPercentage = 0;
-  if (totalBuyQuantity >= 10) {
-    discountPercentage = 10;
-  } else if (totalBuyQuantity >= 6) {
-    discountPercentage = 7;
-  } else if (totalBuyQuantity >= 3) {
-    discountPercentage = 5;
-  }
+  const discountPercentage = getDiscountPercentage(totalBuyQuantity);
 
   const buySubtotal = items.reduce((sum, item) => {
     if (item.mode === 'buy') {
@@ -438,7 +433,7 @@ export default function CartPage() {
                       {discountPercentage > 0 && (
                         <div className="bg-green-100 rounded-lg p-2 border border-green-300 ml-3 space-y-2">
                           <div className="flex justify-between items-center">
-                            <p className="text-xs font-semibold text-green-700">🎉 Bulk Discount ({discountPercentage}%)</p>
+                            <p className="text-xs font-semibold text-green-700">🎁 Discount ({discountPercentage}%)</p>
                             <p className="font-bold text-green-700 text-sm">-₦{discountAmount.toLocaleString()}</p>
                           </div>
                           <p className="text-xs text-green-600">{totalBuyQuantity} buy items</p>

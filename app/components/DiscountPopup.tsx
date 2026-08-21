@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
+import { X, Sparkles, ShoppingBag, CheckCircle2, Tag } from "lucide-react";
 
 interface DiscountPopupProps {
   intervalMinutes?: number;
@@ -11,116 +13,114 @@ export function DiscountPopup({ intervalMinutes = 7 }: DiscountPopupProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
-    // Check if the user has already seen and closed the discount popup
-    const hasSeenDiscount = localStorage.getItem("empi_has_seen_discount");
+    // Check if user has already dismissed this 5% discount announcement
+    const hasSeenDiscount = localStorage.getItem("empi_has_seen_5pc_discount");
     if (!hasSeenDiscount) {
-      setIsOpen(true);
+      // Delay slightly for smooth page render entry
+      const timer = setTimeout(() => setIsOpen(true), 800);
+      return () => clearTimeout(timer);
     }
   }, []);
 
   const handleClose = () => {
     setIsOpen(false);
-    // Mark as seen permanently in this browser
-    localStorage.setItem("empi_has_seen_discount", "true");
+    localStorage.setItem("empi_has_seen_5pc_discount", "true");
   };
 
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-300">
-      {/* Backdrop */}
+      {/* Dimmed Backdrop */}
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
+        className="absolute inset-0 bg-slate-950/75 backdrop-blur-md transition-opacity"
         onClick={handleClose}
       />
 
-      {/* Popup Content */}
-      <div className="relative bg-white rounded-xl shadow-2xl max-w-sm w-full animate-in zoom-in-95 duration-300">
+      {/* Popup Card */}
+      <div className="relative bg-slate-900 text-white rounded-3xl shadow-2xl border border-white/10 max-w-md w-full overflow-hidden z-10 animate-in zoom-in-95 duration-300 flex flex-col">
         {/* Close Button */}
         <button
           onClick={handleClose}
-          className="absolute top-3 right-3 p-1.5 hover:bg-gray-100 rounded-full transition-colors z-10"
+          className="absolute top-3 right-3 p-2 bg-slate-950/60 hover:bg-slate-950/90 text-slate-300 hover:text-white rounded-full transition-all border border-white/10 z-20"
+          aria-label="Close discount popup"
         >
-          <X className="w-4 h-4 text-gray-500 hover:text-gray-700" />
+          <X className="w-4 h-4" />
         </button>
 
-        {/* Header */}
-        <div className="bg-gradient-to-r from-lime-500 to-lime-600 px-5 pt-5 pb-4 text-white rounded-t-xl">
-          <h2 className="text-lg font-bold mb-1">🎉 Special Bulk Discounts!</h2>
-          <p className="text-lime-50 text-xs">Order multiple sets and save big!</p>
-        </div>
+        {/* Hero Product Image Section */}
+        <div className="relative w-full h-56 bg-slate-950 overflow-hidden">
+          <Image
+            src="/empiimages/IMG_0793.JPG"
+            alt="EMPI Costume Collection Discount"
+            fill
+            className="object-cover object-top hover:scale-105 transition-transform duration-700"
+            priority
+          />
+          <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/30 to-transparent" />
 
-        {/* Content */}
-        <div className="px-5 py-5">
-          {/* Discount Tiers */}
-          <div className="space-y-2.5 mb-5">
-            {/* Tier 1 */}
-            <div className="flex items-start gap-3 p-2.5 bg-gradient-to-r from-blue-50 to-transparent rounded-lg border border-blue-100">
-              <div className="flex-shrink-0">
-                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-blue-500 text-white font-bold text-xs">
-                  5%
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 text-sm">3-5 Sets</p>
-                <p className="text-xs text-gray-600">5% discount on purchased items (excludes rentals)</p>
-              </div>
-            </div>
-
-            {/* Tier 2 */}
-            <div className="flex items-start gap-3 p-2.5 bg-gradient-to-r from-purple-50 to-transparent rounded-lg border border-purple-100">
-              <div className="flex-shrink-0">
-                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-purple-500 text-white font-bold text-xs">
-                  7%
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 text-sm">6-9 Sets</p>
-                <p className="text-xs text-gray-600">7% discount on purchased items (excludes rentals)</p>
-              </div>
-            </div>
-
-            {/* Tier 3 */}
-            <div className="flex items-start gap-3 p-2.5 bg-gradient-to-r from-green-50 to-transparent rounded-lg border-2 border-green-400 shadow-sm">
-              <div className="flex-shrink-0">
-                <div className="flex items-center justify-center h-8 w-8 rounded-full bg-green-500 text-white font-bold text-xs">
-                  10%
-                </div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-900 text-sm">10+ Sets</p>
-                <p className="text-xs text-gray-600">
-                  🏆 10% discount on purchased items (excludes rentals)
-                </p>
-              </div>
-            </div>
+          {/* Floating Discount Badge */}
+          <div className="absolute top-4 left-4 flex items-center gap-1.5 bg-slate-950/80 backdrop-blur-md px-3 py-1 rounded-full border border-lime-500/30 text-lime-400 font-bold text-xs">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Storewide Offer</span>
           </div>
 
-          {/* CTA Text */}
-          <div className="text-center border-t border-gray-200 pt-3">
-            <p className="text-xs text-gray-600 mb-2">
-              Stock your events at unbeatable prices!
-            </p>
-            <p className="text-xs text-gray-500">
-              Discounts apply at checkout
-            </p>
+          {/* Large Discount Banner Badge */}
+          <div className="absolute bottom-3 left-6 right-6 flex items-center justify-between">
+            <div className="bg-lime-500 text-slate-950 px-4 py-2 rounded-2xl font-black text-2xl font-outfit shadow-lg shadow-lime-500/30 flex items-center gap-2">
+              <Tag className="w-6 h-6" />
+              <span>5% OFF</span>
+            </div>
+            <span className="text-xs font-semibold text-lime-300 bg-slate-950/80 px-3 py-1 rounded-full border border-lime-500/20">
+              Applied at Checkout
+            </span>
           </div>
         </div>
 
-        {/* Footer Buttons */}
-        <div className="bg-gray-50 px-5 py-3 rounded-b-xl flex gap-2">
-          <button
-            onClick={handleClose}
-            className="flex-1 px-3 py-2 text-gray-700 font-semibold text-sm border border-gray-300 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            Maybe Later
-          </button>
-          <button
-            onClick={handleClose}
-            className="flex-1 px-3 py-2 bg-lime-600 hover:bg-lime-700 text-white font-semibold text-sm rounded-lg transition-colors"
-          >
-            Got It! 👍
-          </button>
+        {/* Body Content */}
+        <div className="px-6 pt-4 pb-6 flex flex-col gap-4">
+          <div>
+            <h2 className="text-xl md:text-2xl font-black font-playfair text-white leading-tight mb-1 flex items-center gap-2">
+              Exclusive 5% Discount! 🎁
+            </h2>
+            <p className="text-slate-300 text-xs md:text-sm leading-relaxed">
+              Welcome to EMPI Costumes! Get an instant <strong className="text-lime-400 font-bold">5% discount</strong> on all purchased costumes and items across our store.
+            </p>
+          </div>
+
+          {/* Offer Highlights */}
+          <div className="space-y-2 bg-slate-950/50 p-3.5 rounded-2xl border border-white/5 text-xs text-slate-300">
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-lime-400 shrink-0" />
+              <span>Valid on individual & single product purchases</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-lime-400 shrink-0" />
+              <span>Calculated automatically at cart & checkout</span>
+            </div>
+            <div className="flex items-center gap-2.5">
+              <CheckCircle2 className="w-4 h-4 text-lime-400 shrink-0" />
+              <span>No promo code required</span>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex flex-col sm:flex-row gap-2.5 pt-1">
+            <Link
+              href="/shop"
+              onClick={handleClose}
+              className="flex-1 bg-lime-500 hover:bg-lime-400 text-slate-950 font-black py-3 px-4 rounded-xl text-xs md:text-sm uppercase tracking-wider flex items-center justify-center gap-2 shadow-lg shadow-lime-500/20 transition-all active:scale-95 text-center"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>Shop Collection Now</span>
+            </Link>
+            <button
+              onClick={handleClose}
+              className="px-4 py-3 bg-white/5 hover:bg-white/10 text-slate-300 font-semibold rounded-xl text-xs transition-colors border border-white/10"
+            >
+              Got It 👍
+            </button>
+          </div>
         </div>
       </div>
     </div>
