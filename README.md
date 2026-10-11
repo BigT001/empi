@@ -146,7 +146,6 @@ empi/
 │   ├── migrate-to-unified-orders.ts # Data migration script to Unified Orders
 │   └── seed-nigerian-states.ts # Regional logistics data initializer
 ├── middleware.ts               # Next.js Route Guard Middleware (Admin Cookie Check)
-├── repair-data-consistency.js  # Autonomous Data Repair Utility
 ├── weekly-data-validation.js   # Automated Data Health & Audit Suite
 └── next.config.ts              # Turbopack & Image Domain Configuration
 ```
@@ -183,9 +182,6 @@ MONGODB_URI="mongodb+srv://<user>:<password>@cluster.mongodb.net/empi?retryWrite
 # AUTHENTICATION & SECURITY
 # -----------------------------------------------------------------------------
 NEXTAUTH_SECRET="your-super-secret-nextauth-key-32-chars-min"
-ADMIN_RESET_SECRET="empi_admin_reset_2024_safe_key"
-RESET_CONFIRMATION_TOKEN="i_understand_this_will_delete_all_data_confirm_reset"
-ALLOW_PRODUCTION_RESET="false"
 
 # -----------------------------------------------------------------------------
 # DOMAIN & REAL-TIME SOCKET.IO
@@ -277,8 +273,6 @@ EMPI includes custom diagnostic and data maintenance scripts:
 | :--- | :--- | :--- |
 | `npm run seed` | `scripts/init-admin.js` | Initializes default super admin credentials into the DB |
 | `npm run validate` | `weekly-data-validation.js` | Audits data integrity across orders, products, caution fees & invoices |
-| `npm run repair` | `repair-data-consistency.js` | Runs dry-run diagnostic report for broken order/product references |
-| `npm run repair:fix` | `repair-data-consistency.js --fix` | Automatically repairs data inconsistencies in MongoDB collections |
 | `node check-admins.js` | `check-admins.js` | Verifies administrative user accounts and active sessions |
 
 ---
@@ -304,7 +298,7 @@ EMPI includes custom diagnostic and data maintenance scripts:
 
 * **Middleware Protection**: `middleware.ts` guards all `/admin/*` routes by enforcing valid, HTTP-only admin session cookies.
 * **Granular Role System**: Features strict access control matrices (`lib/permissions.ts`):
-  * **Super Admin**: Unrestricted system controls, user role management, data reset options.
+  * **Super Admin**: Unrestricted system controls, user role management. There are no database reset or bulk-delete tools - production data is never wiped.
   * **Finance**: Access restricted to `/admin/finance`, `/admin/invoices`, `/admin/payroll`, and VAT configuration.
   * **Logistics**: Access restricted to `/admin/logistics` and dispatch status updates.
   * **Mail Room**: Access restricted to internal customer communication ticketing.

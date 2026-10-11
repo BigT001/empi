@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Expense from '@/lib/models/Expense';
 import connectDB from '@/lib/mongodb';
+import { requireAdmin } from '@/lib/adminAuth';
 
 /**
  * GET /api/admin/expenses
  * Fetch all expenses (with optional filters)
  */
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
 
@@ -75,6 +78,8 @@ export async function GET(request: NextRequest) {
  * Create a new expense
  */
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
 

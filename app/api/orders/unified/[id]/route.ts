@@ -1,6 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import UnifiedOrder from '@/lib/models/UnifiedOrder';
+import { getAdminFromRequest } from '@/lib/adminAuth';
+import { getBuyerFromRequest } from '@/lib/buyerAuth';
+import { checkPaymentForOrder } from '@/lib/paymentVerification';
+
+// The only order fields a customer may change: contact and delivery details.
+// Prices, totals, status and payment flags are admin/server-only.
+const CUSTOMER_EDITABLE_FIELDS = [
+  'firstName', 'lastName', 'phone', 'address', 'city', 'state', 'country', 'zipCode',
+  'deliveryOption', 'shippingType',
+] as const;
 
 /**
  * GET /api/orders/unified/[id]
@@ -34,6 +44,19 @@ export async function GET(
         { error: 'Order not found' },
         { status: 404 }
       );
+    }
+
+    // Orders placed from a customer account are only visible to that account (or admins).
+    // Guest orders are reachable by their order ID, which only the customer is given.
+    const orderBuyerId = (order as { buyerId?: string }).buyerId;
+    if (orderBuyerId) {
+      const admin = await getAdminFromRequest(request);
+      if (!admin) {
+        const buyer = await getBuyerFromRequest(request);
+        if (!buyer || String(buyer._id) !== String(orderBuyerId)) {
+          return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+        }
+      }
     }
 
     console.log('[Unified Orders API] ✅ Order found, converting to JSON');
@@ -88,7 +111,48 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params;
-    const body = await request.json();
+    let body = await request.json();
+
+    // Non-admins can only touch their own order's contact/delivery details.
+    // Payment is never trusted from the browser - it is verified with Flutterwave here.
+    const admin = await getAdminFromRequest(request);
+    if (!admin) {
+      await connectDB();
+      const order = await UnifiedOrder.findById(id);
+      if (!order || order.isActive === false) {
+        return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+      }
+
+      // Orders placed from a customer account can only be changed by that account
+      if (order.buyerId) {
+        const buyer = await getBuyerFromRequest(request);
+        if (!buyer || String(buyer._id) !== String(order.buyerId)) {
+          return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+        }
+      }
+
+      const safeUpdate: Record<string, unknown> = {};
+      for (const field of CUSTOMER_EDITABLE_FIELDS) {
+        const value = body?.[field];
+        if (typeof value === 'string') safeUpdate[field] = value.slice(0, 500);
+      }
+
+      if (typeof body?.paymentReference === 'string' && body.paymentReference && !order.paymentVerified) {
+        const reference = body.paymentReference.slice(0, 200);
+        const payment = await checkPaymentForOrder(reference, order.total, order._id);
+        safeUpdate.paymentReference = reference;
+        if (payment.verified) {
+          safeUpdate.paymentVerified = true;
+          safeUpdate.paymentVerifiedAt = new Date();
+        } else {
+          console.warn(`[Unified Orders API] ⚠️ Payment not verified for ${order.orderNumber}: ${payment.reason}`);
+        }
+      }
+
+      const ignored = Object.keys(body || {}).filter((k) => !(k in safeUpdate) && k !== 'paymentVerified');
+      if (ignored.length) console.warn('[Unified Orders API] Ignored customer-supplied fields:', ignored);
+      body = safeUpdate;
+    }
     
     // CRITICAL: Log the raw request body as JSON string to see exact structure
     console.log('[Unified Orders API] 🔥 RAW PATCH BODY:', JSON.stringify(body, null, 2));
@@ -246,6 +310,29 @@ export async function DELETE(
         { error: 'Order not found', message: 'Order not found' },
         { status: 404 }
       );
+    }
+
+    // Admins can remove any order. Customers can only remove their own unpaid orders,
+    // so a paid order can never disappear from the admin dashboard.
+    const admin = await getAdminFromRequest(request);
+    if (!admin) {
+      const buyer = await getBuyerFromRequest(request);
+      const ownsOrder = buyer && (
+        (existingOrder.buyerId && String(existingOrder.buyerId) === String(buyer._id)) ||
+        (existingOrder.email || '').toLowerCase() === String(buyer.email).toLowerCase()
+      );
+      if (!ownsOrder) {
+        return NextResponse.json(
+          { error: 'Not authenticated', message: 'Please log in to manage this order' },
+          { status: 401 }
+        );
+      }
+      if (existingOrder.paymentVerified) {
+        return NextResponse.json(
+          { error: 'Paid order', message: 'This order has been paid and can no longer be deleted. Please contact support.' },
+          { status: 403 }
+        );
+      }
     }
 
     // Perform the soft delete

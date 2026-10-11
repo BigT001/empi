@@ -1,7 +1,7 @@
 /**
  * SERVER-ONLY: resolve the signed-in admin from the admin_session cookie.
  */
-import type { NextRequest } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Admin from '@/lib/models/Admin';
 
@@ -17,4 +17,10 @@ export async function getAdminFromRequest(request: NextRequest) {
   if (session?.expiresAt && new Date(session.expiresAt) < new Date()) return null;
 
   return admin;
+}
+
+/** Returns a 401 response when the request has no valid admin session, otherwise null */
+export async function requireAdmin(request: NextRequest) {
+  const admin = await getAdminFromRequest(request);
+  return admin ? null : NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
 }

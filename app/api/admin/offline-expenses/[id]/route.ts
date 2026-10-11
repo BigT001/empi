@@ -3,12 +3,15 @@ import connectDB from '@/lib/mongodb';
 import Expense from '@/lib/models/Expense';
 import { serializeDoc } from '@/lib/serializer';
 import mongoose from 'mongoose';
+import { requireAdmin } from '@/lib/adminAuth';
 
 // DELETE - Delete offline expense by ID
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const { id } = await params;
@@ -55,6 +58,8 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const { id } = await params;

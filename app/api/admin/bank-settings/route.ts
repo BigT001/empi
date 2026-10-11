@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Settings from '@/lib/models/Settings';
 import { Types } from 'mongoose';
+import { requireAdmin } from '@/lib/adminAuth';
 
 // GET bank settings - returns all banks or legacy single bank
 export async function GET(req: NextRequest) {
@@ -53,6 +54,8 @@ export async function GET(req: NextRequest) {
 
 // POST - Add new bank account
 export async function POST(req: NextRequest) {
+  const unauthorized = await requireAdmin(req);
+  if (unauthorized) return unauthorized;
   try {
     const { bankName, accountName, accountNumber, bankCode, sortCode, instructions } = await req.json();
 
@@ -124,6 +127,8 @@ export async function POST(req: NextRequest) {
 
 // PUT - Update bank account or set as active
 export async function PUT(req: NextRequest) {
+  const unauthorized = await requireAdmin(req);
+  if (unauthorized) return unauthorized;
   try {
     const { bankId, bankName, accountName, accountNumber, bankCode, sortCode, instructions, isActive } = await req.json();
 
@@ -199,6 +204,8 @@ export async function PUT(req: NextRequest) {
 
 // DELETE - Remove bank account
 export async function DELETE(req: NextRequest) {
+  const unauthorized = await requireAdmin(req);
+  if (unauthorized) return unauthorized;
   try {
     const { bankId } = await req.json();
 

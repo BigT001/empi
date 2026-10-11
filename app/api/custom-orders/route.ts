@@ -6,6 +6,7 @@ import Invoice from "@/lib/models/Invoice";
 import { v2 as cloudinary } from "cloudinary";
 import { sendOrderDeclinedEmail, sendOrderDeletedEmail } from "@/lib/email";
 import { resolveStoredQuotePricing } from '@/lib/vat';
+import { requireAdmin } from '@/lib/adminAuth';
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -227,6 +228,8 @@ async function uploadImagesInBackground(
  * Lists all custom orders AND regular orders (for unified admin panel)
  */
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     console.log("[API:GET /custom-orders] 📋 Fetching orders...");
     await connectDB();
@@ -355,6 +358,8 @@ export async function GET(request: NextRequest) {
  * Updates a custom order (e.g., status change to "rejected")
  */
 export async function PATCH(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
 
@@ -552,6 +557,8 @@ export async function PATCH(request: NextRequest) {
  * Permanently deletes a custom order
  */
 export async function DELETE(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
 

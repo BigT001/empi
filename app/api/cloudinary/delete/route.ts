@@ -1,4 +1,6 @@
 import { v2 as cloudinary } from 'cloudinary';
+import type { NextRequest } from 'next/server';
+import { requireAdmin } from '@/lib/adminAuth';
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -6,7 +8,9 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     const { publicId } = await request.json();
 

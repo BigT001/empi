@@ -4,12 +4,15 @@ import Order from '@/lib/models/Order';
 import { serializeDoc } from '@/lib/serializer';
 import { Types } from 'mongoose';
 import { calculateVat } from '@/lib/vat';
+import { requireAdmin } from '@/lib/adminAuth';
 
 // GET - Fetch single offline order
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const { id } = await params;
@@ -55,6 +58,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const { id } = await params;
@@ -107,6 +112,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const { id } = await params;

@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Product from '@/lib/models/Product';
 import { serializeDoc } from '@/lib/serializer';
 import { sanitizeVideoUrls, videoPosterUrl } from '@/lib/media';
+import { requireAdmin } from '@/lib/adminAuth';
 
 // GET single product
 export async function GET(
@@ -36,6 +37,8 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const { id } = await params;
@@ -153,6 +156,8 @@ export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const { id } = await params;

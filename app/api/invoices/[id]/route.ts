@@ -3,6 +3,8 @@ import connectDB from "@/lib/mongodb";
 import Invoice from "@/lib/models/Invoice";
 import { serializeDoc } from "@/lib/serializer";
 import { recordInvoiceAsOrder, syncOrderFromInvoice } from "@/lib/invoiceOrders";
+import { getAdminFromRequest } from "@/lib/adminAuth";
+import { getBuyerFromRequest } from "@/lib/buyerAuth";
 
 // Get single invoice
 export async function GET(
@@ -21,6 +23,19 @@ export async function GET(
       );
     }
 
+    // Admins, or the customer the invoice belongs to
+    const admin = await getAdminFromRequest(request);
+    if (!admin) {
+      const buyer = await getBuyerFromRequest(request);
+      const ownsInvoice = buyer && (
+        String(invoice.buyerId) === String(buyer._id) ||
+        (invoice.customerEmail || '').toLowerCase() === String(buyer.email).toLowerCase()
+      );
+      if (!ownsInvoice) {
+        return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      }
+    }
+
     return NextResponse.json(serializeDoc(invoice), { status: 200 });
   } catch (error) {
     console.error("Error fetching invoice:", error);
@@ -37,6 +52,11 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await getAdminFromRequest(request);
+    if (!admin) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     await connectDB();
     const { id } = await params;
     const body = await request.json();
@@ -93,6 +113,11 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const admin = await getAdminFromRequest(request);
+    if (!admin) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     await connectDB();
     const { id } = await params;
     const invoice = await Invoice.findByIdAndDelete(id);

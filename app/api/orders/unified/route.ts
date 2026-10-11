@@ -3,6 +3,9 @@ import connectDB from '@/lib/mongodb';
 import UnifiedOrder from '@/lib/models/UnifiedOrder';
 import { getVatConfig } from '@/lib/vatSettings';
 import { calculateVat } from '@/lib/vat';
+import { getAdminFromRequest } from '@/lib/adminAuth';
+import { getBuyerFromRequest } from '@/lib/buyerAuth';
+import { checkPaymentForOrder } from '@/lib/paymentVerification';
 import { createInvoiceFromOrder } from '@/lib/createInvoiceFromOrder';
 import { logOrderModeDiagnostics } from '@/lib/utils/orderDiagnostics';
 import { v2 as cloudinary } from 'cloudinary';
@@ -43,12 +46,28 @@ export async function GET(request: NextRequest) {
 
     const query: Record<string, unknown> = { isActive: true };
 
-    if (email) query.email = email;
+    // Admins see every order. A signed-in customer only ever sees their own orders,
+    // and the order-confirmation page can look an order up by its payment reference.
+    const admin = await getAdminFromRequest(request);
+    if (admin) {
+      if (email) query.email = email;
+      if (buyerId) query.buyerId = buyerId;
+      if (ref) query.$or = [{ paymentReference: ref }, { orderNumber: ref }];
+    } else {
+      const buyer = await getBuyerFromRequest(request);
+      if (buyer) {
+        query.$or = [{ buyerId: String(buyer._id) }, { email: String(buyer.email).toLowerCase() }];
+        if (ref) query.$and = [{ $or: [{ paymentReference: ref }, { orderNumber: ref }] }];
+      } else if (ref) {
+        query.$or = [{ paymentReference: ref }, { orderNumber: ref }];
+      } else {
+        return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+      }
+    }
+
     if (status) query.status = status;
     if (orderType) query.orderType = orderType;
     if (currentHandler) query.currentHandler = currentHandler;
-    if (buyerId) query.buyerId = buyerId;
-    if (ref) query.reference = ref;
 
     console.log('[Unified Orders API] 🔍 Query:', query);
 
@@ -301,6 +320,21 @@ export async function POST(request: NextRequest) {
     const random = Math.floor(Math.random() * 10000);
     const orderNumber = `ORD-${timestamp}-${random}`;
 
+    // Paid status is decided on the server, never by the browser: admins may set it,
+    // otherwise Flutterwave must confirm the payment covers this order's total.
+    const paymentReference = idempotencyKey || (body.paymentReference as string) || (body.reference as string) || undefined;
+    const requestingAdmin = await getAdminFromRequest(request);
+    let paymentVerified = false;
+    if (requestingAdmin && typeof body.paymentVerified === 'boolean') {
+      paymentVerified = body.paymentVerified;
+    } else if (paymentReference && body.paymentVerified !== false && body.paymentMethod !== 'manual') {
+      const payment = await checkPaymentForOrder(paymentReference, Number(body.total) || 0);
+      paymentVerified = payment.verified;
+      if (!payment.verified) {
+        console.warn(`[Unified Orders API] ⚠️ Payment not verified for ${orderNumber}: ${payment.reason}`);
+      }
+    }
+
     // Prepare order data - ensure all fields are properly mapped
     const orderDataToSave = {
       // Basic Info
@@ -364,8 +398,9 @@ export async function POST(request: NextRequest) {
       rentalPolicyAgreed: (body as any).rentalPolicyAgreed || false,
 
       // Payment
-      paymentVerified: body.paymentVerified !== undefined ? body.paymentVerified : (orderType === 'regular' ? true : false),
-      paymentReference: idempotencyKey || (body.paymentReference as string) || (body.reference as string) || undefined,
+      paymentVerified,
+      ...(paymentVerified && { paymentVerifiedAt: new Date() }),
+      paymentReference,
       paymentMethod: (body.paymentMethod as string) || 'paystack',
       paymentProofUrl: (body.paymentProofUrl as string) || undefined,
 

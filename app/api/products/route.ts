@@ -5,6 +5,7 @@ import Settings from '@/lib/models/Settings';
 import { serializeDoc, serializeDocs } from '@/lib/serializer';
 import { revalidatePath } from 'next/cache';
 import { sanitizeVideoUrls, videoPosterUrl } from '@/lib/media';
+import { requireAdmin } from '@/lib/adminAuth';
 
 // GET all products with CDN caching headers
 export async function GET(request: NextRequest) {
@@ -141,6 +142,8 @@ export async function GET(request: NextRequest) {
 
 // POST create product
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     console.log("📥 Received POST request to /api/products");
     
@@ -329,6 +332,8 @@ export async function POST(request: NextRequest) {
 
 // DELETE product by ID
 export async function DELETE(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     console.log("📥 Received DELETE request to /api/products");
     

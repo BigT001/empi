@@ -198,29 +198,6 @@ export default function MailRoomPage() {
     }
   };
 
-  // Clear all demo data
-  const handleClearAllData = async () => {
-    if (!confirm('Are you sure you want to delete all tickets and messages? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError('');
-      const res = await fetch('/api/admin/mail-room/tickets', { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to clear data');
-      
-      setSuccess('All tickets and messages have been deleted.');
-      setSelectedTicket(null);
-      setMessages([]);
-      await fetchInitialData();
-    } catch (err: any) {
-      setError(err.message || 'Failed to clear data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   // Compose new email
   const handleComposeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -633,21 +610,6 @@ export default function MailRoomPage() {
               </div>
             </div>
 
-            {/* Clear all data button inside drawer */}
-            {!loading && tickets.length > 0 && (
-              <div className="p-4 border-t border-gray-100">
-                <button
-                  onClick={() => {
-                    handleClearAllData();
-                    setIsMobileDrawerOpen(false);
-                  }}
-                  className="w-full bg-red-50 hover:bg-red-100 text-red-700 text-xs py-2 px-4 rounded-xl font-bold transition border border-red-200 flex items-center justify-center gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Clear All Data
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -891,18 +853,6 @@ export default function MailRoomPage() {
                 </div>
               </div>
 
-              {/* Clear all data button if there are tickets */}
-              {!loading && tickets.length > 0 && (
-                <div className="p-4 border-t border-gray-200 flex gap-2">
-                  <button
-                    onClick={handleClearAllData}
-                    className="flex-1 bg-red-50 hover:bg-red-100 text-red-700 text-xs py-1.5 px-3 rounded-lg font-bold transition border border-red-200"
-                  >
-                    <Trash2 className="h-3.5 w-3.5 inline mr-1.5" />
-                    Clear All
-                  </button>
-                </div>
-              )}
             </div>
             {/* 2. Tickets List Pane */}
             <div className={`w-full md:w-80 border-r border-gray-200 bg-white flex-col min-h-0 ${

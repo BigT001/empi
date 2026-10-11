@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import mongoose from 'mongoose';
+import { requireAdmin } from '@/lib/adminAuth';
 
 // Define PaymentCard schema inline
 const paymentCardSchema = new mongoose.Schema({
@@ -48,6 +49,8 @@ export async function GET(req: NextRequest) {
 
 // POST - Add payment card
 export async function POST(req: NextRequest) {
+  const unauthorized = await requireAdmin(req);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
 
@@ -105,6 +108,8 @@ export async function POST(req: NextRequest) {
 
 // DELETE - Remove payment card
 export async function DELETE(req: NextRequest) {
+  const unauthorized = await requireAdmin(req);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
 

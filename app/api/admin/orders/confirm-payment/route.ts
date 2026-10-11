@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import UnifiedOrder from '@/lib/models/UnifiedOrder';
-import Admin from '@/lib/models/Admin';
+import { getAdminFromRequest } from '@/lib/adminAuth';
 import Notification from '@/lib/models/Notification';
 import { sendEmail } from '@/lib/email';
 import { createInvoiceFromOrder } from '@/lib/createInvoiceFromOrder';
@@ -10,7 +10,13 @@ import Invoice from '@/lib/models/Invoice';
 // POST - Admin confirm payment
 export async function POST(req: NextRequest) {
   try {
-    const { orderId, adminId: bodyAdminId, notes } = await req.json();
+    // Only a signed-in admin can confirm a payment
+    const admin = await getAdminFromRequest(req);
+    if (!admin) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const { orderId } = await req.json();
 
     if (!orderId) {
       return NextResponse.json(
@@ -20,17 +26,6 @@ export async function POST(req: NextRequest) {
     }
 
     await connectDB();
-    // Resolve admin from session if possible (more secure than trusting client)
-    let resolvedAdminId = bodyAdminId;
-    try {
-      const sessionToken = req.cookies.get('admin_session')?.value;
-      if (sessionToken) {
-        const admin = await Admin.findOne({ sessionToken, sessionExpiry: { $gt: new Date() } });
-        if (admin) resolvedAdminId = admin._id;
-      }
-    } catch (e) {
-      console.warn('[Confirm Payment] Failed to resolve admin from session, falling back to body adminId');
-    }
 
     // Get the order
     const order = await UnifiedOrder.findById(orderId);

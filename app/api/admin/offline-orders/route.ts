@@ -4,9 +4,12 @@ import Order from '@/lib/models/Order';
 import { serializeDoc, serializeDocs } from '@/lib/serializer';
 import { calculateVat, normalizeVatPercent } from '@/lib/vat';
 import { getVatConfig } from '@/lib/vatSettings';
+import { requireAdmin } from '@/lib/adminAuth';
 
 // POST - Create offline/manual order
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const body = await request.json();
@@ -112,6 +115,8 @@ export async function POST(request: NextRequest) {
 
 // GET - Fetch offline orders with optional filters
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);

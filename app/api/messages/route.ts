@@ -588,28 +588,3 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
-
-/**
- * DELETE /api/messages
- * Delete messages for an order (admin action)
- * Query param: orderId
- */
-export async function DELETE(request: NextRequest) {
-  try {
-    await connectDB();
-
-    const orderId = request.nextUrl.searchParams.get('orderId');
-    if (!orderId) {
-      return NextResponse.json({ message: 'orderId is required' }, { status: 400 });
-    }
-
-    // Delete messages tied to this order
-    const result = await Message.deleteMany({ orderId });
-    console.log(`[API:DELETE /messages] ✅ Deleted ${result.deletedCount} messages for order ${orderId}`);
-
-    return NextResponse.json({ success: true, deletedCount: result.deletedCount }, { status: 200 });
-  } catch (error) {
-    console.error('[API:DELETE /messages] ❌ Error deleting messages:', error);
-    return NextResponse.json({ message: 'Failed to delete messages', error: String(error) }, { status: 500 });
-  }
-}

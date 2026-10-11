@@ -59,16 +59,13 @@ export async function POST(request: NextRequest) {
 
     console.log('[Unified Payment Proof API] ✅ File saved:', proofUrl);
 
-    // Update order with payment proof
-    // Status: Custom orders stay pending, regular orders become approved
-    const newStatus = order.orderType === 'custom' ? 'pending' : 'approved';
-    
+    // Attach the proof only. A screenshot is not proof of payment on its own, so the order
+    // stays as it is until an admin checks the transfer and confirms payment.
     order.paymentProofUrl = proofUrl;
     order.paymentProofUploadedAt = new Date();
-    order.status = newStatus;
     await order.save();
 
-    console.log(`[Unified Payment Proof API] ✅ Order updated with proof, status set to '${newStatus}'`);
+    console.log(`[Unified Payment Proof API] ✅ Payment proof attached; awaiting admin confirmation`);
 
     return NextResponse.json({
       success: true,

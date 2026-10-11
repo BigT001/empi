@@ -3,11 +3,19 @@ import connectDB from "@/lib/mongodb";
 import Invoice from "@/lib/models/Invoice";
 import { serializeDoc, serializeDocs } from "@/lib/serializer";
 import { recordInvoiceAsOrder } from "@/lib/invoiceOrders";
+import { getAdminFromRequest } from "@/lib/adminAuth";
+import { getBuyerFromRequest } from "@/lib/buyerAuth";
 
 // Save invoice with items
 export async function POST(request: NextRequest) {
   try {
     console.log("🔷 Invoice POST endpoint called");
+    // Only admins create invoices through the API (online orders create theirs on the server)
+    const admin = await getAdminFromRequest(request);
+    if (!admin) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+    }
+
     await connectDB();
     const body = await request.json();
     console.log("📥 Invoice request body:", body);
@@ -174,12 +182,24 @@ export async function GET(request: NextRequest) {
     console.log("🔍 Query params:", Object.fromEntries(request.nextUrl.searchParams));
     
     await connectDB();
-    const buyerId = request.nextUrl.searchParams.get("buyerId");
-    const email = request.nextUrl.searchParams.get("email");
+    let buyerId = request.nextUrl.searchParams.get("buyerId");
+    let email = request.nextUrl.searchParams.get("email");
     const type = request.nextUrl.searchParams.get("type"); // 'automatic', 'manual', or all
     const status = request.nextUrl.searchParams.get("status");
 
     const query: any = {};
+
+    // Admins can list any invoices; a signed-in customer only ever sees their own
+    const admin = await getAdminFromRequest(request);
+    if (!admin) {
+      const buyer = await getBuyerFromRequest(request);
+      if (!buyer) {
+        return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+      }
+      query.$or = [{ buyerId: buyer._id }, { customerEmail: String(buyer.email).toLowerCase() }];
+      buyerId = null;
+      email = null;
+    }
 
     if (buyerId) {
       query.buyerId = buyerId;
@@ -188,7 +208,7 @@ export async function GET(request: NextRequest) {
       // For guest users, search by email
       query.customerEmail = email.toLowerCase();
       console.log(`🔎 SEARCHING BY EMAIL: ${email.toLowerCase()}`);
-    } else {
+    } else if (!query.$or) {
       console.log(`🔎 FETCHING ALL INVOICES`);
     }
 
@@ -239,32 +259,6 @@ export async function GET(request: NextRequest) {
     console.error("Error fetching invoices:", error);
     return NextResponse.json(
       { error: "Failed to fetch invoices" },
-      { status: 500 }
-    );
-  }
-}
-
-// DELETE - Delete all invoices
-export async function DELETE(request: NextRequest) {
-  try {
-    await connectDB();
-
-    // Delete all invoices
-    const result = await Invoice.deleteMany({});
-
-    console.log(`✅ Deleted ${result.deletedCount} invoices`);
-
-    return NextResponse.json(
-      { 
-        message: `Successfully deleted ${result.deletedCount} invoices`,
-        deletedCount: result.deletedCount 
-      },
-      { status: 200 }
-    );
-  } catch (error) {
-    console.error("Error deleting invoices:", error);
-    return NextResponse.json(
-      { error: "Failed to delete invoices" },
       { status: 500 }
     );
   }

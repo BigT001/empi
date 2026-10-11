@@ -2,9 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Expense from '@/lib/models/Expense';
 import { serializeDoc, serializeDocs } from '@/lib/serializer';
+import { requireAdmin } from '@/lib/adminAuth';
 
 // POST - Create offline expense
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     console.log("🔄 [POST /api/admin/offline-expenses] Request received");
     await connectDB();
@@ -115,6 +118,8 @@ export async function POST(request: NextRequest) {
 
 // GET - Fetch offline expenses with optional filters
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     await connectDB();
     const { searchParams } = new URL(request.url);

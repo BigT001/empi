@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rolloverVAT, getCurrentMonthVAT } from '@/lib/utils/vatCalculations';
+import { requireAdmin } from '@/lib/adminAuth';
 
 /**
  * GET /api/admin/vat/rollover - Manually trigger VAT rollover
  * POST /api/admin/vat/rollover - Same as GET (for consistency)
  */
 export async function GET(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   try {
     // Optional: Add authentication check here
     const result = await rolloverVAT();
@@ -32,5 +35,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const unauthorized = await requireAdmin(request);
+  if (unauthorized) return unauthorized;
   return GET(request);
 }

@@ -8,10 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "node scripts/init-admin.js",
-    "validate": "node weekly-data-validation.js",
-    "repair": "node repair-data-consistency.js",
-    "repair:fix": "node repair-data-consistency.js --fix",
-    "setup-scheduler": "setup-scheduled-tasks.bat"
+    "validate": "node weekly-data-validation.js"
   },
   "dependencies": {
     "@auth/core": "^0.34.3",

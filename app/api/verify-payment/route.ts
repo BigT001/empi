@@ -128,6 +128,25 @@ export async function GET(request: NextRequest) {
 
         if (unifiedOrder) {
           console.log('[verify-payment] 🎯 Found unified order:', unifiedOrder.orderNumber);
+
+          // Flutterwave confirmed this payment: mark the order paid if it covers the total
+          // and the payment isn't already attached to another paid order
+          if (!unifiedOrder.paymentVerified) {
+            const reusedElsewhere = await UnifiedOrder.findOne({
+              paymentReference,
+              paymentVerified: true,
+              _id: { $ne: unifiedOrder._id },
+            }).select('_id').lean();
+            if (!reusedElsewhere && paymentAmount + 1 >= (Number(unifiedOrder.total) || 0)) {
+              unifiedOrder.paymentVerified = true;
+              unifiedOrder.paymentVerifiedAt = new Date();
+              if (!unifiedOrder.paymentReference) unifiedOrder.paymentReference = paymentReference;
+              await unifiedOrder.save();
+              console.log('[verify-payment] ✅ Order marked paid after Flutterwave confirmation');
+            } else {
+              console.warn('[verify-payment] ⚠️ Not marking order paid:', reusedElsewhere ? 'payment reused' : `paid ${paymentAmount} < total ${unifiedOrder.total}`);
+            }
+          }
           customerAddress = unifiedOrder.address || '';
           customerCity = unifiedOrder.city || '';
           customerState = unifiedOrder.state || '';

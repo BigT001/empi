@@ -187,24 +187,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const { searchParams } = new URL(req.url);
-    const force = searchParams.get('force') === 'true';
 
-    // 1. Check if services exist
+    // 1. Seeding only ever fills an empty mail room - existing data is never cleared
     const existingServicesCount = await EmailService.countDocuments();
-    if (existingServicesCount > 0 && !force) {
+    if (existingServicesCount > 0) {
       return NextResponse.json({
-        message: 'Database already has configured email services. No seeding performed. Use force=true query parameter to re-seed.',
+        message: 'Database already has configured email services. No seeding performed.',
         servicesCount: existingServicesCount,
       });
-    }
-
-    // Clear previous if force seeding
-    if (force) {
-      console.log('Force seeding requested: clearing previous mail room collections...');
-      await EmailService.deleteMany({});
-      await MailRoomTicket.deleteMany({});
-      await MailRoomMessage.deleteMany({});
     }
 
     // 2. Create the 8 default services

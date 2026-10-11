@@ -143,34 +143,3 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
-
-// DELETE all tickets (clear demo data)
-export async function DELETE(req: NextRequest) {
-  try {
-    await connectDB();
-    const admin = await getAuthenticatedAdmin(req);
-
-    if (!admin || !admin.isActive) {
-      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
-    }
-
-    // Only super_admin and admin can delete all data
-    if (admin.role !== 'super_admin' && admin.role !== 'admin') {
-      return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
-    }
-
-    // Delete all tickets and messages
-    const MailRoomMessage = require('@/lib/models/MailRoomMessage').default;
-    
-    await MailRoomTicket.deleteMany({});
-    await MailRoomMessage.deleteMany({});
-
-    return NextResponse.json({
-      message: 'All tickets and messages deleted successfully',
-      deletedTickets: true,
-    });
-  } catch (error: any) {
-    console.error('DELETE Tickets Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
-  }
-}
