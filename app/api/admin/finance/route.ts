@@ -247,16 +247,24 @@ function generateAnnualTaxSummary(
   annualTurnover: number,
   totalRevenue: number,
   totalExpenses: number,
-  actualInputVAT: number = 0
+  actualInputVAT: number = 0,
+  actualOutputVAT?: number
 ): TaxBreakdown {
   const taxableProfit = totalRevenue - totalExpenses;
   const vatBreakdown = calculateVAT(totalRevenue, totalExpenses);
+
+  // Use the VAT actually charged on orders (products only - excludes logistics and caution fees)
+  // instead of estimating it from gross revenue
+  if (typeof actualOutputVAT === 'number') {
+    vatBreakdown.outputVAT = Math.round(actualOutputVAT * 100) / 100;
+    vatBreakdown.totalSalesExVAT = Math.round((totalRevenue - actualOutputVAT) * 100) / 100;
+  }
   
   // Use actual input VAT from expenses if provided
   if (actualInputVAT > 0) {
     vatBreakdown.inputVAT = Math.round(actualInputVAT * 100) / 100;
-    vatBreakdown.vatPayable = Math.max(0, vatBreakdown.outputVAT - vatBreakdown.inputVAT);
   }
+  vatBreakdown.vatPayable = Math.round(Math.max(0, vatBreakdown.outputVAT - vatBreakdown.inputVAT) * 100) / 100;
   
   const corporateIncomeTax = calculateCIT(annualTurnover, taxableProfit);
   const educationTax = calculateEducationTax(annualTurnover, taxableProfit);
@@ -511,12 +519,22 @@ export async function GET(request: NextRequest) {
       (totalRevenue / daysElapsedInMonth) * daysInCurrentMonth;
     const annualTurnover = estimatedMonthlyRevenue * 12;
 
+    // Output VAT = VAT actually charged on recognised orders (legacy custom orders: 7.5% inside quotedPrice)
+    const totalOutputVAT =
+      completedOrders.reduce((sum: number, order: any) => sum + (order.vat || 0), 0) +
+      completedCustomOrders.reduce((sum: number, order: any) => {
+        if (typeof order.vat === 'number') return sum + order.vat;
+        const quoted = order.quotedPrice || 0;
+        return sum + quoted * (0.075 / 1.075);
+      }, 0);
+
     // Generate comprehensive tax breakdown (with actual input VAT from expenses)
     const taxBreakdown = generateAnnualTaxSummary(
       annualTurnover,
       totalRevenue,
       totalExpenses,
-      totalInputVAT  // Pass actual input VAT from expenses
+      totalInputVAT,  // Pass actual input VAT from expenses
+      totalOutputVAT
     );
 
     // Get monthly tax estimates

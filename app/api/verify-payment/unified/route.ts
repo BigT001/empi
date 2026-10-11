@@ -107,7 +107,7 @@ export async function GET(request: NextRequest) {
       totalAmount: order.total,
       currency: 'NGN',
       currencySymbol: '₦',
-      taxRate: 7.5,
+      taxRate: typeof order.vatPercent === 'number' ? order.vatPercent : ((order.vat || 0) > 0 ? 7.5 : 0),
       type: 'automatic',
       status: 'sent',
       invoiceDate: new Date(),

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Product from '@/lib/models/Product';
 import { serializeDoc } from '@/lib/serializer';
+import { sanitizeVideoUrls, videoPosterUrl } from '@/lib/media';
 
 // GET single product
 export async function GET(
@@ -49,6 +50,23 @@ export async function PUT(
     if (body.badge !== undefined) updateData.badge = body.badge;
     if (body.imageUrl) updateData.imageUrl = body.imageUrl;
     if (body.imageUrls) updateData.imageUrls = body.imageUrls;
+    if (body.videoUrls !== undefined) updateData.videoUrls = sanitizeVideoUrls(body.videoUrls);
+
+    // Images were all removed: keep the product valid with its videos (poster frame as main image)
+    if (Array.isArray(body.imageUrls) && body.imageUrls.length === 0) {
+      let videos: string[] | undefined = updateData.videoUrls;
+      if (videos === undefined) {
+        const existing = await Product.findById(id).select('videoUrls').lean() as { videoUrls?: string[] } | null;
+        videos = existing?.videoUrls || [];
+      }
+      if (videos.length === 0) {
+        return NextResponse.json(
+          { error: 'A product needs at least one image or video' },
+          { status: 400 }
+        );
+      }
+      updateData.imageUrl = videoPosterUrl(videos[0]);
+    }
     if (body.material) updateData.material = body.material;
     if (body.condition) updateData.condition = body.condition;
     if (body.careInstructions) updateData.careInstructions = body.careInstructions;

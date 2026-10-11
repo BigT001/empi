@@ -12,16 +12,20 @@ export default function MobileSettingsPage() {
   const [storeEmail, setStoreEmail] = useState("store@empi.com");
   const [storePhone, setStorePhone] = useState("+234 (0) 123 456 7890");
   const [isVatDisabled, setIsVatDisabled] = useState(false);
+  const [vatPercent, setVatPercent] = useState("7.5");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [activeTab, setActiveTab] = useState<"profile" | "store" | "security">("profile");
 
   useEffect(() => {
-    fetch("/api/vat-settings")
+    fetch("/api/vat-settings", { cache: "no-store" })
       .then(res => res.json())
       .then(data => {
         if (typeof data.isVatDisabled === "boolean") {
           setIsVatDisabled(data.isVatDisabled);
+        }
+        if (typeof data.vatPercent === "number") {
+          setVatPercent(String(data.vatPercent));
         }
       })
       .catch(err => console.error("Failed to fetch VAT settings:", err));
@@ -46,6 +50,35 @@ export default function MobileSettingsPage() {
       }
     } catch {
       setMessage("❌ Error updating VAT settings");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSaveVatPercent = async () => {
+    const percent = parseFloat(vatPercent);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      setMessage("❌ Enter a VAT rate between 0 and 100");
+      return;
+    }
+    setIsLoading(true);
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/vat-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vatPercent: percent }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setVatPercent(String(data.vatPercent));
+        setMessage(`✅ ${data.message || "VAT rate updated"}`);
+        setTimeout(() => setMessage(""), 3000);
+      } else {
+        setMessage(`❌ ${data.error || "Failed to update VAT rate"}`);
+      }
+    } catch {
+      setMessage("❌ Error updating VAT rate");
     } finally {
       setIsLoading(false);
     }
@@ -262,6 +295,31 @@ export default function MobileSettingsPage() {
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isVatDisabled ? 'bg-amber-600' : 'bg-gray-300'}`}
                 >
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isVatDisabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t border-black/5">
+                <label htmlFor="mobile-vat-percent" className="text-xs font-semibold text-gray-700 flex-1">
+                  VAT rate (products only)
+                </label>
+                <input
+                  id="mobile-vat-percent"
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={vatPercent}
+                  onChange={(e) => setVatPercent(e.target.value)}
+                  disabled={isLoading}
+                  className="w-20 px-2 py-1.5 rounded-lg border border-gray-300 text-sm font-semibold text-gray-900"
+                />
+                <span className="text-xs text-gray-600">%</span>
+                <button
+                  type="button"
+                  onClick={handleSaveVatPercent}
+                  disabled={isLoading}
+                  className="px-3 py-1.5 rounded-lg bg-lime-600 text-white text-xs font-bold disabled:opacity-50"
+                >
+                  Save
                 </button>
               </div>
             </div>

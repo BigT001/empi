@@ -5,6 +5,7 @@ import Order from "@/lib/models/Order";
 import Invoice from "@/lib/models/Invoice";
 import { v2 as cloudinary } from "cloudinary";
 import { sendOrderDeclinedEmail, sendOrderDeletedEmail } from "@/lib/email";
+import { resolveStoredQuotePricing } from '@/lib/vat';
 
 cloudinary.config({
   cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
@@ -457,10 +458,11 @@ export async function PATCH(request: NextRequest) {
       try {
         // Get quote items from the order
         const quoteItems = updatedOrder.quoteItems || [];
-        const subtotal = quoteItems.reduce((sum: number, item: any) => sum + (item.quantity * item.unitPrice), 0);
-        const VAT_RATE = 0.075;
-        const taxAmount = subtotal * VAT_RATE;
-        const totalAmount = subtotal + taxAmount;
+        // Invoice exactly what was quoted - VAT only on products, never on logistics lines
+        const pricing = resolveStoredQuotePricing(updatedOrder.toObject ? updatedOrder.toObject() : updatedOrder);
+        const subtotal = pricing.subtotalAfterDiscount;
+        const taxAmount = pricing.vat;
+        const totalAmount = pricing.total;
 
         // Map quote items to invoice items
         const items = quoteItems.map((item: any) => ({
@@ -495,7 +497,7 @@ export async function PATCH(request: NextRequest) {
           dueDate,
           currency: 'NGN',
           currencySymbol: '₦',
-          taxRate: VAT_RATE * 100,
+          taxRate: pricing.vatPercent,
           type: 'automatic',
           status: 'sent',
           paymentVerified: true,

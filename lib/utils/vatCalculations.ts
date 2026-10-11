@@ -64,17 +64,23 @@ export async function calculateVATForPeriod(startDate: Date, endDate: Date) {
     return sum + (order.total || 0);
   }, 0);
 
-  // Calculate Output VAT (VAT on sales)
-  const totalSalesExVAT = totalSalesAmount / (1 + VAT_RATE);
-  const outputVAT = totalSalesExVAT * VAT_RATE;
+  // Output VAT = VAT actually charged on each order (products only - never logistics or caution fees).
+  // Orders that predate the stored vat field fall back to the 7.5% estimate.
+  const outputVAT = orders.reduce((sum: number, order: any) => {
+    if (typeof order.vat === 'number') return sum + order.vat;
+    return sum + ((order.total || 0) / (1 + VAT_RATE)) * VAT_RATE;
+  }, 0);
 
   // Calculate deductible expenses
   const totalExpensesAmount = expenses.reduce((sum: number, expense: any) => {
     return sum + (expense.amount || 0);
   }, 0);
 
-  // Calculate Input VAT (VAT on deductible expenses)
-  const inputVAT = totalExpensesAmount * VAT_RATE;
+  // Input VAT = VAT recorded on VAT-applicable expenses only
+  const inputVAT = expenses.reduce((sum: number, expense: any) => {
+    if (expense.isVATApplicable === false) return sum;
+    return sum + (typeof expense.vat === 'number' ? expense.vat : (expense.amount || 0) * VAT_RATE);
+  }, 0);
 
   // Calculate VAT Payable
   const vatPayable = Math.max(0, outputVAT - inputVAT);

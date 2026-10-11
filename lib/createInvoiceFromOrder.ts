@@ -86,7 +86,7 @@ export async function createInvoiceFromOrder(order: IOrder): Promise<any> {
       dueDate,
       currency: 'NGN',
       currencySymbol: '₦',
-      taxRate: order.vatRate || 7.5,
+      taxRate: (order as any).vatPercent ?? order.vatRate ?? 7.5,
       type: order.paymentMethod === 'manual' ? 'manual' : 'automatic',
       status: (order.status === 'payment_confirmed' || order.status === 'completed' || order.paymentStatus === 'confirmed' || (order as any).paymentVerified === true) ? 'paid' : 'sent',
       paymentVerified: (order.status === 'payment_confirmed' || order.status === 'completed' || order.paymentStatus === 'confirmed' || (order as any).paymentVerified === true),

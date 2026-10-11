@@ -39,6 +39,7 @@ interface CustomOrder {
   discountAmount?: number;
   subtotalAfterDiscount?: number;
   vat?: number;
+  vatPercent?: number;
   cautionFee?: number;
   total?: number;
   shippingCost?: number;
@@ -357,7 +358,7 @@ export function OrderCard({
         {/* VAT (7.5%) - Applied to subtotal after discount */}
         {(order.vat !== null && order.vat !== undefined) || (order.pricing?.tax !== null && order.pricing?.tax !== undefined) ? (
           <div className="flex items-center justify-between text-sm border-t border-gray-300 dark:border-white/10 pt-2">
-            <span className="text-gray-700 dark:text-gray-400 font-semibold">VAT (7.5%):</span>
+            <span className="text-gray-700 dark:text-gray-400 font-semibold">VAT ({typeof order.vatPercent === 'number' ? order.vatPercent : 7.5}%):</span>
             <span className="font-bold text-amber-700 dark:text-amber-500">₦{((order.vat !== null && order.vat !== undefined ? order.vat : order.pricing?.tax) || 0).toLocaleString('en-NG')}</span>
           </div>
         ) : null}

@@ -1,6 +1,7 @@
 'use client';
 
-import { getDiscountPercentage, VAT_RATE } from "@/lib/discountCalculator";
+import { getDiscountPercentage } from "@/lib/discountCalculator";
+import { DEFAULT_VAT_PERCENT } from "@/lib/vat";
 
 interface OrderStatsProps {
   itemCount: number;
@@ -120,17 +121,17 @@ export function OrderStats({
   // Total goods BEFORE VAT = buy after discount + rental (with days)
   const goodsSubtotal = finalSubtotalAfterDiscount + rentalSubtotalWithDays;
   
-  // === CRITICAL FIX: Extract VAT from the authoritative checkout total ===
-  // For regular orders from checkout, safeTotal is: goodsSubtotal * 1.075 (where 1.075 = 1 + 0.075)
-  // To isolate VAT: vat = safeTotal - (safeTotal / 1.075)
-  // Simplified: vat = safeTotal * (0.075 / 1.075) = safeTotal * 0.069767
-  // OR: vat = safeTotal * VAT_RATE / (1 + VAT_RATE)
-  const vatFromTotal = safeTotal > 0 ? safeTotal * (VAT_RATE / (1 + VAT_RATE)) : 0;
-  const goodsFromTotal = safeTotal > 0 ? safeTotal - vatFromTotal : 0;
-  
-  // Use the checkout total breakdown if we have a valid total, otherwise fall back to calculated
-  const vat = safeTotal > 0 ? vatFromTotal : (goodsSubtotal * VAT_RATE);
-  const displayGoodsSubtotal = safeTotal > 0 ? goodsFromTotal : goodsSubtotal;
+  // VAT shown is what was charged at checkout - on goods only, never on the caution fee or delivery.
+  // Very old orders without a stored VAT amount fall back to extracting 7.5% from the goods portion.
+  const LEGACY_VAT_RATE = DEFAULT_VAT_PERCENT / 100;
+  const goodsWithVat = Math.max(0, safeTotal - (cautionFee || 0));
+  const vat = typeof passedVat === 'number'
+    ? passedVat
+    : (safeTotal > 0 ? goodsWithVat * (LEGACY_VAT_RATE / (1 + LEGACY_VAT_RATE)) : goodsSubtotal * LEGACY_VAT_RATE);
+  const vatPercentLabel = goodsSubtotal > 0 && vat > 0
+    ? `${Math.round((vat / goodsSubtotal) * 1000) / 10}%`
+    : (vat > 0 ? `${DEFAULT_VAT_PERCENT}%` : '0%');
+  const displayGoodsSubtotal = safeTotal > 0 ? goodsWithVat - vat : goodsSubtotal;
   
   console.log('[OrderStats] buySubtotal:', buySubtotal, 'finalDiscountPercentage:', finalDiscountPercentage, 'finalDiscountAmount:', finalDiscountAmount, 'finalSubtotalAfterDiscount:', finalSubtotalAfterDiscount);
   console.log('[OrderStats] calculatedGoodsSubtotal:', goodsSubtotal, 'safeTotal:', safeTotal);
@@ -196,7 +197,7 @@ export function OrderStats({
 
         {/* VAT - Using value extracted from checkout total */}
         <div className="bg-yellow-50 rounded-lg p-2 text-center border border-yellow-300">
-          <p className="text-xs text-yellow-600 font-medium">VAT (7.5%)</p>
+          <p className="text-xs text-yellow-600 font-medium">VAT ({vatPercentLabel})</p>
           <p className="text-sm font-bold text-yellow-700">₦{Number(vat).toLocaleString('en-NG')}</p>
         </div>
       </div>

@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useSearchParams } from "next/navigation";
-import { ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, AlertCircle, X, Check } from "lucide-react";
+import { ShoppingCart, ArrowLeft, ChevronLeft, ChevronRight, AlertCircle, X, Check, Play } from "lucide-react";
+import { getProductMedia } from "@/lib/media";
 import { CURRENCY_RATES } from "@/app/components/constants";
 import { useCart } from "@/app/components/CartContext";
 import { useMode } from "@/app/context/ModeContext";
@@ -94,6 +95,7 @@ interface Product {
   badge?: string | null;
   imageUrl: string;
   imageUrls: string[];
+  videoUrls?: string[];
   variants?: any;
   sizes?: string | any[] | null;
   colors?: string | any[] | null;
@@ -290,19 +292,21 @@ export default function ProductDetailClient({ product, allProducts, currency = "
     setTimeout(() => setAddedToCart(false), 3000);
   };
 
+  // Photos and videos share one gallery
+  const media = getProductMedia(product);
+  const activeMedia = media[currentImageIndex] ?? media[0];
+
   const nextImage = () => {
-    if (product.imageUrls && product.imageUrls.length > 0) {
-      setCurrentImageIndex((p) => (p + 1) % product.imageUrls.length);
+    if (media.length > 0) {
+      setCurrentImageIndex((p) => (p + 1) % media.length);
     }
   };
 
   const prevImage = () => {
-    if (product.imageUrls && product.imageUrls.length > 0) {
-      setCurrentImageIndex((p) => (p - 1 + product.imageUrls.length) % product.imageUrls.length);
+    if (media.length > 0) {
+      setCurrentImageIndex((p) => (p - 1 + media.length) % media.length);
     }
   };
-
-  const mainImage = product.imageUrls?.[currentImageIndex] ?? product.imageUrl;
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0a0a] transition-colors duration-700">
@@ -331,15 +335,27 @@ export default function ProductDetailClient({ product, allProducts, currency = "
           <div className="flex flex-col gap-6">
             {/* Main Image */}
             <div className="relative rounded-none md:rounded-3xl overflow-hidden aspect-[4/5] transition-all duration-500">
-              <Image
-                src={mainImage}
-                alt={product.name}
-                fill
-                className="object-cover"
-                priority
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                quality={90}
-              />
+              {activeMedia?.type === 'video' ? (
+                <video
+                  key={activeMedia.url}
+                  src={activeMedia.url}
+                  poster={activeMedia.thumbnail}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  className="absolute inset-0 h-full w-full object-contain bg-black"
+                />
+              ) : activeMedia ? (
+                <Image
+                  src={activeMedia.url}
+                  alt={product.name}
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                  quality={90}
+                />
+              ) : null}
               {product.badge && (
                 <div className="absolute top-4 right-4 bg-gradient-to-r from-lime-500 via-green-500 to-emerald-600 text-white text-sm font-black px-4 py-2 rounded-full shadow-xl transform -rotate-1 hover:rotate-0 transition">
                   ✨ {product.badge}
@@ -347,7 +363,7 @@ export default function ProductDetailClient({ product, allProducts, currency = "
               )}
 
               {/* Image Navigation */}
-              {product.imageUrls && product.imageUrls.length > 1 && (
+              {media.length > 1 && (
                 <>
                   <button
                     onClick={prevImage}
@@ -368,9 +384,9 @@ export default function ProductDetailClient({ product, allProducts, currency = "
             </div>
 
             {/* Thumbnail Gallery */}
-            {product.imageUrls && product.imageUrls.length > 1 && (
+            {media.length > 1 && (
               <div className="grid grid-cols-5 gap-2 px-4 md:px-0">
-                {product.imageUrls.map((img: string, idx: number) => (
+                {media.map((item, idx: number) => (
                   <button
                     key={idx}
                     onClick={() => setCurrentImageIndex(idx)}
@@ -380,13 +396,18 @@ export default function ProductDetailClient({ product, allProducts, currency = "
                       }`}
                   >
                     <Image
-                      src={img}
-                      alt={`${product.name} - Image ${idx + 1}`}
+                      src={item.thumbnail}
+                      alt={`${product.name} - ${item.type === 'video' ? 'Video' : 'Image'} ${idx + 1}`}
                       fill
                       className="object-cover hover:scale-110 transition"
                       sizes="100px"
                       quality={75}
                     />
+                    {item.type === 'video' && (
+                      <span className="absolute inset-0 flex items-center justify-center bg-black/30">
+                        <Play className="h-6 w-6 text-white fill-white" />
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>

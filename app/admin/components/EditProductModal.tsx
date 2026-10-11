@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { X, AlertCircle, Plus, Check, ChevronRight, Palette, Ruler, Trash2, Star, Eye, ChevronLeft, Loader2 } from 'lucide-react';
+import { ProductVideoManager } from './ProductVideoManager';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface NestedSizeEntry {
@@ -24,6 +25,7 @@ export interface Product {
   description: string;
   imageUrl: string;
   imageUrls?: string[];
+  videoUrls?: string[];
   sellPrice: number;
   rentPrice: number;
   category: string;
@@ -127,9 +129,11 @@ export default function EditProductModal({
     }
   }
 
+  const initialVideoUrls = Array.isArray(product?.videoUrls) ? product.videoUrls : [];
+  // Video-only products keep a poster frame in imageUrl - don't show it as an editable photo
   const initialImageUrls = Array.isArray(product?.imageUrls) && product.imageUrls.length > 0
     ? product.imageUrls
-    : product?.imageUrl
+    : product?.imageUrl && initialVideoUrls.length === 0
       ? [product.imageUrl]
       : [];
 
@@ -138,6 +142,7 @@ export default function EditProductModal({
     ...product,
     imageUrls: initialImageUrls,
     imageUrl: product?.imageUrl || '',
+    videoUrls: initialVideoUrls,
     variants: initialVariants,
     availableForBuy: product.availableForBuy ?? true,
     availableForRent: product.availableForRent ?? true,
@@ -149,6 +154,7 @@ export default function EditProductModal({
 
   // ── Image Upload/Manager State ──
   const [localUploading, setLocalUploading] = useState(false);
+  const [videosUploading, setVideosUploading] = useState(false);
   const [uploadProgressStatus, setUploadProgressStatus] = useState('');
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
@@ -432,7 +438,10 @@ export default function EditProductModal({
     if (!formData.name?.trim()) return setError('Product name is required');
     if (!formData.description?.trim()) return setError('Description is required');
     if (!isPriceOptional && (formData.sellPrice ?? 0) <= 0) return setError('Sell price must be greater than 0');
-    if (!formData.imageUrls || formData.imageUrls.length === 0) return setError('At least one image is required');
+    if ((formData.imageUrls?.length || 0) === 0 && (formData.videoUrls?.length || 0) === 0) {
+      return setError('Add at least one image or video');
+    }
+    if (videosUploading) return setError('Please wait for your videos to finish uploading');
 
     setLocalUploading(true);
     let updatedImageUrls = [...(formData.imageUrls || [])];
@@ -483,7 +492,8 @@ export default function EditProductModal({
       const finalProduct = {
         ...formData,
         imageUrls: updatedImageUrls,
-        imageUrl: updatedImageUrls[0] || '', // guarantee main image is first
+        imageUrl: updatedImageUrls[0] || '', // guarantee main image is first (server uses a video poster if empty)
+        videoUrls: formData.videoUrls || [],
       };
 
       setUploadProgressStatus('Saving product changes...');
@@ -645,6 +655,19 @@ export default function EditProductModal({
               <p className="text-[11px] text-gray-400">
                 ✨ Click any photo to view full size. The first photo is the main product image.
               </p>
+            </div>
+
+            {/* Video Manager Section */}
+            <div className="space-y-3">
+              <label className="block text-xs font-bold text-gray-500 uppercase tracking-widest">
+                Product Videos
+              </label>
+              <ProductVideoManager
+                videoUrls={formData.videoUrls || []}
+                onChange={(update) => setFormData((prev: any) => ({ ...prev, videoUrls: update(prev.videoUrls || []) }))}
+                onUploadingChange={setVideosUploading}
+                disabled={isSaving || localUploading}
+              />
             </div>
 
             {/* ── Section: Basic Info ── */}
@@ -958,7 +981,7 @@ export default function EditProductModal({
             <div className="flex gap-3 pt-2 border-t border-gray-100 sticky bottom-0 bg-white py-4">
               <button
                 type="submit"
-                disabled={isSaving || localUploading}
+                disabled={isSaving || localUploading || videosUploading}
                 className="flex-1 py-3 px-4 bg-lime-600 hover:bg-lime-700 text-white rounded-xl font-bold transition disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-lime-500/20 active:scale-95"
               >
                 {isSaving || localUploading ? (

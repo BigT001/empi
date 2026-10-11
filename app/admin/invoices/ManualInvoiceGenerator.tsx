@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Plus, Trash2, Eye, Package, Share2, MessageSquare, Mail, Download, Loader2, Save, ShoppingBag, Calendar } from "lucide-react";
 import { generateProfessionalInvoiceHTML } from "@/lib/professionalInvoice";
 import { StoredInvoice } from "@/lib/invoiceStorage";
+import { useVatSettings } from "@/lib/hooks/useVatSettings";
 
 interface InvoiceItem {
   id: string;
@@ -51,8 +52,11 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
     orderNumber: "",
     dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
     currency: "NGN",
-    taxRate: 7.5,
+    taxRate: null as number | null, // null = use the store VAT rate until the admin types one
+    deliveryFee: 0,
   });
+  const storeVat = useVatSettings();
+  const taxRate = formData.taxRate ?? storeVat.vatRate * 100;
 
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [preview, setPreview] = useState(false);
@@ -78,7 +82,8 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
         orderNumber: invoiceToEdit.orderNumber || "",
         dueDate: invoiceToEdit.dueDate ? new Date(invoiceToEdit.dueDate).toISOString().split("T")[0] : "",
         currency: invoiceToEdit.currency || "NGN",
-        taxRate: invoiceToEdit.taxRate || 7.5,
+        taxRate: invoiceToEdit.taxRate ?? 7.5,
+        deliveryFee: invoiceToEdit.shippingCost || 0,
       });
 
       setItems(
@@ -184,8 +189,9 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
   };
 
   const subtotal = items.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.price) || 0), 0);
-  const taxAmount = subtotal * (formData.taxRate / 100);
-  const totalAmount = subtotal + taxAmount;
+  // VAT on the items only - the delivery/logistics fee is never taxed
+  const taxAmount = subtotal * (taxRate / 100);
+  const totalAmount = subtotal + taxAmount + (formData.deliveryFee || 0);
   const currency = CURRENCIES.find(c => c.code === formData.currency)!;
 
   const handleShareAction = async (action: "whatsapp" | "download" | "email" | "save") => {
@@ -212,7 +218,7 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
       dueDate: formData.dueDate,
       currency: formData.currency,
       currencySymbol: currency.symbol,
-      taxRate: formData.taxRate,
+      taxRate,
       type: 'manual',
       status: invoiceToEdit ? invoiceToEdit.status : 'sent',
       items: items.map(item => ({
@@ -224,7 +230,7 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
       })),
       subtotal,
       taxAmount,
-      shippingCost: 0,
+      shippingCost: formData.deliveryFee || 0,
       totalAmount,
     };
 
@@ -317,7 +323,8 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
           orderNumber: "",
           dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
           currency: "NGN",
-          taxRate: 7.5,
+          taxRate: null,
+          deliveryFee: 0,
         });
         setItems([]);
         setTimeout(() => setSuccessMessage(""), 4000);
@@ -431,10 +438,22 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
                   <label className="block text-sm font-semibold text-gray-700 mb-1">Tax Rate (%)</label>
                   <input
                     type="number"
-                    value={formData.taxRate}
+                    value={taxRate}
                     onChange={(e) => setFormData({ ...formData, taxRate: parseFloat(e.target.value) || 0 })}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
                     step="0.5"
+                    min="0"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-1">Delivery / Logistics (no VAT)</label>
+                  <input
+                    type="number"
+                    value={formData.deliveryFee || ""}
+                    onChange={(e) => setFormData({ ...formData, deliveryFee: Math.max(0, parseFloat(e.target.value) || 0) })}
+                    placeholder="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-lime-500"
+                    step="0.01"
                     min="0"
                   />
                 </div>
@@ -580,9 +599,15 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
                 <span className="font-semibold">{currency.symbol}{subtotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Tax ({formData.taxRate}%):</span>
+                <span className="text-gray-600">Tax ({taxRate}%):</span>
                 <span className="font-semibold">{currency.symbol}{taxAmount.toFixed(2)}</span>
               </div>
+              {formData.deliveryFee > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Delivery / Logistics (no VAT):</span>
+                  <span className="font-semibold">{currency.symbol}{formData.deliveryFee.toFixed(2)}</span>
+                </div>
+              )}
               <div className="border-t border-gray-200 pt-3 flex justify-between">
                 <span className="font-bold text-gray-900">Total:</span>
                 <span className="text-lg font-bold text-lime-600">{currency.symbol}{totalAmount.toFixed(2)}</span>
@@ -657,9 +682,9 @@ export function ManualInvoiceGenerator({ invoiceToEdit, onCancelEdit }: ManualIn
                   })),
                   subtotal,
                   taxAmount,
-                  taxRate: formData.taxRate,
+                  taxRate,
                   totalAmount,
-                  shippingCost: 0,
+                  shippingCost: formData.deliveryFee || 0,
                   currency: formData.currency,
                   currencySymbol: currency.symbol,
                   invoiceDate: new Date().toISOString(),

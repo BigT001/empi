@@ -21,8 +21,9 @@ export interface IProduct extends Document {
   costumeType?: string; // Sub-category: Angel, Carnival, Western, Traditional Africa, Cosplay, etc.
   country?: string; // For Traditional Africa costumes: Nigeria, Ghana, South Africa, Egypt, Algeria, Congo, Kenya
   badge?: string;
-  imageUrl: string;
+  imageUrl: string; // Main image (a video poster frame for video-only products)
   imageUrls: string[];
+  videoUrls: string[]; // Cloudinary video URLs - a product can have images, videos, or both
   // NEW nested variants
   variants: IColorVariant[];
   // Legacy string fields (kept for backward compat with old products)
@@ -87,6 +88,7 @@ const productSchema = new Schema<IProduct>(
     badge: String,
     imageUrl: { type: String, required: true },
     imageUrls: [String],
+    videoUrls: { type: [String], default: [] },
     // NEW nested variants
     variants: { type: [colorVariantSchema], default: [] },
     // Legacy string fields (old products may still have these)

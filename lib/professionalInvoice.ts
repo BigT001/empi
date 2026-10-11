@@ -286,9 +286,18 @@ export function generateProfessionalInvoiceHTML(
                   </tr>
                 ` : ''}
 
+                ${invoice.shippingCost && invoice.shippingCost > 0 ? `
+                  <tr>
+                    <td style="padding: 5px 0; font-size: 13px; color: #64748b;">Delivery / Logistics (no VAT)</td>
+                    <td align="right" style="padding: 5px 0; font-size: 13px; font-weight: 700; color: #1e293b;">
+                      ${invoice.currencySymbol}${invoice.shippingCost.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
+                    </td>
+                  </tr>
+                ` : ''}
+
                 ${invoice.taxAmount > 0 ? `
                   <tr>
-                    <td style="padding: 5px 0; font-size: 13px; color: #64748b;">VAT (${invoice.taxRate || 7.5}%)</td>
+                    <td style="padding: 5px 0; font-size: 13px; color: #64748b;">VAT (${invoice.taxRate ?? 7.5}%)</td>
                     <td align="right" style="padding: 5px 0; font-size: 13px; font-weight: 700; color: #1e293b;">
                       ${invoice.currencySymbol}${invoice.taxAmount.toLocaleString('en-NG', { maximumFractionDigits: 0 })}
                     </td>

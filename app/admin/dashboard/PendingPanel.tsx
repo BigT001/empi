@@ -5,6 +5,7 @@ import { Clock, AlertCircle, Check, X, Search, RefreshCw, ShoppingBag, Layers } 
 import { ConfirmPaymentModal } from "./components/PendingPanel/ConfirmPaymentModal";
 import { OrdersTable, PendingOrderData } from "./components/OrdersTable";
 import { InvoiceModal } from "@/app/components/InvoiceModal";
+import { OrderRecoveryPanel } from "./components/OrderRecoveryPanel";
 import { StoredInvoice } from "@/lib/invoiceStorage";
 
 interface ProductWithImage {
@@ -335,6 +336,9 @@ export function PendingPanel({ searchQuery: propSearchQuery = "" }: PendingPanel
 
   return (
     <div className="space-y-6">
+      {/* Sales missing from this list: unrecorded manual invoices and removed orders */}
+      <OrderRecoveryPanel onChanged={() => fetchOrders(true)} />
+
       {/* Top Header Controls & Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {/* Total Orders Card */}

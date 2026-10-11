@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, CheckCircle, MessageCircle, AlertCircle, Zap, ChevronDown, Trash2, Hourglass } from 'lucide-react';
 import { checkPaymentStatus } from '@/lib/utils/paymentUtils';
+import { calculateQuoteTotals, DEFAULT_VAT_PERCENT, type QuoteLineItem } from '@/lib/vat';
 
 interface UserCustomOrderCardProps {
   orderId: string;
@@ -11,7 +12,7 @@ interface UserCustomOrderCardProps {
   quantity: number;
   status: 'pending' | 'paid' | 'approved' | 'in-progress' | 'ready' | 'completed' | 'rejected';
   quotedPrice?: number;
-  quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
+  quoteItems?: QuoteLineItem[];
   email: string;
   phone: string;
   designUrls?: string[];
@@ -23,9 +24,10 @@ interface UserCustomOrderCardProps {
   discountAmount?: number;
   subtotalAfterDiscount?: number;
   vat?: number;
+  vatPercent?: number;
   total?: number;
   onChat?: () => void;
-  onProceedToPayment?: (orderId: string, price: number, items: Array<{ itemName: string; quantity: number; unitPrice: number }>) => void;
+  onProceedToPayment?: (orderId: string, price: number, items: QuoteLineItem[], vatInfo?: { vat: number; vatPercent?: number }) => void;
   pollingIntervalMs?: number; // For testing, default 30s in production
 }
 
@@ -47,6 +49,7 @@ export function UserCustomOrderCard({
   discountAmount,
   subtotalAfterDiscount,
   vat: vatFromAdmin,
+  vatPercent,
   total: totalFromAdmin,
   onChat,
   onProceedToPayment,
@@ -54,7 +57,7 @@ export function UserCustomOrderCard({
 }: UserCustomOrderCardProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [currentQuote, setCurrentQuote] = useState<number | undefined>(quotedPrice);
-  const [currentQuoteItems, setCurrentQuoteItems] = useState<Array<{ itemName: string; quantity: number; unitPrice: number }>>(quoteItems);
+  const [currentQuoteItems, setCurrentQuoteItems] = useState<QuoteLineItem[]>(quoteItems);
   const [currentDesignUrls, setCurrentDesignUrls] = useState<string[]>(designUrls);
   const [isPolling, setIsPolling] = useState(!quotedPrice);
   const [lastChecked, setLastChecked] = useState<Date | null>(null);
@@ -108,18 +111,19 @@ export function UserCustomOrderCard({
       };
     }
 
-    // Fallback: recalculate from quote items if no admin pricing
+    // Fallback: recalculate from quote items if no admin pricing (VAT on product lines only)
     if (currentQuoteItems.length > 0) {
-      const subtotalCalc = currentQuoteItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-      const vatCalc = subtotalCalc * VAT_RATE;
-      const totalCalc = subtotalCalc + vatCalc;
-      return { subtotal: subtotalCalc, vat: vatCalc, total: totalCalc, discount: 0, discountPercentage: 0, subtotalAfterDiscount: subtotalCalc };
+      const calc = calculateQuoteTotals(currentQuoteItems, 0, (vatPercent ?? DEFAULT_VAT_PERCENT) / 100);
+      return { subtotal: calc.subtotal, vat: calc.vat, total: calc.total, discount: 0, discountPercentage: 0, subtotalAfterDiscount: calc.subtotalAfterDiscount };
     }
     return { subtotal: 0, vat: 0, total: currentQuote || 0, discount: 0, discountPercentage: 0, subtotalAfterDiscount: 0 };
   };
 
   const totals = calculateTotals();
-  const VAT_RATE = 0.075; // 7.5%
+  // Older quotes were always 7.5%; newer ones store the rate the admin used
+  const vatLabel = typeof vatPercent === 'number'
+    ? `${vatPercent}%`
+    : (totals.vat > 0 ? `${DEFAULT_VAT_PERCENT}%` : '0%');
 
   // Sync payment data from props
   useEffect(() => {
@@ -541,7 +545,7 @@ export function UserCustomOrderCard({
               ) : null}
 
               <div className="flex justify-between text-sm border-t border-emerald-200 dark:border-white/10 pt-2">
-                <span className="font-semibold text-gray-700 dark:text-gray-400">VAT (7.5%):</span>
+                <span className="font-semibold text-gray-700 dark:text-gray-400">VAT ({vatLabel}, products only):</span>
                 <span className="font-bold text-emerald-600 dark:text-lime-400">₦{(totals.vat || 0).toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between text-lg border-t-2 border-emerald-300 dark:border-white/20 pt-2">
@@ -554,7 +558,7 @@ export function UserCustomOrderCard({
             {status === 'pending' && hasQuote && (
               <div className="flex gap-3 pt-3 border-t border-emerald-300">
                 <button
-                  onClick={() => !paymentButtonState.isDisabled && onProceedToPayment?.(orderId, totals.total, currentQuoteItems)}
+                  onClick={() => !paymentButtonState.isDisabled && onProceedToPayment?.(orderId, totals.total, currentQuoteItems, { vat: totals.vat || 0, vatPercent })}
                   disabled={paymentButtonState.isDisabled}
                   className={`flex-1 px-4 py-3 ${paymentButtonState.className} font-bold rounded-lg transition-all transform ${!paymentButtonState.isDisabled ? 'hover:scale-105 active:scale-95' : ''} whitespace-nowrap text-sm`}
                   title={paymentButtonState.isDisabled ? 'Payment is being processed. Please wait for confirmation.' : 'Click to proceed with payment'}

@@ -252,7 +252,8 @@ export function EnhancedDashboard() {
 
       const expenses = expensesList.reduce((sum: number, exp: any) => sum + (exp.amount || 0), 0);
       const inputVAT = expensesList.reduce((sum: number, exp: any) => sum + (exp.vatAmount || 0), 0);
-      const outputVAT = (onlineSales + onlineRentals + offlineSales + offlineRentals) * 0.075;
+      // Output VAT = VAT actually charged on each order (products only - never logistics or caution fees)
+      const outputVAT = [...onlineOrders, ...offlineOrders].reduce((sum: number, o: any) => sum + (o.vat || 0), 0);
       const vatPayable = Math.max(0, outputVAT - inputVAT);
 
       const totalOrdersCount = ordersData.total || onlineOrders.length;

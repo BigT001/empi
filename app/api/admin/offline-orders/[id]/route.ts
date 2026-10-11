@@ -3,6 +3,7 @@ import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 import { serializeDoc } from '@/lib/serializer';
 import { Types } from 'mongoose';
+import { calculateVat } from '@/lib/vat';
 
 // GET - Fetch single offline order
 export async function GET(
@@ -168,8 +169,10 @@ export async function PUT(
         );
       }
       order.subtotal = subtotal;
-      order.vat = Math.round(subtotal * (7.5 / 100) * 100) / 100;
-      order.total = Math.round((subtotal + order.vat) * 100) / 100;
+      // Keep the VAT rate the order was recorded with; VAT never applies to the delivery fee
+      const vatPercent = typeof order.vatRate === 'number' ? order.vatRate : 7.5;
+      order.vat = calculateVat(subtotal, vatPercent / 100);
+      order.total = Math.round((subtotal + order.vat + (order.shippingCost || 0)) * 100) / 100;
     }
 
     await order.save();

@@ -5,6 +5,7 @@ import Admin from '@/lib/models/Admin';
 import Notification from '@/lib/models/Notification';
 import { sendEmail } from '@/lib/email';
 import { createInvoiceFromOrder } from '@/lib/createInvoiceFromOrder';
+import Invoice from '@/lib/models/Invoice';
 
 // POST - Admin confirm payment
 export async function POST(req: NextRequest) {
@@ -63,15 +64,24 @@ export async function POST(req: NextRequest) {
       console.error('[Confirm Payment] Failed to create buyer notification:', notifErr);
     }
 
-    // Generate invoice automatically and send email
-    let invoiceResult = null;
+    // Generate invoice automatically and send email.
+    // Orders recorded from a manual invoice already have one: mark it paid instead of creating a duplicate.
+    let invoiceResult: any = null;
     try {
-      console.log('[Confirm Payment] Generating invoice for order:', order.orderNumber);
-      invoiceResult = await createInvoiceFromOrder(order);
-      if (invoiceResult.success) {
-        console.log('[Confirm Payment] Invoice generated:', invoiceResult.invoiceNumber);
+      if (order.source === 'manual_invoice' && order.invoiceNumber) {
+        await Invoice.updateOne(
+          { invoiceNumber: order.invoiceNumber },
+          { $set: { status: 'paid', paymentVerified: true } }
+        );
+        invoiceResult = { success: true, invoiceNumber: order.invoiceNumber };
       } else {
-        console.warn('[Confirm Payment] Invoice generation warning:', invoiceResult.error);
+        console.log('[Confirm Payment] Generating invoice for order:', order.orderNumber);
+        invoiceResult = await createInvoiceFromOrder(order);
+        if (invoiceResult.success) {
+          console.log('[Confirm Payment] Invoice generated:', invoiceResult.invoiceNumber);
+        } else {
+          console.warn('[Confirm Payment] Invoice generation warning:', invoiceResult.error);
+        }
       }
     } catch (invoiceError) {
       console.error('[Confirm Payment] Invoice generation failed:', invoiceError);

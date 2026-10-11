@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Settings from '@/lib/models/Settings';
 import Admin from '@/lib/models/Admin';
+import { normalizeVatPercent, resolveVatConfig } from '@/lib/vat';
+import { setCachedVatConfig } from '@/lib/vatSettings';
 
 // GET admin VAT settings
 export async function GET(request: NextRequest) {
@@ -23,12 +25,7 @@ export async function GET(request: NextRequest) {
     }
 
     const settings = await Settings.findOne({});
-    const isVatDisabled = Boolean(settings?.isVatDisabled);
-    
-    return NextResponse.json({
-      isVatDisabled,
-      vatRate: isVatDisabled ? 0 : 0.075,
-    });
+    return NextResponse.json(resolveVatConfig(settings));
   } catch (error) {
     console.error('[Admin VAT Settings GET] Error:', error);
     return NextResponse.json(
@@ -68,35 +65,39 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { isVatDisabled } = body;
+    const { isVatDisabled, vatPercent } = body;
 
-    if (typeof isVatDisabled !== 'boolean') {
+    if (isVatDisabled !== undefined && typeof isVatDisabled !== 'boolean') {
       return NextResponse.json({ error: 'isVatDisabled must be a boolean' }, { status: 400 });
     }
 
+    const parsedPercent = vatPercent === undefined ? undefined : Number(vatPercent);
+    if (parsedPercent !== undefined && (!Number.isFinite(parsedPercent) || parsedPercent < 0 || parsedPercent > 100)) {
+      return NextResponse.json({ error: 'vatPercent must be a number between 0 and 100' }, { status: 400 });
+    }
+
+    if (isVatDisabled === undefined && parsedPercent === undefined) {
+      return NextResponse.json({ error: 'Provide isVatDisabled and/or vatPercent' }, { status: 400 });
+    }
+
+    // Only the VAT fields are touched; every other setting is left exactly as it is
     let settings = await Settings.findOne({});
     if (!settings) {
       settings = new Settings({ bankAccounts: [] });
     }
 
-    settings.isVatDisabled = isVatDisabled;
+    if (isVatDisabled !== undefined) settings.isVatDisabled = isVatDisabled;
+    if (parsedPercent !== undefined) settings.vatPercent = normalizeVatPercent(parsedPercent);
     await settings.save();
 
-    // Invalidate public/global memory cache
-    const globalWithVatSettings = global as typeof globalThis & {
-      cachedVatSettings: { isVatDisabled: boolean; vatRate: number } | null;
-    };
-    globalWithVatSettings.cachedVatSettings = {
-      isVatDisabled,
-      vatRate: isVatDisabled ? 0 : 0.075,
-    };
+    const config = resolveVatConfig(settings);
+    setCachedVatConfig(config);
 
-    return NextResponse.json({
-      success: true,
-      message: `VAT has been ${isVatDisabled ? 'disabled' : 'enabled'} successfully.`,
-      isVatDisabled: settings.isVatDisabled,
-      vatRate: settings.isVatDisabled ? 0 : 0.075,
-    });
+    const message = isVatDisabled !== undefined && parsedPercent === undefined
+      ? `VAT has been ${config.isVatDisabled ? 'disabled' : 'enabled'} successfully.`
+      : `VAT rate set to ${config.vatPercent}%${config.isVatDisabled ? ' (VAT is currently turned off)' : ''}.`;
+
+    return NextResponse.json({ success: true, message, ...config });
   } catch (error) {
     console.error('[Admin VAT Settings POST] Error:', error);
     return NextResponse.json(

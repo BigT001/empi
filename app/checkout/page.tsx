@@ -8,7 +8,9 @@ import { Footer } from "../components/Footer";
 import { useCart } from "../components/CartContext";
 import { useBuyer } from "../context/BuyerContext";
 import { ShoppingBag, AlertCircle, CreditCard, Upload, Camera, CheckCircle2, Landmark, Truck } from "lucide-react";
-import { getDiscountPercentage, VAT_RATE } from "@/lib/discountCalculator";
+import { getDiscountPercentage } from "@/lib/discountCalculator";
+import { calculateVat, formatVatPercent } from "@/lib/vat";
+import { useVatSettings } from "@/lib/hooks/useVatSettings";
 import { validateCheckoutItemsModes } from "@/lib/utils/orderDiagnostics";
 
 
@@ -37,7 +39,7 @@ export default function CheckoutPage() {
   }
 
   const [isHydrated, setIsHydrated] = useState(false);
-  const [isVatDisabled, setIsVatDisabled] = useState(false);
+  const { vatRate } = useVatSettings();
   const shippingOption = "empi"; // Fixed to EMPI Delivery only
   const [successReference, setSuccessReference] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -72,17 +74,6 @@ export default function CheckoutPage() {
     }
   }, [buyer]);
 
-  useEffect(() => {
-    fetch("/api/vat-settings")
-      .then(res => res.json())
-      .then(data => {
-        if (typeof data.isVatDisabled === "boolean") {
-          setIsVatDisabled(data.isVatDisabled);
-        }
-      })
-      .catch(err => console.error("Failed to fetch VAT settings in checkout:", err));
-  }, []);
-
   // Payment Method States
   const [paymentMethod, setPaymentMethod] = useState<'paystack' | 'manual'>('paystack');
   const [bankDetails, setBankDetails] = useState<any>(null);
@@ -108,6 +99,7 @@ export default function CheckoutPage() {
           quotedVAT: quote.quotedVAT || 0,
           quotedTotal: quote.quotedTotal || (quote.quotedPrice || 0) + (quote.quotedVAT || 0),
           quantity: quote.quantity || 1,
+          vatPercent: typeof quote.vatPercent === 'number' ? quote.vatPercent : null,
           discountPercentage: quote.discountPercentage || 0,
           discountAmount: quote.discountAmount || 0,
         };
@@ -384,8 +376,8 @@ export default function CheckoutPage() {
 
         // Total goods = buy after discount + rental (no discount)
         const goodsSubtotal = buySubtotalAfterDiscount + rentalSubtotal;
-        const activeVatRate = isVatDisabled ? 0 : VAT_RATE;
-        const taxAmount = Number((goodsSubtotal * activeVatRate).toFixed(2));
+        // VAT on goods only - never on the caution fee or delivery
+        const taxAmount = calculateVat(goodsSubtotal, vatRate);
         const totalAmount = goodsSubtotal + (cautionFee || 0) + shippingCost + taxAmount;
 
         // Log the subtotal breakdown for debugging
@@ -472,6 +464,7 @@ export default function CheckoutPage() {
           discountAmount: discountAmt,
           subtotalAfterDiscount: buySubtotalAfterDiscount,
           vat: taxAmount,
+          vatPercent: vatRate * 100,  // VAT % charged on goods only (not caution fee/delivery)
           cautionFee: (cautionFee || 0),  // CRITICAL: Save caution fee to top-level field
           total: totalAmount,
           pricing: {
@@ -778,9 +771,8 @@ export default function CheckoutPage() {
     // Total goods/services = buy after discount + rental (no discount)
     const goodsSubtotal = buySubtotalAfterDiscount + rentalSubtotal;
 
-    // Tax calculated on goods only (not caution fee)
-    const activeVatRate = isVatDisabled ? 0 : VAT_RATE;
-    taxEstimate = goodsSubtotal * activeVatRate;
+    // Tax calculated on goods only (not caution fee or delivery)
+    taxEstimate = calculateVat(goodsSubtotal, vatRate);
 
     // Include caution fee in displayed subtotal and in final total
     displaySubtotal = buySubtotal + rentalSubtotal + (cautionFee || 0);
@@ -1013,7 +1005,11 @@ export default function CheckoutPage() {
                 )}
                 
                 <div className="flex justify-between">
-                  <span>Tax ({isVatDisabled ? "0%" : "7.5%"})</span>
+                  <span>
+                    {customQuote
+                      ? (typeof customQuote.vatPercent === 'number' ? `VAT (${customQuote.vatPercent}%)` : 'VAT')
+                      : `VAT (${formatVatPercent(vatRate)})`}
+                  </span>
                   <span className="font-semibold text-gray-900">₦{Math.round(taxEstimate).toLocaleString()}</span>
                 </div>
                 

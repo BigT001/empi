@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, Plus, Loader } from "lucide-react";
+import { OfflineVatFields, useOfflineVat } from "./components/OfflineVatFields";
 
 interface OfflineOrderFormProps {
   onClose: () => void;
@@ -9,6 +10,7 @@ interface OfflineOrderFormProps {
 }
 
 export default function OfflineOrderForm({ onClose, onSuccess }: OfflineOrderFormProps) {
+  const offlineVat = useOfflineVat();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -61,6 +63,7 @@ export default function OfflineOrderForm({ onClose, onSuccess }: OfflineOrderFor
           itemDescription: formData.itemDescription || "Offline Sale",
           paymentMethod: formData.paymentMethod,
           status: formData.status,
+          ...offlineVat.payload, // VAT on the product amount only; delivery fee is never taxed
         }),
       });
 
@@ -71,6 +74,7 @@ export default function OfflineOrderForm({ onClose, onSuccess }: OfflineOrderFor
 
       const result = await response.json();
       setSuccess(true);
+      offlineVat.reset();
 
       // Reset form
       setFormData({
@@ -107,8 +111,7 @@ export default function OfflineOrderForm({ onClose, onSuccess }: OfflineOrderFor
 
   // Calculate VAT for preview
   const subtotalNum = parseFloat(formData.subtotal) || 0;
-  const vat = Math.round(subtotalNum * 0.075 * 100) / 100;
-  const total = subtotalNum + vat;
+  const { vat, total } = offlineVat.breakdown(subtotalNum);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -292,6 +295,7 @@ export default function OfflineOrderForm({ onClose, onSuccess }: OfflineOrderFor
                   </select>
                 </div>
               </div>
+              <OfflineVatFields state={offlineVat} disabled={loading} />
             </div>
           </div>
 
@@ -304,9 +308,15 @@ export default function OfflineOrderForm({ onClose, onSuccess }: OfflineOrderFor
                 <span className="font-semibold text-gray-900">₦{subtotalNum.toLocaleString("en-NG", { minimumFractionDigits: 2 })}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">VAT (7.5%):</span>
+                <span className="text-gray-600">VAT ({offlineVat.effectivePercent}%):</span>
                 <span className="font-semibold text-orange-600">₦{vat.toLocaleString("en-NG", { minimumFractionDigits: 2 })}</span>
               </div>
+              {offlineVat.deliveryFeeNum > 0 && (
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Delivery / Logistics (no VAT):</span>
+                  <span className="font-semibold text-gray-900">₦{offlineVat.deliveryFeeNum.toLocaleString("en-NG", { minimumFractionDigits: 2 })}</span>
+                </div>
+              )}
               <div className="border-t border-lime-200 pt-2 flex justify-between">
                 <span className="font-semibold text-gray-900">Total Amount (Inc VAT):</span>
                 <span className="font-bold text-lg text-green-600">₦{total.toLocaleString("en-NG", { minimumFractionDigits: 2 })}</span>

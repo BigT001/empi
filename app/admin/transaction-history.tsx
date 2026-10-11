@@ -14,6 +14,7 @@ import {
   Plus,
   X,
 } from "lucide-react";
+import { OfflineVatFields, useOfflineVat } from "./components/OfflineVatFields";
 
 interface Transaction {
   _id: string;
@@ -978,6 +979,7 @@ interface AddOfflineSaleFormProps {
 }
 
 function AddOfflineSaleForm({ onClose, onSuccess }: AddOfflineSaleFormProps) {
+  const offlineVat = useOfflineVat();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -1021,6 +1023,7 @@ function AddOfflineSaleForm({ onClose, onSuccess }: AddOfflineSaleFormProps) {
         type: formData.type, // Pass the type to the API
         paymentMethod: formData.paymentMethod,
         status: "completed",
+        ...offlineVat.payload, // VAT on the product amount only; delivery fee is never taxed
       };
 
       console.log("📤 Sending offline sale data:", payload);
@@ -1043,6 +1046,7 @@ function AddOfflineSaleForm({ onClose, onSuccess }: AddOfflineSaleFormProps) {
       console.log("✅ Offline sale created successfully:", result);
 
       setSuccess(true);
+      offlineVat.reset();
       setFormData({
         firstName: "",
         lastName: "",
@@ -1067,8 +1071,7 @@ function AddOfflineSaleForm({ onClose, onSuccess }: AddOfflineSaleFormProps) {
   };
 
   const amountNum = parseFloat(formData.amount) || 0;
-  const vat = Math.round(amountNum * 0.075 * 100) / 100;
-  const total = amountNum + vat;
+  const { vat, total } = offlineVat.breakdown(amountNum);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -1220,7 +1223,7 @@ function AddOfflineSaleForm({ onClose, onSuccess }: AddOfflineSaleFormProps) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">VAT (7.5%)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">VAT ({offlineVat.effectivePercent}%)</label>
                 <div className="relative">
                   <span className="absolute left-4 top-1/2 -translate-y-1/2 text-orange-600 font-medium">₦</span>
                   <input
@@ -1232,6 +1235,9 @@ function AddOfflineSaleForm({ onClose, onSuccess }: AddOfflineSaleFormProps) {
                   />
                 </div>
               </div>
+            </div>
+            <div className="mt-4">
+              <OfflineVatFields state={offlineVat} disabled={loading} />
             </div>
           </div>
 
@@ -1245,13 +1251,15 @@ function AddOfflineSaleForm({ onClose, onSuccess }: AddOfflineSaleFormProps) {
                 </p>
               </div>
               <div>
-                <p className="text-sm text-gray-600 mb-1">Output VAT (7.5%)</p>
+                <p className="text-sm text-gray-600 mb-1">Output VAT ({offlineVat.effectivePercent}%)</p>
                 <p className="text-2xl font-bold text-orange-600">
                   ₦{vat.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
                 </p>
               </div>
               <div className="bg-white rounded-lg p-4 border-2 border-lime-600">
-                <p className="text-sm text-gray-600 mb-1 font-medium">Total Amount (Inc VAT)</p>
+                <p className="text-sm text-gray-600 mb-1 font-medium">
+                  Total Amount (Inc VAT{offlineVat.deliveryFeeNum > 0 ? ` + ₦${offlineVat.deliveryFeeNum.toLocaleString("en-NG")} delivery` : ""})
+                </p>
                 <p className="text-3xl font-bold text-lime-600">
                   ₦{total.toLocaleString("en-NG", { minimumFractionDigits: 2 })}
                 </p>

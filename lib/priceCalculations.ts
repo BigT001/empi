@@ -6,6 +6,7 @@
 
 import { getDiscountPercentage } from './discountCalculator';
 
+// Default only - the live rate is admin-controlled (see lib/vat.ts and Settings.vatPercent)
 export const VAT_RATE = 0.075; // 7.5%
 
 export interface PriceBreakdown {
@@ -24,7 +25,7 @@ export interface PriceBreakdown {
  * This is the single source of truth for all price calculations
  * Includes discount tiers based on quantity
  */
-export function calculatePrice(unitPrice: number, quantity: number, isVatDisabled?: boolean): PriceBreakdown {
+export function calculatePrice(unitPrice: number, quantity: number, vatRate: number = VAT_RATE): PriceBreakdown {
   const roundedUnitPrice = Math.round(unitPrice);
   const roundedQuantity = Math.round(quantity);
   
@@ -32,8 +33,7 @@ export function calculatePrice(unitPrice: number, quantity: number, isVatDisable
   const discountPercentage = getDiscountPercentage(roundedQuantity);
   const discountAmount = Math.round(subtotal * (discountPercentage / 100));
   const subtotalAfterDiscount = Math.round(subtotal - discountAmount);
-  const effectiveVatRate = isVatDisabled ? 0 : VAT_RATE;
-  const vat = Math.round(subtotalAfterDiscount * effectiveVatRate);
+  const vat = Math.round(subtotalAfterDiscount * vatRate);
   const total = Math.round(subtotalAfterDiscount + vat);
 
   return {

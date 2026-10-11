@@ -4,6 +4,7 @@ import Product from '@/lib/models/Product';
 import Settings from '@/lib/models/Settings';
 import { serializeDoc, serializeDocs } from '@/lib/serializer';
 import { revalidatePath } from 'next/cache';
+import { sanitizeVideoUrls, videoPosterUrl } from '@/lib/media';
 
 // GET all products with CDN caching headers
 export async function GET(request: NextRequest) {
@@ -149,7 +150,7 @@ export async function POST(request: NextRequest) {
     const settings = await Settings.findOne({});
     const isPriceOptional = settings?.isPriceOptional === true;
 
-    const requiredFields = ['name', 'description', 'category', 'imageUrl'];
+    const requiredFields = ['name', 'description', 'category'];
     if (!isPriceOptional) {
       requiredFields.push('sellPrice', 'rentPrice');
     }
@@ -165,6 +166,20 @@ export async function POST(request: NextRequest) {
     }
 
     console.log("✅ All required fields present");
+
+    // A product needs at least one image or one video. Video-only products use the
+    // first video's poster frame as the main image so every listing keeps working.
+    const videoUrls = sanitizeVideoUrls(body.videoUrls);
+    const imageUrls: string[] = Array.isArray(body.imageUrls)
+      ? body.imageUrls.filter((u: unknown) => typeof u === 'string' && u.trim())
+      : [];
+    const mainImageUrl: string = body.imageUrl || imageUrls[0] || (videoUrls[0] ? videoPosterUrl(videoUrls[0]) : '');
+    if (!mainImageUrl) {
+      return NextResponse.json(
+        { error: 'Add at least one image or video for this product' },
+        { status: 400 }
+      );
+    }
 
     if (
       (body.sellPrice !== undefined && typeof body.sellPrice !== 'number') || 
@@ -244,8 +259,9 @@ export async function POST(request: NextRequest) {
       costumeType: body.costumeType || 'Other',
       ...(body.country && { country: body.country }),
       badge: body.badge || null,
-      imageUrl: body.imageUrl,
-      imageUrls: body.imageUrls || [],
+      imageUrl: mainImageUrl,
+      imageUrls,
+      videoUrls,
       variants: variantsData,
       sizesLegacy: sizesLegacy,
       colorLegacy: colorLegacy,

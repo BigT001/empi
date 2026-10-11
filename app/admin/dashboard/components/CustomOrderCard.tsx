@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import { AlertCircle, CheckCircle, Clock, ChevronDown, Download, X, CreditCard } from 'lucide-react';
 import Image from 'next/image';
 import { getDiscountPercentage } from '@/lib/discountCalculator';
+import { calculateQuoteTotals, isNonTaxableCharge, normalizeVatPercent, DEFAULT_VAT_PERCENT, type QuoteLineItem } from '@/lib/vat';
+import { useVatSettings } from '@/lib/hooks/useVatSettings';
 
 interface CustomOrderCardProps {
   orderId: string;
@@ -16,7 +18,7 @@ interface CustomOrderCardProps {
   designUrls?: string[];
   status: 'pending' | 'paid' | 'approved' | 'in-progress' | 'ready' | 'completed' | 'rejected';
   quotedPrice?: number;
-  quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
+  quoteItems?: QuoteLineItem[];
   paymentVerified?: boolean;
   paymentProofUrl?: string;
 }
@@ -37,7 +39,7 @@ export function CustomOrderCard({
   paymentProofUrl = undefined,
 }: CustomOrderCardProps) {
   // Initialize with props data first, then override with database data on mount
-  const [lineItems, setLineItems] = useState<Array<{ id: string; itemName: string; quantity: number; unitPrice: number }>>(
+  const [lineItems, setLineItems] = useState<Array<QuoteLineItem & { id: string }>>(
     quoteItems && quoteItems.length > 0 
       ? quoteItems.map((item, idx) => ({ id: `item-${idx}`, ...item }))
       : []
@@ -46,6 +48,17 @@ export function CustomOrderCard({
   // Initialize itemQuantity with the user's specified quantity instead of hardcoding '1'
   const [itemQuantity, setItemQuantity] = useState(quantity ? quantity.toString() : '1');
   const [itemPrice, setItemPrice] = useState('');
+  // Logistics/delivery lines are not products, so they default to "no VAT" (admin can override)
+  const [itemVatExempt, setItemVatExempt] = useState(false);
+  const [itemVatExemptTouched, setItemVatExemptTouched] = useState(false);
+  // Per-quote VAT: admin can switch it off or type the rate manually
+  const vatSettings = useVatSettings();
+  // A saved quote keeps the VAT it was sent with; a new quote starts from the store setting
+  const [savedQuoteVat, setSavedQuoteVat] = useState<{ charge: boolean; percent: string } | null>(null);
+  const [chargeVatEdit, setChargeVatEdit] = useState<boolean | null>(null);
+  const [vatPercentEdit, setVatPercentEdit] = useState<string | null>(null);
+  const chargeVat = chargeVatEdit ?? savedQuoteVat?.charge ?? !vatSettings.isVatDisabled;
+  const vatPercentInput = vatPercentEdit ?? savedQuoteVat?.percent ?? String(vatSettings.vatPercent);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
@@ -63,8 +76,6 @@ export function CustomOrderCard({
   const [isMarking, setIsMarking] = useState(false);
   const [expandedImageIndex, setExpandedImageIndex] = useState<number | null>(null);
   const [paymentData, setPaymentData] = useState({ paymentProofUrl, paymentVerified });
-
-  const VAT_RATE = 0.075; // 7.5%
 
   // Sync payment data from props
   useEffect(() => {
@@ -113,10 +124,20 @@ export function CustomOrderCard({
             id: `item-${idx}`, 
             itemName: item.itemName,
             quantity: item.quantity,
-            unitPrice: item.unitPrice
+            unitPrice: item.unitPrice,
+            vatExempt: Boolean(item.vatExempt),
           }));
           setLineItems(itemsWithIds);
           setQuoteSent(true);
+
+          // Older quotes were always sent at 7.5%; newer ones store the rate used
+          const savedVatPercent = typeof order.vatPercent === 'number'
+            ? order.vatPercent
+            : (order.vat > 0 ? DEFAULT_VAT_PERCENT : 0);
+          setSavedQuoteVat({
+            charge: savedVatPercent > 0,
+            percent: String(savedVatPercent > 0 ? savedVatPercent : DEFAULT_VAT_PERCENT),
+          });
         }
 
         // Also check for payment updates
@@ -190,38 +211,12 @@ export function CustomOrderCard({
     };
   }, [orderId, quoteSent]);
 
-  // Calculate totals WITH BULK DISCOUNT APPLIED
+  // Calculate totals WITH BULK DISCOUNT APPLIED.
+  // VAT is charged only on product lines - never on logistics/delivery lines.
+  const effectiveVatRate = chargeVat ? normalizeVatPercent(vatPercentInput, 0) / 100 : 0;
   const calculateTotals = (items: typeof lineItems) => {
-    // Step 1: Calculate subtotal (before discount)
-    const subtotal = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-    
-    // Step 2: Calculate total quantity across all items (used for discount tier)
     const totalQuantity = items.reduce((sum, item) => sum + item.quantity, 0);
-    
-    // Step 3: Get discount percentage based on TOTAL quantity
-    const discountPercentage = getDiscountPercentage(totalQuantity);
-    
-    // Step 4: Calculate discount amount
-    const discountAmount = subtotal * (discountPercentage / 100);
-    
-    // Step 5: Apply discount to get subtotal after discount
-    const subtotalAfterDiscount = subtotal - discountAmount;
-    
-    // Step 6: Calculate VAT on the discounted subtotal
-    const vat = subtotalAfterDiscount * VAT_RATE;
-    
-    // Step 7: Calculate final total
-    const total = subtotalAfterDiscount + vat;
-    
-    return { 
-      subtotal, 
-      discountPercentage, 
-      discountAmount,
-      subtotalAfterDiscount,
-      vat, 
-      total,
-      totalQuantity,
-    };
+    return calculateQuoteTotals(items, getDiscountPercentage(totalQuantity), effectiveVatRate);
   };
 
   const totals = calculateTotals(lineItems);
@@ -274,13 +269,29 @@ export function CustomOrderCard({
       itemName: itemName.trim(),
       quantity: parseFloat(itemQuantity),
       unitPrice: parseFloat(itemPrice),
+      vatExempt: itemVatExempt,
     };
 
     setLineItems([...lineItems, newItem]);
     setItemName('');
     setItemQuantity('1');
     setItemPrice('');
+    setItemVatExempt(false);
+    setItemVatExemptTouched(false);
     setSubmitStatus('idle');
+  };
+
+  const handleItemNameChange = (value: string) => {
+    setItemName(value);
+    if (!itemVatExemptTouched) setItemVatExempt(isNonTaxableCharge(value));
+  };
+
+  const handleToggleLineVat = (id: string) => {
+    setLineItems(lineItems.map((item) => (item.id === id ? { ...item, vatExempt: !item.vatExempt } : item)));
+  };
+
+  const handleRemoveLineItem = (id: string) => {
+    setLineItems(lineItems.filter((item) => item.id !== id));
   };
 
   const handleSendQuote = async () => {
@@ -306,6 +317,7 @@ export function CustomOrderCard({
         discountAmount: totals.discountAmount,
         subtotalAfterDiscount: totals.subtotalAfterDiscount,
         vat: totals.vat,
+        vatPercent: totals.vatPercent,
         total: totals.total,
         requiredQuantity: totals.totalQuantity,
       };
@@ -351,7 +363,13 @@ export function CustomOrderCard({
         senderType: 'admin',
         content: `Your quotation is ready! Review the quote items and total price below.`,
         messageType: 'quote',
+        // Full breakdown so the server keeps exactly what the admin quoted (no re-calculation)
         quotedPrice: totals.total,
+        quotedVAT: totals.vat,
+        quotedTotal: totals.total,
+        discountPercentage: totals.discountPercentage,
+        discountAmount: totals.discountAmount,
+        vatPercent: totals.vatPercent,
         isFinalPrice: false,
       };
 
@@ -725,11 +743,31 @@ export function CustomOrderCard({
               <div className="space-y-2">
                 <p className="text-xs font-semibold text-gray-600 uppercase mb-3">Quote Items</p>
                 {lineItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-gray-200">
+                  <div key={item.id} className="flex items-center justify-between gap-2 p-3 bg-white rounded-lg border border-gray-200">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold text-gray-900">{item.itemName}</p>
                       <p className="text-xs text-gray-600">Qty: {item.quantity} × ₦{item.unitPrice.toLocaleString()} = ₦{(item.quantity * item.unitPrice).toLocaleString()}</p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => handleToggleLineVat(item.id)}
+                      title="Click to change whether VAT applies to this line"
+                      className={`flex-shrink-0 px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border ${
+                        item.vatExempt
+                          ? 'bg-amber-50 text-amber-700 border-amber-300'
+                          : 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                      }`}
+                    >
+                      {item.vatExempt ? 'No VAT' : 'VAT applies'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveLineItem(item.id)}
+                      title="Remove item"
+                      className="flex-shrink-0 p-1 rounded hover:bg-red-50 text-gray-400 hover:text-red-600"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                 ))}
               </div>
@@ -744,8 +782,8 @@ export function CustomOrderCard({
                 <input
                   type="text"
                   value={itemName}
-                  onChange={(e) => setItemName(e.target.value)}
-                  placeholder="e.g., Red Costume Design, Blue Cape, etc."
+                  onChange={(e) => handleItemNameChange(e.target.value)}
+                  placeholder="e.g., Red Costume Design, Blue Cape, Delivery fee, etc."
                   className="w-full px-3 py-2 rounded-lg border-2 border-gray-300 focus:border-blue-500 focus:outline-none text-sm font-semibold text-gray-900 placeholder-gray-400 transition-colors"
                 />
               </div>
@@ -781,6 +819,21 @@ export function CustomOrderCard({
                   </button>
                 </div>
               </div>
+
+              <label className="flex items-start gap-2 text-xs text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={itemVatExempt}
+                  onChange={(e) => {
+                    setItemVatExempt(e.target.checked);
+                    setItemVatExemptTouched(true);
+                  }}
+                  className="mt-0.5"
+                />
+                <span>
+                  <span className="font-semibold">Not a product - no VAT</span> (logistics, delivery, transport, caution deposit)
+                </span>
+              </label>
             </div>
 
             {/* Pricing Summary with Bulk Discount */}
@@ -805,10 +858,41 @@ export function CustomOrderCard({
                   </>
                 )}
                 
-                <div className="flex justify-between text-sm border-t border-emerald-200 pt-2">
-                  <span className="font-semibold text-gray-700">VAT (7.5%):</span>
+                {/* VAT controls - admin can switch VAT off or enter the rate manually */}
+                <div className="flex flex-wrap items-center justify-between gap-2 text-sm border-t border-emerald-200 pt-2">
+                  <label className="flex items-center gap-2 font-semibold text-gray-700 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={chargeVat}
+                      onChange={(e) => setChargeVatEdit(e.target.checked)}
+                    />
+                    Charge VAT
+                  </label>
+                  <div className="flex items-center gap-1">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.1"
+                      value={vatPercentInput}
+                      onChange={(e) => setVatPercentEdit(e.target.value)}
+                      disabled={!chargeVat}
+                      className="w-20 px-2 py-1 rounded border-2 border-gray-300 focus:border-blue-500 focus:outline-none text-sm font-semibold text-gray-900 disabled:bg-gray-100 disabled:text-gray-400"
+                    />
+                    <span className="text-gray-600 font-semibold">%</span>
+                  </div>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="font-semibold text-gray-700">
+                    VAT ({totals.vatPercent}% on products ₦{totals.taxableAmount.toLocaleString('en-NG', { minimumFractionDigits: 2 })}):
+                  </span>
                   <span className="font-bold text-emerald-600">₦{totals.vat.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>
                 </div>
+                {totals.taxableAmount < totals.subtotalAfterDiscount && (
+                  <p className="text-xs text-amber-700">
+                    No VAT on ₦{(totals.subtotalAfterDiscount - totals.taxableAmount).toLocaleString('en-NG', { minimumFractionDigits: 2 })} of logistics/non-product charges.
+                  </p>
+                )}
                 <div className="flex justify-between text-lg border-t-2 border-emerald-300 pt-2">
                   <span className="font-bold text-gray-900">Total:</span>
                   <span className="font-black text-emerald-600">₦{totals.total.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</span>

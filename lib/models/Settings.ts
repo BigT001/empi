@@ -31,6 +31,8 @@ export interface ISettings extends Document {
   activeHomePage?: "default" | "costume-show";
   isPriceOptional?: boolean;
   isVatDisabled?: boolean;
+  // VAT percentage charged on products only (never on logistics or caution fees)
+  vatPercent?: number;
 
   updatedAt: Date;
   createdAt: Date;
@@ -69,6 +71,7 @@ const settingsSchema = new Schema<ISettings>(
     activeHomePage: { type: String, default: "default" },
     isPriceOptional: { type: Boolean, default: false },
     isVatDisabled: { type: Boolean, default: false },
+    vatPercent: { type: Number, default: 7.5, min: 0, max: 100 },
   },
   { timestamps: true }
 );

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Image from "next/image";
 import { Upload, X, CheckCircle2, Bell, Clock, Zap, Plus, Check } from "lucide-react";
+import { ProductVideoManager } from "./components/ProductVideoManager";
 
 export interface NestedSizeEntry {
   size: string;
@@ -88,6 +89,7 @@ interface ProductForm {
   isCostumeShow?: boolean;
   imageFiles: File[];
   imagePreviews: string[];
+  videoUrls: string[]; // already uploaded to Cloudinary
 }
 
 interface FormErrors {
@@ -139,7 +141,10 @@ export default function MobileAdminUpload() {
     isCostumeShow: false,
     imageFiles: [],
     imagePreviews: [],
+    videoUrls: [],
   });
+  const [videosUploading, setVideosUploading] = useState(false);
+  const hasMedia = form.imagePreviews.length > 0 || form.videoUrls.length > 0;
 
   // Modal States for Dynamic Variants (Unified Color Group Modal)
   const [isColorModalOpen, setIsColorModalOpen] = useState(false);
@@ -373,15 +378,20 @@ export default function MobileAdminUpload() {
       !form.description ||
       !hasRequiredPrice ||
       form.variants.length === 0 ||
-      form.imageFiles.length === 0
+      !hasMedia
     ) {
-      setSubmitMessage("❌ Fill all required fields and upload at least 1 image");
+      setSubmitMessage("❌ Fill all required fields and add at least 1 image or video");
+      return;
+    }
+
+    if (videosUploading) {
+      setSubmitMessage("⏳ Please wait for your videos to finish uploading");
       return;
     }
 
     setIsSubmitting(true);
     setSubmitMessage("");
-    setUploadProgress("Uploading images...");
+    setUploadProgress(form.imagePreviews.length > 0 ? "Uploading images..." : "Saving product...");
 
     try {
       console.log(`📤 Uploading ${form.imagePreviews.length} images...`);
@@ -425,6 +435,7 @@ export default function MobileAdminUpload() {
         }
       }
 
+      // Video-only products: the server uses the first video's poster frame as the main image
       const mainImage = cloudinaryUrls[0];
 
       const payload = {
@@ -438,6 +449,7 @@ export default function MobileAdminUpload() {
         badge: form.badge || null,
         imageUrl: mainImage,
         imageUrls: cloudinaryUrls,
+        videoUrls: form.videoUrls,
         variants: form.variants,
         material: form.material,
         condition: form.condition,
@@ -532,6 +544,7 @@ export default function MobileAdminUpload() {
         isCostumeShow: false,
         imageFiles: [],
         imagePreviews: [],
+        videoUrls: [],
       });
 
       setSubmitMessage("✅ Product uploaded successfully!");
@@ -633,8 +646,9 @@ export default function MobileAdminUpload() {
         <div className="space-y-4">
           <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <span className="text-2xl">📸</span>
-            Upload Photos
+            Upload Photos &amp; Videos
           </h3>
+          <p className="text-xs text-gray-500 -mt-2">Add photos, videos, or both &mdash; at least one is required.</p>
 
           {/* Image Upload Area */}
           <div>
@@ -687,6 +701,7 @@ export default function MobileAdminUpload() {
                       className="object-cover group-hover:scale-105 transition duration-300"
                     />
                     <button
+                      type="button"
                       onClick={() => removeImage(index)}
                       className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition flex items-center justify-center"
                     >
@@ -697,6 +712,20 @@ export default function MobileAdminUpload() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Videos */}
+        <div className="space-y-3">
+          <h3 className="text-lg font-bold text-gray-900 flex items-center gap-2">
+            <span className="text-2xl">🎬</span>
+            Product Videos
+          </h3>
+          <ProductVideoManager
+            videoUrls={form.videoUrls}
+            onChange={(update) => setForm((prev) => ({ ...prev, videoUrls: update(prev.videoUrls) }))}
+            onUploadingChange={setVideosUploading}
+            disabled={isSubmitting}
+          />
         </div>
 
         {/* Divider */}
@@ -1106,9 +1135,9 @@ export default function MobileAdminUpload() {
         <div className="sticky bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white to-transparent p-4 border-t border-gray-200 z-40">
           <button
             type="submit"
-            disabled={isSubmitting || form.imagePreviews.length === 0}
+            disabled={isSubmitting || !hasMedia || videosUploading}
             className={`w-full py-4 px-6 font-bold rounded-xl text-white transition text-lg shadow-lg hover:shadow-xl ${
-              isSubmitting || form.imagePreviews.length === 0
+              isSubmitting || !hasMedia || videosUploading
                 ? "bg-gradient-to-r from-gray-400 to-gray-500 cursor-not-allowed"
                 : "bg-gradient-to-r from-lime-600 to-green-600 hover:from-lime-700 hover:to-green-700 active:scale-95"
             }`}
@@ -1127,8 +1156,11 @@ export default function MobileAdminUpload() {
               )}
             </span>
           </button>
-          {form.imagePreviews.length === 0 && (
-            <p className="text-xs text-gray-500 text-center mt-2">📸 Add photos to upload</p>
+          {!hasMedia && (
+            <p className="text-xs text-gray-500 text-center mt-2">📸 Add photos or a video to upload</p>
+          )}
+          {videosUploading && (
+            <p className="text-xs text-gray-500 text-center mt-2">🎬 Waiting for videos to finish uploading…</p>
           )}
         </div>
       </form>

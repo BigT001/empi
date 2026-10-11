@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import connectDB from '@/lib/mongodb';
 import Order from '@/lib/models/Order';
 import { serializeDoc, serializeDocs } from '@/lib/serializer';
+import { calculateVat, normalizeVatPercent } from '@/lib/vat';
+import { getVatConfig } from '@/lib/vatSettings';
 
 // POST - Create offline/manual order
 export async function POST(request: NextRequest) {
@@ -26,11 +28,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calculate VAT (7.5% of subtotal)
+    // VAT is charged on the product amount (subtotal) only - never on the delivery/logistics fee.
+    // Admin can switch VAT off or type the rate for this order; otherwise the store setting applies.
     const subtotal = parseFloat(body.subtotal);
-    const vatRate = 7.5;
-    const vat = Math.round(subtotal * (vatRate / 100) * 100) / 100;
-    const total = Math.round((subtotal + vat) * 100) / 100;
+    const deliveryFee = Math.max(0, parseFloat(body.deliveryFee) || 0);
+    const storeVat = await getVatConfig();
+    const vatRate = body.chargeVat === false
+      ? 0
+      : normalizeVatPercent(body.vatPercent, storeVat.vatRate * 100);
+    const vat = calculateVat(subtotal, vatRate / 100);
+    const total = Math.round((subtotal + vat + deliveryFee) * 100) / 100;
 
     // Determine mode based on type (sale or rental)
     const type = body.type || 'sale'; // Default to 'sale'
@@ -59,7 +66,7 @@ export async function POST(request: NextRequest) {
       vat,
       vatRate,
       total,
-      shippingCost: 0,
+      shippingCost: deliveryFee,
       shippingType: 'offline',
       paymentMethod: body.paymentMethod,
       status: body.status || 'completed', // Offline orders default to completed

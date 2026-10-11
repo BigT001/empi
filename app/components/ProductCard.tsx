@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { Info } from "lucide-react";
+import { Info, Play } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
 import { CURRENCY_RATES } from "./constants";
@@ -18,6 +18,7 @@ interface Product {
   rentPrice: number;
   imageUrl: string;
   imageUrls?: string[];
+  videoUrls?: string[];
   badge: string | null;
   description?: string;
   category: string;
@@ -133,6 +134,11 @@ export function ProductCard({ product, currency = "NGN", compactOnMobile = false
               className="object-cover transition-transform duration-1000 group-hover:scale-110"
               priority
             />
+            {(product.videoUrls?.length ?? 0) > 0 && (
+              <span className="absolute bottom-3 left-3 z-10 flex items-center gap-1 rounded-full bg-black/60 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-white backdrop-blur-sm">
+                <Play className="h-3 w-3 fill-white" /> Video
+              </span>
+            )}
             {/* Soft Gradient Overlay for Readability */}
             <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
           </Link>

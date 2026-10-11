@@ -5,6 +5,7 @@ import { UserCustomOrderCard } from './CustomOrderCard';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Package } from 'lucide-react';
+import { DEFAULT_VAT_PERCENT, type QuoteLineItem } from '@/lib/vat';
 
 interface CustomOrder {
   _id: string;
@@ -25,7 +26,7 @@ interface CustomOrder {
   status: "pending" | "paid" | "approved" | "in-progress" | "ready" | "completed" | "rejected";
   notes?: string;
   quotedPrice?: number;
-  quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
+  quoteItems?: QuoteLineItem[];
   productId?: string;
   deadlineDate?: string;
   timerStartedAt?: string;
@@ -36,6 +37,7 @@ interface CustomOrder {
   discountAmount?: number;
   subtotalAfterDiscount?: number;
   vat?: number;
+  vatPercent?: number;
   total?: number;
   paymentProofUrl?: string;
   paymentVerified?: boolean;
@@ -99,11 +101,16 @@ export function OrdersTab({
 }: OrdersTabProps) {
   const router = useRouter();
 
-  const handleProceedToPayment = (orderId: string, price: number, items: Array<{ itemName: string; quantity: number; unitPrice: number }> = []) => {
-    // Calculate VAT (7.5% on quoted price without VAT)
-    const VAT_RATE = 0.075;
-    const quotedPrice = price / (1 + VAT_RATE); // Back-calculate the base price from total
-    const quotedVAT = price - quotedPrice;
+  const handleProceedToPayment = (
+    orderId: string,
+    price: number,
+    items: QuoteLineItem[] = [],
+    vatInfo?: { vat: number; vatPercent?: number }
+  ) => {
+    // Use the VAT the admin actually quoted (charged on products only, never on logistics).
+    // Only very old quotes without a stored VAT amount fall back to the 7.5% back-calculation.
+    const quotedVAT = vatInfo ? vatInfo.vat : price - price / (1 + DEFAULT_VAT_PERCENT / 100);
+    const quotedPrice = price - quotedVAT;
     
     // Store the complete custom order quote data for payment processing
     // The structure matches what the checkout page expects
@@ -112,6 +119,7 @@ export function OrdersTab({
       quotedPrice,
       quotedVAT,
       quotedTotal: price,
+      vatPercent: vatInfo?.vatPercent,
       items, // Store quote items for display
     };
     
@@ -188,6 +196,7 @@ export function OrdersTab({
                       discountAmount={order.discountAmount}
                       subtotalAfterDiscount={order.subtotalAfterDiscount}
                       vat={order.vat}
+                      vatPercent={order.vatPercent}
                       total={order.total}
                       email={order.email}
                       phone={order.phone}

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Invoice from "@/lib/models/Invoice";
 import { serializeDoc, serializeDocs } from "@/lib/serializer";
+import { recordInvoiceAsOrder } from "@/lib/invoiceOrders";
 
 // Save invoice with items
 export async function POST(request: NextRequest) {
@@ -23,7 +24,7 @@ export async function POST(request: NextRequest) {
       customerState,
       customerPostalCode,
       subtotal,
-      // shippingCost intentionally ignored - shipping removed from invoices
+      // shippingCost is only kept for manual invoices (admin-entered delivery fee, never taxed)
       taxAmount,
       totalAmount,
       items,
@@ -94,8 +95,8 @@ export async function POST(request: NextRequest) {
       customerState: customerState || null,
       customerPostalCode: customerPostalCode || null,
       subtotal: subtotal || 0,
-      // Force shippingCost to zero - invoices should not include shipping
-      shippingCost: 0,
+      // Online orders have no shipping on invoices; manual invoices may carry an untaxed delivery fee
+      shippingCost: type === 'manual' ? Math.max(0, Number(body.shippingCost) || 0) : 0,
       taxAmount: taxAmount || 0,
       totalAmount: totalAmount || 0,
       items: items || [],
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
       dueDate: dueDate ? new Date(dueDate) : null,
       currency: currency || 'NGN',
       currencySymbol: currencySymbol || '₦',
-      taxRate: taxRate || 7.5,
+      taxRate: taxRate ?? 7.5,
       type,
       status,
     });
@@ -124,6 +125,16 @@ export async function POST(request: NextRequest) {
       customerEmail: savedInvoice?.customerEmail,
       totalAmount: savedInvoice?.totalAmount,
     });
+
+    // Manual sales must also appear as orders (Orders, Finance, VAT). Never blocks saving the invoice.
+    if (type === 'manual') {
+      try {
+        const recorded = await recordInvoiceAsOrder((savedInvoice || invoice).toObject());
+        console.log(`📦 Manual invoice → order: ${recorded.status} (${recorded.orderNumber})`, recorded.error || '');
+      } catch (orderError) {
+        console.error('⚠️ Could not record manual invoice as order:', orderError);
+      }
+    }
 
     const serialized = serializeDoc(savedInvoice || invoice);
     console.log(`🔄 Serialized invoice:`, serialized);

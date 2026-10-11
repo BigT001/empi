@@ -12,6 +12,7 @@ export interface IMessage extends Document {
   quotedDeliveryDate?: Date; // Admin's proposed production ready date
   quotedVAT?: number;
   quotedTotal?: number;
+  vatPercent?: number;
   discountPercentage?: number;
   discountAmount?: number;
   messageType: 'text' | 'quote' | 'negotiation' | 'system' | 'quantity-update' | 'delivery-option' | 'address' | 'review-request' | 'review';
@@ -78,6 +79,10 @@ const messageSchema = new Schema<IMessage>(
       default: null,
     },
     quotedTotal: {
+      type: Number,
+      default: null,
+    },
+    vatPercent: {
       type: Number,
       default: null,
     },

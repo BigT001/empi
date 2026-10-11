@@ -61,13 +61,14 @@ export interface IUnifiedOrder extends Document {
   // QUOTE/PRICING (for custom orders)
   // ═══════════════════════════════════════════════════════════════════
   quotedPrice?: number;
-  quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number }>;
+  quoteItems?: Array<{ itemName: string; quantity: number; unitPrice: number; vatExempt?: boolean }>;
   
   // ═══════════════════════════════════════════════════════════════════
   // PRICING
   // ═══════════════════════════════════════════════════════════════════
   subtotal: number;
   vat: number;
+  vatPercent?: number;  // VAT % charged on products only (absent on older orders)
   discountPercentage?: number;
   discountAmount?: number;
   subtotalAfterDiscount?: number;  // Subtotal after discount is applied
@@ -125,6 +126,8 @@ export interface IUnifiedOrder extends Document {
   isActive: boolean;
   deletedAt?: Date;
   notes?: string;
+  source?: string;          // 'manual_invoice' when recorded from an admin manual invoice
+  invoiceNumber?: string;
 }
 
 const unifiedOrderSchema = new Schema<IUnifiedOrder>(
@@ -150,7 +153,7 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
     },
     lastName: {
       type: String,
-      required: true,
+      default: '',  // optional: manual-invoice customers may have a single name
     },
     email: {
       type: String,
@@ -159,7 +162,7 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
     },
     phone: {
       type: String,
-      required: true,
+      default: '',  // optional: online checkout validates it in the API
     },
     address: String,
     city: {
@@ -219,6 +222,7 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
         itemName: String,
         quantity: Number,
         unitPrice: Number,
+        vatExempt: Boolean,  // true for logistics/delivery lines - no VAT charged
       },
     ],
     
@@ -231,6 +235,7 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
       type: Number,
       default: 0,
     },
+    vatPercent: Number,
     discountPercentage: {
       type: Number,
       default: 0,
@@ -316,6 +321,9 @@ const unifiedOrderSchema = new Schema<IUnifiedOrder>(
     },
     deletedAt: Date,
     notes: String,
+    // Where the order came from: undefined = online checkout, 'manual_invoice' = admin manual invoice
+    source: String,
+    invoiceNumber: String,
   },
   {
     timestamps: true,

@@ -42,6 +42,8 @@ export default function SettingsPage() {
   const [activeHomePageSetting, setActiveHomePageSetting] = useState<"default" | "costume-show">("default");
   const [isPriceOptionalSetting, setIsPriceOptionalSetting] = useState(false);
   const [isVatDisabledSetting, setIsVatDisabledSetting] = useState(false);
+  const [vatPercentSetting, setVatPercentSetting] = useState("7.5");
+  const [savedVatPercent, setSavedVatPercent] = useState(7.5);
   const [loadingHomepage, setLoadingHomepage] = useState(false);
 
   // Sub-Admins State
@@ -152,6 +154,10 @@ export default function SettingsPage() {
         if (typeof vatData.isVatDisabled === "boolean") {
           setIsVatDisabledSetting(vatData.isVatDisabled);
         }
+        if (typeof vatData.vatPercent === "number") {
+          setVatPercentSetting(String(vatData.vatPercent));
+          setSavedVatPercent(vatData.vatPercent);
+        }
       }
     } catch (err) {
       console.error("Error fetching homepage/vat settings:", err);
@@ -204,6 +210,36 @@ export default function SettingsPage() {
       }
     } catch (err) {
       setMessage({ type: "error", text: "Error saving settings" });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleSaveVatPercent = async () => {
+    const percent = parseFloat(vatPercentSetting);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      setMessage({ type: "error", text: "Enter a VAT rate between 0 and 100" });
+      return;
+    }
+    setIsSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/admin/vat-settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ vatPercent: percent }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setVatPercentSetting(String(data.vatPercent));
+        setSavedVatPercent(data.vatPercent);
+        setMessage({ type: "success", text: data.message || "VAT rate updated" });
+        setTimeout(() => setMessage(null), 3000);
+      } else {
+        setMessage({ type: "error", text: data.error || "Failed to update VAT rate" });
+      }
+    } catch {
+      setMessage({ type: "error", text: "Error saving VAT rate" });
     } finally {
       setIsSaving(false);
     }
@@ -1117,7 +1153,7 @@ export default function SettingsPage() {
                   {/* VAT Tax Toggle Card */}
                   <div>
                     <h3 className="text-lg font-bold text-gray-900 mt-8 mb-2">VAT & Tax Configuration</h3>
-                    <p className="text-gray-600 text-sm mb-4">Globally enable or disable VAT calculations across all purchases and invoices.</p>
+                    <p className="text-gray-600 text-sm mb-4">Set the VAT rate or turn VAT off. VAT is charged on products only &mdash; never on logistics/delivery fees or the refundable caution fee.</p>
                   </div>
 
                   <div className={`p-6 rounded-2xl border-2 transition ${isVatDisabledSetting ? 'border-amber-500 bg-amber-50/20 shadow-md shadow-amber-500/5' : 'border-emerald-500 bg-emerald-50/20 shadow-md shadow-emerald-500/5'}`}>
@@ -1128,11 +1164,11 @@ export default function SettingsPage() {
                             Disable Store VAT (0% Tax)
                           </h4>
                           <span className={`px-2 py-0.5 text-[10px] font-black uppercase tracking-wider rounded-full ${isVatDisabledSetting ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}`}>
-                            {isVatDisabledSetting ? 'Disabled' : 'Standard 7.5% Active'}
+                            {isVatDisabledSetting ? 'Disabled' : `${savedVatPercent}% Active`}
                           </span>
                         </div>
                         <p className="text-xs text-gray-500 leading-relaxed">
-                          When toggled ON (disabled), VAT is set to 0% across all store checkouts, custom quotes, invoices, and cart summaries. Toggle OFF to re-enable standard 7.5% VAT.
+                          When toggled ON (disabled), VAT is set to 0% across all store checkouts, custom quotes, invoices, and cart summaries. Toggle OFF to re-enable VAT at the rate below.
                         </p>
                       </div>
                       <button
@@ -1149,6 +1185,38 @@ export default function SettingsPage() {
                           }`}
                         />
                       </button>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 p-6 rounded-2xl border-2 border-gray-200 bg-white">
+                    <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+                      <div className="flex-1 space-y-1">
+                        <label htmlFor="vat-percent" className="text-sm font-bold text-gray-900">VAT Rate (%)</label>
+                        <p className="text-xs text-gray-500 leading-relaxed">
+                          Enter the VAT percentage manually. It applies to products only. Custom quotes and offline sales can still switch VAT off or use a different rate per order.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          id="vat-percent"
+                          type="number"
+                          min="0"
+                          max="100"
+                          step="0.1"
+                          value={vatPercentSetting}
+                          onChange={(e) => setVatPercentSetting(e.target.value)}
+                          disabled={isSaving}
+                          className="w-24 px-3 py-2 rounded-lg border-2 border-gray-300 focus:border-lime-600 focus:outline-none text-sm font-semibold text-gray-900"
+                        />
+                        <span className="text-sm font-semibold text-gray-600">%</span>
+                        <button
+                          onClick={handleSaveVatPercent}
+                          disabled={isSaving || parseFloat(vatPercentSetting) === savedVatPercent}
+                          className="px-4 py-2 rounded-lg bg-lime-600 hover:bg-lime-700 text-white text-sm font-bold disabled:bg-gray-300 disabled:cursor-not-allowed"
+                        >
+                          Save Rate
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>

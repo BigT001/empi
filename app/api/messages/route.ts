@@ -5,6 +5,7 @@ import CustomOrder from '@/lib/models/CustomOrder';
 import Order from '@/lib/models/Order';
 import UnifiedOrder from '@/lib/models/UnifiedOrder';
 import { calculateQuote } from '@/lib/discountCalculator';
+import { getVatConfig } from '@/lib/vatSettings';
 
 /**
  * GET /api/messages
@@ -118,6 +119,10 @@ export async function POST(request: NextRequest) {
       recipientType = 'all', // 'admin', 'buyer', or 'all'
       deliveryOption = null, // 'pickup' or 'delivery' - set when customer selects their preference
     } = body;
+
+    // Newer admin quotes send the exact breakdown they calculated (VAT on products only).
+    // Those values are used as-is so VAT/discount are never applied a second time.
+    const hasAdminBreakdown = senderType === 'admin' && quotedPrice && typeof body.quotedTotal === 'number';
 
     console.log('[API:POST /messages] Received:', { orderId, orderNumber, senderType, messageType, contentLength: content?.length, deliveryOption });
     console.log('[API:POST /messages] orderId details:', { 
@@ -304,10 +309,19 @@ export async function POST(request: NextRequest) {
     let discountPercentage = 0;
     let discountAmount = 0;
     let subtotalAfterDiscount = null;
+    let vatPercent: number | null = null;
 
-    if (quotedPrice) {
+    if (hasAdminBreakdown) {
+      quotedVAT = Number(body.quotedVAT) || 0;
+      quotedTotal = Number(body.quotedTotal) || 0;
+      discountPercentage = Number(body.discountPercentage) || 0;
+      discountAmount = Number(body.discountAmount) || 0;
+      vatPercent = typeof body.vatPercent === 'number' ? body.vatPercent : null;
+    } else if (quotedPrice) {
       const priceValue = parseFloat(quotedPrice);
-      const quoteData = calculateQuote(priceValue, orderQuantity);
+      const { vatRate } = await getVatConfig();
+      vatPercent = vatRate * 100;
+      const quoteData = calculateQuote(priceValue, orderQuantity, vatRate);
       
       quotedVAT = quoteData.vat;
       quotedTotal = quoteData.total;
@@ -345,6 +359,7 @@ export async function POST(request: NextRequest) {
         quotedDeliveryDate: quotedDeliveryDate ? new Date(quotedDeliveryDate) : null,
         quotedVAT,
         quotedTotal,
+        vatPercent,
         discountPercentage,
         discountAmount,
         messageType,
@@ -439,8 +454,10 @@ export async function POST(request: NextRequest) {
         
         let orderUpdate: any = {};
         
-        if (unitPrice > 0) {
-          const priceBreakdown = calculatePrice(unitPrice, quantity);
+        // Admin breakdown quotes already saved their pricing on the order (PATCH) - don't overwrite it
+        if (unitPrice > 0 && !hasAdminBreakdown) {
+          const { vatRate } = await getVatConfig();
+          const priceBreakdown = calculatePrice(unitPrice, quantity, vatRate);
           orderUpdate = {
             unitPrice: Math.round(unitPrice),
             quotedPrice: Math.round(priceBreakdown.total), // Store TOTAL in quotedPrice, not per-unit

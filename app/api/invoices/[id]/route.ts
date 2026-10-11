@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import connectDB from "@/lib/mongodb";
 import Invoice from "@/lib/models/Invoice";
 import { serializeDoc } from "@/lib/serializer";
+import { recordInvoiceAsOrder, syncOrderFromInvoice } from "@/lib/invoiceOrders";
 
 // Get single invoice
 export async function GET(
@@ -57,6 +58,17 @@ export async function PUT(
     }
 
     console.log(`✅ Invoice updated: ${updatedInvoice.invoiceNumber}`);
+
+    // Keep the order recorded from this manual invoice in step (creates it if it was never recorded)
+    if (updatedInvoice.type === 'manual') {
+      try {
+        const inv = updatedInvoice.toObject();
+        const recorded = await recordInvoiceAsOrder(inv);
+        if (recorded.status === 'exists') await syncOrderFromInvoice(inv);
+      } catch (orderError) {
+        console.error('⚠️ Could not sync order for manual invoice:', orderError);
+      }
+    }
 
     return NextResponse.json(
       {

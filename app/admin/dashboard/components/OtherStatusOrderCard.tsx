@@ -2,6 +2,7 @@
 
 import { ChevronDown, ChevronUp, MessageSquare, AlertCircle, CheckCircle, Clock, Zap, Factory, AlertCircle as AlertIcon, Calendar } from "lucide-react";
 import { useState, useEffect } from "react";
+import { DEFAULT_VAT_PERCENT } from '@/lib/vat';
 
 interface Order {
   _id: string;
@@ -59,6 +60,24 @@ export function OtherStatusOrderCard({
   onApproveClick
 }: OtherStatusOrderCardProps) {
   const [showActions, setShowActions] = useState(false);
+
+  // Show what was actually charged. Stored VAT covers products only (never logistics or caution fee);
+  // the quoted price is already VAT-inclusive, so VAT must not be added on top of it again.
+  const pricing = (() => {
+    const cautionFee = order.cautionFee || 0;
+    const hasStored = typeof order.total === 'number' && order.total > 0 && typeof order.vat === 'number';
+    const total = hasStored ? order.total : (order.quotedPrice || order.price || 0) + cautionFee;
+    const vat = hasStored
+      ? order.vat
+      : Math.round(((order.quotedPrice || order.price || 0) * (DEFAULT_VAT_PERCENT / (100 + DEFAULT_VAT_PERCENT))) * 100) / 100;
+    const vatPercent = typeof order.vatPercent === 'number' ? order.vatPercent : (vat > 0 ? DEFAULT_VAT_PERCENT : 0);
+    return {
+      goods: Math.round((total - vat - cautionFee) * 100) / 100,
+      vat,
+      vatLabel: ` (${vatPercent}%)`,
+      total,
+    };
+  })();
 
   // Debug: Log order data
   useEffect(() => {
@@ -333,7 +352,7 @@ export function OtherStatusOrderCard({
               <div className="space-y-1.5 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-700">Subtotal:</span>
-                  <span className="font-semibold text-gray-900">₦{((order.quotedPrice || order.price || 0)).toLocaleString('en-NG')}</span>
+                  <span className="font-semibold text-gray-900">₦{pricing.goods.toLocaleString('en-NG')}</span>
                 </div>
                 {/* Caution Fee (if rentals exist and caution fee is set) */}
                 {order.cautionFee && order.cautionFee > 0 && (
@@ -343,12 +362,12 @@ export function OtherStatusOrderCard({
                   </div>
                 )}
                 <div className="flex justify-between border-t border-yellow-200 pt-1.5">
-                  <span className="text-gray-700 font-semibold">VAT (7.5%):</span>
-                  <span className="font-bold text-amber-700">₦{(((order.quotedPrice || order.price || 0) * 0.075)).toLocaleString('en-NG')}</span>
+                  <span className="text-gray-700 font-semibold">VAT{pricing.vatLabel} (products only):</span>
+                  <span className="font-bold text-amber-700">₦{pricing.vat.toLocaleString('en-NG')}</span>
                 </div>
                 <div className="flex justify-between border-t border-yellow-300 pt-1.5">
                   <span className="font-bold text-gray-900">Total:</span>
-                  <span className="text-lg font-bold text-yellow-700">₦{(((order.quotedPrice || order.price || 0) * 1.075 + (order.cautionFee || 0))).toLocaleString('en-NG')}</span>
+                  <span className="text-lg font-bold text-yellow-700">₦{pricing.total.toLocaleString('en-NG')}</span>
                 </div>
               </div>
             </div>
